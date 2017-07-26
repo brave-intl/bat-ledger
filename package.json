@@ -1,7 +1,7 @@
 {
   "name": "bat-eyeshade",
   "version": "0.0.0",
-  "description": "BAT back-end server."
+  "description": "BAT back-end server.",
   "main": "index.js",
   "scripts": {
     "lint": "standard",
