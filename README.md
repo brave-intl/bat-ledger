@@ -1,2 +1,4 @@
-# bat-utils
-Utilities for BAT servers
+# BAT Utilities
+Utilities for BAT servers.
+
+_Nothing to see here, please move along..._

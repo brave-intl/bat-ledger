@@ -1,0 +1,72 @@
+{
+  "name": "bat-utils",
+  "version": "0.9.0",
+  "description": "Utilities for BAT servers.",
+  "main": "index.js",
+  "scripts": {
+    "lint": "standard",
+    "test": "npm run test-security",
+    "test-security": "nsp check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brave-intl/bat-utils"
+  },
+  "author": "Brave Developers <support@brave.com>",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/brave-intl/bat-utils/issues"
+  },
+  "homepage": "https://github.com/brave-intl/bat-utils",
+  "dependencies": {
+    "bell": "8.7.0",
+    "bitcoinjs-lib": "^3.1.1",
+    "bitgo": "^3.0.3",
+    "blipp": "2.3.0",
+    "bluebird": "3.5.0",
+    "boom": "5.2.0",
+    "bs58check": "^2.0.2",
+    "bson": "1.0.4",
+    "country-list": "1.1.0",
+    "cryptiles": "3.1.2",
+    "currency-codes": "1.1.2",
+    "github": "9.2.0",
+    "glob" : "^7.0.6",
+    "gridfs-stream": "1.1.1",
+    "hapi": "^16.1.1",
+    "hapi-async-handler": "^1.0.3",
+    "hapi-auth-bearer-token": "5.1.0",
+    "hapi-auth-cookie": "7.0.0",
+    "hapi-rate-limiter": "brave/hapi-rate-limiter",
+    "hapi-swagger": "brave/hapi-swagger",
+    "inert": "^4.2.1",
+    "joi": "^10.4.1",
+    "mongodb": "^2.1.18",
+    "monk": "brave/monk",
+    "netmask": "1.0.6",
+    "node-slack": "0.0.7",
+    "proxy-agent": "^2.0.0",
+    "redis": "2.7.1",
+    "rsmq": "^0.8.2",
+    "rsmq-worker": "^0.5.2",
+    "sdebug": "^0.9.0",
+    "underscore": "1.8.3",
+    "vision": "^4.0.0",
+    "wreck": "12.2.2"
+  },
+  "engines": {
+    "node": "7.10.1",
+    "npm": "4.2.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^7.2.1",
+    "npm-check-updates": "^2.12.1",
+    "nsp": "^2.2.0",
+    "standard": "10.0.2",
+    "throng": "4.0.0"
+  },
+  "standard": {
+    "ignore": [ "config/config.*" ],
+    "parser": "babel-eslint"
+  }
+}
