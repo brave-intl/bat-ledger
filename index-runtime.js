@@ -28,7 +28,7 @@ let Runtime = function (config) {
   underscore.defaults(this, {
     config: config,
     login: config.login,
-    notify: (debug, payload) => { debug('notify', 'slack webhook not configured') }
+    notify: (debug, payload) => { if (payload.text) debug('notify', payload) }
   })
 
   glob.sync(prefix + '*.js', { cwd: cwd }).forEach((file) => {

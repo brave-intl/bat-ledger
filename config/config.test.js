@@ -17,7 +17,9 @@ module.exports =
     }
   , coinbase            :
     { widgetCode        : '' }
-  , bitcoin_average     :
+  }
+, currency              :
+  { bitcoin_average     :
     { publicKey         : ''
     , secretKey         : ''
     }
