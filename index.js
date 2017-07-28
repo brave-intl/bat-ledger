@@ -4,7 +4,7 @@ const glob = require('glob')
 const underscore = require('underscore')
 
 const cwd = __dirname
-const prefix = 'index-'
+const prefix = 'boot-'
 
 const parent = path.join(cwd, '..')
 const npminfo = require(path.join((parent !== 'node_modules') ? cwd : path.join(parent, '..'), 'package'))

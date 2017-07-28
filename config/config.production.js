@@ -17,10 +17,11 @@ module.exports =
     { widgetCode        : process.env.COINBASE_WIDGET_CODE }
   }
 , currency              :
-  { bitcoin_average     :
+  { altcoins          : process.env.CRYPTO_CURRENCIES.split(',')
+  , bitcoin_average     :
     { publicKey         : process.env.BITCOIN_AVERAGE_PUBLIC_KEY
     , secretKey         : process.env.BITCOIN_AVERAGE_SECRET_KEY
-    }
+    }  
   }
 , payments              :
   { stripe              :

@@ -19,10 +19,11 @@ module.exports =
     { widgetCode        : '' }
   }
 , currency              :
-  { bitcoin_average     :
+  { altcoins            : [ ]
+  , bitcoin_average     :
     { publicKey         : ''
     , secretKey         : ''
-    }
+    }  
   }
 , payments              :
   { stripe              :
