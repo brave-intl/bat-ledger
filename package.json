@@ -1,6 +1,6 @@
 {
   "name": "bat-utils",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Utilities for BAT servers.",
   "main": "index.js",
   "scripts": {
@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/brave-intl/bat-utils",
   "dependencies": {
-    "bat-publisher": "0.9.0",
+    "bat-publisher": "0.9.1",
     "bell": "8.7.0",
     "bitcoinjs-lib": "^3.1.1",
     "bitgo": "^3.0.3",
