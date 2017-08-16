@@ -1,6 +1,6 @@
 {
   "name": "bat-utils",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "description": "Utilities for BAT servers.",
   "main": "index.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "bat-publisher": "0.9.1",
     "bell": "8.7.0",
     "bitcoinjs-lib": "^3.1.1",
-    "bitgo": "^3.4.9",
+    "bitgo": "^3.5.0",
     "blipp": "2.3.0",
     "bluebird": "3.5.0",
     "boom": "5.2.0",

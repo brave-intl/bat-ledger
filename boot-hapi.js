@@ -24,6 +24,8 @@ glob.sync(prefix + '*.js', { cwd: cwd }).forEach((file) => {
     key = parts[0]
   }
 
+  if (!process.batutil.enabled('hapi.' + key)) return
+
   base[key] = require(path.join(cwd, file))
   debug('hapi', 'loaded ' + parent + key)
 })

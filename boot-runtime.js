@@ -38,6 +38,8 @@ let Runtime = function (config) {
 
     if (!config[key]) return
 
+    if (!process.batutil.enabled('runtime.' + key)) return
+
     this[key] = new (require(path.join(cwd, file)))(config, this)
     debug('runtime', 'loaded ' + key)
   })
