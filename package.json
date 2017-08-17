@@ -1,6 +1,6 @@
 {
   "name": "bat-utils",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "Utilities for BAT servers.",
   "main": "index.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "bat-publisher": "0.9.1",
     "bell": "8.7.0",
     "bitcoinjs-lib": "^3.1.1",
-    "bitgo": "^3.5.0",
+    "bitgo": "^3.5.1",
     "blipp": "2.3.0",
     "bluebird": "3.5.0",
     "boom": "5.2.0",
@@ -34,7 +34,7 @@
     "github": "9.2.0",
     "glob": "^7.1.2",
     "gridfs-stream": "1.1.1",
-    "hapi": "^16.5.0",
+    "hapi": "^16.5.2",
     "hapi-async-handler": "^1.0.3",
     "hapi-auth-bearer-token": "5.1.0",
     "hapi-auth-cookie": "7.0.0",
@@ -42,19 +42,21 @@
     "hapi-swagger": "brave/hapi-swagger",
     "inert": "^4.2.1",
     "joi": "^10.6.0",
-    "mongodb": "^2.2.30",
+    "minimatch": "^3.0.2",
+    "mongodb": "^2.2.31",
     "monk": "brave/monk",
     "netmask": "1.0.6",
     "node-slack": "0.0.7",
     "proxy-agent": "^2.1.0",
-    "redis": "2.7.1",
+    "redis": "2.8.0",
     "rsmq": "^0.8.2",
     "rsmq-worker": "^0.5.2",
     "sdebug": "^0.9.2",
     "signalr-client-forked": "0.0.21",
     "underscore": "1.8.3",
     "vision": "^4.1.1",
-    "wreck": "12.2.2"
+    "web3-utils": "1.0.0-beta.17",
+    "wreck": "12.2.3"
   },
   "engines": {
     "node": "7.10.1",
@@ -64,7 +66,7 @@
     "babel-eslint": "^7.2.3",
     "npm-check-updates": "^2.12.1",
     "nsp": "^2.7.0",
-    "standard": "10.0.2",
+    "standard": "10.0.3",
     "throng": "4.0.0"
   },
   "standard": {

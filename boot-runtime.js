@@ -36,9 +36,7 @@ let Runtime = function (config) {
   glob.sync(prefix + '*.js', { cwd: cwd }).forEach((file) => {
     let key = path.basename(file.substring(prefix.length), '.js')
 
-    if (!config[key]) return
-
-    if (!process.batutil.enabled('runtime.' + key)) return
+    if ((!config[key]) || (!process.batutil.enabled('runtime.' + key))) return
 
     this[key] = new (require(path.join(cwd, file)))(config, this)
     debug('runtime', 'loaded ' + key)
