@@ -25,7 +25,7 @@
   "dependencies": {
     "babel-cli": "^6.26.0",
     "babel-preset-stage-2": "^6.24.1",
-    "bat-utils": "^0.9.8",
+    "bat-utils": "^0.9.9",
     "boom": "5.2.0",
     "bson": "1.0.4",
     "currency-codes": "1.1.2",
