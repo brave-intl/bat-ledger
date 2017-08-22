@@ -1,6 +1,6 @@
 module.exports =
 { server                : require('url').parse('https://' + process.env.HOST)
-, altcurrency           : process.env.ALTCURREN CY
+, altcurrency           : process.env.ALTCURRENCY
 , database              :
   { mongo               : process.env.MONGODB_URI }
 , queue                 :
