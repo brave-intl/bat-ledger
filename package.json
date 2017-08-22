@@ -1,6 +1,6 @@
 {
   "name": "bat-utils",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "description": "Utilities for BAT servers.",
   "main": "index.js",
   "scripts": {
