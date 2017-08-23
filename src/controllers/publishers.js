@@ -1,10 +1,12 @@
 const crypto = require('crypto')
 const dns = require('dns')
+const url = require('url')
 
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
 const underscore = require('underscore')
+const uuid = require('uuid')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -19,25 +21,88 @@ const prefix2 = prefix1 + '='
 let altcurrency
 
 /*
+   POST /v1/publishers
+*/
+
+v1.bulk = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const payload = request.payload
+      const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
+      const reportId = uuid.v4().toLowerCase()
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const debug = braveHapi.debug(module, request)
+      const publishers = runtime.database.get('publishers', debug)
+      const tokens = runtime.database.get('tokens', debug)
+      let publisher, state, token
+
+      for (let entry of payload) {
+        publisher = await publishers.findOne({ publisher: entry.publisher, verified: true })
+        if (publisher) return reply(boom.badData('publisher ' + entry.publisher + ' already verified'))
+      }
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: { verified: true, reason: 'bulk loaded', authority: authority }
+      }
+      for (let entry of payload) {
+        token = uuid.v4().toLowerCase()
+        underscore.extend(state.$set, { verificationId: token, token: token })
+        await tokens.update({ publisher: entry.publisher }, state, { upsert: true })
+      }
+
+      await runtime.queue.send(debug, 'publishers-bulk-create',
+                               underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
+                                                   { publishers: payload }, request.query))
+      reply({ reportURL: reportURL })
+    }
+  },
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
+  },
+
+  description: 'Creates publisher entries in bulk',
+  tags: [ 'api' ],
+
+  validate: {
+    query: { format: Joi.string().valid('json', 'csv').optional().default('json').description('the format of the report') },
+    payload: Joi.array().min(1).items(Joi.object().keys({
+      publisher: braveJoi.string().publisher().required().description('the publisher identity'),
+      name: Joi.string().min(1).max(40).required().description('contact name'),
+      email: Joi.string().email().required().description('contact email'),
+      phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).required().description('contact phone number'),
+      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
+    }).unknown(true)).required().description('publisher settlement report')
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+    }).unknown(true)
+  }
+}
+
+/*
    POST /v1/publishers/settlement/{hash}
 */
 
 v1.settlement = {
   handler: (runtime) => {
     return async (request, reply) => {
-      var entry, i, state
-      var hash = request.params.hash
-      var payload = request.payload
-      var debug = braveHapi.debug(module, request)
-      var settlements = runtime.database.get('settlements', debug)
+      const hash = request.params.hash
+      const payload = request.payload
+      const debug = braveHapi.debug(module, request)
+      const settlements = runtime.database.get('settlements', debug)
+      let state
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: { hash: hash }
       }
-      for (i = 0; i < payload.length; i++) {
-        entry = payload[i]
-
+      for (let entry of payload) {
         entry.altcurrency = 'BTC'
         entry.probi = entry.satoshis
         underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees' ]))
@@ -82,14 +147,13 @@ v2.settlement = {
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
-      let entry, i, state, validity
+      let state, validity
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: { hash: hash }
       }
-      for (i = 0; i < payload.length; i++) {
-        entry = payload[i]
+      for (let entry of payload) {
         if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
 
         validity = Joi.validate(entry.address, braveJoi.string().altcurrencyAddress(entry.altcurrency))
@@ -134,12 +198,12 @@ v2.settlement = {
 v1.getBalance = {
   handler: (runtime) => {
     return async (request, reply) => {
-      var amount, probi, summary
-      var publisher = request.params.publisher
-      var currency = request.query.currency
-      var debug = braveHapi.debug(module, request)
-      var settlements = runtime.database.get('settlements', debug)
-      var voting = runtime.database.get('voting', debug)
+      const publisher = request.params.publisher
+      const currency = request.query.currency
+      const debug = braveHapi.debug(module, request)
+      const settlements = runtime.database.get('settlements', debug)
+      const voting = runtime.database.get('voting', debug)
+      let amount, probi, summary
 
       summary = await voting.aggregate([
         {
@@ -390,13 +454,13 @@ v1.getToken = {
 v1.setWallet = {
   handler: (runtime) => {
     return async (request, reply) => {
-      var entry, state
-      var publisher = request.params.publisher
-      var bitcoinAddress = request.payload.bitcoinAddress
-      var verificationId = request.payload.verificationId
-      var debug = braveHapi.debug(module, request)
-      var publishers = runtime.database.get('publishers', debug)
-      var tokens = runtime.database.get('tokens', debug)
+      const publisher = request.params.publisher
+      const bitcoinAddress = request.payload.bitcoinAddress
+      const verificationId = request.payload.verificationId
+      const debug = braveHapi.debug(module, request)
+      const publishers = runtime.database.get('publishers', debug)
+      const tokens = runtime.database.get('tokens', debug)
+      let entry, state
 
       entry = await tokens.findOne({ verificationId: verificationId, publisher: publisher })
       if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
@@ -501,9 +565,10 @@ v1.patchPublisher = {
       const authorized = payload.authorized
       const legalFormURL = payload.legalFormURL
       const reason = payload.reason
+      const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
-      let authority, entry, state
+      let entry, state
 
       if ((legalFormURL) && (legalFormURL.indexOf('void:') === 0) && (legalFormURL !== 'void:form_retry')) {
         return reply(boom.badData('invalid legalFormURL: ' + legalFormURL))
@@ -512,7 +577,6 @@ v1.patchPublisher = {
       entry = await publishers.findOne({ publisher: publisher })
       if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
 
-      authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(payload, { authority: authority })
@@ -565,14 +629,14 @@ v2.patchPublisher = {
       const publisher = request.params.publisher
       const payload = request.payload
       const authorized = payload.authorized
+      const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
-      let authority, entry, state
+      let entry, state
 
       entry = await publishers.findOne({ publisher: publisher })
       if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
 
-      authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(payload, { authority: authority })
@@ -720,13 +784,12 @@ v1.verifyToken = {
       const backgroundP = request.query.backgroundP
       const debug = braveHapi.debug(module, request)
       const tokens = runtime.database.get('tokens', debug)
-      let data, entry, entries, hint, i, info, j, matchP, pattern, reason, rr, rrset
+      let data, entries, hint, i, info, j, matchP, pattern, reason, rr, rrset
 
       entries = await tokens.find({ publisher: publisher })
       if (entries.length === 0) return reply(boom.notFound('no such publisher: ' + publisher))
 
-      for (i = 0; i < entries.length; i++) {
-        entry = entries[i]
+      for (let entry of entries) {
         if (entry.verified) {
           await runtime.queue.send(debug, 'publisher-report', { publisher: entry.publisher, verified: entry.verified })
           return reply({ status: 'success', verificationId: entry.verificationId })
@@ -742,15 +805,14 @@ v1.verifyToken = {
       }
       for (i = 0; i < rrset.length; i++) { rrset[i] = rrset[i].join('') }
 
-      const loser = async (reason) => {
+      const loser = async (entry, reason) => {
         debug('verify', underscore.extend(info, { reason: reason }))
         await verified(request, reply, runtime, entry, false, backgroundP, reason)
       }
 
       info = { publisher: publisher }
       data = {}
-      for (i = 0; i < entries.length; i++) {
-        entry = entries[i]
+      for (let entry of entries) {
         info.verificationId = entry.verificationId
 
         for (j = 0; j < rrset.length; j++) {
@@ -759,14 +821,14 @@ v1.verifyToken = {
 
           matchP = true
           if (rr.substring(prefix2.length) !== entry.token) {
-            await loser('TXT RR suffix mismatch ' + prefix2 + entry.token)
+            await loser(entry, 'TXT RR suffix mismatch ' + prefix2 + entry.token)
             continue
           }
 
           return verified(request, reply, runtime, entry, true, backgroundP, 'TXT RR matches')
         }
         if (!matchP) {
-          if (typeof matchP === 'undefined') await loser('no TXT RRs starting with ' + prefix2)
+          if (typeof matchP === 'undefined') await loser(entry, 'no TXT RRs starting with ' + prefix2)
           matchP = false
         }
 
@@ -775,7 +837,7 @@ v1.verifyToken = {
           if (typeof data[hint] === 'undefined') {
             try { data[hint] = (await webResolver(debug, runtime, publisher, hints[hint])).toString() } catch (ex) {
               data[hint] = ''
-              await loser(ex.toString())
+              await loser(entry, ex.toString())
               continue
             }
             debug('verify', 'fetched data for ' + hint)
@@ -821,7 +883,7 @@ v1.verifyToken = {
 }
 
 const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  let message, result
+  let result
 
   try {
     result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + encodeURIComponent(publisher) +
@@ -838,7 +900,7 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
     debug('publishers', { method: method, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
   }
 
-  return message
+  return result
 }
 
 const notify = async (debug, runtime, publisher, payload) => {
@@ -852,6 +914,7 @@ const notify = async (debug, runtime, publisher, payload) => {
 }
 
 module.exports.routes = [
+  braveHapi.routes.async().post().path('/v1/publishers').config(v1.bulk),
 /*
   braveHapi.routes.async().post().path('/v1/publishers/settlement/{hash}').config(v1.settlement),
 */
@@ -933,6 +996,6 @@ module.exports.initialize = async (debug, runtime) => {
     }
   ])
 
+  await runtime.queue.create('publishers-bulk-create')
   await runtime.queue.create('publisher-report')
-  await runtime.queue.create('publishers-contributions-prorata')
 }

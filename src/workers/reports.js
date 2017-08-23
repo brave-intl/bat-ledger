@@ -30,6 +30,22 @@ const create = async (runtime, prefix, params) => {
   return runtime.database.file(params.reportId, 'w', options)
 }
 
+const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
+  const prefix = publisher ? ('/' + encodeURIComponent(publisher)) : ''
+  let result
+
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''),
+    { headers: { authorization: 'Bearer ' + runtime.config.publishers.access_token,
+      'content-type': 'application/json'
+    },
+      payload: JSON.stringify(payload),
+      useProxyP: true
+    })
+  if (Buffer.isBuffer(result)) result = JSON.parse(result)
+
+  return result
+}
+
 const daily = async (debug, runtime) => {
   const now = underscore.now()
   let midnight, tomorrow
@@ -72,7 +88,7 @@ const hourly = async (debug, runtime) => {
 const quanta = async (debug, runtime) => {
   const contributions = runtime.database.get('contributions', debug)
   const voting = runtime.database.get('voting', debug)
-  let i, results, votes
+  let results, votes
 
   const dicer = async (quantum, counts) => {
     const surveyors = runtime.database.get('surveyors', debug)
@@ -154,7 +170,7 @@ const quanta = async (debug, runtime) => {
     }
   ])
 
-  for (i = 0; i < results.length; i++) await dicer(results[i])
+  for (let result of results) await dicer(result)
 
   return (underscore.map(results, (result) => {
     return underscore.extend({ surveyorId: result._id }, underscore.omit(result, [ '_id' ]))
@@ -163,16 +179,14 @@ const quanta = async (debug, runtime) => {
 
 const mixer = async (debug, runtime, publisher) => {
   const publishers = {}
-  let i, results
+  let results
 
   const slicer = async (quantum) => {
     const voting = runtime.database.get('voting', debug)
     const slices = await voting.find({ surveyorId: quantum.surveyorId, exclude: false })
-    let fees, i, probi, slice, state
+    let fees, probi, state
 
-    for (i = 0; i < slices.length; i++) {
-      slice = slices[i]
-
+    for (let slice of slices) {
       probi = Math.floor(quantum.quantum * slice.counts * 0.95)
       fees = Math.floor((quantum.quantum * slice.counts) - probi)
       if ((publisher) && (slice.publisher !== publisher)) continue
@@ -196,7 +210,7 @@ const mixer = async (debug, runtime, publisher) => {
   }
 
   results = await quanta(debug, runtime)
-  for (i = 0; i < results.length; i++) await slicer(results[i])
+  for (let result of results) await slicer(result)
   return publishers
 }
 
@@ -346,6 +360,7 @@ exports.initialize = async (debug, runtime) => {
 }
 
 exports.create = create
+exports.publish = publish
 
 exports.workers = {
 /* sent by GET /v1/reports/publisher/{publisher}/contributions
@@ -631,7 +646,7 @@ exports.workers = {
       const settlements = runtime.database.get('settlements', debug)
       const tokens = runtime.database.get('tokens', debug)
       const voting = runtime.database.get('voting', debug)
-      let data, entries, f, fields, file, i, keys, now, results, probi, summary
+      let data, entries, f, fields, file, keys, now, results, probi, summary
 
       const daysago = (timestamp) => {
         return Math.round((now - timestamp) / (86400 * 1000))
@@ -706,7 +721,7 @@ exports.workers = {
         let datum, datum2, result
 
         results[publisher].probi = probi[publisher] || 0
-        results[publisher].USD = runtime.currency.alt2fiat(altcurrency, probi[publisher], 'USD')
+        results[publisher].USD = runtime.currency.alt2fiat(altcurrency, results[publisher].probi, 'USD')
 
         if (results[publisher].history) {
           results[publisher].history = underscore.sortBy(results[publisher].history, (record) => {
@@ -723,11 +738,7 @@ exports.workers = {
         }
 
         try {
-          result = await braveHapi.wreck.get(runtime.config.publishers.url + '/api/publishers/' + encodeURIComponent(publisher),
-            { headers: { authorization: 'Bearer ' + runtime.config.publishers.access_token },
-              useProxyP: true
-            })
-          if (Buffer.isBuffer(result)) result = JSON.parse(result)
+          result = await publish(debug, runtime, 'get', publisher)
           datum = underscore.findWhere(result, { id: results[publisher].verificationId })
           if (datum) {
             underscore.extend(results[publisher], underscore.pick(datum, [ 'name', 'email' ]),
@@ -760,7 +771,7 @@ exports.workers = {
       }
       data = []
       keys = underscore.keys(results)
-      for (i = 0; i < keys.length; i++) await f(keys[i])
+      for (let key of keys) await f(key)
       results = data.sort(publisherCompare)
 
       file = await create(runtime, 'publishers-status-', payload)
@@ -829,7 +840,7 @@ exports.workers = {
       const summaryP = payload.summary
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let data, fields, file, i, previous, results, slices, publishers, quantum
+      let data, fields, file, previous, results, slices, publishers
 
       if (!summaryP) {
         previous = await settlements.aggregate([
@@ -856,8 +867,7 @@ exports.workers = {
 
       data = underscore.sortBy(await quanta(debug, runtime), 'created')
       results = []
-      for (i = 0; i < data.length; i++) {
-        quantum = data[i]
+      for (let quantum of data) {
         results.push(quantum)
         if (summaryP) continue
 
