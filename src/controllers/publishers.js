@@ -34,7 +34,7 @@ v1.bulk = {
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
       const tokens = runtime.database.get('tokens', debug)
-      let publisher, state, token
+      let publisher, state
 
       for (let entry of payload) {
         publisher = await publishers.findOne({ publisher: entry.publisher, verified: true })
@@ -46,8 +46,8 @@ v1.bulk = {
         $set: { verified: true, reason: 'bulk loaded', authority: authority }
       }
       for (let entry of payload) {
-        token = uuid.v4().toLowerCase()
-        underscore.extend(state.$set, { verificationId: token, token: token })
+        entry.verificationId = uuid.v4().toLowerCase()
+        underscore.extend(state.$set, { verificationId: entry.verificationId, token: entry.verificationId })
         await tokens.update({ publisher: entry.publisher }, state, { upsert: true })
       }
 
