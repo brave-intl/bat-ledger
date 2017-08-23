@@ -606,6 +606,7 @@ exports.workers = {
     },
 
 /* sent by GET /v1/reports/publishers/status
+               /v2/reports/publishers/status
 
     { queue            : 'report-publishers-status'
     , message          :
@@ -705,7 +706,7 @@ exports.workers = {
         let datum, datum2, result
 
         results[publisher].probi = probi[publisher] || 0
-        results[publisher].USD = runtime.currency.alt2fiat(altcurrency, probi, 'USD')
+        results[publisher].USD = runtime.currency.alt2fiat(altcurrency, probi[publisher], 'USD')
 
         if (results[publisher].history) {
           results[publisher].history = underscore.sortBy(results[publisher].history, (record) => {
