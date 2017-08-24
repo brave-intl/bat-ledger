@@ -525,8 +525,6 @@ v2.setWallet = {
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
-// TODO: fetch ETH address
-
       reply({})
     }
   },

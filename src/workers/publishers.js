@@ -8,6 +8,7 @@ const publish = reports.publish
 var exports = {}
 
 exports.initialize = async (debug, runtime) => {
+  await runtime.queue.create('publisher-report')
   await runtime.queue.create('publishers-bulk-create')
 }
 
@@ -53,6 +54,10 @@ exports.workers = {
           await publishersC.update({ publisher: entry.publisher }, state, { upsert: true })
 
           entry.message = result && result.message
+
+          if (entry.message === 'success') {
+            await runtime.queue.send(debug, 'publisher-report', { publisher: entry.publisher, verified: true })
+          }
         } catch (ex) {
           entry.message = ex.toString()
         }
