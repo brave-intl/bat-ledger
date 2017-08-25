@@ -4,7 +4,7 @@ const underscore = require('underscore')
 const reports = require('./reports.js')
 const create = reports.create
 const publish = reports.publish
-const timeout = require('bat-utils').extras.utils.timeout
+// const timeout = require('bat-utils').extras.utils.timeout
 
 var exports = {}
 
@@ -62,7 +62,7 @@ exports.workers = {
         } catch (ex) {
           entry.message = ex.toString()
         }
-        await timeout(250)
+//      await timeout(250)
       }
 
       file = await create(runtime, 'publishers-', payload)
