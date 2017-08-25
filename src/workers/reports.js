@@ -34,13 +34,14 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
   const prefix = publisher ? ('/' + encodeURIComponent(publisher)) : ''
   let result
 
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''),
-    { headers: { authorization: 'Bearer ' + runtime.config.publishers.access_token,
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
+    headers: {
+      authorization: 'Bearer ' + runtime.config.publishers.access_token,
       'content-type': 'application/json'
     },
-      payload: JSON.stringify(payload),
-      useProxyP: true
-    })
+    payload: JSON.stringify(payload),
+    useProxyP: true
+  })
   if (Buffer.isBuffer(result)) result = JSON.parse(result)
 
   return result

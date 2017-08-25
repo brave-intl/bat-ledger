@@ -373,6 +373,9 @@ v1.getStatus = {
       entry = await publishers.findOne({ publisher: publisher })
       if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
 
+      if (entry.provider) {
+      }
+
       reply(underscore.pick(entry, [ 'authorized', 'provider', 'address', 'altcurrency' ]))
     }
   },
@@ -525,6 +528,8 @@ v2.setWallet = {
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
+/* TODO: set authorized, address, altcurreny
+ */
       reply({})
     }
   },
@@ -721,6 +726,7 @@ const hintsK = underscore.keys(hints)
 const dnsTxtResolver = async (domain) => {
   return new Promise((resolve, reject) => {
     dns.resolveTxt(domain, (err, rrset) => {
+      console.log('dns: ' + JSON.stringify({ err: err, rrset: rrset }, null, 2))
       if (err) return reject(err)
       resolve(rrset)
     })
@@ -796,6 +802,7 @@ v1.verifyToken = {
 
       try { rrset = await dnsTxtResolver(publisher) } catch (ex) {
         reason = ex.toString()
+        console.log('dns: ' + JSON.stringify({ reason: reason }, null, 2))
         if (reason.indexOf('ENODATA') === -1) {
           debug('dnsTxtResolver', underscore.extend({ publisher: publisher, reason: reason }))
         }
@@ -885,10 +892,12 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
 
   try {
     result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + encodeURIComponent(publisher) +
-                                        endpoint,
-      { headers: { authorization: 'Bearer ' + runtime.config.publishers.access_token,
-        'content-type': 'application/json'
-      },
+                                           endpoint,
+      {
+        headers: {
+          authorization: 'Bearer ' + runtime.config.publishers.access_token,
+          'content-type': 'application/json'
+        },
         payload: JSON.stringify(payload),
         useProxyP: true
       })
