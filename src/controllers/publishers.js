@@ -15,7 +15,7 @@ const braveJoi = utils.extras.joi
 const v1 = {}
 const v2 = {}
 
-const prefix1 = 'brave-ledger-verification='
+const prefix1 = 'brave-ledger-verification'
 const prefix2 = prefix1 + '='
 
 let altcurrency
@@ -802,7 +802,6 @@ v1.verifyToken = {
 
       try { rrset = await dnsTxtResolver(publisher) } catch (ex) {
         reason = ex.toString()
-        console.log('dns: ' + JSON.stringify({ reason: reason }, null, 2))
         if (reason.indexOf('ENODATA') === -1) {
           debug('dnsTxtResolver', underscore.extend({ publisher: publisher, reason: reason }))
         }
