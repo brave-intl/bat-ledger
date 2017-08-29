@@ -25,16 +25,49 @@
   "dependencies": {
     "babel-cli": "^6.26.0",
     "babel-preset-stage-2": "^6.24.1",
-    "bat-utils": "^0.9.11",
+    "bat-utils": "file:./bat-utils",
+    "bat-publisher": "0.9.1",
+    "bell": "8.7.0",
+    "bitcoinjs-lib": "^3.1.1",
+    "bitgo": "^4.1.1",
+    "blipp": "2.3.0",
+    "bluebird": "3.5.0",
     "boom": "5.2.0",
+    "bs58check": "^2.0.2",
     "bson": "1.0.4",
+    "country-list": "1.1.0",
+    "cryptiles": "3.1.2",
     "currency-codes": "1.1.2",
     "dateformat": "2.0.0",
+    "github": "10.0.0",
+    "glob": "^7.1.2",
+    "gridfs-stream": "1.1.1",
+    "hapi": "^16.5.2",
+    "hapi-async-handler": "^1.0.3",
+    "hapi-auth-bearer-token": "5.1.0",
+    "hapi-auth-cookie": "7.0.0",
+    "hapi-rate-limiter": "brave/hapi-rate-limiter",
+    "hapi-swagger": "brave/hapi-swagger",
+    "inert": "^4.2.1",
     "joi": "^10.6.0",
     "json2csv": "^3.11.1",
+    "minimatch": "^3.0.4",
     "moment": "^2.18.1",
+    "mongodb": "^2.2.31",
+    "monk": "brave/monk",
+    "netmask": "1.0.6",
+    "node-slack": "0.0.7",
+    "proxy-agent": "^2.1.0",
+    "redis": "2.8.0",
+    "rsmq": "^0.8.2",
+    "rsmq-worker": "^0.5.2",
+    "sdebug": "^0.9.2",
+    "signalr-client-forked": "0.0.21",
     "underscore": "1.8.3",
-    "uuid": "3.1.0"
+    "uuid": "3.1.0",
+    "vision": "^4.1.1",
+    "web3-utils": "1.0.0-beta.17",
+    "wreck": "12.2.3"
   },
   "engines": {
     "node": "7.10.1",
@@ -48,7 +81,9 @@
     "throng": "4.0.0"
   },
   "standard": {
-    "ignore": [ "config/config.*" ],
+    "ignore": [
+      "config/config.*"
+    ],
     "parser": "babel-eslint"
   }
 }
