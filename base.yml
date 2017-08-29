@@ -1,0 +1,14 @@
+version: "2"
+
+services:
+  eyeshade:
+    image: bat-eyeshade
+    build: .
+    restart: always
+    networks:
+      - eyeshade
+    environment:
+      - "MONGODB_URI=mongodb://db"
+      - "REDIS_URL=redis:6379"
+      - "PUBLISHERS_URL=http:/foo"
+      - "PUBLISHERS_TOKEN=bar"

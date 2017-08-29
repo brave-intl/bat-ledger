@@ -1,0 +1,37 @@
+version: "2"
+
+networks:
+  eyeshade:
+    driver: bridge
+
+services:
+  mongo:
+    container_name: eyeshade-mongo
+    image: mongo:latest
+    networks:
+      - eyeshade
+  redis:
+    container_name: eyeshade-redis
+    image: redis:latest
+    networks:
+      - eyeshade
+  worker:
+    container_name: eyeshade-worker
+    command: "npm run worker"
+    extends:
+      file: base.yml
+      service: eyeshade
+    depends_on:
+      - mongo
+      - redis
+  web:
+    container_name: eyeshade-web
+    ports:
+      - "3002:3002"
+    command: "npm run server"
+    extends:
+      file: base.yml
+      service: eyeshade
+    depends_on:
+      - mongo
+      - redis
