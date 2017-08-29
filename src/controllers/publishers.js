@@ -726,7 +726,6 @@ const hintsK = underscore.keys(hints)
 const dnsTxtResolver = async (domain) => {
   return new Promise((resolve, reject) => {
     dns.resolveTxt(domain, (err, rrset) => {
-      console.log('dns: ' + JSON.stringify({ err: err, rrset: rrset }, null, 2))
       if (err) return reject(err)
       resolve(rrset)
     })
