@@ -1,5 +1,5 @@
 const perServiceEnvs = ['MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL']
-if (process.env.SERVICE === 'bat-eyeshade') {
+if (process.env.SERVICE === 'eyeshade') {
   process.env.PORT = process.env.PORT || 3002
   perServiceEnvs.forEach(function(baseEnv) {
     process.env[baseEnv] = process.env[baseEnv] || process.env['EYESHADE_' + baseEnv]
@@ -38,7 +38,7 @@ if (process.env.BITGO_TOKEN || process.env.COINBASE_WIDGET_CODE) {
   module.exports.wallet = { }
 }
 
-if (process.env.SERVICE !== 'bat-eyeshade') {
+if (process.env.SERVICE !== 'eyeshade') {
   if (process.env.BITGO_TOKEN) {
     module.exports.wallet.bitgo =
     { accessToken       : process.env.BITGO_TOKEN
@@ -54,7 +54,7 @@ if (process.env.SERVICE !== 'bat-eyeshade') {
   }
 }
 
-if (process.env.SERVICE === 'bat-eyeshade' && process.env.PUBLISHERS_URL) {
+if (process.env.SERVICE === 'eyeshade' && process.env.PUBLISHERS_URL) {
   module.exports.publishers =
   { url                 : process.env.PUBLISHERS_URL || 'http://127.0.0.1:3000'
   , access_token        : process.env.PUBLISHERS_TOKEN || '00000000-0000-4000-0000-000000000000'

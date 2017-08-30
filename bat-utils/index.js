@@ -9,7 +9,7 @@ const prefix = 'boot-'
 const parent = path.join(cwd, '..')
 const npminfo = require(path.join((underscore.last(parent.split(path.sep)) !== 'node_modules') ? cwd : path.join(parent, '..'),
     'package'))
-if (process.env.SERVICE) npminfo.name = process.env.SERVICE
+if (process.env.SERVICE) npminfo.name = 'bat-' + process.env.SERVICE
 process.npminfo = underscore.pick(npminfo,
                                   [ 'name', 'version', 'description', 'author', 'license', 'bugs', 'homepage', 'dependencies' ])
 
