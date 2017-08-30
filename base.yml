@@ -8,7 +8,7 @@ services:
     networks:
       - ledger
     environment:
-      - "MONGODB_URI=mongodb://db"
+      - "MONGODB_URI=mongodb://db/ledger"
       - "REDIS_URL=redis:6379"
       - BITCOIN_AVERAGE_PUBLIC_KEY
       - BITCOIN_AVERAGE_SECRET_KEY
@@ -20,13 +20,18 @@ services:
       - COINBASE_WIDGET_CODE
       - EYESHADE_GITHUB_CLIENT_ID
       - EYESHADE_GITHUB_CLIENT_SECRET
+      - EYESHADE_SLACK_CHANNEL
+      - EYESHADE_SLACK_ICON_URL
       - FIXIE_URL
+      - GITHUB_CLIENT_ID
+      - GITHUB_CLIENT_SECRET
       - GITHUB_LOGIN_BYE
       - GITHUB_LOGIN_WORLD
       - GITHUB_ORG
       - LEDGER_GITHUB_CLIENT_ID
       - LEDGER_GITHUB_CLIENT_SECRET
-      - MONGODB_URI
+      - LEDGER_SLACK_CHANNEL
+      - LEDGER_SLACK_ICON_URL
       - NODE_ENV
       - PUBLISHERS_TOKEN
       - PUBLISHERS_URL

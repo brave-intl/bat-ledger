@@ -21,6 +21,8 @@ services:
     extends:
       file: base.yml
       service: ledger
+    environment:
+      - "MONGODB_URI=mongodb://db/eyeshade"
     depends_on:
       - mongo
       - redis
@@ -32,6 +34,8 @@ services:
     extends:
       file: base.yml
       service: ledger
+    environment:
+      - "MONGODB_URI=mongodb://db/eyeshade"
     depends_on:
       - mongo
       - redis

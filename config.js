@@ -1,11 +1,14 @@
+const perServiceEnvs = ['MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL']
 if (process.env.SERVICE === 'bat-eyeshade') {
   process.env.PORT = process.env.PORT || 3002
-  process.env.GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || process.env.EYESHADE_GITHUB_CLIENT_ID
-  process.env.GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || process.env.EYESHADE_GITHUB_CLIENT_SECRET 
+  perServiceEnvs.forEach(function(baseEnv) {
+    process.env[baseEnv] = process.env[baseEnv] || process.env['EYESHADE_' + baseEnv]
+  })
 } else {
   process.env.PORT = process.env.PORT || 3001
-  process.env.GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || process.env.LEDGER_GITHUB_CLIENT_ID
-  process.env.GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || process.env.LEDGER_GITHUB_CLIENT_SECRET 
+  perServiceEnvs.forEach(function(baseEnv) {
+    process.env[baseEnv] = process.env[baseEnv] || process.env['LEDGER_' + baseEnv]
+  })
 }
 
 module.exports =
