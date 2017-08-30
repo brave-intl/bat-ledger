@@ -223,7 +223,7 @@ const Server = async (options, runtime) => {
     debug('end', { sdebug: params })
   })
 
-  server.route(await options.routes.routes(debug, runtime, options.controllers))
+  server.route(await options.routes.routes(debug, runtime, options))
   server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './documentation/favicon.ico' } })
   server.route({ method: 'GET', path: '/favicon.png', handler: { file: './documentation/favicon.png' } })
   server.route({ method: 'GET', path: '/robots.txt', handler: { file: './documentation/robots.txt' } })

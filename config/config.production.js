@@ -12,6 +12,17 @@ module.exports =
     , secretKey         : process.env.BITCOIN_AVERAGE_SECRET_KEY
     }
   }
+, wallet                :
+  { bitgo               :
+    { accessToken       : process.env.BITGO_TOKEN
+    , enterpriseId      : process.env.BITGO_ENTERPRISE_ID
+    , environment       : process.env.BITGO_ENVIRONMENT
+    , settlementAddress : process.env.BITGO_SETTLEMENT_ADDRESS
+    , unspendableXpub   : process.env.BITGO_UNSPENDABLE_XPUB
+    }
+  , coinbase            :
+    { widgetCode        : process.env.COINBASE_WIDGET_CODE }
+  }
 , publishers            :
   { url                 : process.env.PUBLISHERS_URL
   , access_token        : process.env.PUBLISHERS_TOKEN

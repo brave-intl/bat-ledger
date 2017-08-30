@@ -1,4 +1,4 @@
-if (!process.env.PORT) process.env.PORT = 3002
+if (!process.env.PORT) process.env.PORT = 3001
 
 module.exports =
 { server                : require('url').parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
@@ -12,6 +12,17 @@ module.exports =
     { publicKey         : process.env.BITCOIN_AVERAGE_PUBLIC_KEY
     , secretKey         : process.env.BITCOIN_AVERAGE_SECRET_KEY
     }
+  }
+, wallet                :
+  { bitgo               :
+    { accessToken       : ''
+    , enterpriseId      : ''
+    , environment       : 'test'
+    , settlementAddress : ''
+    , unspendableXpub   : ''
+    }
+  , coinbase            :
+    { widgetCode        : '' }
   }
 , publishers            :
   { url                 : process.env.PUBLISHERS_URL

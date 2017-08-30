@@ -27,7 +27,7 @@ const Worker = async (options, runtime) => {
 
   const entries = {}
   const listeners = {}
-  const parent = path.join(process.cwd(), 'src/workers')
+  const parent = options.parent || path.join(process.cwd(), 'src/workers')
   let errP, names
   let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
 

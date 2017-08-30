@@ -5,9 +5,9 @@ const underscore = require('underscore')
 
 var exports = {}
 
-exports.routes = async (debug, runtime, controllers) => {
+exports.routes = async (debug, runtime, options) => {
   const entries = {}
-  const parent = path.join(process.cwd(), 'src/controllers')
+  const parent = options.parent || path.join(process.cwd(), 'src/controllers')
   const routes = [
     { method: 'GET',
       path: '/',
@@ -37,12 +37,12 @@ exports.routes = async (debug, runtime, controllers) => {
     })
   }
 
-  if (controllers) {
-    names = underscore.without(underscore.keys(controllers), 'index')
+  if (options.controllers) {
+    names = underscore.without(underscore.keys(options.controllers), 'index')
 
     for (let name of names) {
       try {
-        await router(controllers[name])
+        await router(options.controllers[name])
       } catch (ex) {
         errP = true
         debug('error loading routes for built-in controller' + name + ': ' + ex.toString())
