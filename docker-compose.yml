@@ -48,8 +48,8 @@ services:
     depends_on:
       - mongo
       - redis
-  eyeshade-web:
-    container_name: ledger-ledger-web
+  ledger-web:
+    container_name: ledger-web
     ports:
       - "3001:3001"
     command: "npm run start-ledger"
