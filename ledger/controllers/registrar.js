@@ -111,7 +111,7 @@ v1.create =
     const debug = braveHapi.debug(module, request)
     const uId = request.params.uId.toLowerCase()
     const proof = request.payload.proof
-    const response = {}
+    var response = {}
     const credentials = runtime.database.get('credentials', debug)
     let entry, f, registrar, state, verification
 
@@ -156,7 +156,7 @@ v1.create =
                 resp.output.headers['retry-after'] = '5'
                 return reply(resp)
               }
-              underscore.extend(response, { surveyorIds: viewing.surveyorIds, satoshis: viewing.satoshis })
+              underscore.extend(response, { surveyorIds: viewing.surveyorIds, probi: viewing.probi })
             }
     }[registrar.registrarType]
     if ((!!f) && (await f())) return
@@ -190,14 +190,14 @@ v1.create =
 
               state = {
                 $currentDate: { timestamp: { $type: 'timestamp' } },
-                $set: underscore.extend({ keychains: keychains }, underscore.pick(wallet, [ 'address', 'provider' ]))
+                $set: underscore.extend({ keychains: keychains }, underscore.pick(wallet, [ 'address', 'provider', 'altcurrency' ]))
               }
               await wallets.update({ paymentId: paymentId }, state, { upsert: true })
 
               await runtime.queue.send(debug, 'persona-report', underscore.extend({ paymentId: paymentId }, state.$set))
 
               underscore.extend(response, {
-                wallet: { paymentId: paymentId, address: wallet.address },
+                wallet: { paymentId: paymentId, address: wallet.address, altcurrency: wallet.altcurrency },
                 payload: registrar.payload
               })
             },
@@ -210,6 +210,15 @@ v1.create =
 
     state = { $currentDate: { timestamp: { $type: 'timestamp' } } }
     await credentials.update({ uId: uId, registrarId: registrar.registrarId }, state, { upsert: true })
+
+    // v1 only
+    if (response.wallet) {
+      response.wallet = underscore.omit(response.wallet, [ 'altcurrency' ])
+    }
+    if (response.probi) {
+      response = underscore.extend(response, { satoshis: response.probi })
+    }
+    response = underscore.omit(response, [ 'probi' ])
 
     reply(underscore.extend(response, { verification: verification }))
   }

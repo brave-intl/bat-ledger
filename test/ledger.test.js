@@ -131,6 +131,7 @@ test('api : v1 contribution workflow', async t => {
 
   t.true(response.body.hasOwnProperty('surveyorIds'))
   const surveyorIds = response.body.surveyorIds
+  t.true(surveyorIds.length === 5)
 
   viewingCredential.finalize(response.body.verification)
 

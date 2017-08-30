@@ -1,12 +1,13 @@
+const SDebug = require('sdebug')
 const bitcoinjs = require('bitcoinjs-lib')
 const bitgo = require('bitgo')
-const SDebug = require('sdebug')
-const debug = new SDebug('wallet')
 const underscore = require('underscore')
 
 const braveHapi = require('./extras-hapi')
 const Currency = require('./runtime-currency')
 const timeout = require('./extras-utils').timeout
+
+const debug = new SDebug('wallet')
 
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
@@ -74,7 +75,7 @@ Wallet.prototype.transfer = async function (info, satoshis) {
 Wallet.prototype.getTxAmount = function (hex) {
   const tx = bitcoinjs.Transaction.fromHex(hex)
   for (let i = tx.outs.length - 1; i >= 0; i--) {
-    if (tx.outs[i].account !== this.config.settlementAddress['BTC']) continue
+    if (bitcoinjs.address.fromOutputScript(tx.outs[i].script) !== this.config.settlementAddress['BTC']) continue
 
     return tx.outs[i].value
   }
@@ -135,6 +136,7 @@ Wallet.providers.bitgo = {
       disableTransactionNotifications: true
     })
     result.wallet.provider = 'bitgo'
+    result.wallet.altcurrency = 'BTC'
 
     result.addWebhook({ url: prefix + '/callbacks/bitgo/sink', type: 'transaction', numConfirmations: 1 }, function (err) {
       if (err) debug('wallet addWebhook', { label: label, message: err.toString() })
@@ -285,7 +287,7 @@ Wallet.providers.uphold = {
 
 Wallet.providers.mock = {
   create: async function (prefix, label, keychains) {
-    return { 'wallet': { 'id': keychains.user.xpub, 'provider': 'mock' } }
+    return { 'wallet': { 'id': keychains.user.xpub, 'provider': 'mock', 'altcurrency': 'BTC' } }
   },
   balances: async function (info) {
     return {
@@ -307,7 +309,7 @@ Wallet.providers.mock = {
     const tx = bitcoinjs.Transaction.fromHex(signedHex)
     return {
       satoshis: tx.outs[0].value,
-      address: tx.outs[0].script,
+      address: bitcoinjs.address.fromOutputScript(tx.outs[0].script),
       fee: 300,
       status: 'accepted',
       hash: 'deadbeef'

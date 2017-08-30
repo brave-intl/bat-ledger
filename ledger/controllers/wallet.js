@@ -50,9 +50,10 @@ v1.read =
     }
     if (balances) {
       underscore.extend(result, {
-        satoshis: balances.confirmed,
-        balance: (balances.confirmed / 1e8).toFixed(4),
-        unconfirmed: (balances.unconfirmed / 1e8).toFixed(4)
+        altcurrency: wallet.altcurrency,
+        probi: balances.confirmed,
+        balance: (balances.confirmed / runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
+        unconfirmed: (balances.unconfirmed / runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
       })
     }
 
@@ -75,6 +76,7 @@ v1.read =
       }
     }
 
+    result = underscore.omit(underscore.extend(result, { satoshis: result.probi }), ['altcurrency', 'probi'])
     reply(result)
   }
 },
@@ -146,7 +148,7 @@ v1.write =
 
     params = surveyor.payload.adFree
 
-    votes = Math.round(((runtime.wallet.getTxAmount(signedTx)) / params.satoshis) * params.votes)
+    votes = Math.round(((runtime.wallet.getTxAmount(signedTx)) / params.probi) * params.votes)
 
     if (votes < 1) votes = 1
 
@@ -175,6 +177,7 @@ v1.write =
     }
 }
  */
+
     if (result.status !== 'accepted') return reply(boom.badData(result.status))
 
     now = timestamp()
@@ -190,15 +193,18 @@ v1.write =
         surveyorId: surveyorId,
         uId: anonize.uId(viewingId),
         surveyorIds: surveyorIds,
-        satoshis: result.satoshis,
+        altcurrency: wallet.altcurrency,
+        probi: result.probi,
         count: votes
       }
     }
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
-    result = { paymentStamp: now, satoshis: result.satoshis, votes: votes, hash: result.hash }
+    // v1 only
+    result = { paymentStamp: now, satoshis: result.probi, votes: votes, hash: result.hash }
     reply(result)
 
+    result = { paymentStamp: now, altcurrency: result.altcurrency, probi: result.probi, votes: votes, hash: result.hash }
     await runtime.queue.send(debug, 'contribution-report', underscore.extend({
       paymentId: paymentId,
       address: wallet.address,
@@ -345,22 +351,71 @@ module.exports.initialize = async (debug, runtime) => {
         address: '',
         provider: '',
         balances: {},
+        keychains: {},
         paymentStamp: 0,
+
+     // v2 and later
+        altcurrency: '',
+
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { paymentId: 1 }, { address: 1 } ],
-      others: [ { provider: 1 }, { paymentStamp: 1 }, { timestamp: 1 } ]
+      unique: [ { paymentId: 1 } ],
+      others: [ { provider: 1 }, { address: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('viewings', debug),
       name: 'viewings',
       property: 'viewingId',
-      empty: { viewingId: '', uId: '', satoshis: 0, count: 0, surveyorIds: [], timestamp: bson.Timestamp.ZERO },
+      empty: {
+        viewingId: '',
+        uId: '',
+     // v1 only
+     // satoshis: 0,
+
+     // v2 and later
+        altcurrency: '',
+        probi: 0,
+
+        count: 0,
+        surveyorIds: [],
+        timestamp: bson.Timestamp.ZERO
+      },
       unique: [ { viewingId: 1 }, { uId: 1 } ],
-      others: [ { satoshis: 1 }, { count: 1 }, { timestamp: 1 } ]
+      others: [ { altcurrency: 1 }, { probi: 1 }, { count: 1 }, { timestamp: 1 } ]
     }
   ])
 
+  await convertDB(debug, runtime)
   await runtime.queue.create('contribution-report')
   await runtime.queue.create('wallet-report')
+}
+
+// TEMPORARY
+const convertDB = async (debug, runtime) => {
+  const wallets = runtime.database.get('wallets', debug)
+  const viewings = runtime.database.get('viewings', debug)
+  let entries
+
+  entries = await wallets.find({ altcurrency: { $exists: false } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { altcurrency: 'BTC' }
+    }
+
+    await wallets.update({ paymentId: entry.paymentId }, state, { upsert: true })
+  })
+
+  entries = await viewings.find({ satoshis: { $exists: true } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { altcurrency: 'BTC', probi: entry.satoshis },
+      $unset: { satoshis: '' }
+    }
+
+    await viewings.update({ surveyorId: entry.surveyorId }, state, { upsert: true })
+  })
 }

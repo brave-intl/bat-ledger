@@ -41,7 +41,7 @@ const registrarType = (surveyorType) => {
   return { contribution: 'persona', voting: 'viewing' }[surveyorType]
 }
 
-const validate = (surveyorType, payload) => {
+const validateV1 = (surveyorType, payload) => {
   const fee = Joi.object().keys({ USD: Joi.number().min(1).required() }).unknown(true).required()
   const satoshis = Joi.number().integer().min(1).optional()
   const votes = Joi.number().integer().min(1).max(100).required()
@@ -51,27 +51,38 @@ const validate = (surveyorType, payload) => {
 
   return Joi.validate(payload || {}, schema)
 }
-module.exports.validate = validate
+
+const validateV2 = (surveyorType, payload) => {
+  const fee = Joi.object().keys({ USD: Joi.number().min(1).required() }).unknown(true).required()
+  const altcurrency = braveJoi.string().altcurrencyCode().optional()
+  const probi = Joi.number().integer().min(1).optional()
+  const votes = Joi.number().integer().min(1).max(100).required()
+  const schema = {
+    contribution: Joi.object().keys({ adFree: Joi.object().keys({ votes: votes, altcurrency: altcurrency, probi: probi, fee: fee }) }).required()
+  }[surveyorType] || Joi.object().max(0)
+
+  return Joi.validate(payload || {}, schema)
+}
+
+module.exports.validate = validateV2
 
 const enumerate = (runtime, surveyorType, payload) => {
+  payload.adFree.altcurrency = payload.adFree.altcurrency || 'BTC'
   let params = (payload || {}).adFree
-  let satoshis = params.satoshis
+  let probi = params.probi
 
   if ((surveyorType !== 'contribution') || (typeof params === 'undefined')) return payload
 
-  if (!satoshis) {
+  if (!probi) {
     underscore.keys(params.fee).forEach((currency) => {
       const amount = params.fee[currency]
-      const rate = runtime.wallet.rates[currency.toUpperCase()]
-
-      if ((satoshis) || (!rate)) return
-
-      satoshis = Math.round((amount / rate) * 1e8)
+      if (probi) return
+      probi = runtime.currency.fiat2alt(currency, amount, params.altcurrency)
     })
   }
-  if (!satoshis) return
+  if (!probi) return
 
-  payload.adFree.satoshis = satoshis
+  payload.adFree.probi = probi
   return payload
 }
 module.exports.enumerate = enumerate
@@ -128,14 +139,19 @@ v1.create =
     let surveyor, validity
     let payload = request.payload || {}
 
-    validity = validate(surveyorType, payload)
+    // if v1
+    validity = validateV1(surveyorType, payload)
     if (validity.error) return reply(boom.badData(validity.error))
+    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis }), ['satoshis'])
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
 
     surveyor = await create(debug, runtime, surveyorType, payload)
     if (!surveyor) return reply(boom.notFound('invalid surveyorType: ' + surveyorType))
+
+    // if v1
+    payload = underscore.omit(underscore.extend(payload, { satoshis: payload.probi }), ['altcurrency', 'probi'])
 
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
   }
@@ -178,13 +194,15 @@ v1.update =
     const surveyorType = request.params.surveyorType
     const surveyors = runtime.database.get('surveyors', debug)
     let state, surveyor, validity
-    let payload = request.payload || {}
+    let payload = request.payload
 
     surveyor = await server(request, reply, runtime)
     if (!surveyor) return
 
-    validity = validate(surveyorType, payload)
+    // if v1
+    validity = validateV1(surveyorType, payload)
     if (validity.error) return reply(boom.badData(validity.error))
+    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis }), ['satoshis'])
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -195,8 +213,11 @@ v1.update =
     if (surveyorType === 'contribution') {
       await runtime.queue.send(debug, 'surveyor-report',
                                underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
-                                                 underscore.pick(payload.adFree, [ 'satoshis', 'votes' ])))
+                                                 underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
     }
+
+    // if v1
+    payload = underscore.omit(underscore.extend(payload, { satoshis: payload.probi }), ['altcurrency', 'probi'])
 
     surveyor.payload = payload
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
@@ -413,7 +434,7 @@ const create = async (debug, runtime, surveyorType, payload, parentId) => {
 
   await runtime.queue.send(debug, 'surveyor-report',
                            underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
-                                             underscore.pick(payload.adFree, [ 'satoshis', 'votes' ])))
+                                             underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
 
   return surveyor
 }
