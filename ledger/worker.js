@@ -5,7 +5,7 @@ const path = require('path')
 
 const utils = require('bat-utils')
 
-const config = require('../config/config.js')
+const config = require('../config.js')
 const options = {
   parent: path.join(__dirname, 'workers'),
   module: module

@@ -15,7 +15,7 @@ services:
     image: redis:latest
     networks:
       - ledger
-  eyeshade_worker:
+  eyeshade-worker:
     container_name: ledger-eyeshade-worker
     command: "npm run start-eyeshade-worker"
     extends:
@@ -24,11 +24,31 @@ services:
     depends_on:
       - mongo
       - redis
-  eyeshade_web:
+  eyeshade-web:
     container_name: ledger-eyeshade-web
     ports:
       - "3002:3002"
     command: "npm run start-eyeshade"
+    extends:
+      file: base.yml
+      service: ledger
+    depends_on:
+      - mongo
+      - redis
+  ledger-worker:
+    container_name: ledger-worker
+    command: "npm run start-ledger-worker"
+    extends:
+      file: base.yml
+      service: ledger
+    depends_on:
+      - mongo
+      - redis
+  eyeshade-web:
+    container_name: ledger-ledger-web
+    ports:
+      - "3001:3001"
+    command: "npm run start-ledger"
     extends:
       file: base.yml
       service: ledger
