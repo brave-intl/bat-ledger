@@ -1,37 +1,37 @@
 version: "2"
 
 networks:
-  eyeshade:
+  ledger:
     driver: bridge
 
 services:
   mongo:
-    container_name: eyeshade-mongo
+    container_name: ledger-mongo
     image: mongo:latest
     networks:
-      - eyeshade
+      - ledger
   redis:
-    container_name: eyeshade-redis
+    container_name: ledger-redis
     image: redis:latest
     networks:
-      - eyeshade
-  worker:
-    container_name: eyeshade-worker
-    command: "npm run worker"
+      - ledger
+  eyeshade_worker:
+    container_name: ledger-eyeshade-worker
+    command: "npm run start-eyeshade-worker"
     extends:
       file: base.yml
-      service: eyeshade
+      service: ledger
     depends_on:
       - mongo
       - redis
-  web:
-    container_name: eyeshade-web
+  eyeshade_web:
+    container_name: ledger-eyeshade-web
     ports:
       - "3002:3002"
-    command: "npm run server"
+    command: "npm run start-eyeshade"
     extends:
       file: base.yml
-      service: eyeshade
+      service: ledger
     depends_on:
       - mongo
       - redis

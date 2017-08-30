@@ -1,14 +1,36 @@
 version: "2"
 
 services:
-  eyeshade:
-    image: bat-eyeshade
+  ledger:
+    image: bat-ledger
     build: .
     restart: always
     networks:
-      - eyeshade
+      - ledger
     environment:
       - "MONGODB_URI=mongodb://db"
       - "REDIS_URL=redis:6379"
-      - "PUBLISHERS_URL=http:/foo"
-      - "PUBLISHERS_TOKEN=bar"
+      - BITCOIN_AVERAGE_PUBLIC_KEY
+      - BITCOIN_AVERAGE_SECRET_KEY
+      - BITGO_ENTERPRISE_ID
+      - BITGO_ENVIRONMENT
+      - BITGO_SETTLEMENT_ADDRESS
+      - BITGO_TOKEN
+      - BITGO_UNSPENDABLE_XPUB
+      - COINBASE_WIDGET_CODE
+      - EYESHADE_GITHUB_CLIENT_ID
+      - EYESHADE_GITHUB_CLIENT_SECRET
+      - FIXIE_URL
+      - GITHUB_LOGIN_BYE
+      - GITHUB_LOGIN_WORLD
+      - GITHUB_ORG
+      - LEDGER_GITHUB_CLIENT_ID
+      - LEDGER_GITHUB_CLIENT_SECRET
+      - MONGODB_URI
+      - NODE_ENV
+      - PUBLISHERS_TOKEN
+      - PUBLISHERS_URL
+      - SLACK_CHANNEL
+      - SLACK_ICON_URL
+      - SLACK_WEBHOOK
+      - TOKEN_LIST

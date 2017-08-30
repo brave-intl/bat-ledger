@@ -5,18 +5,15 @@
   "main": "index.js",
   "scripts": {
     "lint": "standard",
-
     "start": "echo use 'npm run start-[ledger|eyeshade]' or 'npm run start-[ledger|eyeshade]-worker'",
     "ledger-server": "./node_modules/.bin/babel-node ledger/server.js",
     "ledger-worker": "./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
     "start-ledger": "DEBUG=*,-babel,-mongo:*,mongo:queries ./node_modules/.bin/babel-node ledger/server.js",
     "start-ledger-worker": "DEBUG=*,-babel,-mongo:*,mongo:queries ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
-
     "eyeshade-server": "./node_modules/.bin/babel-node eyeshade/server.js",
     "eyeshade-worker": "./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "start-eyeshade": "DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=bat-eyeshade ./node_modules/.bin/babel-node eyeshade/server.js",
     "start-eyeshade-worker": "DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=bat-eyeshade ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
-
     "test": "npm run test-security",
     "test-security": "nsp check"
   },
@@ -48,6 +45,7 @@
     "cryptiles": "3.1.2",
     "currency-codes": "1.1.2",
     "dateformat": "2.0.0",
+    "dotenv": "^4.0.0",
     "github": "10.0.0",
     "glob": "^7.1.2",
     "gridfs-stream": "1.1.1",
@@ -95,7 +93,7 @@
   },
   "standard": {
     "ignore": [
-      "config/config.*",
+      "config.js",
       "bat-utils/config/config.*"
     ],
     "parser": "babel-eslint"
