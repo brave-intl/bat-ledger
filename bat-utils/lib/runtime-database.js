@@ -13,7 +13,11 @@ const Database = function (config, runtime) {
 
   if (config.database.mongo) config.database = config.database.mongo
   this.config = config.database
-  this.db = monk(this.config, { debug: debug })
+  this.db = monk(this.config, { debug: debug }, function(err, db){
+      if(err){
+         console.error("db is not connected: ", err.message);
+      }
+  })
 }
 
 Database.prototype.file = async function (filename, mode, options) {
