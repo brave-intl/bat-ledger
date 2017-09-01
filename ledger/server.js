@@ -13,4 +13,4 @@ const options = {
   module: module
 }
 
-utils.hapi.server(options, new utils.Runtime(config))
+module.exports = utils.hapi.server(options, new utils.Runtime(config))

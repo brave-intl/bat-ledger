@@ -287,6 +287,8 @@ const Server = async (options, runtime) => {
     // Hook to notify start script.
     if (process.send) { process.send('started') }
   })
+
+  return server
 }
 
 module.exports = Server
