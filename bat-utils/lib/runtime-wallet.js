@@ -27,46 +27,12 @@ const Wallet = function (config, runtime) {
 }
 
 Wallet.prototype.create = async function (prefix, label, keychains) {
-  const xpubs = []
-  let result
-
-  xpubs[0] = underscore.pick(await this.bitgo.keychains().add(underscore.extend({ label: 'user' }, keychains.user)), [ 'xpub' ])
-  xpubs[1] = underscore.pick(await this.bitgo.keychains().add({
-    label: 'unspendable',
-    xpub: this.config.bitgo.unspendableXpub
-  }), [ 'xpub' ])
-  xpubs[2] = underscore.pick(await this.bitgo.keychains().createBitGo({}), [ 'xpub' ])
-
-  result = await this.bitgo.wallets().add({
-    label: label,
-    m: 2,
-    n: 3,
-    keychains: xpubs,
-    enterprise: this.config.bitgo.enterpriseId,
-    disableTransactionNotifications: true
-  })
-  result.wallet.provider = 'bitgo'
-
-  result.addWebhook({ url: prefix + '/callbacks/bitgo/sink', type: 'transaction', numConfirmations: 1 }, function (err) {
-    if (err) debug('wallet addWebhook', { label: label, message: err.toString() })
-
-    result.setPolicyRule({
-      id: 'com.brave.limit.velocity.30d',
-      type: 'velocityLimit',
-      condition: {
-        type: 'velocity',
-        amount: 7000000,
-        timeWindow: 30 * 86400,
-        groupTags: [],
-        excludeTags: []
-      },
-      action: { type: 'deny' }
-    }, function (err) {
-      if (err) debug('wallet setPolicyRule com.brave.limit.velocity.30d', { label: label, message: err.toString() })
-    })
-  })
-
-  return result
+  let f = Wallet.providers.mock.create
+   if (this.config.bitgo) {
+     f = Wallet.providers.bitgo.create
+   }
+  if (!f) return {}
+  return f.bind(this)(prefix, label, keychains)
 }
 
 Wallet.prototype.balances = async function (info) {
@@ -105,6 +71,18 @@ Wallet.prototype.transfer = async function (info, satoshis) {
   return f.bind(this)(info, satoshis)
 }
 
+Wallet.prototype.getTxAmount = function (hex) {
+  const tx = bitcoinjs.Transaction.fromHex(hex)
+  for (let i = tx.outs.length - 1; i >= 0; i--) {
+    if (tx.outs[i].account !== this.config.settlementAddress['BTC']) continue
+
+    return tx.outs[i].value
+    break
+  }
+
+  return 0
+}
+
 Wallet.prototype.compareTx = function (unsignedHex, signedHex) {
   const signedTx = bitcoinjs.Transaction.fromHex(signedHex)
   const unsignedTx = bitcoinjs.Transaction.fromHex(unsignedHex)
@@ -138,6 +116,48 @@ Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
 Wallet.providers = {}
 
 Wallet.providers.bitgo = {
+  create: async function (prefix, label, keychains) {
+    const xpubs = []
+    let result
+
+    xpubs[0] = underscore.pick(await this.bitgo.keychains().add(underscore.extend({ label: 'user' }, keychains.user)), [ 'xpub' ])
+    xpubs[1] = underscore.pick(await this.bitgo.keychains().add({
+      label: 'unspendable',
+      xpub: this.config.bitgo.unspendableXpub
+    }), [ 'xpub' ])
+    xpubs[2] = underscore.pick(await this.bitgo.keychains().createBitGo({}), [ 'xpub' ])
+
+    result = await this.bitgo.wallets().add({
+      label: label,
+      m: 2,
+      n: 3,
+      keychains: xpubs,
+      enterprise: this.config.bitgo.enterpriseId,
+      disableTransactionNotifications: true
+    })
+    result.wallet.provider = 'bitgo'
+
+    result.addWebhook({ url: prefix + '/callbacks/bitgo/sink', type: 'transaction', numConfirmations: 1 }, function (err) {
+      if (err) debug('wallet addWebhook', { label: label, message: err.toString() })
+
+      result.setPolicyRule({
+        id: 'com.brave.limit.velocity.30d',
+        type: 'velocityLimit',
+        condition: {
+          type: 'velocity',
+          amount: 7000000,
+          timeWindow: 30 * 86400,
+          groupTags: [],
+          excludeTags: []
+        },
+        action: { type: 'deny' }
+      }, function (err) {
+        if (err) debug('wallet setPolicyRule com.brave.limit.velocity.30d', { label: label, message: err.toString() })
+      })
+    })
+
+    return result
+  },
   balances: async function (info) {
     const wallet = await this.bitgo.wallets().get({ type: 'bitcoin', id: info.address })
 
@@ -168,7 +188,7 @@ Wallet.providers.bitgo = {
     underscore.extend(result, { fee: details.fee })
 
     for (let i = details.outputs.length - 1; i >= 0; i--) {
-      if (details.outputs[i].account !== this.config.bitgo.settlementAddress) continue
+      if (details.outputs[i].account !== this.config.settlementAddress['BTC']) continue
 
       underscore.extend(result, { address: details.outputs[i].account, satoshis: details.outputs[i].value })
       break
@@ -197,7 +217,7 @@ Wallet.providers.bitgo = {
 
     wallet = await this.bitgo.wallets().get({ type: 'bitcoin', id: info.address })
     for (let i = 0; i < 2; i++) {
-      recipients[this.config.bitgo.settlementAddress] = desired - fee
+      recipients[this.config.settlementAddress['BTC']] = desired - fee
 
       try {
         transaction = await wallet.createTransaction({ recipients: recipients, feeRate: estimate.feePerKb })
@@ -258,9 +278,41 @@ Wallet.providers.uphold = {
 
     user = { authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1, address: user.username }
     if (this.currency.fiatP(user.settings.currency)) result.fiat = user.settings.currency
-    console.log('reuslt: ' + JSON.stringify(result, null, 2))
+    console.log('result: ' + JSON.stringify(result, null, 2))
 
     return result
+  }
+}
+
+Wallet.providers.mock = {
+  create: async function (prefix, label, keychains) {
+    return { 'wallet': { 'id': keychains.user.xpub, 'provider': 'mock' } }
+  },
+  balances: async function (info) {
+    return {
+      balance: 845480,
+      spendable: 845480,
+      confirmed: 845480,
+      unconfirmed: 0
+    }
+  },
+  unsignedTx: async function (info, amount, currency, balance) {
+    var tx = new bitcoinjs.TransactionBuilder()
+    var txId = 'aa94ab02c182214f090e99a0d57021caffd0f195a81c24602b1028b130b63e31'
+    tx.addInput(txId, 0)
+    tx.addOutput(this.config.settlementAddress['BTC'], 845480)
+
+    return { 'transactionHex': tx.buildIncomplete().toHex() }
+  },
+  submitTx: async function (info, signedHex) {
+    const tx = bitcoinjs.Transaction.fromHex(signedHex)
+    return {
+      satoshis: tx.outs[0].value,
+      address: tx.outs[0].script,
+      fee: 300,
+      status: 'accepted',
+      hash: 'deadbeef'
+    }
   }
 }
 

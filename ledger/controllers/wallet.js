@@ -60,11 +60,10 @@ v1.read =
       underscore.extend(result, runtime.wallet.purchaseBTC(wallet, amount, currency))
       underscore.extend(result, runtime.wallet.recurringBTC(wallet, amount, currency))
       if (refreshP) {
-        try {
-          result.unsignedTx = await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed)
-        } catch (ex) {
+        if (!runtime.currency.fiats[currency]) {
           return reply(boom.notFound('no such currency: ' + currency))
         }
+        result.unsignedTx = await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed)
 
         if (result.unsignedTx) {
           state = {
@@ -143,6 +142,27 @@ v1.write =
     surveyor = await surveyors.findOne({ surveyorId: surveyorId })
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
 
+    if (!surveyor.surveyors) surveyor.surveyors = []
+
+    params = surveyor.payload.adFree
+    
+    votes = Math.round(((runtime.wallet.getTxAmount(signedTx)) / params.satoshis) * params.votes)
+
+    if (votes < 1) votes = 1
+
+    if (votes > surveyor.surveyors.length) {
+      state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
+      debug('wallet', state)
+      const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + surveyor.surveyors.length + ' surveyors, but needed ' + votes
+      runtime.notify(debug, {
+        channel: '#devops-bot',
+        text: errMsg
+      })
+      const resp = boom.serverUnavailable(errMsg)
+      resp.output.headers['retry-after'] = '5'
+      return reply(resp)
+    }
+
     result = await runtime.wallet.submitTx(wallet, signedTx)
 /*
     { status   : 'accepted'
@@ -161,21 +181,7 @@ v1.write =
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
     await wallets.update({ paymentId: paymentId }, state, { upsert: true })
 
-    params = surveyor.payload.adFree
-    votes = Math.round(((result.fee + result.satoshis) / params.satoshis) * params.votes)
-    if (votes < 1) votes = 1
     fee = result.fee
-
-    if (!surveyor.surveyors) surveyor.surveyors = []
-    if (votes > surveyor.surveyors.length) {
-      state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
-      debug('wallet', state)
-      runtime.notify(debug, {
-        channel: '#devops-bot',
-        text: 'surveyor ' + surveyor.surveyorId + ' has ' + surveyor.surveyors.length + ', but needed ' + votes
-      })
-      runtime.newrelic.noticeError(new Error('insufficent surveyors'), state)
-    }
 
     surveyorIds = underscore.shuffle(surveyor.surveyors).slice(0, votes)
     state = {

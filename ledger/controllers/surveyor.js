@@ -54,19 +54,21 @@ const validate = (surveyorType, payload) => {
 module.exports.validate = validate
 
 const enumerate = (runtime, surveyorType, payload) => {
-  let satoshis
   let params = (payload || {}).adFree
+  let satoshis = params.satoshis
 
   if ((surveyorType !== 'contribution') || (typeof params === 'undefined')) return payload
 
-  underscore.keys(params.fee).forEach((currency) => {
-    const amount = params.fee[currency]
-    const rate = runtime.wallet.rates[currency.toUpperCase()]
+  if (!satoshis) {
+    underscore.keys(params.fee).forEach((currency) => {
+      const amount = params.fee[currency]
+      const rate = runtime.wallet.rates[currency.toUpperCase()]
 
-    if ((satoshis) || (!rate)) return
+      if ((satoshis) || (!rate)) return
 
-    satoshis = Math.round((amount / rate) * 1e8)
-  })
+      satoshis = Math.round((amount / rate) * 1e8)
+    })
+  }
   if (!satoshis) return
 
   payload.adFree.satoshis = satoshis
@@ -242,7 +244,7 @@ v1.phase1 =
     const surveyorType = request.params.surveyorType
     const uId = request.params.uId.toLowerCase()
     const credentials = runtime.database.get('credentials', debug)
-    let entry, f, registrar, now, signature, surveyor
+    let entry, f, registrar, signature, surveyor
 
     surveyor = await server(request, reply, runtime)
     if (!surveyor) return
@@ -273,13 +275,7 @@ v1.phase1 =
     }[surveyor.surveyorType]
     if ((!!f) && (await f())) return
 
-    now = underscore.now()
     signature = surveyor.sign(uId)
-    runtime.newrelic.recordCustomEvent('sign', {
-      surveyorId: surveyor.surveyorId,
-      surveyorType: surveyor.surveyorType,
-      duration: underscore.now() - now
-    })
 
     reply(underscore.extend({ signature: signature, payload: surveyor.payload }, surveyor.publicInfo()))
   }
@@ -317,19 +313,13 @@ v1.phase2 =
     const debug = braveHapi.debug(module, request)
     const proof = request.payload.proof
     const submissions = runtime.database.get('submissions', debug)
-    let data, entry, f, response, now, result, state, submissionId, surveyor
+    let data, entry, f, response, result, state, submissionId, surveyor
 
     surveyor = await server(request, reply, runtime)
     if (!surveyor) return
 
     try {
-      now = underscore.now()
       result = surveyor.verify(proof)
-      runtime.newrelic.recordCustomEvent('verify', {
-        surveyorId: surveyor.surveyorId,
-        surveyorType: surveyor.surveyorType,
-        duration: underscore.now() - now
-      })
       data = JSON.parse(result.data)
     } catch (ex) {
       return reply(boom.badData('invalid surveyor proof: ' + JSON.stringify(proof)))

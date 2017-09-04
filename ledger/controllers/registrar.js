@@ -113,7 +113,7 @@ v1.create =
     const proof = request.payload.proof
     const response = {}
     const credentials = runtime.database.get('credentials', debug)
-    let entry, f, registrar, now, state, verification
+    let entry, f, registrar, state, verification
 
     registrar = server(request, runtime)
     if (!registrar) return reply(boom.notFound('unknown registrar'))
@@ -152,7 +152,9 @@ v1.create =
                 diagnostic = 'surveyorIds invalid found ' + surveyorIds.length + ', expecting ' + viewing.count +
                              ', surveyorId=' + viewing.surveyorId
                 runtime.notify(debug, { channel: '#devops-bot', text: 'viewing=' + uId + ': ' + diagnostic })
-                return reply(boom.badImplementation(diagnostic))
+                const resp = boom.serverUnavailable(diagnostic)
+                resp.output.headers['retry-after'] = '5'
+                return reply(resp)
               }
               underscore.extend(response, { surveyorIds: viewing.surveyorIds, satoshis: viewing.satoshis })
             }
@@ -160,13 +162,7 @@ v1.create =
     if ((!!f) && (await f())) return
 
     try {
-      now = underscore.now()
       verification = registrar.register(proof)
-      runtime.newrelic.recordCustomEvent('register', {
-        registrarId: registrar.registrarId,
-        registrarType: registrar.registrarType,
-        duration: underscore.now() - now
-      })
     } catch (ex) {
       return reply(boom.badData('invalid registrar proof: ' + JSON.stringify(proof)))
     }

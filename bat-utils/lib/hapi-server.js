@@ -129,14 +129,33 @@ const Server = async (options, runtime) => {
         isSecure: runtime.login.isSecure
       })
       debug('session authentication strategy via cookie')
-    } else debug('github authentication disabled')
+    } else {
+      debug('github authentication disabled')
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error("github authentication was not enabled yet we are in production mode")
+      }
+
+      const bearerAccessTokenConfig = {
+        allowQueryToken: true,
+        allowMultipleHeaders: false,
+        validateFunc: (token, callback) => {
+          const tokenlist = process.env.TOKEN_LIST && process.env.TOKEN_LIST.split(',')
+          callback(null, ((!tokenlist) || (tokenlist.indexOf(token) !== -1)), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
+        }
+      }
+
+      server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
+      server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
+
+      debug('session authentication strategy via bearer-access-token')
+      debug('github authentication strategy via bearer-access-token')
+    }
 
     server.auth.strategy('simple', 'bearer-access-token', {
       allowQueryToken: true,
       allowMultipleHeaders: false,
       validateFunc: (token, callback) => {
         const tokenlist = process.env.TOKEN_LIST && process.env.TOKEN_LIST.split(',')
-
         callback(null, ((!tokenlist) || (tokenlist.indexOf(token) !== -1)), { token: token }, null)
       }
     })
@@ -166,6 +185,15 @@ const Server = async (options, runtime) => {
 
   server.ext('onPreResponse', (request, reply) => {
     const response = request.response
+
+    if (process.env.NODE_ENV !== 'production' && response.isBoom) {
+      const error = response
+
+      error.output.payload.message = error.message
+      error.output.payload.stack = error.stack
+
+      return reply(error)
+    }
 
     if ((!response.isBoom) || (response.output.statusCode !== 401)) {
       if (typeof response.header === 'function') response.header('Cache-Control', 'private')

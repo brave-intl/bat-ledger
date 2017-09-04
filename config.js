@@ -19,6 +19,8 @@ module.exports =
   { rsmq                : process.env.REDIS_URL            || 'localhost:6379' }
 , currency              :
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',') : ['BAT', 'BTC', 'ETH'] }
+, wallet                : 
+  { settlementAddress : { BTC: process.env.BITGO_SETTLEMENT_ADDRESS || '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ' }}
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -34,17 +36,12 @@ if (process.env.BITCOIN_AVERAGE_PUBLIC_KEY) {
     }
 }
 
-if (process.env.BITGO_TOKEN || process.env.COINBASE_WIDGET_CODE) {
-  module.exports.wallet = { }
-}
-
 if (process.env.SERVICE !== 'eyeshade') {
   if (process.env.BITGO_TOKEN) {
     module.exports.wallet.bitgo =
     { accessToken       : process.env.BITGO_TOKEN
     , enterpriseId      : process.env.BITGO_ENTERPRISE_ID
     , environment       : process.env.BITGO_ENVIRONMENT
-    , settlementAddress : process.env.BITGO_SETTLEMENT_ADDRESS
     , unspendableXpub   : process.env.BITGO_UNSPENDABLE_XPUB
     }
   }

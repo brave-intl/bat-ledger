@@ -27,11 +27,6 @@ exports.routes = async (debug, runtime, options) => {
       const entry = route(runtime)
       const key = entry.method + ' ' + entry.path
 
-      if (((typeof entry.config.auth !== 'undefined') || (entry.path.indexOf('/logout') !== -1)) && (!runtime.login)) {
-        debug('no authentication configured for route ' + key)
-        return
-      }
-
       if (entries[key]) { debug('duplicate route ' + key) } else { entries[key] = true }
       routes.push(entry)
     })

@@ -564,11 +564,10 @@ module.exports.initialize = async (debug, runtime) => {
   batPublisher.getRules((err, rules) => {
     let validity
 
-    if (err) runtime.newrelic.noticeError(err, { batPublisher: 'getRules' })
     if ((!rules) || (underscore.isEqual(batPublisher.ruleset, rules))) return
 
     validity = Joi.validate(rules, batPublisher.schema)
-    if (validity.error) return runtime.newrelic.noticeError(new Error(validity.error), { batPublisher: 'getRules' })
+    if (validity.error) throw new Error(validity.error)
 
     batPublisher.ruleset = rules
   })

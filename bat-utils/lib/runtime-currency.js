@@ -32,6 +32,7 @@ const Currency = function (config, runtime) {
   this.informs = 0
   this.warnings = 0
 
+  this.fiats = {}
   this.rates = Currency.prototype.rates
   this.tickers = {}
 
@@ -45,7 +46,12 @@ const Currency = function (config, runtime) {
     if ((f) && (f.p)) f.p(this.config, this.runtime)
   })
   this.config.allcoins = underscore.clone(this.config.altcoins)
-  fiats.forEach((fiat) => { if (this.config.allcoins.indexOf(fiat) === -1) this.config.allcoins.push(fiat) })
+  fiats.forEach((fiat) => { 
+    if (this.config.allcoins.indexOf(fiat) === -1) {
+      this.config.allcoins.push(fiat) 
+    }
+    this.fiats[fiat] = true
+  })
 
   maintenance(this.config, this.runtime)
   setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 5 * 60 * 1000)
