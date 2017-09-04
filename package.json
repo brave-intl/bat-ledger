@@ -15,7 +15,8 @@
     "start-eyeshade": "DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node eyeshade/server.js",
     "start-eyeshade-worker": "DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "test": "npm run test-security",
-    "test-security": "nsp check"
+    "test-security": "nsp check",
+    "test-integration": "mocha"
   },
   "repository": {
     "type": "git",
@@ -86,9 +87,12 @@
   },
   "devDependencies": {
     "babel-eslint": "^7.2.3",
+    "chai": "^4.1.2",
+    "mocha": "^3.5.0",
     "npm-check-updates": "^2.12.1",
     "nsp": "^2.7.0",
     "standard": "10.0.3",
+    "supertest": "^3.0.0",
     "throng": "4.0.0"
   },
   "standard": {

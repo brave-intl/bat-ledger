@@ -8,7 +8,7 @@ services:
     networks:
       - ledger
     environment:
-      - "MONGODB_URI=mongodb://db/ledger"
+      - "MONGODB_URI=mongodb://mongo/ledger"
       - "REDIS_URL=redis:6379"
       - BITCOIN_AVERAGE_PUBLIC_KEY
       - BITCOIN_AVERAGE_SECRET_KEY
