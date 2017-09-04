@@ -311,7 +311,6 @@ v2.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)

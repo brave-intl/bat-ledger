@@ -541,21 +541,28 @@ exports.workers = {
       , publisher      : '...'
       , rollup         :  true  | false
       , summary        :  true  | false
+      , starting       : 'ISO 8601 timestamp'
+      , ending         : 'ISO 8601 timestamp'
       }
     }
  */
   'report-publishers-statements':
     async (debug, runtime, payload) => {
       const authority = payload.authority
+      const ending = payload.ending
       const hash = payload.hash
       const rollupP = payload.rollup
+      const starting = payload.starting
       const summaryP = payload.summary
       const publisher = payload.publisher
       const settlements = runtime.database.get('settlements', debug)
       let data, data1, data2, file, entries, publishers, query, usd
 
       if (publisher) {
-        entries = await settlements.find({ publisher: publisher })
+        query = { publisher: publisher }
+        if (starting) query.$timestamp = { $gte: new Date(starting) }
+        if (ending) query.$timestamp = { $lte: new Date(ending) }
+        entries = await settlements.find(query)
         publishers = await mixer(debug, runtime, publisher)
       } else {
         entries = await settlements.find(hash ? { hash: hash } : {})
@@ -570,6 +577,7 @@ exports.workers = {
         })
       }
 
+// TBD: use preferred fiat, if available
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
       data = []
       data1 = { altcurrency: altcurrency, probi: 0, fees: 0 }

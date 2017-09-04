@@ -40,24 +40,28 @@ exports.workers = {
       const format = payload.format || 'csv'
       const publishers = payload.publishers
       const publishersC = runtime.database.get('publishers', debug)
-      let file, result, state
+      let file, result, state, visible
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: { verified: true, reason: 'bulk loaded', authority: authority }
       }
       for (let entry of publishers) {
+        visible = entry.show_verification_status
         try {
           result = await publish(debug, runtime, 'post', '', '', {
             publisher: underscore.extend({ brave_publisher_id: entry.publisher, verified: true },
                                          underscore.omit(entry, [ 'publisher' ]))
           })
+
+          state.$set.visible = visible
           await publishersC.update({ publisher: entry.publisher }, state, { upsert: true })
 
           entry.message = result && result.message
 
           if (entry.message === 'success') {
-            await runtime.queue.send(debug, 'publisher-report', { publisher: entry.publisher, verified: true })
+            await runtime.queue.send(debug, 'publisher-report',
+                                     { publisher: entry.publisher, verified: true, visible: visible })
           }
         } catch (ex) {
           entry.message = ex.toString()

@@ -117,6 +117,7 @@ const convertDB = async (debug, runtime) => {
   const publishers = runtime.database.get('publishers', debug)
   const settlements = runtime.database.get('settlements', debug)
   const surveyors = runtime.database.get('surveyors', debug)
+  const tokens = runtime.database.get('tokens', debug)
   const voting = runtime.database.get('voting', debug)
   const wallets = runtime.database.get('wallets', debug)
   let entries
@@ -180,6 +181,17 @@ const convertDB = async (debug, runtime) => {
     await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
   })
 
+  entries = await publishers.find({ visible: { $exists: false } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { visible: true }
+    }
+
+    await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
+  })
+
   entries = await settlements.find({ satoshis: { $exists: true } })
   entries.forEach(async (entry) => {
     let state
@@ -190,6 +202,17 @@ const convertDB = async (debug, runtime) => {
     }
 
     await settlements.update(underscore.pick(entry, [ 'settlementId', 'publisher', 'hash' ]), state, { upsert: true })
+  })
+
+  entries = await tokens.find({ visible: { $exists: false } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { visible: true }
+    }
+
+    await tokens.update({ verificationId: entry.verificationId, publisher: entry.publisher }, state, { upsert: true })
   })
 }
 

@@ -10,6 +10,7 @@ exports.workers = {
     , message          :
       { publisher      : '...'
       , verified       : true | false
+      , visible        : true | false
       }
     }
  */
@@ -20,9 +21,11 @@ exports.workers = {
       const tld = tldjs.getPublicSuffix(publisher)
       let state
 
+      if (!payload.visible) return
+
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend({ tld: tld }, underscore.omit(payload, [ 'publisher' ]))
+        $set: underscore.extend({ tld: tld }, underscore.omit(payload, [ 'publisher', 'public' ]))
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
     }

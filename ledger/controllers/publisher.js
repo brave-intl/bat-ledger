@@ -16,7 +16,7 @@ const rulesetId = 1
 
 const rulesetEntry = async (request, runtime) => {
   const debug = braveHapi.debug(module, request)
-  const version = runtime.npminfo.children['ledger-publisher']
+  const version = process.npminfo.children['ledger-publisher']
   const rulesets = runtime.database.get('rulesets', debug)
   let entry
 
@@ -32,7 +32,7 @@ const rulesetEntry = async (request, runtime) => {
 
 const rulesetEntryV2 = async (request, runtime) => {
   const entryV2 = await rulesetEntry(request, runtime)
-  let ruleset
+  let ruleset = []
 
   entryV2.ruleset.forEach(rule => { if (rule.consequent) ruleset.push(rule) })
   ruleset = [
@@ -329,6 +329,7 @@ v1.version =
 /*
    GET /v1/publisher/identity?url=...
    GET /v2/publisher/identity?url=...
+       [ used by publishers ]
  */
 
 v1.identity =
