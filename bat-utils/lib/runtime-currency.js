@@ -46,9 +46,9 @@ const Currency = function (config, runtime) {
     if ((f) && (f.p)) f.p(this.config, this.runtime)
   })
   this.config.allcoins = underscore.clone(this.config.altcoins)
-  fiats.forEach((fiat) => { 
+  fiats.forEach((fiat) => {
     if (this.config.allcoins.indexOf(fiat) === -1) {
-      this.config.allcoins.push(fiat) 
+      this.config.allcoins.push(fiat)
     }
     this.fiats[fiat] = true
   })

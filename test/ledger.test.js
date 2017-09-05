@@ -28,7 +28,7 @@ test('server api : respsonds with ack', async t => {
 
 test('surveyor api : create surveyor requires auth', async t => {
   const srv = await server
-  var response = await request(srv.listener).post('/v1/surveyor/contribution').expect(401)
+  await request(srv.listener).post('/v1/surveyor/contribution').expect(401)
   t.true(true)
 })
 
@@ -126,7 +126,7 @@ test('api : v1 contribution workflow', async t => {
       .post('/v1/registrar/viewing/' + viewingCredential.parameters.userId)
       .send({ proof: viewingCredential.request() })
   } while (response.status === 503)
-  var err = ok(response)
+  err = ok(response)
   if (err) throw err
 
   t.true(response.body.hasOwnProperty('surveyorIds'))

@@ -28,9 +28,9 @@ const Wallet = function (config, runtime) {
 
 Wallet.prototype.create = async function (prefix, label, keychains) {
   let f = Wallet.providers.mock.create
-   if (this.config.bitgo) {
-     f = Wallet.providers.bitgo.create
-   }
+  if (this.config.bitgo) {
+    f = Wallet.providers.bitgo.create
+  }
   if (!f) return {}
   return f.bind(this)(prefix, label, keychains)
 }
@@ -77,7 +77,6 @@ Wallet.prototype.getTxAmount = function (hex) {
     if (tx.outs[i].account !== this.config.settlementAddress['BTC']) continue
 
     return tx.outs[i].value
-    break
   }
 
   return 0

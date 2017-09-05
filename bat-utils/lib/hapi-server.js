@@ -132,7 +132,7 @@ const Server = async (options, runtime) => {
     } else {
       debug('github authentication disabled')
       if (process.env.NODE_ENV === 'production') {
-        throw new Error("github authentication was not enabled yet we are in production mode")
+        throw new Error('github authentication was not enabled yet we are in production mode')
       }
 
       const bearerAccessTokenConfig = {

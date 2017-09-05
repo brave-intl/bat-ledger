@@ -145,7 +145,7 @@ v1.write =
     if (!surveyor.surveyors) surveyor.surveyors = []
 
     params = surveyor.payload.adFree
-    
+
     votes = Math.round(((runtime.wallet.getTxAmount(signedTx)) / params.satoshis) * params.votes)
 
     if (votes < 1) votes = 1

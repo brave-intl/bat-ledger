@@ -563,6 +563,7 @@ module.exports.initialize = async (debug, runtime) => {
 
   batPublisher.getRules((err, rules) => {
     let validity
+    if (err) throw new Error(err)
 
     if ((!rules) || (underscore.isEqual(batPublisher.ruleset, rules))) return
 
