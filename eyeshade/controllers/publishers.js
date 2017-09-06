@@ -501,8 +501,8 @@ v1.getStatement = {
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
-      starting: Joi.date().iso().required().description('starting timestamp in ISO 8601 format'),
-      ending: Joi.date().iso().required().description('ending timestamp in ISO 8601 format'),
+      starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format'),
+      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format'),
       access_token: Joi.string().guid().optional()
     }
   },

@@ -76,7 +76,7 @@ const hourly = async (debug, runtime) => {
   debug('hourly', 'running')
 
   try {
-    await mixer(debug, runtime, undefined)
+    await mixer(debug, runtime, undefined, undefined)
   } catch (ex) {
     runtime.notify(debug, { text: 'hourly error: ' + ex.toString() })
     debug('hourly', ex)
@@ -86,10 +86,10 @@ const hourly = async (debug, runtime) => {
   debug('hourly', 'running again ' + moment(next).fromNow())
 }
 
-const quanta = async (debug, runtime) => {
+const quanta = async (debug, runtime, qid) => {
   const contributions = runtime.database.get('contributions', debug)
   const voting = runtime.database.get('voting', debug)
-  let results, votes
+  let query, results, votes
 
   const dicer = async (quantum, counts) => {
     const surveyors = runtime.database.get('surveyors', debug)
@@ -118,12 +118,14 @@ const quanta = async (debug, runtime) => {
     }
   }
 
+  query = {
+    probi: { $gt: 0 },
+    altcurrency: { $eq: altcurrency }
+  }
+  if (qid) query._id = qid
   results = await contributions.aggregate([
     {
-      $match:
-      { probi: { $gt: 0 },
-        altcurrency: { $eq: altcurrency }
-      }
+      $match: query
     },
     {
       $group:
@@ -147,13 +149,15 @@ const quanta = async (debug, runtime) => {
       }
     }
   ])
+
+  query = {
+    counts: { $gt: 0 },
+    exclude: false
+  }
+  if (qid) query._id = qid
   votes = await voting.aggregate([
     {
-      $match:
-      {
-        counts: { $gt: 0 },
-        exclude: false
-      }
+      $match: query
     },
     {
       $group:
@@ -178,15 +182,17 @@ const quanta = async (debug, runtime) => {
   }))
 }
 
-const mixer = async (debug, runtime, publisher) => {
+const mixer = async (debug, runtime, publisher, qid) => {
   const publishers = {}
   let results
 
   const slicer = async (quantum) => {
     const voting = runtime.database.get('voting', debug)
-    const slices = await voting.find({ surveyorId: quantum.surveyorId, exclude: false })
-    let fees, probi, state
+    let fees, probi, query, slices, state
 
+    query = { surveyorId: quantum.surveyorId, exclude: false }
+    if (qid) query._id = qid
+    slices = await voting.find(query)
     for (let slice of slices) {
       probi = Math.floor(quantum.quantum * slice.counts * 0.95)
       fees = Math.floor((quantum.quantum * slice.counts) - probi)
@@ -210,7 +216,7 @@ const mixer = async (debug, runtime, publisher) => {
     }
   }
 
-  results = await quanta(debug, runtime)
+  results = await quanta(debug, runtime, qid)
   for (let result of results) await slicer(result)
   return publishers
 }
@@ -349,6 +355,19 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
   return { data: data, altcurrency: altcurrency, probi: probi, fees: fees }
 }
 
+const date2objectId = (iso8601, ceilP) => {
+  let x
+
+  if (ceilP) {
+    iso8601 = iso8601.toString()
+    x = iso8601.indexOf('T00:00:00.000')
+    if (x !== -1) iso8601 = iso8601.slice(0, x) + 'T23:55:59' + iso8601.slice(x + 13)
+  }
+
+  return bson.ObjectId(Math[ceilP ? 'ceil' : 'floor'](new Date(iso8601).getTime() / 1000.0).toString(16) +
+                       (ceilP ? 'ffffffffffffffff' : '0000000000000000'))
+}
+
 var exports = {}
 
 exports.initialize = async (debug, runtime) => {
@@ -398,7 +417,7 @@ exports.workers = {
       const tokens = runtime.database.get('tokens', debug)
       let data, entries, file, info, previous, publishers, usd
 
-      publishers = await mixer(debug, runtime, publisher)
+      publishers = await mixer(debug, runtime, publisher, undefined)
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false
@@ -549,7 +568,6 @@ exports.workers = {
   'report-publishers-statements':
     async (debug, runtime, payload) => {
       const authority = payload.authority
-      const ending = payload.ending
       const hash = payload.hash
       const rollupP = payload.rollup
       const starting = payload.starting
@@ -557,13 +575,17 @@ exports.workers = {
       const publisher = payload.publisher
       const settlements = runtime.database.get('settlements', debug)
       let data, data1, data2, file, entries, publishers, query, usd
+      let ending = payload.ending
 
       if (publisher) {
         query = { publisher: publisher }
-        if (starting) query.$timestamp = { $gte: new Date(starting) }
-        if (ending) query.$timestamp = { $lte: new Date(ending) }
+        if ((starting) || (ending)) {
+          query._id = {}
+          if (starting) query._id.$gte = date2objectId(starting, false)
+          if (ending) query._id.$lte = date2objectId(ending, true)
+        }
         entries = await settlements.find(query)
-        publishers = await mixer(debug, runtime, publisher)
+        publishers = await mixer(debug, runtime, publisher, query._id)
       } else {
         entries = await settlements.find(hash ? { hash: hash } : {})
         if (rollupP) {
@@ -571,7 +593,7 @@ exports.workers = {
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
           entries = await settlements.find(query)
         }
-        publishers = await mixer(debug, runtime, undefined)
+        publishers = await mixer(debug, runtime, undefined, undefined)
         underscore.keys(publishers).forEach((publisher) => {
           if (underscore.where(entries, { publisher: publisher }).length === 0) delete publishers[publisher]
         })
@@ -874,7 +896,7 @@ exports.workers = {
         })
       }
 
-      data = underscore.sortBy(await quanta(debug, runtime), 'created')
+      data = underscore.sortBy(await quanta(debug, runtime, undefined), 'created')
       results = []
       for (let quantum of data) {
         results.push(quantum)
