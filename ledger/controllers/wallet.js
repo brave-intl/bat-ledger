@@ -1,7 +1,8 @@
+const BigNumber = require('bignumber.js')
+const Joi = require('joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const bson = require('bson')
-const Joi = require('joi')
 const timestamp = require('monotonic-timestamp')
 const underscore = require('underscore')
 
@@ -51,9 +52,9 @@ v1.read =
     if (balances) {
       underscore.extend(result, {
         altcurrency: wallet.altcurrency,
-        probi: balances.confirmed,
-        balance: (balances.confirmed / runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
-        unconfirmed: (balances.unconfirmed / runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
+        probi: balances.confirmed.toString(),
+        balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
+        unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
       })
     }
 
@@ -76,7 +77,7 @@ v1.read =
       }
     }
 
-    result = underscore.omit(underscore.extend(result, { satoshis: result.probi }), ['altcurrency', 'probi'])
+    result = underscore.omit(underscore.extend(result, { satoshis: Number(result.probi) }), ['altcurrency', 'probi'])
     reply(result)
   }
 },
@@ -148,7 +149,7 @@ v1.write =
 
     params = surveyor.payload.adFree
 
-    votes = Math.round(((runtime.wallet.getTxAmount(signedTx)) / params.probi) * params.votes)
+    votes = runtime.wallet.getTxProbi(signedTx).dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (votes < 1) votes = 1
 
@@ -201,7 +202,7 @@ v1.write =
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
     // v1 only
-    result = { paymentStamp: now, satoshis: result.probi, votes: votes, hash: result.hash }
+    result = { paymentStamp: now, satoshis: Number(result.probi), votes: votes, hash: result.hash }
     reply(result)
 
     result = { paymentStamp: now, altcurrency: result.altcurrency, probi: result.probi, votes: votes, hash: result.hash }
@@ -374,7 +375,7 @@ module.exports.initialize = async (debug, runtime) => {
 
      // v2 and later
         altcurrency: '',
-        probi: 0,
+        probi: '0',
 
         count: 0,
         surveyorIds: [],
@@ -412,7 +413,7 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BTC', probi: entry.satoshis },
+      $set: { altcurrency: 'BTC', probi: entry.satoshis.toString() },
       $unset: { satoshis: '' }
     }
 

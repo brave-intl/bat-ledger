@@ -1,7 +1,7 @@
+const Joi = require('joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const bson = require('bson')
-const Joi = require('joi')
 const underscore = require('underscore')
 
 const utils = require('bat-utils')
@@ -55,7 +55,7 @@ const validateV1 = (surveyorType, payload) => {
 const validateV2 = (surveyorType, payload) => {
   const fee = Joi.object().keys({ USD: Joi.number().min(1).required() }).unknown(true).required()
   const altcurrency = braveJoi.string().altcurrencyCode().optional()
-  const probi = Joi.number().integer().min(1).optional()
+  const probi = Joi.string().numeric().optional()
   const votes = Joi.number().integer().min(1).max(100).required()
   const schema = {
     contribution: Joi.object().keys({ adFree: Joi.object().keys({ votes: votes, altcurrency: altcurrency, probi: probi, fee: fee }) }).required()
@@ -142,7 +142,7 @@ v1.create =
     // if v1
     validity = validateV1(surveyorType, payload)
     if (validity.error) return reply(boom.badData(validity.error))
-    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis }), ['satoshis'])
+    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -151,7 +151,7 @@ v1.create =
     if (!surveyor) return reply(boom.notFound('invalid surveyorType: ' + surveyorType))
 
     // if v1
-    payload = underscore.omit(underscore.extend(payload, { satoshis: payload.probi }), ['altcurrency', 'probi'])
+    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
 
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
   }
@@ -202,7 +202,7 @@ v1.update =
     // if v1
     validity = validateV1(surveyorType, payload)
     if (validity.error) return reply(boom.badData(validity.error))
-    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis }), ['satoshis'])
+    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -217,7 +217,7 @@ v1.update =
     }
 
     // if v1
-    payload = underscore.omit(underscore.extend(payload, { satoshis: payload.probi }), ['altcurrency', 'probi'])
+    payload = underscore.omit(underscore.extend(payload, { satoshis: Number(payload.probi) }), ['altcurrency', 'probi'])
 
     surveyor.payload = payload
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))

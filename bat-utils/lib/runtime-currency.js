@@ -1,10 +1,11 @@
 const crypto = require('crypto')
 
+const BigNumber = require('bignumber.js')
 const Client = require('signalr-client-forked').client
-const currencyCodes = require('currency-codes')
-const SDebug = require('sdebug')
-const debug = new SDebug('currency')
 const Joi = require('joi')
+const SDebug = require('sdebug')
+const currencyCodes = require('currency-codes')
+const debug = new SDebug('currency')
 const underscore = require('underscore')
 
 const braveHapi = require('./extras-hapi')
@@ -393,7 +394,17 @@ Currency.prototype.fiatP = function (currency) {
 
 // satoshis, wei, etc.
 Currency.prototype.alt2scale = function (altcurrency) {
-  return { BAT: 1e18, BCH: 1e8, BTC: 1e8, ETC: 1e18, ETH: 1e18, LTC: 1e8, NMC: 1e8, PPC: 1e6, XPM: 1e8, ZEC: 1e8 }[altcurrency]
+  return {
+    BAT: '1e18',
+    BCH: '1e8',
+    BTC: '1e8',
+    ETC: '1e18',
+    ETH: '1e18',
+    LTC: '1e8',
+    NMC: '1e8',
+    PPC: '1e6',
+    XPM: '1e8',
+    ZEC: '1e8' }[altcurrency]
 }
 
 Currency.prototype.alt2fiat = function (altcurrency, probi, currency, floatP) {
@@ -404,12 +415,12 @@ Currency.prototype.alt2fiat = function (altcurrency, probi, currency, floatP) {
 
   if (!rate) return
 
-  amount = probi * rate
-  if (scale) amount /= scale
+  amount = new BigNumber(probi).times(rate)
+  if (scale) amount = amount.dividedBy(scale)
 
-  if (!floatP) amount = amount.toFixed(entry ? entry.digits : 2)
+  if (!floatP) return amount.toFixed(entry ? entry.digits : 2)
 
-  return amount
+  return amount.toNumber()
 }
 
 Currency.prototype.fiat2alt = function (currency, amount, altcurrency) {
@@ -419,10 +430,10 @@ Currency.prototype.fiat2alt = function (currency, amount, altcurrency) {
 
   if ((!amount) || (!rate)) return
 
-  probis = amount / rate
-  if (scale) probis *= scale
+  probis = new BigNumber(amount).dividedBy(rate)
+  if (scale) probis = probis.times(scale)
 
-  return Math.floor(probis)
+  return probis.floor().toString()
 }
 
 module.exports = function (config, runtime) {

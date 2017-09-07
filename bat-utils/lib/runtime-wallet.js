@@ -1,3 +1,4 @@
+const BigNumber = require('bignumber.js')
 const SDebug = require('sdebug')
 const bitcoinjs = require('bitcoinjs-lib')
 const bitgo = require('bitgo')
@@ -72,15 +73,15 @@ Wallet.prototype.transfer = async function (info, satoshis) {
   return f.bind(this)(info, satoshis)
 }
 
-Wallet.prototype.getTxAmount = function (hex) {
+Wallet.prototype.getTxProbi = function (hex) {
   const tx = bitcoinjs.Transaction.fromHex(hex)
   for (let i = tx.outs.length - 1; i >= 0; i--) {
     if (bitcoinjs.address.fromOutputScript(tx.outs[i].script) !== this.config.settlementAddress['BTC']) continue
 
-    return tx.outs[i].value
+    return new BigNumber(tx.outs[i].value)
   }
 
-  return 0
+  return new BigNumber(0)
 }
 
 Wallet.prototype.compareTx = function (unsignedHex, signedHex) {
@@ -308,7 +309,8 @@ Wallet.providers.mock = {
   submitTx: async function (info, signedHex) {
     const tx = bitcoinjs.Transaction.fromHex(signedHex)
     return {
-      satoshis: tx.outs[0].value,
+      probi: tx.outs[0].value,
+      altcurrency: 'BTC',
       address: bitcoinjs.address.fromOutputScript(tx.outs[0].script),
       fee: 300,
       status: 'accepted',

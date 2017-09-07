@@ -216,7 +216,7 @@ v1.create =
       response.wallet = underscore.omit(response.wallet, [ 'altcurrency' ])
     }
     if (response.probi) {
-      response = underscore.extend(response, { satoshis: response.probi })
+      response = underscore.extend(response, { satoshis: Number(response.probi) })
     }
     response = underscore.omit(response, [ 'probi' ])
 
