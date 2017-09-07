@@ -5,6 +5,12 @@ This document describes the details of how the [Ledger Principles](Ledger-Princi
 In this version of the document,
 only `ad-free` bravery is discussed.
 
+## Terminology Primer
+Throughout this document reference is made to values named `probi`.
+A `probi` value indicates an amount of a cryptocurrency or utility token denominated 
+in the smallest unit. Thus, `probi` is used in lieu of `satoshis` for bitcoin,
+`wei` for ether, and `BAT-wei` for BAT.
+
 ## A Brief Summary of Anonize2 operations
 
 There are two parts to the authorized-but-anonymous protocol:
@@ -61,14 +67,13 @@ These allow the client to cast independent votes that are anonymous.
 The client has various properties stored in persistent, secure storage.
 In the context of this document:
 
-- `personaId` - used to create a client wallet;
+- `personaId` - a v4 uuid used to create a client wallet;
 
 - `wallet.paymentId` - an opaque identifier for the wallet;
 
-// FIXME
-- `wallet.address` - the Ethereum address of the wallet;
+- `wallet.ethAddress` - the Ethereum address of the wallet;
 
-- `reconcileStamp` - a timestamp indicating the end of the current period completes;
+- `reconcileStamp` - a timestamp indicating the end of the current period;
 
 - `transactions` - an array indicating successful contributions;
 and,
@@ -88,12 +93,10 @@ const keypair = nacl.sign.keyPair()
 }
 ```
 
-Using the secretKey, the client signs the publicKey.
-
 The client then generates a 
 [version 4 UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_.28random.29)
 to use as a `personaId`,
-and creates a credential after making the `GET /v2/registrar/persona` request:
+and creates a credential by making the `GET /v2/registrar/persona` request:
 
     <<< GET /v2/registrar/persona
     <<< content-type: application/json; charset=utf-8
@@ -107,20 +110,28 @@ and creates a credential after making the `GET /v2/registrar/persona` request:
     >>>
     >>> { "registrarVK" : "..." }
 
-Following this is the `POST /v2/registrar/persona/{userId}` request:
+
+Using the secretKey, the client signs a request body for a new BAT wallet.
+
+This is sent during a request to `POST /v2/registrar/persona/{userId}`:
 
     <<< POST /v2/registrar/persona/25e7eb34fe3f6b89ad9575dbf0fb3fa
     <<< content-type: application/json; charset=utf-8
     <<< accept-encoding:
     <<<
-    <<< { "keychains" :
-    <<<   { "user"    : 
-    <<<     { "publicKey"       : "...", 
-    <<<     , "signedPublicKey" : "..." 
-    <<<     , "altcurrency"     : "BAT"
+    <<< { "requestType"   : "httpSignature",
+    <<<   "request"       :
+    <<<   { "headers"     :
+    <<<     { "signature" : "keyId=\"<paymentId>\",algorithm=\"ed25519\",headers=\"digest\",signature=\"Base64(ed25519-SHA256(signing string))"
+    <<<     , "digest"    : "SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=\n"
+    <<<     }
+    <<<   , "body"        :
+    <<<     { "label"     : "25e7eb34fe3f6b89ad9575dbf0fb3fa"
+    <<<     , "currency"  : "BAT"
+    <<<     , "publicKey" : "e7876fd5cc3a228dad634816f4ec4b80a258b2a552467e5d26f30003211bc45d" 
     <<<     }
     <<<   }
-    <<<   , "proof"   : "..." 
+    <<<   , "proof"       : "..." 
     <<< }
     >>> HTTP/1.1 200
     >>> cache-control: no-cache
@@ -130,18 +141,18 @@ Following this is the `POST /v2/registrar/persona/{userId}` request:
     >>>
     >>> { "wallet"       :
     >>>   { "paymentId"  : "e43bc29a-7048-486c-b75b-6c4970b4ce2a"
-    >>>   , "address"    : "0xb270cFeA355cDa32ac80C30B29Cb63e96c4A26aC"
+    >>>   , "ethAddress" : "0xb270cFeA355cDa32ac80C30B29Cb63e96c4A26aC"
     >>>   }
     >>> , "payload"      : { "adFree" : { "fee" : { "USD" : 5 }, "days" : 30 } }
     >>> , "verification" : "..."
     >>> }
 
 During the processing of the request,
-the ledger creates an anonymous BAT card with uphold which is controlled by the
-signing `secretKey`.
+the ledger creates an anonymous BAT wallet via a wallet provider 
+which is controlled by the signing `secretKey`.
 
-Note that although the ledger created the client BAT card,
-it does not hold the private signing key necessary to transact using the BAT card.
+Note that although the ledger created the client BAT wallet,
+it does not hold the private signing key necessary to transact.
 
 After the client verifies the registrar's signature,
 the client stores the `paymentId` and `address` properties in persistent, secure storage,
@@ -156,11 +167,11 @@ When a contribution surveyor is provisioned,
 it is created along with one or more associated "voting surveyors",
 and these properties:
 
-    { "currency" : "USD"
-    , "amount"   : 5
+    { "currency"    : "USD"
+    , "amount"      : 5
     , "altcurrency" : "BAT"
-    , "probi" : 845480
-    , "votes"    : 5
+    , "probi"       : "24123500000000000000"
+    , "votes"       : 5
     }
 
 When a client makes a contribution,
@@ -175,7 +186,7 @@ credential.
 
 ### How Contributions are Submitted
 
-When the `reconcileStamp` property goes into the past,
+When the current time passes `reconcileStamp`
 the client may notify the user that it is time to make a contribution.
 
 The client makes the `GET /v2/surveyor/contribution/current/{userId}` request to get information about the contribution
@@ -192,9 +203,9 @@ surveyor to be used for this contribution:
     >>> vary: accept-encoding
     >>>
     >>> { "signature"   : "..."
-    >>> , "payload"     : { "adFree" : { "fee"      : { "USD" : 5 }
+    >>> , "payload"     : { "adFree" : { "fee"         : { "USD" : 5 }
     >>>                                , "altcurrency" : "BAT"
-    >>>                                , "probi"       : 845480
+    >>>                                , "probi"       : "24123500000000000000"
     >>>                                , "votes"       : 5
     >>>                                }
     >>>                   }
@@ -203,12 +214,12 @@ surveyor to be used for this contribution:
     >>> , "registrarVK" : "..."
     >>> }
 
-The contribution amount is found in the contribution surveyor's `payload` -- this information is _advisory_.
+The contribution amount found in the contribution surveyor's `payload` is _advisory_.
 
-On success,
-the client makes the `GET /v2/wallet/{paymentId}` request to see if the its wallet has sufficient funds,
-and,
-if so, to receive an unsigned transaction to effect funds transfer from the wallet to a settlement account:
+The client then requests `GET /v2/wallet/{paymentId}` to determine the wallet
+balance and to also receive an unsigned transaction if sufficient funds are present.
+
+The unsigned transaction transfers funds from the wallet to a settlement account:
 
     <<< GET /v2/wallet/e43bc29a-7048-486c-b75b-6c4970b4ce2a?refresh=true&amount=5&currency=USD
     <<< content-type: application/json; charset=utf-8
@@ -220,40 +231,33 @@ if so, to receive an unsigned transaction to effect funds transfer from the wall
     >>> date: Wed, 10 Aug 2016 03:51:35 GMT
     >>> vary: accept-encoding
     >>>
-    >>> { "paymentStamp" : 0
-    >>> , "rates"        : { "USD" : 591.43 }
-    >>> , "balance"      : "0.0335"
-    >>> , "altcurrency"  : "BAT"
-    >>> , "probi"        : 3350000
-    >>> , "buyURL"       : "https://uphold.com?..."
-    >>> , "unsignedTx"   : 
-    >>>   { "denomination" : { "amount": "10", currency: "BAT" }
+    >>> { "paymentStamp"   : 0
+    >>> , "rates"          : { "USD" : 0.220676 }
+    >>> , "balance"        : "32.06175"
+    >>> , "altcurrency"    : "BAT"
+    >>> , "probi"          : "32061750000000000000"
+    >>> , "requestType"    : "httpSignature"
+    >>> , "unsignedTxn"    : 
+    >>>   { "denomination" : { "amount": "24.1235", currency: "BAT" }
     >>>   , "destination"  : address
     >>>   }
     >>> }
 
-The client periodically checks to see when its wallet is sufficiently funded.
-Instead of using the `GET /v2/wallet/{paymentId}` request,
-the client may primarily use a pool of third-party blockchain reporters in order to minimize load the on the ledger 
-servers.
-
 Once the client determines that its wallet has sufficient funds,
-the client signs the trasnsaction and makes the `PUT /v2/wallet/{paymentId}` request to have the appropriate amount transfered
-to the settlement account with this payload:
+the client signs the transaction and makes the `PUT /v2/wallet/{paymentId}` request:
 
     <<< PUT /v2/wallet/e43bc29a-7048-486c-b75b-6c4970b4ce2a
     <<< content-type: application/json; charset=utf-8
-    <<< surveyorId: "9czn9x3e26WGmmC09FapUmret1fjupI1lGC6Q7g0H9b"
-    <<< viewingId: "f2be4fac-b9de-49b3-95a4-4902a2d5f1d7"
-    <<< Signature: keyId="<paymentId>",algorithm="ed25519",
-    <<< headers="digest content-length",
-    <<< signature="Base64(ed25519-SHA256(signing string))"
-    <<< digest: SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=\n
     <<< accept-encoding:
-    >>>
-    >>> { "denomination" : { "amount": "10", currency: "BAT" }
-    >>> , "destination"  : address
-    >>> }
+    <<<
+    <<< { "surveyorId"       : "9czn9x3e26WGmmC09FapUmret1fjupI1lGC6Q7g0H9b"
+    <<< , "viewingId"        : "f2be4fac-b9de-49b3-95a4-4902a2d5f1d7"
+    <<< , "requestType"      : "httpSignature"
+    <<< , "signedTxn"        : 
+    <<<   { "signature"      : "keyId=\"<paymentId>\",algorithm=\"ed25519\",headers=\"digest\",signature=\"Base64(ed25519-SHA256(signing string))"
+    <<<   , "digest"         : "SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=\n"
+    <<<   }
+    <<< }
     >>> HTTP/1.1 200
     >>> cache-control: no-cache
     >>> content-type: application/json; charset=utf-8
@@ -261,20 +265,15 @@ to the settlement account with this payload:
     >>> vary: accept-encoding
     >>>
     >>> { "paymentStamp" : 1470801109946
-    >>> , "probi"        : 845480
+    >>> , "probi"        : "24123500000000000000"
     >>> , "altcurrency"  : "BAT"
     >>> , "votes"        : 5
     >>> , "hash"         : '...'
     >>> }
 
-During the processing of the request,
-the ledger fowards the signed transaction to uphold.
-If the transaction is accepted by uphold,
-then a `200` response is returned with an updated `paymentStamp` property,
-the number of `probi` transferred,
-and the corresponding number of `votes` that are authorized for the `viewingId`;
-otherwise,
-the appropriate `4xx` or `5xx` response is returned.
+During the processing of the request, the ledger forwards the signed transaction to the wallet provider.
+If the transaction is accepted then a `200` response is returned 
+along with the corresponding number of `votes` that were authorized for the `viewingId`.
 
 On success,
 the client updates `reconcileStamp` and adds a new object to the `transactions` array:
@@ -287,7 +286,7 @@ the client updates `reconcileStamp` and adds a new object to the `transactions` 
       }
     , "paymentStamp" : 1470801109946
     , "altcurrency"  : "BAT"
-    , "probi"        : 845480
+    , "probi"        : "24123500000000000000"
     , "vote"         : 5
     }
 
@@ -429,13 +428,13 @@ timing and IP addresses.
 To avoid correlation via timing,
 the steps above indicate when an unpredictable delay should be interposed by the client when performing the operations.
 
-To avoid corrleation via IP address,
+To avoid correlation via IP address,
 the client uses an IP address obfuscation technology to blind the IP address.
 
 ### Client Wallets
-A client wallet is an anonymous BAT card with uphold.
+A client wallet is an anonymous BAT wallet created via a wallet provider.
 These require ECC signatures in order to perform funds transfer.
-Independently, the uphold service requires an API key from Brave Software in order to process requests.
+Independently, the wallet provider requires an API key from Brave Software in order to process requests.
 
 Brave Software has the ability to check the balance independently from the client,
 but not make withdrawals.
