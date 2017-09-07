@@ -71,7 +71,7 @@ In the context of this document:
 
 - `wallet.paymentId` - an opaque identifier for the wallet;
 
-- `wallet.ethAddress` - the Ethereum address of the wallet;
+- `wallet.addresses` - a map containing the addresses of the wallet;
 
 - `reconcileStamp` - a timestamp indicating the end of the current period;
 
@@ -141,7 +141,7 @@ This is sent during a request to `POST /v2/registrar/persona/{userId}`:
     >>>
     >>> { "wallet"       :
     >>>   { "paymentId"  : "e43bc29a-7048-486c-b75b-6c4970b4ce2a"
-    >>>   , "ethAddress" : "0xb270cFeA355cDa32ac80C30B29Cb63e96c4A26aC"
+    >>>   , "addresses" : { "ETH": "0xb270cFeA355cDa32ac80C30B29Cb63e96c4A26aC" }
     >>>   }
     >>> , "payload"      : { "adFree" : { "fee" : { "USD" : 5 }, "days" : 30 } }
     >>> , "verification" : "..."
