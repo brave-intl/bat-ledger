@@ -141,7 +141,7 @@ This is sent during a request to `POST /v2/registrar/persona/{userId}`:
     >>>
     >>> { "wallet"       :
     >>>   { "paymentId"  : "e43bc29a-7048-486c-b75b-6c4970b4ce2a"
-    >>>   , "addresses" : { "ETH": "0xb270cFeA355cDa32ac80C30B29Cb63e96c4A26aC" }
+    >>>   , "addresses" : { "BAT": "0xb270cFeA355cDa32ac80C30B29Cb63e96c4A26aC" }
     >>>   }
     >>> , "payload"      : { "adFree" : { "fee" : { "USD" : 5 }, "days" : 30 } }
     >>> , "verification" : "..."
