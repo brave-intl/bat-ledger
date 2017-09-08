@@ -155,7 +155,7 @@ Note that although the ledger created the client BAT wallet,
 it does not hold the private signing key necessary to transact.
 
 After the client verifies the registrar's signature,
-the client stores the `paymentId` and `address` properties in persistent, secure storage,
+the client stores the `paymentId` and `addresses` properties in persistent, secure storage,
 and generates a "recovery file" containing the `paymentId` and `secretKey`
 along with instructions on how to recover funds from the client wallet.
 The user is then strongly urged to print this file or upload it to an independent, secure service.
