@@ -82,7 +82,7 @@ module.exports = Joi.extend({
       validate (params, value, state, options) {
         const isNumeric = new RegExp(/^-?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i)
 
-        if (!isNumeric.test(value)) return this.createError('string.badNumeric', { v: value }, state, options)
+        if (!isNumeric.test(value)) return this.createError('string.badFormat', { v: value }, state, options)
 
         return value
       }

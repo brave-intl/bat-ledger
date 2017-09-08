@@ -148,7 +148,8 @@ const createPersona = function (runtime, apiVersion) {
           label: Joi.string().required(),
           currency: Joi.string().required(),
           publicKey: Joi.string().required()
-        }).required()
+        }).required(),
+        octets: Joi.string().optional().description('octet string that was signed and digested')
       }).required()
     }
     const validity = (Joi.validate(request.payload, requestSchema).error)

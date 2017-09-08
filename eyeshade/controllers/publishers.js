@@ -181,7 +181,7 @@ v2.settlement = {
       publisher: braveJoi.string().publisher().required().description('the publisher identity'),
       address: Joi.string().required().description('altcurrency address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
-      probi: Joi.number().integer().min(1).required().description('the settlement in probi'),
+      probi: braveJoi.string().numeric().required().description('the settlement in probi'),
       transactionId: Joi.string().guid().description('the transactionId')
     }).unknown(true)).required().description('publisher settlement report')
   },
@@ -353,7 +353,7 @@ v2.getBalance = {
       amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
       currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
       altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
-      probi: Joi.number().integer().min(0).optional().description('the balance in probi')
+      probi: braveJoi.string().numeric().optional().description('the balance in probi')
     })
   }
 }
