@@ -190,6 +190,9 @@ const Server = async (options, runtime) => {
       const error = response
 
       error.output.payload.message = error.message
+      if (error.body) {
+        error.output.payload.body = error.body
+      }
       error.output.payload.stack = error.stack
 
       return reply(error)

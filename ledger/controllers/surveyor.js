@@ -8,7 +8,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
-const v1 = {}
+const v2 = {}
 
 const slop = 35
 
@@ -55,7 +55,7 @@ const validateV1 = (surveyorType, payload) => {
 const validateV2 = (surveyorType, payload) => {
   const fee = Joi.object().keys({ USD: Joi.number().min(1).required() }).unknown(true).required()
   const altcurrency = braveJoi.string().altcurrencyCode().optional()
-  const probi = Joi.string().numeric().optional()
+  const probi = braveJoi.string().numeric().optional()
   const votes = Joi.number().integer().min(1).max(100).required()
   const schema = {
     contribution: Joi.object().keys({ adFree: Joi.object().keys({ votes: votes, altcurrency: altcurrency, probi: probi, fee: fee }) }).required()
@@ -89,9 +89,10 @@ module.exports.enumerate = enumerate
 
 /*
    GET /v1/surveyor/{surveyorType}/{surveyorId}
+   GET /v2/surveyor/{surveyorType}/{surveyorId}
  */
 
-v1.read =
+v2.read =
 { handler: (runtime) => {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
@@ -113,7 +114,8 @@ v1.read =
   validate: {
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor')
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     }
   },
 
@@ -129,9 +131,10 @@ v1.read =
 
 /*
    POST /v1/surveyor/{surveyorType}
+   POST /v2/surveyor/{surveyorType}
  */
 
-v1.create =
+v2.create =
 { handler: (runtime) => {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
@@ -139,10 +142,17 @@ v1.create =
     let surveyor, validity
     let payload = request.payload || {}
 
-    // if v1
-    validity = validateV1(surveyorType, payload)
+    if (request.params.apiV === 'v1') {
+      validity = validateV1(surveyorType, payload)
+    } else {
+      validity = validateV2(surveyorType, payload)
+    }
+
     if (validity.error) return reply(boom.badData(validity.error))
-    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
+
+    if (request.params.apiV === 'v1') {
+      payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
+    }
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -150,8 +160,9 @@ v1.create =
     surveyor = await create(debug, runtime, surveyorType, payload)
     if (!surveyor) return reply(boom.notFound('invalid surveyorType: ' + surveyorType))
 
-    // if v1
-    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
+    if (request.params.apiV === 'v1') {
+      payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
+    }
 
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
   }
@@ -168,7 +179,8 @@ v1.create =
 
   validate: {
     params: {
-      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor')
+      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     },
     payload: Joi.object().optional().description('additional information')
   },
@@ -185,9 +197,10 @@ v1.create =
 
 /*
    PATCH /v1/surveyor/{surveyorType}/{surveyorId}
+   PATCH /v2/surveyor/{surveyorType}/{surveyorId}
  */
 
-v1.update =
+v2.update =
 { handler: (runtime) => {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
@@ -199,10 +212,17 @@ v1.update =
     surveyor = await server(request, reply, runtime)
     if (!surveyor) return
 
-    // if v1
-    validity = validateV1(surveyorType, payload)
+    if (request.params.apiV === 'v1') {
+      validity = validateV1(surveyorType, payload)
+    } else {
+      validity = validateV2(surveyorType, payload)
+    }
+
     if (validity.error) return reply(boom.badData(validity.error))
-    payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
+
+    if (request.params.apiV === 'v1') {
+      payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
+    }
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -216,8 +236,9 @@ v1.update =
                                                  underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
     }
 
-    // if v1
-    payload = underscore.omit(underscore.extend(payload, { satoshis: Number(payload.probi) }), ['altcurrency', 'probi'])
+    if (request.params.apiV === 'v1') {
+      payload = underscore.omit(underscore.extend(payload, { satoshis: Number(payload.probi) }), ['altcurrency', 'probi'])
+    }
 
     surveyor.payload = payload
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
@@ -238,7 +259,8 @@ v1.update =
   validate: {
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor')
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     },
     payload: Joi.object().optional().description('additional information')
   },
@@ -255,9 +277,10 @@ v1.update =
 
 /*
    GET /v1/surveyor/{surveyorType}/{surveyorId}/{uId}
+   GET /v2/surveyor/{surveyorType}/{surveyorId}/{uId}
  */
 
-v1.phase1 =
+v2.phase1 =
 { handler: (runtime) => {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
@@ -298,7 +321,14 @@ v1.phase1 =
 
     signature = surveyor.sign(uId)
 
-    reply(underscore.extend({ signature: signature, payload: surveyor.payload }, surveyor.publicInfo()))
+    var payload = surveyor.payload
+    if (request.params.apiV === 'v1') {
+      if (payload.adFree) {
+        payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
+      }
+    }
+
+    reply(underscore.extend({ signature: signature, payload: payload }, surveyor.publicInfo()))
   }
 },
 
@@ -309,7 +339,8 @@ v1.phase1 =
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
+      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
+      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     }
   },
 
@@ -326,9 +357,10 @@ v1.phase1 =
 
 /*
    PUT /v1/surveyor/{surveyorType}/{surveyorId}
+   PUT /v2/surveyor/{surveyorType}/{surveyorId}
  */
 
-v1.phase2 =
+v2.phase2 =
 { handler: (runtime) => {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
@@ -388,7 +420,8 @@ v1.phase2 =
   validate: {
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor')
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     },
 
     payload: { proof: Joi.string().required().description('report information and proof') }
@@ -500,11 +533,11 @@ const provision = async (debug, runtime, surveyorId) => {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/surveyor/{surveyorType}/{surveyorId}').config(v1.read),
-  braveHapi.routes.async().post().path('/v1/surveyor/{surveyorType}').config(v1.create),
-  braveHapi.routes.async().patch().path('/v1/surveyor/{surveyorType}/{surveyorId}').config(v1.update),
-  braveHapi.routes.async().path('/v1/surveyor/{surveyorType}/{surveyorId}/{uId}').config(v1.phase1),
-  braveHapi.routes.async().put().path('/v1/surveyor/{surveyorType}/{surveyorId}').config(v1.phase2)
+  braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.read),
+  braveHapi.routes.async().post().path('/{apiV}/surveyor/{surveyorType}').config(v2.create),
+  braveHapi.routes.async().patch().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.update),
+  braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}/{uId}').config(v2.phase1),
+  braveHapi.routes.async().put().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.phase2)
 ]
 
 module.exports.initialize = async (debug, runtime) => {

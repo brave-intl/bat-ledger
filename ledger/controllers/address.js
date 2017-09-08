@@ -1,5 +1,4 @@
 const boom = require('boom')
-const bson = require('bson')
 const Joi = require('joi')
 const underscore = require('underscore')
 
@@ -68,24 +67,6 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('wallets', debug),
-      name: 'wallets',
-      property: 'paymentId',
-      empty: {
-        paymentId: '',
-        address: '',
-        provider: '',
-        balances: {},
-        paymentStamp: 0,
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { paymentId: 1 }, { address: 1 } ],
-      others: [ { provider: 1 }, { paymentStamp: 1 }, { timestamp: 1 } ]
-    }
-  ])
-
   await runtime.queue.create('wallet-report')
 }
 

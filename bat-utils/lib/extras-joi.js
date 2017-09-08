@@ -27,7 +27,7 @@ module.exports = Joi.extend({
           try { base58check.decode(value) } catch (err) {
             return this.createError('string.badBase58', { v: value }, state, options)
           }
-        } else if (!web3Utils.isAddress()) return this.createError('string.badEthAddress', { v: value }, state, options)
+        } else if (!web3Utils.isAddress(value)) return this.createError('string.badEthAddress', { v: value }, state, options)
 
         return value
       }

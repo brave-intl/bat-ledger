@@ -1,8 +1,11 @@
 const BigNumber = require('bignumber.js')
 const SDebug = require('sdebug')
+const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const bitcoinjs = require('bitcoinjs-lib')
 const bitgo = require('bitgo')
+const crypto = require('crypto')
 const underscore = require('underscore')
+const { verify } = require('@uphold/http-signature')
 
 const braveHapi = require('./extras-hapi')
 const Currency = require('./runtime-currency')
@@ -28,13 +31,16 @@ const Wallet = function (config, runtime) {
   this.currency = new Currency(config, runtime)
 }
 
-Wallet.prototype.create = async function (prefix, label, keychains) {
+Wallet.prototype.create = async function (requestType, request) {
   let f = Wallet.providers.mock.create
-  if (this.config.bitgo) {
+  if (this.config.uphold) {
+    f = Wallet.providers.uphold.create
+  }
+  if (this.config.bitgo && requestType === 'bitcoinMultisig') {
     f = Wallet.providers.bitgo.create
   }
   if (!f) return {}
-  return f.bind(this)(prefix, label, keychains)
+  return f.bind(this)(requestType, request)
 }
 
 Wallet.prototype.balances = async function (info) {
@@ -44,28 +50,6 @@ Wallet.prototype.balances = async function (info) {
   return f.bind(this)(info)
 }
 
-Wallet.prototype.purchaseBTC = function (info, amount, currency) {
-  let f = Wallet.providers[info.provider].purchaseBTC
-
-  if (!f) f = Wallet.providers.coinbase.purchaseBTC
-  if (!f) return {}
-  return f.bind(this)(info, amount, currency)
-}
-
-Wallet.prototype.recurringBTC = function (info, amount, currency) {
-  let f = Wallet.providers[info.provider].recurringBTC
-
-  if (!f) f = Wallet.providers.coinbase.recurringBTC
-  if (!f) return {}
-  return f.bind(this)(info, amount, currency)
-}
-
-Wallet.prototype.transferP = function (info) {
-  const f = Wallet.providers[info.provider].transferP
-
-  return ((!!f) && (f.bind(this)(info)))
-}
-
 Wallet.prototype.transfer = async function (info, satoshis) {
   const f = Wallet.providers[info.provider].transfer
 
@@ -73,38 +57,55 @@ Wallet.prototype.transfer = async function (info, satoshis) {
   return f.bind(this)(info, satoshis)
 }
 
-Wallet.prototype.getTxProbi = function (hex) {
-  const tx = bitcoinjs.Transaction.fromHex(hex)
-  for (let i = tx.outs.length - 1; i >= 0; i--) {
-    if (bitcoinjs.address.fromOutputScript(tx.outs[i].script) !== this.config.settlementAddress['BTC']) continue
+Wallet.prototype.getTxProbi = function (info, txn) {
+  if (info.altcurrency === 'BTC') {
+    const tx = bitcoinjs.Transaction.fromHex(txn)
+    for (let i = tx.outs.length - 1; i >= 0; i--) {
+      if (bitcoinjs.address.fromOutputScript(tx.outs[i].script) !== this.config.settlementAddress['BTC']) continue
 
-    return new BigNumber(tx.outs[i].value)
+      return new BigNumber(tx.outs[i].value)
+    }
+  } else if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
+    return new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
+  } else {
+    throw new Error('getTxProbi not supported for ' + info.altcurrency + ' at ' + info.provider)
   }
 
   return new BigNumber(0)
 }
 
-Wallet.prototype.compareTx = function (unsignedHex, signedHex) {
-  const signedTx = bitcoinjs.Transaction.fromHex(signedHex)
-  const unsignedTx = bitcoinjs.Transaction.fromHex(unsignedHex)
+Wallet.prototype.validateTxSignature = function (info, txn, signature) {
+  if (info.altcurrency === 'BTC') {
+    const signedTx = bitcoinjs.Transaction.fromHex(signature)
+    const unsignedTx = bitcoinjs.Transaction.fromHex(txn)
 
-  if ((unsignedTx.version !== signedTx.version) || (unsignedTx.locktime !== signedTx.locktime)) return false
+    if ((unsignedTx.version !== signedTx.version) || (unsignedTx.locktime !== signedTx.locktime)) return false
 
-  if (unsignedTx.ins.length !== signedTx.ins.length) return false
-  for (let i = 0; i < unsignedTx.ins.length; i++) {
-    if (!underscore.isEqual(underscore.omit(unsignedTx.ins[i], 'script'), underscore.omit(signedTx.ins[i], 'script'))) {
-      return false
+    if (unsignedTx.ins.length !== signedTx.ins.length) return false
+    for (let i = 0; i < unsignedTx.ins.length; i++) {
+      if (!underscore.isEqual(underscore.omit(unsignedTx.ins[i], 'script'), underscore.omit(signedTx.ins[i], 'script'))) {
+        return false
+      }
     }
-  }
 
-  return underscore.isEqual(unsignedTx.outs, signedTx.outs)
+    return underscore.isEqual(unsignedTx.outs, signedTx.outs)
+  } else if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
+    if (!signature.headers.digest) throw new Error('a valid http signature must include the content digest')
+    const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(txn), 'utf8').digest('base64')
+    if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
+
+    const result = verify({headers: signature.headers, publicKey: info.httpSigningPubKey}, { algorithm: 'ed25519' })
+    return result.verified
+  } else {
+    throw new Error('wallet validateTxSignature for requestType ' + info.requestType + ' not supported for altcurrency ' + info.altcurrency)
+  }
 }
 
-Wallet.prototype.submitTx = async function (info, signedTx) {
+Wallet.prototype.submitTx = async function (info, txn, signature) {
   const f = Wallet.providers[info.provider].submitTx
 
   if (!f) throw new Error('provider ' + info.provider + ' submitTx not supported')
-  return f.bind(this)(info, signedTx)
+  return f.bind(this)(info, txn, signature)
 }
 
 Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
@@ -117,7 +118,13 @@ Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
 Wallet.providers = {}
 
 Wallet.providers.bitgo = {
-  create: async function (prefix, label, keychains) {
+  create: async function (requestType, request) {
+    if (requestType !== 'bitcoinMultisig') {
+      throw new Error('provider bitgo create requestType ' + requestType + ' not supported')
+    }
+    const prefix = request['prefix']
+    const label = request['label']
+    const keychains = request['keychains']
     const xpubs = []
     let result
 
@@ -158,6 +165,8 @@ Wallet.providers.bitgo = {
       })
     })
 
+    result.addresses = {'BTC': result.id}
+
     return result
   },
   balances: async function (info) {
@@ -171,7 +180,7 @@ Wallet.providers.bitgo = {
     }
   },
 
-  submitTx: async function (info, signedTx) {
+  submitTx: async function (info, unsignedTx, signedTx) {
     const wallet = await this.bitgo.wallets().get({ type: 'bitcoin', id: info.address })
     let details, result
 
@@ -187,7 +196,7 @@ Wallet.providers.bitgo = {
         debug('getTransaction', { retry: i + 1, max: 5 })
       }
     }
-    underscore.extend(result, { fee: details.fee })
+    underscore.extend(result, { fee: details.fee.toString() })
 
     for (let i = details.outputs.length - 1; i >= 0; i--) {
       if (details.outputs[i].account !== this.config.settlementAddress['BTC']) continue
@@ -200,6 +209,7 @@ Wallet.providers.bitgo = {
   },
 
   unsignedTx: async function (info, amount, currency, balance) {
+    balance = Number(balance)
     const rate = this.currency.rates.BTC[currency.toUpperCase()]
 
     if (!rate) throw new Error('no such currency: ' + currency)
@@ -238,32 +248,138 @@ Wallet.providers.bitgo = {
   }
 }
 
-Wallet.providers.coinbase = {
-  purchaseBTC: function (info, amount, currency) {
-    // TBD: for the moment...
-    if (currency !== 'USD') throw new Error('currency ' + currency + ' payment not supported')
-
-    return ({
-      buyURL: `https://buy.coinbase.com?crypto_currency=BTC` +
-                `&code=${this.config.coinbase.widgetCode}` +
-                `&amount=${amount}` +
-                `&address=${info.address}`
-    })
-  },
-
-  recurringBTC: function (info, amount, currency) {
-    // TBD: for the moment...
-    if (currency !== 'USD') throw new Error('currency ' + currency + ' payment not supported')
-
-    return ({recurringURL: `https://www.coinbase.com/recurring_payments/new?type=send&repeat=monthly` +
-                `&amount=${amount}` +
-                `&currency=${currency}` +
-                `&to=${info.address}`
-    })
-  }
-}
-
 Wallet.providers.uphold = {
+  create: async function (requestType, request) {
+    if (requestType === 'httpSignature') {
+      const altcurrency = request.body.currency
+      if (altcurrency === 'BAT') {
+        // FIXME abstract out so it isn't duped 3x
+        const upholdBaseUrls = {
+          'prod': 'https://api.uphold.com',
+          'sandbox': 'https://api-sandbox.uphold.com'
+        }
+        const uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+          baseUrl: upholdBaseUrls[this.config.uphold.environment],
+          clientId: this.config.uphold.clientId,
+          clientSecret: this.config.uphold.clientSecret
+        })
+        if (this.config.uphold.environment === 'sandbox') {
+          // have to do some hacky shit to use a personal access token
+          uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
+        } else {
+          uphold.authorize() // ?
+        }
+        const wallet = await uphold.api('/me/cards', ({ body: request.body, method: 'post', headers: request.headers }))
+        const ethAddr = await uphold.createCardAddress(wallet.id, 'ethereum')
+        return { 'wallet': { 'addresses': {
+          'BAT': ethAddr.id,
+          'CARD_ID': wallet.id
+        },
+          'provider': 'uphold',
+          'providerId': wallet.id,
+          'httpSigningPubKey': request.body.publicKey,
+          'altcurrency': 'BAT' } }
+      } else {
+        throw new Error('wallet uphold create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
+      }
+    } else {
+      throw new Error('wallet uphold create requestType ' + requestType + ' not supported')
+    }
+  },
+  balances: async function (info) {
+    const upholdBaseUrls = {
+      'prod': 'https://api.uphold.com',
+      'sandbox': 'https://api-sandbox.uphold.com'
+    }
+    const uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+      baseUrl: upholdBaseUrls[this.config.uphold.environment],
+      clientId: this.config.uphold.clientId,
+      clientSecret: this.config.uphold.clientSecret
+    })
+    if (this.config.uphold.environment === 'sandbox') {
+      // have to do some hacky shit to use a personal access token
+      uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
+    } else {
+      uphold.authorize() // ?
+    }
+
+    const cardInfo = await uphold.getCard(info.providerId)
+    const balanceProbi = new BigNumber(cardInfo.balance).times(this.currency.alt2scale(info.altcurrency))
+    const spendableProbi = new BigNumber(cardInfo.available).times(this.currency.alt2scale(info.altcurrency))
+    return {
+      balance: balanceProbi.toString(),
+      spendable: spendableProbi.toString(),
+      confirmed: spendableProbi.toString(),
+      unconfirmed: balanceProbi.minus(spendableProbi).toString()
+    }
+  },
+  unsignedTx: async function (info, amount, currency, balance) {
+    if (info.altcurrency === 'BAT') {
+      // TODO This logic should be abstracted out into the PUT wallet payment endpoint
+      // such that this takes desired directly
+      const rate = this.currency.rates.BAT[currency.toUpperCase()]
+      var desired = new BigNumber(amount).times(this.currency.alt2scale(info.altcurrency)).dividedBy(rate.toFixed(15))
+      const minimum = desired.times(0.90)
+
+      debug('unsignedTx', { balance: balance, desired: desired, minimum: minimum })
+
+      if (minimum.greaterThan(balance)) return
+
+      desired = desired.floor()
+
+      if (desired.greaterThan(balance)) desired = new BigNumber(balance)
+
+      // FIXME calculate estimated fee?
+
+      // FIXME # decimals?
+      desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toFixed(4).toString()
+
+      return { 'requestType': 'httpSignature',
+        'unsignedTx': { 'denomination': { 'amount': desired, currency: 'BAT' },
+          'destination': this.config.settlementAddress['BAT']
+        }
+      }
+    } else {
+      throw new Error('wallet uphold unsignedTx for ' + info.altcurrency + ' not supported')
+    }
+  },
+  submitTx: async function (info, txn, signature) {
+    if (info.altcurrency === 'BAT') {
+      const upholdBaseUrls = {
+        'prod': 'https://api.uphold.com',
+        'sandbox': 'https://api-sandbox.uphold.com'
+      }
+      const uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+        baseUrl: upholdBaseUrls[this.config.uphold.environment],
+        clientId: this.config.uphold.clientId,
+        clientSecret: this.config.uphold.clientSecret
+      })
+      if (this.config.uphold.environment === 'sandbox') {
+        // have to do some hacky shit to use a personal access token
+        uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
+      } else {
+        uphold.authorize() // ?
+      }
+
+      const postedTx = await uphold.createCardTransaction(info.providerId,
+        // this is a little weird since we're using the sdk
+        underscore.pick(underscore.extend(txn.denomination, {'destination': txn.destination}), ['amount', 'currency', 'destination']),
+        true, // commit tx in one swoop
+        null, // no otp code
+        {'headers': signature.headers}
+      )
+
+      return { // TODO recheck
+        probi: new BigNumber(postedTx.destination.amount).times(this.currency.alt2scale(info.altcurrency)).toString(),
+        altcurrency: info.altcurrency,
+        address: txn.destination,
+        fee: new BigNumber(postedTx.origin.fee).plus(postedTx.destination.fee).times(this.currency.alt2scale(info.altcurrency)).toString(),
+        status: postedTx.status
+      }
+    } else {
+      throw new Error('wallet uphold submitTx for ' + info.altcurrency + ' not supported')
+    }
+  },
   status: async function (provider, parameters) {
     const result = {}
     let user
@@ -287,36 +403,85 @@ Wallet.providers.uphold = {
 }
 
 Wallet.providers.mock = {
-  create: async function (prefix, label, keychains) {
-    return { 'wallet': { 'id': keychains.user.xpub, 'provider': 'mock', 'altcurrency': 'BTC' } }
+  create: async function (requestType, request) {
+    if (requestType === 'bitcoinMultisig') {
+      return { 'wallet': { 'addresses': {'BTC': request.keychains.user.xpub}, 'provider': 'mock', 'altcurrency': 'BTC' } }
+    } else if (requestType === 'httpSignature') {
+      const altcurrency = request.body.currency
+      if (altcurrency === 'BAT') {
+        // TODO change address
+        return { 'wallet': { 'addresses': {'BAT': this.config.settlementAddress['BAT']},
+          'provider': 'mockHttpSignature',
+          'httpSigningPubKey': request.body.publicKey,
+          'altcurrency': 'BAT' } }
+      } else {
+        throw new Error('wallet mock create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
+      }
+    } else {
+      throw new Error('wallet mock create requestType ' + requestType + ' not supported')
+    }
   },
   balances: async function (info) {
-    return {
-      balance: 845480,
-      spendable: 845480,
-      confirmed: 845480,
-      unconfirmed: 0
+    if (info.altcurrency === 'BTC') {
+      return {
+        balance: '845480',
+        spendable: '845480',
+        confirmed: '845480',
+        unconfirmed: '0'
+      }
+    } else if (info.altcurrency === 'BAT') {
+      return {
+        balance: '32061750000000000000',
+        spendable: '32061750000000000000',
+        confirmed: '32061750000000000000',
+        unconfirmed: '0'
+      }
+    } else {
+      throw new Error('wallet mock balances for ' + info.altcurrency + ' not supported')
     }
   },
   unsignedTx: async function (info, amount, currency, balance) {
-    var tx = new bitcoinjs.TransactionBuilder()
-    var txId = 'aa94ab02c182214f090e99a0d57021caffd0f195a81c24602b1028b130b63e31'
-    tx.addInput(txId, 0)
-    tx.addOutput(this.config.settlementAddress['BTC'], 845480)
+    if (info.altcurrency === 'BTC') {
+      var tx = new bitcoinjs.TransactionBuilder()
+      var txId = 'aa94ab02c182214f090e99a0d57021caffd0f195a81c24602b1028b130b63e31'
+      tx.addInput(txId, 0)
+      tx.addOutput(this.config.settlementAddress['BTC'], 845480)
 
-    return { 'transactionHex': tx.buildIncomplete().toHex() }
+      return { 'requestType': 'bitcoinMultisig',
+        'unsignedTx': { 'transactionHex': tx.buildIncomplete().toHex() }
+      }
+    } else if (info.altcurrency === 'BAT' && info.provider === 'mockHttpSignature') {
+      return { 'requestType': 'httpSignature',
+        'unsignedTx': { 'denomination': { 'amount': '24.1235', currency: 'BAT' },
+          'destination': this.config.settlementAddress['BAT']
+        }
+      }
+    } else {
+      throw new Error('wallet mock unsignedTx for ' + info.altcurrency + ' not supported')
+    }
   },
-  submitTx: async function (info, signedHex) {
-    const tx = bitcoinjs.Transaction.fromHex(signedHex)
-    return {
-      probi: tx.outs[0].value,
-      altcurrency: 'BTC',
-      address: bitcoinjs.address.fromOutputScript(tx.outs[0].script),
-      fee: 300,
-      status: 'accepted',
-      hash: 'deadbeef'
+  submitTx: async function (info, txn, signature) {
+    if (info.altcurrency === 'BTC') {
+      const tx = bitcoinjs.Transaction.fromHex(txn)
+      return {
+        probi: tx.outs[0].value.toString(),
+        altcurrency: 'BTC',
+        address: bitcoinjs.address.fromOutputScript(tx.outs[0].script),
+        fee: '300',
+        status: 'accepted',
+        hash: 'deadbeef'
+      }
+    } else if (info.altcurrency === 'BAT') {
+      return {
+        probi: new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency)).toString(),
+        altcurrency: txn.denomination.currency,
+        address: txn.destination,
+        fee: '300',
+        status: 'accepted'
+      }
     }
   }
 }
+Wallet.providers.mockHttpSignature = Wallet.providers.mock
 
 module.exports = Wallet

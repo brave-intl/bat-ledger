@@ -20,7 +20,9 @@ module.exports =
 , currency              :
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',') : ['BAT', 'BTC', 'ETH'] }
 , wallet                : 
-  { settlementAddress : { BTC: process.env.BITGO_SETTLEMENT_ADDRESS || '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ' }}
+  { settlementAddress : { BTC: process.env.BITGO_SETTLEMENT_ADDRESS || '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ' 
+                        , BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
+  }}
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -37,6 +39,14 @@ if (process.env.BITCOIN_AVERAGE_PUBLIC_KEY) {
 }
 
 if (process.env.SERVICE !== 'eyeshade') {
+  if (process.env.UPHOLD_ACCESS_TOKEN || process.env.UPHOLD_CLIENT_ID) {
+    module.exports.wallet.uphold =
+    { accessToken       : process.env.UPHOLD_ACCESS_TOKEN
+    , clientId          : process.env.UPHOLD_CLIENT_ID     || 'none'
+    , clientSecret      : process.env.UPHOLD_CLIENT_SECRET || 'none'
+    , environment       : process.env.UPHOLD_ENVIRONMENT   || 'sandbox'
+    }
+  }
   if (process.env.BITGO_TOKEN) {
     module.exports.wallet.bitgo =
     { accessToken       : process.env.BITGO_TOKEN

@@ -15,10 +15,10 @@ const v2 = {}
 
 /*
    GET /v1/wallet/{paymentId}
+   GET /v2/wallet/{paymentId}
  */
 
-v1.read =
-{ handler: (runtime) => {
+const read = function (runtime, apiVersion) {
   return async (request, reply) => {
     const amount = request.query.amount
     const balanceP = request.query.balance
@@ -34,7 +34,11 @@ v1.read =
 
     result = {
       paymentStamp: wallet.paymentStamp || 0,
-      rates: currency ? underscore.pick(runtime.wallet.rates, [ currency.toUpperCase() ]) : runtime.wallet.rates
+      rates: currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency]
+    }
+
+    if (apiVersion === 2) {
+      result = underscore.extend(result, { addresses: wallet.addresses })
     }
 
     if ((refreshP) || (balanceP && !wallet.balances)) {
@@ -59,34 +63,51 @@ v1.read =
     }
 
     if ((amount) && (currency)) {
-      underscore.extend(result, runtime.wallet.purchaseBTC(wallet, amount, currency))
-      underscore.extend(result, runtime.wallet.recurringBTC(wallet, amount, currency))
       if (refreshP) {
         if (!runtime.currency.fiats[currency]) {
           return reply(boom.notFound('no such currency: ' + currency))
         }
-        result.unsignedTx = await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed)
+        if (!runtime.currency.rates[wallet.altcurrency] || !runtime.currency.rates[wallet.altcurrency][currency.toUpperCase()]) {
+          const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
+          const resp = boom.serverUnavailable(errMsg)
+          resp.output.headers['retry-after'] = '5'
+          return reply(resp)
+        }
+        result = underscore.extend(result, await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed))
 
         if (result.unsignedTx) {
-          state = {
-            $currentDate: { timestamp: { $type: 'timestamp' } },
-            $set: { unsignedTx: result.unsignedTx.transactionHex }
+          if (result.requestType === 'bitcoinMultisig') {
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: { unsignedTx: result.unsignedTx.transactionHex }
+            }
+          } else {
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: { unsignedTx: result.unsignedTx }
+            }
           }
           await wallets.update({ paymentId: paymentId }, state, { upsert: true })
         }
       }
     }
 
-    result = underscore.omit(underscore.extend(result, { satoshis: Number(result.probi) }), ['altcurrency', 'probi'])
+    if (apiVersion === 1) {
+      result = underscore.omit(underscore.extend(result, { satoshis: Number(result.probi) }), ['altcurrency', 'probi', 'requestType'])
+    }
+
     reply(result)
   }
-},
+}
 
+v1.read = { handler: (runtime) => { return read(runtime, 1) },
   description: 'Returns information about the BTC wallet associated with the user',
   tags: [ 'api' ],
 
   validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
+    params: {
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    },
     query: {
       amount: Joi.number().positive().optional().description('the payment amount in the fiat currency'),
       balance: Joi.boolean().optional().default(false).description('return balance information'),
@@ -109,18 +130,54 @@ v1.read =
   }
 }
 
+v2.read = { handler: (runtime) => { return read(runtime, 2) },
+  description: 'Returns information about the wallet associated with the user',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    },
+    query: {
+      amount: Joi.number().positive().optional().description('the payment amount in the fiat currency'),
+      balance: Joi.boolean().optional().default(false).description('return balance information'),
+      currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
+      refresh: Joi.boolean().optional().default(false).description('return balance and transaction information')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      balance: Joi.number().min(0).optional().description('the (confirmed) wallet balance'),
+      unconfirmed: Joi.number().min(0).optional().description('the unconfirmed wallet balance'),
+      paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful payment'),
+      rates: Joi.object().optional().description('current exchange rates to various currencies'),
+      probi: braveJoi.string().numeric().optional().description('the wallet balance in probi'),
+      altcurrency: Joi.string().optional().description('the wallet balance currency'),
+      requestType: Joi.string().valid('httpSignature', 'bitcoinMultisig').optional().description('the type of the request'),
+      unsignedTx: Joi.object().optional().description('unsigned transaction'),
+      addresses: Joi.object().keys({
+        BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
+        BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
+        CARD_ID: Joi.string().guid().optional().description('Card id')
+      })
+    })
+  }
+}
+
 /*
    PUT /v1/wallet/{paymentId}
+   PUT /v2/wallet/{paymentId}
  */
 
-v1.write =
-{ handler: (runtime) => {
+const write = function (runtime, apiVersion) {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
     const paymentId = request.params.paymentId.toLowerCase()
     const signedTx = request.payload.signedTx
     const surveyorId = request.payload.surveyorId
     const viewingId = request.payload.viewingId
+    const requestType = request.payload.requestType
     const surveyors = runtime.database.get('surveyors', debug)
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
@@ -128,18 +185,17 @@ v1.write =
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+    if (!wallet.unsignedTx) throw new Error('no unsignedTx found')
 
     try {
-      if (wallet.unsignedTx) {
-        if (!runtime.wallet.compareTx(wallet.unsignedTx, signedTx)) {
-          runtime.notify(debug, { channel: '#ledger-bot', text: 'comparison check failed on paymentId ' + paymentId })
-        }
-      } else {
-        runtime.notify(debug, { channel: '#ledger-bot', text: 'unable to perform comparison check for paymentId ' + paymentId })
+      const info = underscore.extend(wallet, { requestType: requestType })
+      if (!runtime.wallet.validateTxSignature(info, wallet.unsignedTx, signedTx)) {
+        runtime.notify(debug, { channel: '#ledger-bot', text: 'signature check failed on paymentId ' + paymentId })
       }
     } catch (ex) {
-      debug('compareTx', ex)
+      debug('validateTxSignature', ex)
       runtime.notify(debug, { channel: '#ledger-bot', text: 'comparison error on paymentId ' + paymentId })
+      throw ex
     }
 
     surveyor = await surveyors.findOne({ surveyorId: surveyorId })
@@ -149,7 +205,7 @@ v1.write =
 
     params = surveyor.payload.adFree
 
-    votes = runtime.wallet.getTxProbi(signedTx).dividedBy(params.probi).times(params.votes).round().toNumber()
+    votes = runtime.wallet.getTxProbi(wallet, wallet.unsignedTx).dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (votes < 1) votes = 1
 
@@ -166,20 +222,10 @@ v1.write =
       return reply(resp)
     }
 
-    result = await runtime.wallet.submitTx(wallet, signedTx)
-/*
-    { status   : 'accepted'
-    , tx       : '...'
-    , hash     : '...'
-    , instant  : false,
-    , fee      : 7969
-    , address  : '...'
-    , satoshis : 868886
-    }
-}
- */
+    result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
 
-    if (result.status !== 'accepted') return reply(boom.badData(result.status))
+    // TODO double check uphold statuses
+    if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
     now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
@@ -201,21 +247,28 @@ v1.write =
     }
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
-    // v1 only
-    result = { paymentStamp: now, satoshis: Number(result.probi), votes: votes, hash: result.hash }
-    reply(result)
+    result = { paymentStamp: now, votes: votes, probi: result.probi, altcurrency: result.altcurrency }
+    if (result.hash) {
+      result.extend(result, { hash: result.hash })
+    }
+    if (apiVersion === 1) {
+      reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))
+    } else {
+      reply(result)
+    }
 
-    result = { paymentStamp: now, altcurrency: result.altcurrency, probi: result.probi, votes: votes, hash: result.hash }
     await runtime.queue.send(debug, 'contribution-report', underscore.extend({
       paymentId: paymentId,
-      address: wallet.address,
+      // FIXME send all addresses?
+      address: wallet.addresses[result.altcurrency],
       surveyorId: surveyorId,
       viewingId: viewingId,
       fee: fee
     }, result))
   }
-},
+}
 
+v1.write = { handler: (runtime) => { return write(runtime, 1) },
   description: 'Makes a contribution using the BTC wallet associated with the user',
   tags: [ 'api' ],
 
@@ -238,107 +291,36 @@ v1.write =
   }
 }
 
-/*
-   PUT /v1/wallet/{paymentId}/recover
-   GET /v2/wallet/{paymentId}/recover
- */
-
-v1.recover =
-{ handler: (runtime) => {
-  return async (request, reply) => {
-    const debug = braveHapi.debug(module, request)
-    const paymentId = request.params.paymentId.toLowerCase()
-    const passphrase = request.payload.passPhrase
-    const recoveryId = request.payload.recoveryId
-    const wallets = runtime.database.get('wallets', debug)
-    let original, satoshis, wallet
-
-    wallet = await wallets.findOne({ paymentId: paymentId })
-    if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
-
-    original = await wallets.findOne({ paymentId: recoveryId })
-    if (!original) return reply(boom.notFound('no such wallet: ' + recoveryId))
-
-    satoshis = await runtime.wallet.recover(wallet, original, passphrase)
-
-    reply({ satoshis: satoshis })
-  }
-},
-
-  description: 'Recover the balance of an earlier wallet',
-  tags: [ 'api', 'deprecated' ],
+v2.write = { handler: (runtime) => { return write(runtime, 2) },
+  description: 'Makes a contribution using the wallet associated with the user',
+  tags: [ 'api' ],
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
     payload: {
-      recoveryId: Joi.string().guid().required().description('identity of the wallet to be recovered'),
-      passPhrase: Joi.string().required().description('the passphrase for the wallet to be recovered')
+      viewingId: Joi.string().guid().required().description('unique-identifier for voting'),
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      requestType: Joi.string().valid('httpSignature', 'bitcoinMultisig').required().description('the type of the request'),
+      signedTx: Joi.required().description('signed transaction')
     }
   },
 
   response: {
     schema: Joi.object().keys({
-      satoshis: Joi.number().integer().min(0).optional().description('the recovered amount in satoshis')
+      paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful contribution'),
+      probi: braveJoi.string().numeric().description('the contribution amount in probi'),
+      altcurrency: Joi.string().optional().description('the wallet balance currency'),
+      votes: Joi.number().integer().min(0).optional().description('the corresponding number of publisher votes'),
+      hash: Joi.string().hex().optional().description('transaction hash')
     })
-  }
-
-}
-
-v2.recover =
-{ handler: (runtime) => {
-  return async (request, reply) => {
-    let balances, result, state, wallet
-    const debug = braveHapi.debug(module, request)
-    const paymentId = request.params.paymentId.toLowerCase()
-    const wallets = runtime.database.get('wallets', debug)
-
-    wallet = await wallets.findOne({ paymentId: paymentId })
-    if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
-
-    balances = await runtime.wallet.balances(wallet)
-    if (!underscore.isEqual(balances, wallet.balances)) {
-      state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { balances: balances } }
-      await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-
-      await runtime.queue.send(debug, 'wallet-report', underscore.extend({ paymentId: paymentId }, state.$set))
-    }
-
-    result = underscore.extend({
-      address: wallet.address,
-      keychains: { user: underscore.pick(wallet.keychains.user, [ 'xpub', 'encryptedXprv', 'path' ]) },
-      satoshis: balances.confirmed
-    })
-
-    reply(result)
-  }
-},
-
-  description: 'Recover the balance of an earlier wallet',
-  tags: [ 'api' ],
-
-  validate:
-    { params: { paymentId: Joi.string().guid().required().description('identity of the wallet') } },
-
-  response: {
-    schema: Joi.object().keys({
-      address: braveJoi.string().base58().required().description('BTC address'),
-      keychains: Joi.object().keys({
-        user: Joi.object().keys({
-          xpub: braveJoi.string().Xpub().required(),
-          encryptedXprv: Joi.string().required(),
-          path: Joi.string().required()
-        }).required()
-      }).required(),
-      satoshis: Joi.number().integer().min(0).optional().description('the recovered amount in satoshis')
-    }).required()
   }
 }
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
+  braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
-  braveHapi.routes.async().put().path('/v1/wallet/{paymentId}/recover').config(v1.recover),
-  braveHapi.routes.async().path('/v2/wallet/{paymentId}/recover').config(v2.recover)
+  braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -349,19 +331,24 @@ module.exports.initialize = async (debug, runtime) => {
       property: 'paymentId',
       empty: {
         paymentId: '',
-        address: '',
+        // v1
+        // address: '',
         provider: '',
         balances: {},
-        keychains: {},
+        // v1
+        // keychains: {},
         paymentStamp: 0,
 
      // v2 and later
         altcurrency: '',
+        addresses: {},
+        httpSigningPubKey: '',
+        providerId: '',
 
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { paymentId: 1 } ],
-      others: [ { provider: 1 }, { address: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 } ]
+      others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 } ]
     },
     {
       category: runtime.database.get('viewings', debug),
@@ -418,5 +405,17 @@ const convertDB = async (debug, runtime) => {
     }
 
     await viewings.update({ surveyorId: entry.surveyorId }, state, { upsert: true })
+  })
+
+  entries = await wallets.find({ address: { $exists: true } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { addresses: { 'BTC': entry.address } },
+      $unset: { address: '' }
+    }
+
+    await wallets.update({ paymentId: entry.paymentId }, state, { upsert: true })
   })
 }
