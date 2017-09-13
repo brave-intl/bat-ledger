@@ -182,7 +182,7 @@ const createPersona = function (runtime, apiVersion) {
       wallet = result.wallet
     } catch (ex) {
       runtime.notify(debug, { text: 'wallet error: ' + ex.toString() })
-      debug('wallet error', ex)
+      debug('wallet error', JSON.stringify(ex))
       throw ex
     }
 
