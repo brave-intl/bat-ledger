@@ -329,7 +329,13 @@ v2.getBalance = {
       if (probi < 0) probi = 0
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
-      reply({ amount: amount, currency: currency, altcurrency: altcurrency, probi: probi.toString() })
+      reply({
+        amount: amount,
+        currency: currency,
+        altcurrency: altcurrency,
+        probi: probi.toString(),
+        rates: runtime.currency.rates[altcurrency]
+      })
     }
   },
 
@@ -354,7 +360,8 @@ v2.getBalance = {
       amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
       currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
       altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
-      probi: braveJoi.string().numeric().optional().description('the balance in probi')
+      probi: braveJoi.string().numeric().optional().description('the balance in probi'),
+      rates: Joi.object().optional().description('current exchange rates to various currencies')
     })
   }
 }
