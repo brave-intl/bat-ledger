@@ -459,3 +459,7 @@ settlement wallets have their backup key sent to a KRS.
 Many helpful comments have dramatically increased the simplicity, readability and correctness of this specification.
 In particular,
 the comments of [Alex Melville](https://github.com/Melvillian) of [BitGo](https://www.bitgo.com) have been particularly helpful.
+
+## Authors
+* [Marshall Rose](https://github.com/mrose17)
+* [eV Quirk](https://github.com/evq)
