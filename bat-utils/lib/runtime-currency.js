@@ -415,7 +415,7 @@ Currency.prototype.alt2fiat = function (altcurrency, probi, currency, floatP) {
 
   if (!rate) return
 
-  amount = new BigNumber(probi).times(rate)
+  amount = new BigNumber(probi).times(rate.toFixed(15))
   if (scale) amount = amount.dividedBy(scale)
 
   if (!floatP) return amount.toFixed(entry ? entry.digits : 2)
@@ -430,7 +430,7 @@ Currency.prototype.fiat2alt = function (currency, amount, altcurrency) {
 
   if ((!amount) || (!rate)) return
 
-  probis = new BigNumber(amount).dividedBy(rate)
+  probis = new BigNumber(amount).dividedBy(rate.toFixed(15))
   if (scale) probis = probis.times(scale)
 
   return probis.floor().toString()
