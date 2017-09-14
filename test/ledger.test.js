@@ -1,6 +1,5 @@
 'use strict'
 
-import UpholdSDK from '@uphold/uphold-sdk-javascript'
 import anonize from 'node-anonize2-relic'
 import bg from 'bitgo'
 import bitcoinjs from 'bitcoinjs-lib'
@@ -348,7 +347,10 @@ test('api : v2 contribution workflow with BAT', async t => {
   const paymentId = response.body.wallet.paymentId
 
   t.true(response.body.wallet.hasOwnProperty('addresses'))
-  t.deepEqual(response.body.wallet.addresses, { 'BAT': '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' })
+  t.deepEqual(response.body.wallet.addresses, {
+    'BAT': '0x7c31560552170ce96c4a7b018e93cddc19dc61b6',
+    'BTC': '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ'
+  })
 
   t.true(response.body.hasOwnProperty('verification'))
   personaCredential.finalize(response.body.verification)
@@ -468,153 +470,3 @@ test('api : v2 contribution workflow with BAT', async t => {
       .expect(ok)
   }
 })
-
-// FIXME assert has env vars set and is using uphold
-test('api : v2 uphold BAT wallet', async t => {
-  const srv = await server
-  const personaId = uuid.v4().toLowerCase()
-  const viewingId = uuid.v4().toLowerCase()
-  const donateAmt = 0.01
-
-  var response = await request(srv.listener).get('/v2/registrar/persona').expect(ok)
-  t.true(response.body.hasOwnProperty('registrarVK'))
-  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
-
-  const keypair = tweetnacl.sign.keyPair()
-  console.log('created new ed25519 keypair')
-  console.log(JSON.stringify({
-    'publicKey': uint8tohex(keypair.publicKey),
-    'secretKey': uint8tohex(keypair.secretKey)
-  }))
-
-  const body = {
-    label: uuid.v4().toLowerCase(),
-    currency: 'BAT',
-    publicKey: uint8tohex(keypair.publicKey)
-  }
-  var headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(body)).digest('base64')
-  }
-
-  headers['signature'] = sign({
-    headers: headers,
-    keyId: 'primary',
-    secretKey: uint8tohex(keypair.secretKey)
-  }, { algorithm: 'ed25519' })
-
-  var payload = { requestType: 'httpSignature',
-    request: {
-      body: body,
-      headers: headers
-    },
-    proof: personaCredential.request()
-  }
-  response = await request(srv.listener).post('/v2/registrar/persona/' + personaCredential.parameters.userId)
-    .send(payload).expect(ok)
-  t.true(response.body.hasOwnProperty('wallet'))
-  const paymentId = response.body.wallet.paymentId
-  t.true(response.body.wallet.hasOwnProperty('paymentId'))
-  t.true(response.body.wallet.hasOwnProperty('addresses'))
-  t.true(response.body.wallet.addresses.hasOwnProperty('BAT'))
-  t.true(response.body.hasOwnProperty('verification'))
-
-  t.true(response.body.wallet.addresses.hasOwnProperty('CARD_ID'))
-  const userCardId = response.body.wallet.addresses.CARD_ID
-
-  personaCredential.finalize(response.body.verification)
-
-  response = await request(srv.listener)
-    .post('/v2/surveyor/contribution')
-    .send({ 'adFree': {
-      'fee': { 'USD': 5 },
-      'probi': '24123500000000000000',
-      'altcurrency': 'BAT',
-      'votes': 5
-    }})
-    .set('Authorization', 'Bearer mytoken123')
-    .expect(ok)
-
-  response = await request(srv.listener)
-    .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
-    .expect(ok)
-  t.true(response.body.hasOwnProperty('surveyorId'))
-  const surveyorId = response.body.surveyorId
-
-  do { // This depends on currency conversion rates being available, retry until then are available
-    response = await request(srv.listener)
-      .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
-    if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
-  } while (response.status === 503)
-  var err = ok(response)
-  if (err) throw err
-
-  t.true(response.body.hasOwnProperty('balance'))
-  t.is(response.body.balance, '0.0000')
-
-  const rate = response.body.rates.USD
-  const desired = (donateAmt * rate).toFixed(4)
-
-  const uphold = new UpholdSDK({ // eslint-disable-line new-cap
-    baseUrl: 'https://api-sandbox.uphold.com',
-    clientId: 'none',
-    clientSecret: 'none'
-  })
-  // have to do some hacky shit to use a personal access token
-  uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
-  const donorCardId = process.env.UPHOLD_DONOR_CARD_ID
-
-  await uphold.createCardTransaction(donorCardId,
-    {'amount': donateAmt.toString(), 'currency': 'BAT', 'destination': userCardId},
-    true // commit tx in one swoop
-  )
-
-  do {
-    response = await request(srv.listener)
-      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&currency=USD`)
-    if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
-    else if (response.body.balance === '0.0000') await snooze(500)
-  } while (response.status === 503 || response.body.balance === '0.0000')
-  err = ok(response)
-  if (err) throw err
-
-  // ensure that transactions out of the restricted user card require a signature
-  // by trying to send back to the donor card
-  await t.throws(uphold.createCardTransaction(userCardId,
-    {'amount': donateAmt.toString(), 'currency': 'BAT', 'destination': donorCardId},
-    true // commit tx in one swoop
-  ))
-
-  headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(response.body.unsignedTx)).digest('base64')
-  }
-
-  headers['signature'] = sign({
-    headers: headers,
-    keyId: 'primary',
-    secretKey: uint8tohex(keypair.secretKey)
-  }, { algorithm: 'ed25519' })
-
-  payload = { requestType: 'httpSignature',
-    signedTx: {
-      body: body,
-      headers: headers
-    },
-    surveyorId: surveyorId,
-    viewingId: viewingId
-  }
-
-  do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
-    if (response.status === 503) {
-      await snooze(response.headers['retry-after'] * 1000)
-    }
-    response = await request(srv.listener)
-      .put('/v2/wallet/' + paymentId)
-      .send(payload)
-  } while (response.status === 503)
-  err = ok(response)
-  if (err) throw err
-})
-
-// FIXME add a test to cover the user pledging to donate an amount ~= 0
-
-// FIXME add a test to cover the case where the requested amount is less than the unsignedTx minimum

@@ -271,8 +271,10 @@ Wallet.providers.uphold = {
         }
         const wallet = await uphold.api('/me/cards', ({ body: request.body, method: 'post', headers: request.headers }))
         const ethAddr = await uphold.createCardAddress(wallet.id, 'ethereum')
+        const btcAddr = await uphold.createCardAddress(wallet.id, 'bitcoin')
         return { 'wallet': { 'addresses': {
           'BAT': ethAddr.id,
+          'BTC': btcAddr.id,
           'CARD_ID': wallet.id
         },
           'provider': 'uphold',
@@ -410,7 +412,10 @@ Wallet.providers.mock = {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
         // TODO change address
-        return { 'wallet': { 'addresses': {'BAT': this.config.settlementAddress['BAT']},
+        return { 'wallet': { 'addresses': {
+          'BAT': this.config.settlementAddress['BAT'],
+          'BTC': this.config.settlementAddress['BTC']
+        },
           'provider': 'mockHttpSignature',
           'httpSigningPubKey': request.body.publicKey,
           'altcurrency': 'BAT' } }
