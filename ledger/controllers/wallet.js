@@ -224,7 +224,7 @@ const write = function (runtime, apiVersion) {
 
     result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
 
-    // TODO double check uphold statuses
+    // FIXME double check uphold statuses
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
     now = timestamp()
@@ -259,7 +259,6 @@ const write = function (runtime, apiVersion) {
 
     await runtime.queue.send(debug, 'contribution-report', underscore.extend({
       paymentId: paymentId,
-      // FIXME send all addresses?
       address: wallet.addresses[result.altcurrency],
       surveyorId: surveyorId,
       viewingId: viewingId,

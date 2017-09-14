@@ -393,6 +393,20 @@ Currency.prototype.fiatP = function (currency) {
 }
 
 // satoshis, wei, etc.
+Currency.prototype.decimals = {
+  BAT: 18,
+  BCH: 8,
+  BTC: 8,
+  ETC: 18,
+  ETH: 18,
+  LTC: 8,
+  NMC: 8,
+  PPC: 6,
+  XPM: 8,
+  ZEC: 8
+}
+
+// satoshis, wei, etc.
 Currency.prototype.alt2scale = function (altcurrency) {
   return {
     BAT: '1e18',

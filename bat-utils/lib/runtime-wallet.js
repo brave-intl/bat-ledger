@@ -26,6 +26,23 @@ const Wallet = function (config, runtime) {
       env: config.wallet.bitgo.environment || 'prod'
     })
   }
+  if (config.wallet.uphold) {
+    const upholdBaseUrls = {
+      'prod': 'https://api.uphold.com',
+      'sandbox': 'https://api-sandbox.uphold.com'
+    }
+    this.uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+      baseUrl: upholdBaseUrls[this.config.uphold.environment],
+      clientId: this.config.uphold.clientId,
+      clientSecret: this.config.uphold.clientSecret
+    })
+    if (this.config.uphold.environment === 'sandbox') {
+      // have to do some hacky shit to use a personal access token
+      this.uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
+    } else {
+      this.uphold.authorize() // ?
+    }
+  }
 
   if (!config.currency) config.currency = underscore.extend({ altcoins: [ 'BTC' ] }, this.config)
   this.currency = new Currency(config, runtime)
@@ -253,25 +270,9 @@ Wallet.providers.uphold = {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
-        // FIXME abstract out so it isn't duped 3x
-        const upholdBaseUrls = {
-          'prod': 'https://api.uphold.com',
-          'sandbox': 'https://api-sandbox.uphold.com'
-        }
-        const uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
-          baseUrl: upholdBaseUrls[this.config.uphold.environment],
-          clientId: this.config.uphold.clientId,
-          clientSecret: this.config.uphold.clientSecret
-        })
-        if (this.config.uphold.environment === 'sandbox') {
-          // have to do some hacky shit to use a personal access token
-          uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
-        } else {
-          uphold.authorize() // ?
-        }
-        const wallet = await uphold.api('/me/cards', ({ body: request.body, method: 'post', headers: request.headers }))
-        const ethAddr = await uphold.createCardAddress(wallet.id, 'ethereum')
-        const btcAddr = await uphold.createCardAddress(wallet.id, 'bitcoin')
+        const wallet = await this.uphold.api('/me/cards', ({ body: request.body, method: 'post', headers: request.headers }))
+        const ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
+        const btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
         return { 'wallet': { 'addresses': {
           'BAT': ethAddr.id,
           'BTC': btcAddr.id,
@@ -289,23 +290,7 @@ Wallet.providers.uphold = {
     }
   },
   balances: async function (info) {
-    const upholdBaseUrls = {
-      'prod': 'https://api.uphold.com',
-      'sandbox': 'https://api-sandbox.uphold.com'
-    }
-    const uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
-      baseUrl: upholdBaseUrls[this.config.uphold.environment],
-      clientId: this.config.uphold.clientId,
-      clientSecret: this.config.uphold.clientSecret
-    })
-    if (this.config.uphold.environment === 'sandbox') {
-      // have to do some hacky shit to use a personal access token
-      uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
-    } else {
-      uphold.authorize() // ?
-    }
-
-    const cardInfo = await uphold.getCard(info.providerId)
+    const cardInfo = await this.uphold.getCard(info.providerId)
     const balanceProbi = new BigNumber(cardInfo.balance).times(this.currency.alt2scale(info.altcurrency))
     const spendableProbi = new BigNumber(cardInfo.available).times(this.currency.alt2scale(info.altcurrency))
     return {
@@ -331,10 +316,9 @@ Wallet.providers.uphold = {
 
       if (desired.greaterThan(balance)) desired = new BigNumber(balance)
 
-      // FIXME calculate estimated fee?
+      // NOTE skipping fee calculation here as transfers within uphold have none
 
-      // FIXME # decimals?
-      desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toFixed(4).toString()
+      desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toFixed(this.currency.decimals[info.altcurrency]).toString()
 
       return { 'requestType': 'httpSignature',
         'unsignedTx': { 'denomination': { 'amount': desired, currency: 'BAT' },
@@ -347,23 +331,7 @@ Wallet.providers.uphold = {
   },
   submitTx: async function (info, txn, signature) {
     if (info.altcurrency === 'BAT') {
-      const upholdBaseUrls = {
-        'prod': 'https://api.uphold.com',
-        'sandbox': 'https://api-sandbox.uphold.com'
-      }
-      const uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
-        baseUrl: upholdBaseUrls[this.config.uphold.environment],
-        clientId: this.config.uphold.clientId,
-        clientSecret: this.config.uphold.clientSecret
-      })
-      if (this.config.uphold.environment === 'sandbox') {
-        // have to do some hacky shit to use a personal access token
-        uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
-      } else {
-        uphold.authorize() // ?
-      }
-
-      const postedTx = await uphold.createCardTransaction(info.providerId,
+      const postedTx = await this.uphold.createCardTransaction(info.providerId,
         // this is a little weird since we're using the sdk
         underscore.pick(underscore.extend(txn.denomination, {'destination': txn.destination}), ['amount', 'currency', 'destination']),
         true, // commit tx in one swoop
@@ -371,11 +339,15 @@ Wallet.providers.uphold = {
         {'headers': signature.headers}
       )
 
-      return { // TODO recheck
+      if (postedTx.fees.length !== 0) { // fees should be 0 with an uphold held settlement address
+        throw new Error(`unexpected fee(s) charged: ${JSON.stringify(postedTx.fees)}`)
+      }
+
+      return {
         probi: new BigNumber(postedTx.destination.amount).times(this.currency.alt2scale(info.altcurrency)).toString(),
         altcurrency: info.altcurrency,
         address: txn.destination,
-        fee: new BigNumber(postedTx.origin.fee).plus(postedTx.destination.fee).times(this.currency.alt2scale(info.altcurrency)).toString(),
+        fee: 0,
         status: postedTx.status
       }
     } else {
@@ -411,7 +383,7 @@ Wallet.providers.mock = {
     } else if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
-        // TODO change address
+        // TODO generate random addresses?
         return { 'wallet': { 'addresses': {
           'BAT': this.config.settlementAddress['BAT'],
           'BTC': this.config.settlementAddress['BTC']
