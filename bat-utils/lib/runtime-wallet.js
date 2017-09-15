@@ -96,23 +96,27 @@ Wallet.prototype.validateTxSignature = function (info, txn, signature) {
     const signedTx = bitcoinjs.Transaction.fromHex(signature)
     const unsignedTx = bitcoinjs.Transaction.fromHex(txn)
 
-    if ((unsignedTx.version !== signedTx.version) || (unsignedTx.locktime !== signedTx.locktime)) return false
+    if ((unsignedTx.version !== signedTx.version) || (unsignedTx.locktime !== signedTx.locktime)) {
+      throw new Error('the signed and unsigned transactions differed')
+    }
 
-    if (unsignedTx.ins.length !== signedTx.ins.length) return false
+    if (unsignedTx.ins.length !== signedTx.ins.length) {
+      throw new Error('the signed and unsigned transactions differed')
+    }
     for (let i = 0; i < unsignedTx.ins.length; i++) {
       if (!underscore.isEqual(underscore.omit(unsignedTx.ins[i], 'script'), underscore.omit(signedTx.ins[i], 'script'))) {
-        return false
+        throw new Error('the signed and unsigned transactions differed')
       }
     }
 
-    return underscore.isEqual(unsignedTx.outs, signedTx.outs)
+    if (!underscore.isEqual(unsignedTx.outs, signedTx.outs)) throw new Error('the signed and unsigned transactions differed')
   } else if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
     if (!signature.headers.digest) throw new Error('a valid http signature must include the content digest')
-    const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(txn), 'utf8').digest('base64')
-    if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
+    // const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(txn), 'utf8').digest('base64')
+    // if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
 
     const result = verify({headers: signature.headers, publicKey: info.httpSigningPubKey}, { algorithm: 'ed25519' })
-    return result.verified
+    if (!result.verified) throw new Error('the http-signature is not valid')
   } else {
     throw new Error('wallet validateTxSignature for requestType ' + info.requestType + ' not supported for altcurrency ' + info.altcurrency)
   }

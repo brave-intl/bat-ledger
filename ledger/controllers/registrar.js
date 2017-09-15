@@ -1,9 +1,11 @@
+const Joi = require('joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const bson = require('bson')
-const Joi = require('joi')
+const crypto = require('crypto')
 const underscore = require('underscore')
 const uuid = require('uuid')
+const { verify } = require('@uphold/http-signature')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -139,6 +141,7 @@ const createPersona = function (runtime, apiVersion) {
         keychains: Joi.object().keys({ user: keychainSchema.required(), backup: keychainSchema.optional() })
       }).required()
     } else if (requestType === 'httpSignature') {
+      // TODO consider moving this to a custom joi validator along with signature verif below
       requestSchema = Joi.object().keys({
         headers: Joi.object().keys({
           signature: Joi.string().required(),
@@ -152,8 +155,16 @@ const createPersona = function (runtime, apiVersion) {
         octets: Joi.string().optional().description('octet string that was signed and digested')
       }).required()
     }
-    const validity = (Joi.validate(request.payload, requestSchema).error)
+    var validity = (Joi.validate(request.payload, requestSchema).error)
     if (validity.error) return reply(boom.badData(validity.error))
+
+    // const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(request.payload.request), 'utf8').digest('base64')
+    // if (expectedDigest !== request.payload.request.headers.digest) return reply(boom.badData('the digest specified is not valid for the body provided'))
+
+    validity = verify({headers: request.payload.request.headers, publicKey: request.payload.request.body.publicKey}, { algorithm: 'ed25519' })
+    if (!validity.verified) {
+      return reply(boom.badData('wallet creation request failed validation, http signature was not valid'))
+    }
 
     try {
       verification = registrar.register(proof)

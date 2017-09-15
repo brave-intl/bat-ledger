@@ -189,13 +189,11 @@ const write = function (runtime, apiVersion) {
 
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
-      if (!runtime.wallet.validateTxSignature(info, wallet.unsignedTx, signedTx)) {
-        runtime.notify(debug, { channel: '#ledger-bot', text: 'signature check failed on paymentId ' + paymentId })
-      }
+      runtime.wallet.validateTxSignature(info, wallet.unsignedTx, signedTx)
     } catch (ex) {
       debug('validateTxSignature', ex)
-      runtime.notify(debug, { channel: '#ledger-bot', text: 'comparison error on paymentId ' + paymentId })
-      throw ex
+      runtime.notify(debug, { channel: '#ledger-bot', text: 'validity check failed on paymentId ' + paymentId })
+      return reply(boom.badData(ex.toString()))
     }
 
     surveyor = await surveyors.findOne({ surveyorId: surveyorId })
