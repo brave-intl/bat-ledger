@@ -5,7 +5,7 @@ const bitcoinjs = require('bitcoinjs-lib')
 const bitgo = require('bitgo')
 const crypto = require('crypto')
 const underscore = require('underscore')
-const { verify } = require('@uphold/http-signature')
+const { verify } = require('http-request-signature')
 
 const braveHapi = require('./extras-hapi')
 const Currency = require('./runtime-currency')
@@ -112,8 +112,9 @@ Wallet.prototype.validateTxSignature = function (info, txn, signature) {
     if (!underscore.isEqual(unsignedTx.outs, signedTx.outs)) throw new Error('the signed and unsigned transactions differed')
   } else if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
     if (!signature.headers.digest) throw new Error('a valid http signature must include the content digest')
-    // const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(txn), 'utf8').digest('base64')
-    // if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
+    if (!underscore.isEqual(txn, JSON.parse(signature.octets))) throw new Error('the signed and unsigned transactions differed')
+    const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(signature.octets, 'utf8').digest('base64')
+    if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
 
     const result = verify({headers: signature.headers, publicKey: info.httpSigningPubKey}, { algorithm: 'ed25519' })
     if (!result.verified) throw new Error('the http-signature is not valid')
@@ -274,7 +275,7 @@ Wallet.providers.uphold = {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
-        const wallet = await this.uphold.api('/me/cards', ({ body: request.body, method: 'post', headers: request.headers }))
+        const wallet = await this.uphold.api('/me/cards', ({ body: request.octets, method: 'post', headers: request.headers }))
         const ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
         const btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
         return { 'wallet': { 'addresses': {
@@ -336,11 +337,11 @@ Wallet.providers.uphold = {
   submitTx: async function (info, txn, signature) {
     if (info.altcurrency === 'BAT') {
       const postedTx = await this.uphold.createCardTransaction(info.providerId,
-        // this is a little weird since we're using the sdk
+        // this will be replaced below, we're just placating
         underscore.pick(underscore.extend(txn.denomination, {'destination': txn.destination}), ['amount', 'currency', 'destination']),
         true, // commit tx in one swoop
         null, // no otp code
-        {'headers': signature.headers}
+        {'headers': signature.headers, 'body': signature.octets}
       )
 
       if (postedTx.fees.length !== 0) { // fees should be 0 with an uphold held settlement address

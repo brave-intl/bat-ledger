@@ -9,7 +9,7 @@ import test from 'ava'
 import tweetnacl from 'tweetnacl'
 import underscore from 'underscore'
 import uuid from 'uuid'
-import { sign } from '@uphold/http-signature'
+import { sign } from 'http-request-signature'
 
 import server from '../ledger/server'
 

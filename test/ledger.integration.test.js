@@ -8,7 +8,7 @@ import request from 'supertest'
 import test from 'ava'
 import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
-import { sign } from '@uphold/http-signature'
+import { sign } from 'http-request-signature'
 
 function ok (res) {
   if (res.status !== 200) {
@@ -40,8 +40,9 @@ test('integration : v2 contribution workflow with mock BAT wallet', async t => {
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
+  var octets = JSON.stringify(body)
   var headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(body)).digest('base64')
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
   headers['signature'] = sign({
@@ -53,7 +54,8 @@ test('integration : v2 contribution workflow with mock BAT wallet', async t => {
   var payload = { requestType: 'httpSignature',
     request: {
       body: body,
-      headers: headers
+      headers: headers,
+      octets: octets
     },
     proof: personaCredential.request()
   }
@@ -100,9 +102,9 @@ test('integration : v2 contribution workflow with mock BAT wallet', async t => {
   t.true(response.body.hasOwnProperty('probi'))
 
   t.true(response.body.hasOwnProperty('unsignedTx'))
-
+  octets = JSON.stringify(response.body.unsignedTx)
   headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(response.body.unsignedTx)).digest('base64')
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
   headers['signature'] = sign({
@@ -114,7 +116,8 @@ test('integration : v2 contribution workflow with mock BAT wallet', async t => {
   payload = { requestType: 'httpSignature',
     signedTx: {
       body: body,
-      headers: headers
+      headers: headers,
+      octets: octets
     },
     surveyorId: surveyorId,
     viewingId: viewingId
@@ -196,8 +199,9 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
+  var octets = JSON.stringify(body)
   var headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(body)).digest('base64')
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
   headers['signature'] = sign({
@@ -209,7 +213,8 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   var payload = { requestType: 'httpSignature',
     request: {
       body: body,
-      headers: headers
+      headers: headers,
+      octets: octets
     },
     proof: personaCredential.request()
   }
@@ -284,8 +289,9 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     true // commit tx in one swoop
   ))
 
+  octets = JSON.stringify(response.body.unsignedTx)
   headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(response.body.unsignedTx)).digest('base64')
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
   headers['signature'] = sign({
@@ -297,7 +303,8 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   payload = { requestType: 'httpSignature',
     signedTx: {
       body: body,
-      headers: headers
+      headers: headers,
+      octets: octets
     },
     surveyorId: surveyorId,
     viewingId: viewingId

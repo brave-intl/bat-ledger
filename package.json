@@ -30,8 +30,7 @@
   },
   "homepage": "https://github.com/brave-intl/ledger",
   "dependencies": {
-    "@uphold/http-signature": "github:uphold/http-signature",
-    "@uphold/uphold-sdk-javascript": "^2.0.2",
+    "@uphold/uphold-sdk-javascript": "github:brave-intl/uphold-sdk-javascript",
     "babel-cli": "^6.26.0",
     "babel-preset-stage-2": "^6.24.1",
     "bat-publisher": "0.9.1",
@@ -60,6 +59,7 @@
     "hapi-auth-cookie": "7.0.0",
     "hapi-rate-limiter": "brave/hapi-rate-limiter",
     "hapi-swagger": "brave/hapi-swagger",
+    "http-request-signature": "0.0.2",
     "inert": "^4.2.1",
     "joi": "^10.6.0",
     "json2csv": "^3.11.1",

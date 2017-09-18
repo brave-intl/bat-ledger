@@ -5,7 +5,7 @@ const bson = require('bson')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const uuid = require('uuid')
-const { verify } = require('@uphold/http-signature')
+const { verify } = require('http-request-signature')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -158,8 +158,8 @@ const createPersona = function (runtime, apiVersion) {
     var validity = (Joi.validate(request.payload, requestSchema).error)
     if (validity.error) return reply(boom.badData(validity.error))
 
-    // const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(JSON.stringify(request.payload.request), 'utf8').digest('base64')
-    // if (expectedDigest !== request.payload.request.headers.digest) return reply(boom.badData('the digest specified is not valid for the body provided'))
+    const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(request.payload.request.octets, 'utf8').digest('base64')
+    if (expectedDigest !== request.payload.request.headers.digest) return reply(boom.badData('the digest specified is not valid for the body provided'))
 
     validity = verify({headers: request.payload.request.headers, publicKey: request.payload.request.body.publicKey}, { algorithm: 'ed25519' })
     if (!validity.verified) {
