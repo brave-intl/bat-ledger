@@ -1,6 +1,6 @@
 const bson = require('bson')
 const Joi = require('joi')
-const ledgerBalance = require('ledger-balance')
+const ledgerBalance = require('bat-balance')
 const underscore = require('underscore')
 
 const braveHapi = require('bat-utils').extras.hapi
