@@ -16,7 +16,7 @@ const rulesetId = 1
 
 const rulesetEntry = async (request, runtime) => {
   const debug = braveHapi.debug(module, request)
-  const version = process.npminfo.children['ledger-publisher']
+  const version = process.npminfo.children['bat-publisher']
   const rulesets = runtime.database.get('rulesets', debug)
   let entry
 

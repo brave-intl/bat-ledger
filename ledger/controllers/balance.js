@@ -11,7 +11,7 @@ const rulesetId = 2
 
 const rulesetEntry = async (request, runtime) => {
   const debug = braveHapi.debug(module, request)
-  const version = process.npminfo.children['ledger-balance']
+  const version = process.npminfo.children['bat-balance']
   const rulesets = runtime.database.get('rulesets', debug)
   let entry
 
@@ -56,7 +56,7 @@ v1.create =
 { handler: (runtime) => {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
-    const version = process.npminfo.children['ledger-balance'] + '-' + underscore.now()
+    const version = process.npminfo.children['bat-balance'] + '-' + underscore.now()
     const rulesets = runtime.database.get('rulesets', debug)
     let state
 
@@ -98,7 +98,7 @@ v1.delete =
 
     await rulesets.remove({ rulesetId: rulesetId })
 
-    reply(process.npminfo.children['ledger-balance'])
+    reply(process.npminfo.children['bat-balance'])
   }
 },
 
