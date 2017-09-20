@@ -1,3 +1,4 @@
+const bson = require('bson')
 const mongodb = require('mongodb')
 const GridStore = mongodb.GridStore
 const GridStream = require('gridfs-stream')
@@ -49,7 +50,10 @@ Database.prototype.purgeSince = async function (debug, runtime, timestamp) {
   let entries, names
 
   await reports.index({ uploadDate: 1 }, { unique: false })
-  entries = await reports.find({ uploadDate: { $lt: new Date(timestamp) } })
+
+  entries = await reports.find({
+    _id: { $lte: bson.ObjectId(Math.floor(timestamp / 1000.0).toString(16) + '0000000000000000') }
+  })
   debug('purgeSince', { count: entries.length })
 
   if (entries.length === 0) return

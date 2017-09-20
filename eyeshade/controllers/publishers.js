@@ -2,6 +2,7 @@ const crypto = require('crypto')
 const dns = require('dns')
 const url = require('url')
 
+const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
@@ -103,7 +104,8 @@ v1.settlement = {
       }
       for (let entry of payload) {
         entry.altcurrency = 'BTC'
-        entry.probi = entry.satoshis
+        entry.probi = bson.Decimal128.fromString(entry.satoshis.toString())
+        if (entry.fees) entry.fees = bson.Decimal128.fromString(entry.fees.toString())
         underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees' ]))
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
@@ -158,6 +160,8 @@ v2.settlement = {
         validity = Joi.validate(entry.address, braveJoi.string().altcurrencyAddress(entry.altcurrency))
         if (validity.error) return reply(boom.badData(entry.address + ': ' + validity.error))
 
+        entry.probi = bson.Decimal128.fromString(entry.probi.toString())
+        if (entry.fees) entry.fees = bson.Decimal128.fromString(entry.fees.toString())
         underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees' ]))
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
@@ -203,7 +207,8 @@ v1.getBalance = {
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let amount, probi, summary
+      let amount, summary
+      let probi = new BigNumber(0)
 
       summary = await voting.aggregate([
         {
@@ -223,7 +228,7 @@ v1.getBalance = {
           }
         }
       ])
-      probi = summary.length > 0 ? summary[0].probi : 0
+      if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
 
       summary = await settlements.aggregate([
         {
@@ -241,11 +246,11 @@ v1.getBalance = {
           }
         }
       ])
-      if (summary.length > 0) probi -= summary[0].probi
-      if (probi < 0) probi = 0
+      if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
+      if (probi.lessThan(0)) probi = 0
 
       amount = runtime.currency.alt2fiat('BTC', probi, currency) || 0
-      reply({ amount: amount, currency: currency, satoshis: probi })
+      reply({ amount: amount, currency: currency, satoshis: probi.toNumber() })
     }
   },
 
@@ -287,7 +292,8 @@ v2.getBalance = {
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let amount, probi, summary
+      let amount, summary
+      let probi = new BigNumber(0)
 
       summary = await voting.aggregate([
         {
@@ -307,7 +313,7 @@ v2.getBalance = {
           }
         }
       ])
-      probi = summary.length > 0 ? summary[0].probi : 0
+      if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
 
       summary = await settlements.aggregate([
         {
@@ -325,15 +331,15 @@ v2.getBalance = {
           }
         }
       ])
-      if (summary.length > 0) probi -= summary[0].probi
-      if (probi < 0) probi = 0
+      if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
+      if (probi.lessThan(0)) probi = 0
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
       reply({
         amount: amount,
         currency: currency,
         altcurrency: altcurrency,
-        probi: probi.toString(),
+        probi: probi.truncated().toString(),
         rates: runtime.currency.rates[altcurrency]
       })
     }
@@ -1059,9 +1065,9 @@ module.exports.initialize = async (debug, runtime) => {
 
      // v2 and later
         altcurrency: '',
-        probi: 1,
+        probi: bson.Decimal128.POSITIVE_ZERO,
 
-        fees: 1,
+        fees: bson.Decimal128.POSITIVE_ZERO,
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],

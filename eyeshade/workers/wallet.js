@@ -40,13 +40,13 @@ exports.initialize = async (debug, runtime) => {
 
      // v2 and later
         altcurrency: '',
-        probi: 0,
+        probi: bson.Decimal128.POSITIVE_ZERO,
 
         timestamp: bson.Timestamp.ZERO,
 
      // added during report runs...
-        inputs: 0,
-        fee: 0,
+        inputs: bson.Decimal128.POSITIVE_ZERO,
+        fee: bson.Decimal128.POSITIVE_ZERO,
         quantum: 0
       },
       unique: [ { surveyorId: 1 } ],
@@ -68,9 +68,9 @@ exports.initialize = async (debug, runtime) => {
 
      // v2 and later
         altcurrency: '',
-        probi: 0,
+        probi: bson.Decimal128.POSITIVE_ZERO,
 
-        fee: 0,
+        fee: bson.Decimal128.POSITIVE_ZERO,
         votes: 0,
         hash: '',
         timestamp: bson.Timestamp.ZERO
@@ -95,11 +95,11 @@ exports.initialize = async (debug, runtime) => {
 
      // added during report runs...
      // v1 only
-        satoshis: '',
+        satoshis: 0,
 
      // v2 and later
         altcurrency: '',
-        probi: 0
+        probi: bson.Decimal128.POSITIVE_ZERO
       },
       unique: [ { surveyorId: 1, publisher: 1 } ],
       others: [ { counts: 1 }, { timestamp: 1 },
@@ -119,26 +119,14 @@ const convertDB = async (debug, runtime) => {
   const surveyors = runtime.database.get('surveyors', debug)
   const tokens = runtime.database.get('tokens', debug)
   const voting = runtime.database.get('voting', debug)
-  const wallets = runtime.database.get('wallets', debug)
   let entries
-
-  entries = await wallets.find({ satoshis: { altcurrency: false } })
-  entries.forEach(async (entry) => {
-    let state
-
-    state = {
-      $set: { altcurrency: 'BTC' }
-    }
-
-    await wallets.update({ paymentId: entry.paymentId }, state, { upsert: true })
-  })
 
   entries = await surveyors.find({ satoshis: { $exists: true } })
   entries.forEach(async (entry) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BTC', probi: entry.satoshis },
+      $set: { altcurrency: 'BTC', probi: bson.Decimal128.fromString(entry.satoshis.toString()) },
       $unset: { satoshis: '' }
     }
 
@@ -150,7 +138,11 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BTC', probi: entry.satoshis },
+      $set: {
+        altcurrency: 'BTC',
+        probi: bson.Decimal128.fromString(entry.satoshis.toString()),
+        fee: bson.Decimal128.fromString(entry.fee.toString())
+      },
       $unset: { satoshis: '' }
     }
 
@@ -162,7 +154,7 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BTC', probi: entry.satoshis },
+      $set: { altcurrency: 'BTC', probi: bson.Decimal128.fromString(entry.satoshis.toString()) },
       $unset: { satoshis: '' }
     }
 
@@ -174,7 +166,7 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { provider: '', altcurrency: 'BTC' },
+      $set: { provider: 'bitgo', altcurrency: 'BTC' },
       $unset: { legalFormURL: '' }
     }
 
@@ -197,7 +189,11 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BTC', probi: entry.satoshis },
+      $set: {
+        altcurrency: 'BTC',
+        probi: bson.Decimal128.fromString(entry.satoshis.toString()),
+        fees: bson.Decimal128.fromString(entry.fees.toString())
+      },
       $unset: { satoshis: '' }
     }
 
@@ -219,16 +215,19 @@ const convertDB = async (debug, runtime) => {
 exports.workers = {
 /* sent by ledger POST /v1/registrar/persona/{personaId}
 
-    { queue            : 'persona-report'
-    , message          :
-      { paymentId      : '...'
-      , provider       : 'bitgo'
-      , address        : '...'
-      , altcurrency    : 'BTC'
-      , keychains      :
-        { user         : { xpub: '...', encryptedXprv: '...' }
-        , backup       : { xpub: '...', encryptedXprv: '...' }
+    { queue               : 'persona-report'
+    , message             :
+      { paymentId         : '...'
+      , provider          : 'bitgo'
+      , address           : '...'
+      , keychains         :
+        { user            : { xpub: '...', encryptedXprv: '...' }
+        , backup          : { xpub: '...', encryptedXprv: '...' }
         }
+
+      , addresses         : { BTC: '...', ... ]
+      , altcurrency       : 'BTC'
+      , httpSigningPubKey :
       }
     }
  */
@@ -268,6 +267,7 @@ exports.workers = {
       if (typeof payload.probi === 'undefined') {
         payload = underscore.omit(underscore.extend(payload, { altcurrency: 'BTC', probi: payload.satoshis }), [ 'satoshis' ])
       }
+      payload.probi = bson.Decimal128.fromString(payload.probi.toString())
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend({ counts: 0 }, underscore.omit(payload, [ 'surveyorId' ]))
@@ -303,6 +303,8 @@ exports.workers = {
       if (typeof payload.probi === 'undefined') {
         payload = underscore.omit(underscore.extend(payload, { altcurrency: 'BTC', probi: payload.satoshis }), [ 'satoshis' ])
       }
+      payload.probi = bson.Decimal128.fromString(payload.probi.toString())
+      payload.fee = bson.Decimal128.fromString(payload.fee.toString())
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.omit(payload, [ 'viewingId' ])
@@ -354,6 +356,9 @@ exports.workers = {
       const wallets = runtime.database.get('wallets', debug)
       let state
 
+      underscore.keys(payload.balances).forEach((key) => {
+        payload.balances[key] = bson.Decimal128.fromString(payload.balances[key])
+      })
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: { balances: payload.balances }

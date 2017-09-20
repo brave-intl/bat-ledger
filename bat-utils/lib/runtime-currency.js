@@ -408,17 +408,9 @@ Currency.prototype.decimals = {
 
 // satoshis, wei, etc.
 Currency.prototype.alt2scale = function (altcurrency) {
-  return {
-    BAT: '1e18',
-    BCH: '1e8',
-    BTC: '1e8',
-    ETC: '1e18',
-    ETH: '1e18',
-    LTC: '1e8',
-    NMC: '1e8',
-    PPC: '1e6',
-    XPM: '1e8',
-    ZEC: '1e8' }[altcurrency]
+  const scale = Currency.prototype.decimals[altcurrency]
+
+  if (scale) return ('1e' + scale.toString())
 }
 
 Currency.prototype.alt2fiat = function (altcurrency, probi, currency, floatP) {
@@ -429,7 +421,8 @@ Currency.prototype.alt2fiat = function (altcurrency, probi, currency, floatP) {
 
   if (!rate) return
 
-  amount = new BigNumber(probi).times(rate.toFixed(15))
+  if (!(probi instanceof BigNumber)) probi = new BigNumber(probi.toString())
+  amount = probi.times(rate.toFixed(15))
   if (scale) amount = amount.dividedBy(scale)
 
   if (!floatP) return amount.toFixed(entry ? entry.digits : 2)
@@ -440,14 +433,15 @@ Currency.prototype.alt2fiat = function (altcurrency, probi, currency, floatP) {
 Currency.prototype.fiat2alt = function (currency, amount, altcurrency) {
   const rate = singleton.rates[altcurrency] && singleton.rates[altcurrency][currency]
   const scale = singleton.alt2scale(altcurrency)
-  let probis
+  let probi
 
   if ((!amount) || (!rate)) return
 
-  probis = new BigNumber(amount).dividedBy(rate.toFixed(15))
-  if (scale) probis = probis.times(scale)
+  if (!(amount instanceof BigNumber)) amount = new BigNumber(amount.toString())
+  probi = amount.dividedBy(rate.toFixed(15))
+  if (scale) probi = probi.times(scale)
 
-  return probis.floor().toString()
+  return probi.floor().toString()
 }
 
 module.exports = function (config, runtime) {

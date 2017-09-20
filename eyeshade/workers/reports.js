@@ -1,3 +1,4 @@
+const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const currencyCodes = require('currency-codes')
 const dateformat = require('dateformat')
@@ -106,9 +107,17 @@ const quanta = async (debug, runtime, qid) => {
 
     params = underscore.pick(quantum, [ 'counts', 'inputs', 'fee', 'quantum' ])
     updateP = false
-    underscore.keys(params).forEach((key) => { if (params[key] !== surveyor[key]) updateP = true })
+    underscore.keys(params).forEach((key) => {
+      if (!(params[key] instanceof bson.Decimal128)
+          ? (params[key] !== surveyor[key])
+          : !(new BigNumber(params[key].toString()).truncated().equals(new BigNumber(surveyor[key].toString()).truncated()))) {
+        updateP = true
+      }
+    })
     if (!updateP) return
 
+    params.inputs = bson.Decimal128.fromString(params.inputs.toString())
+    params.fee = bson.Decimal128.fromString(params.fee.toString())
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: params }
     await surveyors.update({ surveyorId: quantum._id }, state, { upsert: true })
 
@@ -194,13 +203,20 @@ const mixer = async (debug, runtime, publisher, qid) => {
     if (qid) query._id = qid
     slices = await voting.find(query)
     for (let slice of slices) {
-      probi = Math.floor(quantum.quantum * slice.counts * 0.95)
-      fees = Math.floor((quantum.quantum * slice.counts) - probi)
+      probi = new BigNumber(quantum.quantum.toString()).times(slice.counts).times(0.95)
+      fees = new BigNumber(quantum.quantum.toString()).times(slice.counts).minus(probi)
       if ((publisher) && (slice.publisher !== publisher)) continue
 
-      if (!publishers[slice.publisher]) publishers[slice.publisher] = { altcurrency: altcurrency, probi: 0, fees: 0, votes: [] }
-      publishers[slice.publisher].probi += probi
-      publishers[slice.publisher].fees += fees
+      if (!publishers[slice.publisher]) {
+        publishers[slice.publisher] = {
+          altcurrency: altcurrency,
+          probi: new BigNumber(0),
+          fees: new BigNumber(0),
+          votes: []
+        }
+      }
+      publishers[slice.publisher].probi = publishers[slice.publisher].probi.plus(probi)
+      publishers[slice.publisher].fees = publishers[slice.publisher].fees.plus(fees)
       publishers[slice.publisher].votes.push({
         surveyorId: quantum.surveyorId,
         lastUpdated: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
@@ -209,9 +225,18 @@ const mixer = async (debug, runtime, publisher, qid) => {
         probi: probi,
         fees: fees
       })
-      if (slice.probi === probi) continue
+      if (probi.truncated().equals(new BigNumber(slice.probi).truncated())) continue
 
-      state = { $set: { altcurrency: altcurrency, probi: probi } }
+      console.log('probi=' + probi.toString())
+      console.log('slice=' + JSON.stringify(slice, null, 2))
+      process.exit(0)
+      state = {
+        $set: {
+          altcurrency: altcurrency,
+          probi: bson.Decimal128.fromString(probi.toString()),
+          fees: bson.Decimal128.fromString(fees.toString())
+        }
+      }
       await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher }, state, { upsert: true })
     }
   }
@@ -231,7 +256,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
 
   results = []
   underscore.keys(publishers).forEach((publisher) => {
-    if (publishers[publisher].probi <= threshold) return
+    if ((threshold) && (publishers[publisher].probi.lessThanOrEqualTo(threshold))) return
 
     if ((typeof verified === 'boolean') && (publishers[publisher].verified !== verified)) return
 
@@ -242,6 +267,14 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
   })
 
   results = results.sort(publisherCompare)
+  results.forEach((result) => {
+    result.probi = result.probi.truncated()
+    result.fees = result.fees.truncated()
+    result.votes.forEach((vote) => {
+      vote.probi = vote.probi.truncated()
+      vote.fees = vote.fees.truncated()
+    })
+  })
 
   if (format === 'json') {
     if (summaryP) {
@@ -254,8 +287,8 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
         result = underscore.pick(entry, [ 'publisher', 'address', 'altcurrency', 'probi', 'fees' ])
         result.authority = authority
         result.transactionId = reportId
-        result.amount = (entry.probi * usd).toFixed(currency.digits)
-        result.fee = (entry.fees * usd).toFixed(currency.digits)
+        result.amount = entry.probi.times(usd).toFixed(currency.digits)
+        result.fee = entry.fees.times(usd).toFixed(currency.digits)
         result.currency = 'USD'
         if (result.altcurrency === 'BTC') result.satoshis = result.probi
         publishers.push(result)
@@ -267,22 +300,22 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
     return { data: results }
   }
 
-  probi = 0
-  fees = 0
+  probi = new BigNumber(0)
+  fees = new BigNumber(0)
 
   data = []
   results.forEach((result) => {
     let datum
 
-    probi += result.probi
-    fees += result.fees
+    probi = probi.plus(result.probi)
+    fees = fees.plus(result.fees)
     datum = {
       publisher: result.publisher,
       altcurrency: result.altcurrency,
       probi: result.probi,
       fees: result.fees,
-      'publisher USD': (result.probi * usd).toFixed(currency.digits),
-      'processor USD': (result.fees * usd).toFixed(currency.digits)
+      'publisher USD': result.probi.times(usd).toFixed(currency.digits),
+      'processor USD': result.fees.times(usd).toFixed(currency.digits)
     }
     if (authority) {
       underscore.extend(datum,
@@ -308,40 +341,51 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
   entries.forEach((entry) => {
     if (entry.publisher === '') return
 
-    if (!publishers[entry.publisher]) publishers[entry.publisher] = { altcurrency: altcurrency, probi: 0, fees: 0, txns: [] }
+    if (!publishers[entry.publisher]) {
+      publishers[entry.publisher] = {
+        altcurrency: altcurrency,
+        probi: new BigNumber(0),
+        fees: new BigNumber(0)
+      }
+      if (!summaryP) publishers[entry.publisher].txns = []
+    }
 
-    publishers[entry.publisher].probi += entry.probi
-    publishers[entry.publisher].fees += entry.fees
+    publishers[entry.publisher].probi = publishers[entry.publisher].probi.plus(entry.probi)
+    publishers[entry.publisher].fees = publishers[entry.publisher].fees.plus(entry.fees)
+    entry.probi = entry.probi.toString()
+    entry.fees = entry.fees.toString()
     entry.created = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
     entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+    if (summaryP) return
 
-    publishers[entry.publisher].txns.push(underscore.pick(entry, [ 'altcurrency', 'probi', 'fees', 'settlementId', 'address',
-      'hash', 'created', 'modified' ]))
+    publishers[entry.publisher].txns.push(underscore.pick(entry, [
+      'altcurrency', 'probi', 'fees', 'settlementId', 'address', 'hash', 'created', 'modified'
+    ]))
   })
 
   results = []
   underscore.keys(publishers).forEach((publisher) => {
-    publishers[publisher].txns = underscore.sortBy(publishers[publisher].txns, 'created')
+    if (!summaryP) publishers[publisher].txns = underscore.sortBy(publishers[publisher].txns, 'created')
     results.push(underscore.extend({ publisher: publisher }, publishers[publisher]))
   })
   results = results.sort(publisherCompare)
 
   if (format === 'json') return { data: results }
 
-  probi = 0
-  fees = 0
+  probi = new BigNumber(0)
+  fees = new BigNumber(0)
 
   data = []
   results.forEach((result) => {
-    probi += result.probi
-    fees += result.fees
+    probi = probi.plus(result.probi)
+    fees = fees.plus(result.fees)
     data.push({
       publisher: result.publisher,
       altcurrency: result.altcurrency,
-      probi: result.probi,
-      fees: result.fees,
-      'publisher USD': (result.probi * usd).toFixed(currency.digits),
-      'processor USD': (result.fees * usd).toFixed(currency.digits)
+      probi: result.probi.toString(),
+      fees: result.fees.toString(),
+      'publisher USD': result.probi.times(usd).toFixed(currency.digits),
+      'processor USD': result.fees.times(usd).toFixed(currency.digits)
     })
     if (!summaryP) {
       result.txns.forEach((txn) => {
@@ -352,7 +396,7 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
     }
   })
 
-  return { data: data, altcurrency: altcurrency, probi: probi, fees: fees }
+  return { data: data, altcurrency: altcurrency, probi: probi.toString(), fees: fees.toString() }
 }
 
 const date2objectId = (iso8601, ceilP) => {
@@ -455,13 +499,14 @@ exports.workers = {
         previous.forEach((entry) => {
           if (typeof publishers[entry._id] === 'undefined') return
 
-          publishers[entry._id].probi -= entry.probi
-          publishers[entry._id].fees -= entry.fees
-          if (publishers[entry._id].fees < 0) publishers[entry._id].fees = 0
+          publishers[entry._id].probi.minus(entry.probi.toString())
+          publishers[entry._id].fees.minus(entry.fees.toString())
+          if (publishers[entry._id].fees.isNegative()) publishers[entry._id].fees = new BigNumber(0)
         })
       }
 
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
+      if (usd) usd = usd.toFixed(15)
       info = publisherContributions(runtime, publishers, authority, authorized, verified, format, reportId, summaryP,
                                     threshold, usd)
       data = info.data
@@ -479,10 +524,10 @@ exports.workers = {
         data.push({
           publisher: 'TOTAL',
           altcurrency: info.altcurrency,
-          probi: info.probi,
-          fees: info.fees,
-          'publisher USD': (info.probi * usd).toFixed(currency.digits),
-          'processor USD': (info.fees * usd).toFixed(currency.digits)
+          probi: info.probi.truncated().toString(),
+          fees: info.fees.truncated().toString(),
+          'publisher USD': info.probi.times(usd).toFixed(currency.digits),
+          'processor USD': info.fees.times(usd).toFixed(currency.digits)
         })
       }
 
@@ -519,6 +564,7 @@ exports.workers = {
       entries = publisher ? (await settlements.find({ publisher: publisher })) : (await settlements.find())
 
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
+      if (usd) usd = usd.toFixed(15)
       info = publisherSettlements(runtime, entries, format, summaryP, usd)
       data = info.data
 
@@ -601,9 +647,10 @@ exports.workers = {
 
 // TBD: use preferred fiat, if available
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
+      if (usd) usd = usd.toFixed(15)
       data = []
-      data1 = { altcurrency: altcurrency, probi: 0, fees: 0 }
-      data2 = { altcurrency: altcurrency, probi: 0, fees: 0 }
+      data1 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
+      data2 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
       underscore.keys(publishers).sort(braveHapi.domainCompare).forEach((publisher) => {
         const entry = {}
         let info
@@ -612,14 +659,14 @@ exports.workers = {
         info = publisherContributions(runtime, entry, undefined, undefined, undefined, 'csv', undefined, summaryP, undefined,
                                       usd)
         data = data.concat(info.data)
-        data1.probi += info.probi
-        data1.fees += info.fees
+        data1.probi = data1.probi.plus(info.probi)
+        data1.fees = data1.fees.plus(info.fees)
         if (!summaryP) data.push([])
 
         info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP, usd)
         data = data.concat(info.data)
-        data2.probi += info.probi
-        data2.fees += info.fees
+        data2.probi = data2.probi.plus(info.probi)
+        data2.fees = data2.fees.plus(info.fees)
         data.push([])
         if (!summaryP) data.push([])
       })
@@ -627,19 +674,19 @@ exports.workers = {
         data.push({
           publisher: 'TOTAL',
           altcurrency: data1.altcurrency,
-          probi: data1.probi,
-          fees: data1.fees,
-          'publisher USD': (data1.probi * usd).toFixed(currency.digits),
-          'processor USD': (data1.fees * usd).toFixed(currency.digits)
+          probi: data1.probi.toString(),
+          fees: data1.fees.toString(),
+          'publisher USD': data1.probi.times(usd).toFixed(currency.digits),
+          'processor USD': data1.fees.times(usd).toFixed(currency.digits)
         })
         if (!summaryP) data.push([])
         data.push({
           publisher: 'TOTAL',
           altcurrency: data2.altcurrency,
-          probi: data2.probi,
-          fees: data2.fees,
-          'publisher USD': (data2.probi * usd).toFixed(currency.digits),
-          'processor USD': (data2.fees * usd).toFixed(currency.digits)
+          probi: data2.probi.toString(),
+          fees: data2.fees.toString(),
+          'publisher USD': data2.probi.times(usd).toFixed(currency.digits),
+          'processor USD': data2.fees.times(usd).toFixed(currency.digits)
         })
       }
 
@@ -727,7 +774,7 @@ exports.workers = {
         }
       ])
       probi = {}
-      summary.forEach((entry) => { probi[entry._id] = entry.probi })
+      summary.forEach((entry) => { probi[entry._id] = new BigNumber(entry.probi.toString()) })
       summary = await settlements.aggregate([
         {
           $match:
@@ -745,14 +792,17 @@ exports.workers = {
         }
       ])
       summary.forEach((entry) => {
-        if (typeof probi[entry._id] !== 'undefined') probi[entry._id] -= entry.probi
+        if (typeof probi[entry._id] !== 'undefined') {
+          probi[entry._id] = new BigNumber(probi[entry._id].toString()).minus(entry.probi)
+        }
       })
 
       f = async (publisher) => {
         let datum, datum2, result
 
-        results[publisher].probi = probi[publisher] || 0
+        results[publisher].probi = probi[publisher] || new BigNumber(0)
         results[publisher].USD = runtime.currency.alt2fiat(altcurrency, results[publisher].probi, 'USD')
+        results[publisher].probi = results[publisher].probi.truncated().toString()
 
         if (results[publisher].history) {
           results[publisher].history = underscore.sortBy(results[publisher].history, (record) => {
@@ -899,6 +949,12 @@ exports.workers = {
       data = underscore.sortBy(await quanta(debug, runtime, undefined), 'created')
       results = []
       for (let quantum of data) {
+        quantum = underscore.extend(quantum, {
+          probi: new BigNumber(quantum.probi.toString()).truncated().toString(),
+          fee: quantum.fee.toString(),
+          inputs: quantum.inputs.toString(),
+          quantum: new BigNumber(quantum.quantum.toString()).truncated().toString()
+        })
         results.push(quantum)
         if (summaryP) continue
 
@@ -906,13 +962,14 @@ exports.workers = {
         slices.forEach((slice) => {
           let probi
 
+          slice.probi = new BigNumber(slice.probi.toString())
           if (publishers[slice.publisher]) {
-            probi = publishers[slice.publisher].probi
+            probi = new BigNumber(publishers[slice.publisher].probi.toString())
 
-            if (probi < slice.probi) slice.probi -= probi
+            if (probi.lessThan(slice.probi)) slice.probi = slice.probi.minus(probi)
             else {
-              probi -= slice.probi
-              if (probi > 0) publishers[slice.publisher].probi = probi
+              probi = probi.minus(slice.probi)
+              if (probi.greaterThan(0)) publishers[slice.publisher].probi = probi
               else delete publishers[slice.publisher]
 
               return
@@ -922,7 +979,7 @@ exports.workers = {
           results.push({
             surveyorId: slice.surveyorId,
             altcurrency: slice.altcurrency,
-            probi: slice.probi,
+            probi: slice.probi.truncated().toString(),
             publisher: slice.publisher,
             votes: slice.counts,
             created: new Date(parseInt(slice._id.toHexString().substring(0, 8), 16) * 1000).getTime(),
