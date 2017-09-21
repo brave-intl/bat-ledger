@@ -13,6 +13,7 @@ const boom = require('boom')
 const hapi = require('hapi')
 const inert = require('inert')
 const rateLimiter = require('hapi-rate-limiter')
+const Raven = require('raven')
 const SDebug = require('sdebug')
 const swagger = require('hapi-swagger')
 const underscore = require('underscore')
@@ -186,16 +187,27 @@ const Server = async (options, runtime) => {
   server.ext('onPreResponse', (request, reply) => {
     const response = request.response
 
-    if (process.env.NODE_ENV !== 'production' && response.isBoom) {
+    if (response.isBoom && response.output.statusCode >= 500) {
       const error = response
 
-      error.output.payload.message = error.message
-      if (error.body) {
-        error.output.payload.body = error.body
-      }
-      error.output.payload.stack = error.stack
+      if (runtime.config.sentry) {
+        Raven.captureException(error, {
+          request: {
+            method: request.method,
+            query_string: request.query,
+            url: url.format(runtime.config.server) + request.path
+          },
+          extra: { timestamp: request.info.received, id: request.id }
+        })
+      } else if (process.env.NODE_ENV === 'development') {
+        error.output.payload.message = error.message
+        if (error.body) {
+          error.output.payload.body = error.body
+        }
+        error.output.payload.stack = error.stack
 
-      return reply(error)
+        return reply(error)
+      }
     }
 
     if ((!response.isBoom) || (response.output.statusCode !== 401)) {
