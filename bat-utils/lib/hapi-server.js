@@ -188,9 +188,12 @@ const Server = async (options, runtime) => {
     const response = request.response
 
     if ((!response.isBoom) || response.output.statusCode >= 500) {
-      const error = response
+      var error = response
 
       if (runtime.config.sentry) {
+        if (!(error instanceof Error)) { // convert to error for sentry client
+          error = new Error(error)
+        }
         Raven.captureException(error, {
           request: {
             method: request.method,
@@ -199,8 +202,7 @@ const Server = async (options, runtime) => {
           },
           extra: { timestamp: request.info.received, id: request.id }
         })
-      }
-      if (response.isBoom && process.env.NODE_ENV === 'development') {
+      } else if (response.isBoom && process.env.NODE_ENV === 'development') {
         error.output.payload.message = error.message
         if (error.body) {
           error.output.payload.body = error.body
