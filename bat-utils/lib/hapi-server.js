@@ -187,7 +187,7 @@ const Server = async (options, runtime) => {
   server.ext('onPreResponse', (request, reply) => {
     const response = request.response
 
-    if (request.isBoom && runtime.config.sentry && request.response.statusCode >= 500) {
+    if (runtime.config.sentry && request.response.statusCode >= 500) {
       const error = response
 
       Raven.captureException(error, {
