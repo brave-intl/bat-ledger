@@ -187,29 +187,28 @@ const Server = async (options, runtime) => {
   server.ext('onPreResponse', (request, reply) => {
     const response = request.response
 
-    if (runtime.config.sentry && response.output.statusCode >= 500) {
+    if ((!response.isBoom) || response.output.statusCode >= 500) {
       const error = response
 
-      Raven.captureException(error, {
-        request: {
-          method: request.method,
-          query_string: request.query,
-          url: url.format(runtime.config.server) + request.path
-        },
-        extra: { timestamp: request.info.received, id: request.id }
-      })
-    }
-
-    if (process.env.NODE_ENV !== 'production' && response.isBoom) {
-      const error = response
-
-      error.output.payload.message = error.message
-      if (error.body) {
-        error.output.payload.body = error.body
+      if (runtime.config.sentry) {
+        Raven.captureException(error, {
+          request: {
+            method: request.method,
+            query_string: request.query,
+            url: url.format(runtime.config.server) + request.path
+          },
+          extra: { timestamp: request.info.received, id: request.id }
+        })
       }
-      error.output.payload.stack = error.stack
+      if (response.isBoom && process.env.NODE_ENV === 'development') {
+        error.output.payload.message = error.message
+        if (error.body) {
+          error.output.payload.body = error.body
+        }
+        error.output.payload.stack = error.stack
 
-      return reply(error)
+        return reply(error)
+      }
     }
 
     if ((!response.isBoom) || (response.output.statusCode !== 401)) {
