@@ -187,7 +187,7 @@ const Server = async (options, runtime) => {
   server.ext('onPreResponse', (request, reply) => {
     const response = request.response
 
-    if ((!response.isBoom) || response.output.statusCode >= 500) {
+    if (response.isBoom && response.output.statusCode >= 500) {
       const error = response
 
       if (runtime.config.sentry) {
@@ -199,8 +199,7 @@ const Server = async (options, runtime) => {
           },
           extra: { timestamp: request.info.received, id: request.id }
         })
-      }
-      if (response.isBoom && process.env.NODE_ENV === 'development') {
+      } else if (process.env.NODE_ENV === 'development') {
         error.output.payload.message = error.message
         if (error.body) {
           error.output.payload.body = error.body
