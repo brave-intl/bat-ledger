@@ -76,6 +76,10 @@ if (process.env.SLACK_WEBHOOK) {
   }
 }
 
+if (process.env.SENTRY_DSN) {
+  module.exports.sentry = { dsn: process.env.SENTRY_DSN }
+}
+
 if (process.env.GITHUB_ORG) {
   module.exports.login =
   { organization        : process.env.GITHUB_ORG

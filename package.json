@@ -73,6 +73,7 @@
     "node-anonize2-relic": "0.1.6",
     "node-slack": "0.0.7",
     "proxy-agent": "^2.1.0",
+    "raven": "^2.1.2",
     "redis": "2.8.0",
     "rsmq": "^0.8.2",
     "rsmq-worker": "^0.5.2",
