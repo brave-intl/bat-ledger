@@ -141,50 +141,26 @@ const WreckProxy = (server, opts) => {
 
 const WreckGet = async (server, opts) => {
   const params = WreckProxy(server, opts)
-
-  return new Promise((resolve, reject) => {
-    wreck.get(params.server, params.opts, (err, response, body) => {
-      if (err) return reject(err)
-
-      resolve(body)
-    })
-  })
+  const { res, payload } = await wreck.get(params.server, params.opts) // eslint-disable-line no-unused-vars
+  return payload
 }
 
 const WreckPost = async (server, opts) => {
   const params = WreckProxy(server, opts)
-
-  return new Promise((resolve, reject) => {
-    wreck.post(params.server, params.opts, (err, response, body) => {
-      if (err) return reject(err)
-
-      resolve(body)
-    })
-  })
+  const { res, payload } = await wreck.post(params.server, params.opts) // eslint-disable-line no-unused-vars
+  return payload
 }
 
 const WreckPut = async (server, opts) => {
   const params = WreckProxy(server, opts)
-
-  return new Promise((resolve, reject) => {
-    wreck.put(params.server, params.opts, (err, response, body) => {
-      if (err) return reject(err)
-
-      resolve(body)
-    })
-  })
+  const { res, payload } = await wreck.put(params.server, params.opts) // eslint-disable-line no-unused-vars
+  return payload
 }
 
 const WreckPatch = async (server, opts) => {
   const params = WreckProxy(server, opts)
-
-  return new Promise((resolve, reject) => {
-    wreck.patch(params.server, params.opts, (err, response, body) => {
-      if (err) return reject(err)
-
-      resolve(body)
-    })
-  })
+  const { res, payload } = await wreck.patch(params.server, params.opts) // eslint-disable-line no-unused-vars
+  return payload
 }
 
 exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut }
