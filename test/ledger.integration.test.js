@@ -25,7 +25,7 @@ function uint8tohex (arr) {
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 test('integration : v2 contribution workflow with mock BAT wallet', async t => {
-  const srv = { listener: process.env.LEDGER_SERVER || 'https://ledger-staging.brave.com' }
+  const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.brave.com' }
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
 
@@ -179,7 +179,7 @@ test('integration : v2 contribution workflow with mock BAT wallet', async t => {
 // FIXME assert has env vars set and is using uphold
 // NOTE this requires a contibution surveyor to have already been created
 test('integration : v2 contribution workflow with uphold BAT wallet', async t => {
-  const srv = { listener: process.env.LEDGER_SERVER || 'https://ledger-staging.brave.com' }
+  const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.brave.com' }
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
 
