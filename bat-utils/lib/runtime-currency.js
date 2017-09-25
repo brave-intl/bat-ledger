@@ -31,7 +31,8 @@ const Currency = function (config, runtime) {
   this.runtime = runtime
 
   this.informs = 0
-  this.warnings = 0
+  this.warning1s = 0
+  this.warning2s = 0
 
   this.fiats = {}
   this.rates = Currency.prototype.rates
@@ -108,9 +109,9 @@ const monitor = (config, runtime) => {
       console.log(ex.stack)
 
       now = underscore.now()
-      if (singleton.warnings > now) return
+      if (singleton.warning1s > now) return
 
-      singleton.warnings = now + (15 * msecs.minute)
+      singleton.warning1s = now + (15 * msecs.minute)
       return runtime.notify(debug, { text: 'monitor inkblot error: ' + ex.toString() })
     }
 
@@ -118,9 +119,9 @@ const monitor = (config, runtime) => {
       console.log(ex.stack)
 
       now = underscore.now()
-      if (singleton.warnings > now) return
+      if (singleton.warning1s > now) return
 
-      singleton.warnings = now + (15 * msecs.minute)
+      singleton.warning1s = now + (15 * msecs.minute)
       return runtime.notify(debug, { text: 'monitor rorschach error: ' + ex.toString() })
     }
   })
@@ -181,6 +182,10 @@ const altcoins = {
         result = await retrieve('https://apiv2.bitcoinaverage.com/indices/global/ticker/all?crypto=BTC',
                                 { headers: { 'x-signature': signature } }, schemaBTC1)
       } catch (ex) {
+        now = underscore.now()
+        if (singleton.warning2s > now) return
+
+        singleton.warning2s = now + (15 * msecs.minute)
         return runtime.notify(debug, { text: 'BTC.f retrieve error: ' + ex.toString() })
       }
 
@@ -202,9 +207,9 @@ const altcoins = {
         console.log(ex.stack)
 
         now = underscore.now()
-        if (singleton.warnings > now) return
+        if (singleton.warning1s > now) return
 
-        singleton.warnings = now + (15 * msecs.minute)
+        singleton.warning1s = now + (15 * msecs.minute)
         return runtime.notify(debug, { text: 'BTC.f rorschach error: ' + ex.toString() })
       }
     }
