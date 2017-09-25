@@ -9,6 +9,7 @@ services:
       - ledger
     environment:
       - "MONGODB_URI=mongodb://mongo/ledger"
+      - "NODE_ENV=development"
       - "REDIS_URL=redis:6379"
       - BAT_SETTLEMENT_ADDRESS
       - BITCOIN_AVERAGE_PUBLIC_KEY
@@ -33,7 +34,6 @@ services:
       - LEDGER_GITHUB_CLIENT_SECRET
       - LEDGER_SLACK_CHANNEL
       - LEDGER_SLACK_ICON_URL
-      - NODE_ENV
       - PUBLISHERS_TOKEN
       - PUBLISHERS_URL
       - SLACK_CHANNEL

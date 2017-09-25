@@ -158,12 +158,14 @@ const createPersona = function (runtime, apiVersion) {
     var validity = (Joi.validate(request.payload, requestSchema).error)
     if (validity.error) return reply(boom.badData(validity.error))
 
-    const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(request.payload.request.octets, 'utf8').digest('base64')
-    if (expectedDigest !== request.payload.request.headers.digest) return reply(boom.badData('the digest specified is not valid for the body provided'))
+    if (requestType === 'httpSignature') {
+      const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(request.payload.request.octets, 'utf8').digest('base64')
+      if (expectedDigest !== request.payload.request.headers.digest) return reply(boom.badData('the digest specified is not valid for the body provided'))
 
-    validity = verify({headers: request.payload.request.headers, publicKey: request.payload.request.body.publicKey}, { algorithm: 'ed25519' })
-    if (!validity.verified) {
-      return reply(boom.badData('wallet creation request failed validation, http signature was not valid'))
+      validity = verify({headers: request.payload.request.headers, publicKey: request.payload.request.body.publicKey}, { algorithm: 'ed25519' })
+      if (!validity.verified) {
+        return reply(boom.badData('wallet creation request failed validation, http signature was not valid'))
+      }
     }
 
     try {

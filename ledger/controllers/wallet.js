@@ -245,10 +245,12 @@ const write = function (runtime, apiVersion) {
     }
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
-    result = { paymentStamp: now, votes: votes, probi: result.probi, altcurrency: result.altcurrency }
+    var picked = ['votes', 'probi', 'altcurrency']
+    // BTC only
     if (result.hash) {
-      result.extend(result, { hash: result.hash })
+      picked.push('hash')
     }
+    result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
     if (apiVersion === 1) {
       reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))
     } else {
