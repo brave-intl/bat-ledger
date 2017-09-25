@@ -3,12 +3,14 @@ const crypto = require('crypto')
 const BigNumber = require('bignumber.js')
 const Client = require('signalr-client-forked').client
 const Joi = require('joi')
+const NodeCache = require('node-cache')
 const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
 const underscore = require('underscore')
 
 const braveHapi = require('./extras-hapi')
+const timeout = require('./extras-utils').timeout
 
 const fiats = [ 'USD', 'EUR', 'GBP' ]
 
@@ -31,8 +33,8 @@ const Currency = function (config, runtime) {
   this.runtime = runtime
 
   this.informs = 0
-  this.warning1s = 0
-  this.warning2s = 0
+  this.warnings = 0
+  this.cache = new NodeCache({ stdTTL: 10 * msecs.second })
 
   this.fiats = {}
   this.rates = Currency.prototype.rates
@@ -109,9 +111,9 @@ const monitor = (config, runtime) => {
       console.log(ex.stack)
 
       now = underscore.now()
-      if (singleton.warning1s > now) return
+      if (singleton.warnings > now) return
 
-      singleton.warning1s = now + (15 * msecs.minute)
+      singleton.warnings = now + (15 * msecs.minute)
       return runtime.notify(debug, { text: 'monitor inkblot error: ' + ex.toString() })
     }
 
@@ -119,9 +121,9 @@ const monitor = (config, runtime) => {
       console.log(ex.stack)
 
       now = underscore.now()
-      if (singleton.warning1s > now) return
+      if (singleton.warnings > now) return
 
-      singleton.warning1s = now + (15 * msecs.minute)
+      singleton.warnings = now + (15 * msecs.minute)
       return runtime.notify(debug, { text: 'monitor rorschach error: ' + ex.toString() })
     }
   })
@@ -182,10 +184,6 @@ const altcoins = {
         result = await retrieve('https://apiv2.bitcoinaverage.com/indices/global/ticker/all?crypto=BTC',
                                 { headers: { 'x-signature': signature } }, schemaBTC1)
       } catch (ex) {
-        now = underscore.now()
-        if (singleton.warning2s > now) return
-
-        singleton.warning2s = now + (15 * msecs.minute)
         return runtime.notify(debug, { text: 'BTC.f retrieve error: ' + ex.toString() })
       }
 
@@ -207,9 +205,9 @@ const altcoins = {
         console.log(ex.stack)
 
         now = underscore.now()
-        if (singleton.warning1s > now) return
+        if (singleton.warnings > now) return
 
-        singleton.warning1s = now + (15 * msecs.minute)
+        singleton.warnings = now + (15 * msecs.minute)
         return runtime.notify(debug, { text: 'BTC.f rorschach error: ' + ex.toString() })
       }
     }
@@ -238,6 +236,14 @@ const maintenance = async (config, runtime) => {
 const retrieve = async (url, props, schema) => {
   let result, validity
 
+  while (!singleton) {
+    await timeout(250)
+    singleton = singleton || null
+  }
+
+  result = await singleton.cache.get(url)
+  if (result) return result
+
   result = await braveHapi.wreck.get(url, props || {})
   if (Buffer.isBuffer(result)) result = result.toString()
 // courtesy of https://stackoverflow.com/questions/822452/strip-html-from-text-javascript#822464
@@ -247,6 +253,7 @@ const retrieve = async (url, props, schema) => {
   validity = schema ? Joi.validate(result, schema) : {}
   if (validity.error) throw new Error(validity.error)
 
+  singleton.cache.set(url, result)
   return result
 }
 
