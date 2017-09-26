@@ -90,7 +90,7 @@ const monitor = (config, runtime) => {
 
     if (validity.error) {
       retry()
-      return runtime.notify(debug, { text: 'monitor signalR error: ' + validity.error })
+      return runtime.captureException(validity.error)
     }
 
     data.Deltas.forEach((delta) => {
@@ -114,7 +114,7 @@ const monitor = (config, runtime) => {
       if (singleton.warnings > now) return
 
       singleton.warnings = now + (15 * msecs.minute)
-      return runtime.notify(debug, { text: 'monitor inkblot error: ' + ex.toString() })
+      return runtime.captureException(ex)
     }
 
     try { await rorschach(rates, tickers, config, runtime) } catch (ex) {
@@ -124,7 +124,7 @@ const monitor = (config, runtime) => {
       if (singleton.warnings > now) return
 
       singleton.warnings = now + (15 * msecs.minute)
-      return runtime.notify(debug, { text: 'monitor rorschach error: ' + ex.toString() })
+      return runtime.captureException(ex)
     }
   })
 
@@ -184,10 +184,7 @@ const altcoins = {
         result = await retrieve('https://apiv2.bitcoinaverage.com/indices/global/ticker/all?crypto=BTC',
                                 { headers: { 'x-signature': signature } }, schemaBTC1)
       } catch (ex) {
-/* TEMPORARY
-        return runtime.notify(debug, { text: 'BTC.f retrieve error: ' + ex.toString() })
-*/
-        return
+        return runtime.captureException(ex)
       }
 
       rates = {}
@@ -201,7 +198,7 @@ const altcoins = {
       })
       fiats.forEach((fiat) => { if (!rates[fiat]) unavailable.push(fiat) })
       if (unavailable.length > 0) {
-        return runtime.notify(debug, { text: 'BTC.f fiat error: ' + unavailable.join(', ') + ' unavailable' })
+        return runtime.captureException('BTC.f fiat error: ' + unavailable.join(', ') + ' unavailable')
       }
 
       try { await rorschach({ BTC: rates }, tickers, config, runtime) } catch (ex) {
@@ -211,7 +208,7 @@ const altcoins = {
         if (singleton.warnings > now) return
 
         singleton.warnings = now + (15 * msecs.minute)
-        return runtime.notify(debug, { text: 'BTC.f rorschach error: ' + ex.toString() })
+        return runtime.captureException(ex)
       }
     }
   },
@@ -226,7 +223,7 @@ const maintenance = async (config, runtime) => {
 
   try { tickers = await inkblot(config, runtime) } catch (ex) {
     console.log(ex.stack)
-    return runtime.notify(debug, { text: 'maintenance inkblot error: ' + ex.toString() })
+    return runtime.captureException(ex)
   }
 
   config.altcoins.forEach((altcoin) => {
@@ -285,11 +282,11 @@ const inkblot = async (config, runtime) => {
 
       if (config.allcoins.indexOf(src) === -1) return
 
-      if (!altcoins[src]) return runtime.notify(debug, { text: 'monitor ticker error: no entry for altcoins[' + src + ']' })
+      if (!altcoins[src]) return runtime.captureException('monitor ticker error: no entry for altcoins[' + src + ']')
 
       if (altcoins[src].id !== entry.id) return
 
-      if (validity.error) return runtime.notify(debug, { text: 'monitor ticker error: ' + validity.error })
+      if (validity.error) return runtime.captureException('monitor ticker error: ' + validity.error)
 
       underscore.keys(entry).forEach((key) => {
         const dst = key.substr(6).toUpperCase()

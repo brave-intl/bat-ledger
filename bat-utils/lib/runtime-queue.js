@@ -26,7 +26,7 @@ const Queue = function (config, runtime) {
     .on('disconnect', () => { debug('redis disconnect') })
     .on('error', (err) => {
       debug('redis error', err)
-      this.runtime.notify(debug, { text: 'redis error: ' + err.toString() })
+      this.runtime.captureException(err)
     })
 }
 
@@ -143,10 +143,14 @@ Queue.prototype.listen = function (name, callback) {
   }
   const worker = new RsmqWorker(name, options)
 
-  const oops = (message, err) => {
-    debug(message, err)
-    if (err) message += ', ' + err.toString()
-    this.runtime.notify(debug, { text: message })
+  const oops = (message, extra, err) => {
+    if (err) {
+      debug(err, JSON.stringify(extra))
+      this.runtime.captureException(err, { extra: extra })
+    } else {
+      debug(message, JSON.stringify(extra))
+      this.runtime.captureException(message, { extra: extra })
+    }
   }
 
   worker.on('message', (message, next, id) => {
@@ -167,9 +171,9 @@ Queue.prototype.listen = function (name, callback) {
     return next()
   })
 
-  worker.on('error', (err, msg) => { oops('redis error: id=' + msg.id, err) })
-    .on('exceeded', (msg) => { oops('redis exceeded: id=' + msg.id) })
-    .on('timeout', (msg) => { oops('redis timeout: id=' + msg.id + ' rc=' + msg.rc) })
+  worker.on('error', (err, msg) => { oops('redis error', { id: msg.id }, err) })
+    .on('exceeded', (msg) => { oops('redis exceeded', { id: msg.id }) })
+    .on('timeout', (msg) => { oops('redis timeout', { id: msg.id, rc: msg.rc }) })
 
   worker.start()
 }

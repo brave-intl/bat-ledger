@@ -18,6 +18,7 @@ const daily = async (debug, runtime) => {
     let payload, surveyor, validity
 
     try {
+      // FIXME capture these events w/ sentry
       validity = utilities.validate(surveyorType, entry.payload)
       if (validity.error) return debug('daily', 'unable to create surveyorType=' + surveyorType + ': ' + validity.error)
 

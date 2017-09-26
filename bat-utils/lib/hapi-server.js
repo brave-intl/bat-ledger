@@ -1,7 +1,6 @@
 const dns = require('dns')
 const os = require('os')
 const path = require('path')
-const url = require('url')
 
 const asyncHandler = require('hapi-async-handler')
 const authBearerToken = require('hapi-auth-bearer-token')
@@ -13,7 +12,6 @@ const boom = require('boom')
 const hapi = require('hapi')
 const inert = require('inert')
 const rateLimiter = require('hapi-rate-limiter')
-const Raven = require('raven')
 const SDebug = require('sdebug')
 const swagger = require('hapi-swagger')
 const underscore = require('underscore')
@@ -190,16 +188,8 @@ const Server = async (options, runtime) => {
     if (response.isBoom && response.output.statusCode >= 500) {
       const error = response
 
-      if (runtime.config.sentry) {
-        Raven.captureException(error, {
-          request: {
-            method: request.method,
-            query_string: request.query,
-            url: url.format(runtime.config.server) + request.path
-          },
-          extra: { timestamp: request.info.received, id: request.id }
-        })
-      } else if (process.env.NODE_ENV === 'development') {
+      runtime.captureException(error, { req: request })
+      if (process.env.NODE_ENV === 'development') {
         error.output.payload.message = error.message
         if (error.body) {
           error.output.payload.body = error.body
@@ -256,7 +246,10 @@ const Server = async (options, runtime) => {
     }
 
     if ((request.response.statusCode === 401) || (request.response.statusCode === 406)) {
-      runtime.notify(debug, { text: JSON.stringify(underscore.extend({ address: whitelist.ipaddr(request) }, params.request)) })
+      runtime.captureException(request.response._error || request.response.statusCode, {
+        req: request,
+        extra: { address: whitelist.ipaddr(request) }
+      })
     }
 
     logger.forEach((entry) => {
@@ -313,7 +306,7 @@ const Server = async (options, runtime) => {
     dns.setServers(resolvers)
     debug('webserver started',
           underscore.extend(
-            { server: url.format(runtime.config.server), version: server.version, resolvers: resolvers },
+            { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
             server.info,
             {
               env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ])

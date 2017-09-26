@@ -1,3 +1,4 @@
+const Raven = require('raven')
 const SlackJS = require('node-slack')
 const underscore = require('underscore')
 
@@ -10,11 +11,7 @@ const Slack = function (config, runtime) {
 
   this.slackjs = new SlackJS(runtime.config.slack.webhook)
 
-  const chainNotify = runtime.notify
   runtime.notify = (debug, payload) => {
-    if (chainNotify) {
-      chainNotify(debug, payload)
-    }
     const params = runtime.config.slack
 
     if (payload.text) debug('notify', { message: payload.text })
@@ -26,7 +23,10 @@ const Slack = function (config, runtime) {
       text: 'ping.'
     })
     this.slackjs.send(payload, (res, err, body) => {
-      if (err) debug('notify', err)
+      if (err) {
+        debug('notify', err)
+        Raven.captureException(err)
+      }
     })
   }
 }

@@ -194,7 +194,7 @@ const createPersona = function (runtime, apiVersion) {
       result = await runtime.wallet.create(requestType, requestBody)
       wallet = result.wallet
     } catch (ex) {
-      runtime.notify(debug, { text: 'wallet error: ' + ex.toString() })
+      runtime.captureException(ex, { req: request })
       debug('wallet error', JSON.stringify(ex))
       throw ex
     }
@@ -258,7 +258,8 @@ const createViewing = function (runtime) {
     if (surveyorIds.length !== viewing.count) {
       diagnostic = 'surveyorIds invalid found ' + surveyorIds.length + ', expecting ' + viewing.count +
                    ', surveyorId=' + viewing.surveyorId
-      runtime.notify(debug, { channel: '#devops-bot', text: 'viewing=' + uId + ': ' + diagnostic })
+      runtime.captureException(diagnostic, { req: request, extra: { viewing: uId } })
+
       const resp = boom.serverUnavailable(diagnostic)
       resp.output.headers['retry-after'] = '5'
       return reply(resp)

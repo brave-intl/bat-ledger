@@ -61,7 +61,7 @@ const daily = async (debug, runtime) => {
   try {
     await runtime.database.purgeSince(debug, runtime, midnight * 1000)
   } catch (ex) {
-    runtime.notify(debug, { text: 'daily error: ' + ex.toString() })
+    runtime.captureException(ex)
     debug('daily', ex)
   }
   tomorrow = new Date(now)
@@ -79,7 +79,7 @@ const hourly = async (debug, runtime) => {
   try {
     await mixer(debug, runtime, undefined, undefined)
   } catch (ex) {
-    runtime.notify(debug, { text: 'hourly error: ' + ex.toString() })
+    runtime.captureException(ex)
     debug('hourly', ex)
   }
   next = now + 60 * 60 * 1000
@@ -230,7 +230,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
 
       console.log('probi=' + probi.toString())
       console.log('slice=' + JSON.stringify(slice, null, 2))
-      process.exit(0)
+      process.exit(0) // ???
       state = {
         $set: {
           altcurrency: altcurrency,

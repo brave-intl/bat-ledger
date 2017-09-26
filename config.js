@@ -23,6 +23,7 @@ module.exports =
   { settlementAddress : { BTC: process.env.BITGO_SETTLEMENT_ADDRESS || '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ' 
                         , BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
   }}
+, sentry                : { dsn: process.env.SENTRY_DSN || false }
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -74,10 +75,6 @@ if (process.env.SLACK_WEBHOOK) {
   , channel             : process.env.SLACK_CHANNEL
   , icon_url            : process.env.SLACK_ICON_URL
   }
-}
-
-if (process.env.SENTRY_DSN) {
-  module.exports.sentry = { dsn: process.env.SENTRY_DSN }
 }
 
 if (process.env.GITHUB_ORG) {

@@ -156,7 +156,7 @@ v2.create =
     try {
       await publishers.insert(underscore.extend(payload, { timestamp: bson.Timestamp() }))
     } catch (ex) {
-      runtime.notify(debug, { text: 'publishers error: ' + ex.toString() })
+      runtime.captureException(ex, { req: request })
       debug('publishers error', ex)
       return reply(boom.badData(ex.toString()))
     }

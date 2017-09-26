@@ -192,7 +192,7 @@ const write = function (runtime, apiVersion) {
       runtime.wallet.validateTxSignature(info, wallet.unsignedTx, signedTx)
     } catch (ex) {
       debug('validateTxSignature', ex)
-      runtime.notify(debug, { channel: '#ledger-bot', text: 'validity check failed on paymentId ' + paymentId })
+      runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
       return reply(boom.badData(ex.toString()))
     }
 
@@ -210,11 +210,10 @@ const write = function (runtime, apiVersion) {
     if (votes > surveyor.surveyors.length) {
       state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
       debug('wallet', state)
+
       const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + surveyor.surveyors.length + ' surveyors, but needed ' + votes
-      runtime.notify(debug, {
-        channel: '#devops-bot',
-        text: errMsg
-      })
+      runtime.captureException(errMsg, { req: request })
+
       const resp = boom.serverUnavailable(errMsg)
       resp.output.headers['retry-after'] = '5'
       return reply(resp)

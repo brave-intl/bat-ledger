@@ -43,7 +43,7 @@ const Worker = async (options, runtime) => {
       await runtime.queue.create(queue)
       runtime.queue.listen(queue, async (err, debug, payload) => {
         if (err) {
-          runtime.notify(debug, { text: queue + ' listen error: ' + err.toString() })
+          runtime.captureException(err)
           return debug(queue + ' listen', err)
         }
 
