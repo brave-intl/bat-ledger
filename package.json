@@ -37,6 +37,7 @@
     "bat-utils": "file:./bat-utils",
     "bell": "8.7.0",
     "bignumber.js": "^4.0.4",
+    "bitcoinaverage": "0.1.4",
     "bitcoinjs-lib": "^3.2.0",
     "bitgo": "^4.4.3",
     "blipp": "2.3.0",

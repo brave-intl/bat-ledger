@@ -184,7 +184,10 @@ const altcoins = {
         result = await retrieve('https://apiv2.bitcoinaverage.com/indices/global/ticker/all?crypto=BTC',
                                 { headers: { 'x-signature': signature } }, schemaBTC1)
       } catch (ex) {
+/* TEMPORARY
         return runtime.notify(debug, { text: 'BTC.f retrieve error: ' + ex.toString() })
+*/
+        return
       }
 
       rates = {}
