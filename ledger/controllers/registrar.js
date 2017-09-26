@@ -187,7 +187,7 @@ const createPersona = function (runtime, apiVersion) {
     if (requestType === 'bitcoinMultisig') {
       host = request.headers.host
       prefix = ((host.indexOf('127.0.0.1') !== 0) && (host.indexOf('localhost') !== 0))
-                 ? ('https://' + host) : 'https://ledger-integration.brave.com'
+                 ? ('https://' + host) : 'ledger-staging.mercury.basicattentiontoken.org'
       requestBody = underscore.extend(requestBody, { 'prefix': prefix, 'label': paymentId })
     }
     try {
