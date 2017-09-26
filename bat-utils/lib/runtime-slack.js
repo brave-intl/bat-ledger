@@ -10,7 +10,11 @@ const Slack = function (config, runtime) {
 
   this.slackjs = new SlackJS(runtime.config.slack.webhook)
 
+  const chainNotify = runtime.notify
   runtime.notify = (debug, payload) => {
+    if (chainNotify) {
+      chainNotify(debug, payload)
+    }
     const params = runtime.config.slack
 
     if (payload.text) debug('notify', { message: payload.text })
