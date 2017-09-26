@@ -129,6 +129,7 @@ const quanta = async (debug, runtime, qid) => {
 
   query = {
     probi: { $gt: 0 },
+    votes: { $gt: 0 },
     altcurrency: { $eq: altcurrency }
   }
   if (qid) query._id = qid
