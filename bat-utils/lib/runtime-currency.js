@@ -34,7 +34,7 @@ const Currency = function (config, runtime) {
 
   this.informs = 0
   this.warnings = 0
-  this.cache = new NodeCache({ stdTTL: 10 * msecs.second })
+  this.cache = new NodeCache({ stdTTL: 1 * msecs.minute })
 
   this.fiats = {}
   this.rates = Currency.prototype.rates
