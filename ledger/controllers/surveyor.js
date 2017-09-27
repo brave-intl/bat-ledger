@@ -76,13 +76,12 @@ const enumerate = (runtime, surveyorType, payload) => {
   if (!probi) {
     underscore.keys(params.fee).forEach((currency) => {
       const amount = params.fee[currency]
-      if (probi) return
-      probi = runtime.currency.fiat2alt(currency, amount, params.altcurrency)
+
+      if (!probi) probi = runtime.currency.fiat2alt(currency, amount, params.altcurrency).toString()
     })
   }
   if (!probi) return
 
-  payload.adFree.probi = probi
   return payload
 }
 module.exports.enumerate = enumerate
