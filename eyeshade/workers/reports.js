@@ -226,11 +226,8 @@ const mixer = async (debug, runtime, publisher, qid) => {
         probi: probi,
         fees: fees
       })
-      if (probi.truncated().equals(new BigNumber(slice.probi).truncated())) continue
+      if ((slice.probi) && (probi.truncated().equals(new BigNumber(slice.probi).truncated()))) continue
 
-      console.log('probi=' + probi.toString())
-      console.log('slice=' + JSON.stringify(slice, null, 2))
-      process.exit(0) // ???
       state = {
         $set: {
           altcurrency: altcurrency,
