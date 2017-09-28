@@ -1,10 +1,21 @@
 const { URL } = require('url')
 
 const Raven = require('raven')
+const SDebug = require('sdebug')
 const underscore = require('underscore')
+
+const debug = new SDebug('sentry')
 
 const Sentry = function (config, runtime) {
   if (!(this instanceof Sentry)) return new Sentry(config, runtime)
+
+  if (!config.sentry.dsn) {
+    process.on('unhandledRejection', (ex) => {
+      console.log(ex.stack)
+
+      debug('sentry', ex)
+    })
+  }
 
   // NOTE If sentry dsn if falsey, events will be consumed without error
   //      with no attempt to send them

@@ -12,17 +12,19 @@ if (process.env.SERVICE === 'eyeshade') {
 }
 
 module.exports =
-{ altcurrency           : process.env.ALTCURRENCY || 'BTC'
+{ altcurrency           : process.env.ALTCURRENCY              || 'BAT'
 , database              :
-  { mongo               : process.env.MONGODB_URI          || 'localhost/test' }
+  { mongo               : process.env.MONGODB_URI              || 'localhost/test' }
 , queue                 :
-  { rsmq                : process.env.REDIS_URL            || 'localhost:6379' }
+  { rsmq                : process.env.REDIS_URL                || 'localhost:6379' }
 , currency              :
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',') : ['BAT', 'BTC', 'ETH'] }
 , wallet                : 
-  { settlementAddress : { BTC: process.env.BITGO_SETTLEMENT_ADDRESS || '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ' 
-                        , BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
-  }}
+  { settlementAddress   :
+    { BTC               : process.env.BITGO_SETTLEMENT_ADDRESS || '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ' 
+    , BAT               : process.env.BAT_SETTLEMENT_ADDRESS   || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
+    }
+  }
 , sentry                : { dsn: process.env.SENTRY_DSN || false }
 }
 

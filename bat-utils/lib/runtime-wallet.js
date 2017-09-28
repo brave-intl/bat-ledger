@@ -312,7 +312,7 @@ Wallet.providers.uphold = {
       // TODO This logic should be abstracted out into the PUT wallet payment endpoint
       // such that this takes desired directly
       const rate = this.currency.rates.BAT[currency.toUpperCase()]
-      var desired = new BigNumber(amount).times(this.currency.alt2scale(info.altcurrency)).dividedBy(rate.toFixed(15))
+      var desired = new BigNumber(amount).times(this.currency.alt2scale(info.altcurrency)).dividedBy(new BigNumber(rate.toString()))
       const minimum = desired.times(0.90)
 
       debug('unsignedTx', { balance: balance, desired: desired, minimum: minimum })
