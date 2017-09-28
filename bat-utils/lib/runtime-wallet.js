@@ -21,7 +21,7 @@ const Wallet = function (config, runtime) {
   this.config = config.wallet
   this.runtime = runtime
   if (config.wallet.bitgo) {
-    if (process.env.FIXIE_URL) process.env.BITGO_USE_PROXY = process.env.FIXIE_URL
+    if ((process.env.FIXIE_URL) && (!process.env.BITGO_USE_PROXY)) process.env.BITGO_USE_PROXY = process.env.FIXIE_URL
 
     this.bitgo = new bitgo.BitGo({
       accessToken: config.wallet.bitgo.accessToken,
