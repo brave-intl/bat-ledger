@@ -13,7 +13,7 @@ const Sentry = function (config, runtime) {
   }).install()
 
   runtime.captureException = (ex, optional) => {
-    if (optional.req) {
+    if (optional && optional.req) {
       const request = optional.req
       optional.req = { // If present rewrite the request into sentry format
         method: request.method,
