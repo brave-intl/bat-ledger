@@ -1,3 +1,4 @@
+const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const underscore = require('underscore')
 
@@ -121,12 +122,26 @@ const convertDB = async (debug, runtime) => {
   const voting = runtime.database.get('voting', debug)
   let entries
 
+  const satoshi2probi = (satoshi) => {
+    // let's say 1BAT = 0.25USD,    and 1BTC = 4000USD
+    // thus      1pbi = 0.25e-18USD and 1sat = 4e-5USD
+    // so        pbi/sat = 1.6e14
+
+    if (satoshi) return bson.Decimal128.fromString(new BigNumber(satoshi.toString()).times(1.6e14).truncated().toString())
+  }
+
   entries = await surveyors.find({ satoshis: { $exists: true } })
   entries.forEach(async (entry) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BTC', probi: bson.Decimal128.fromString(entry.satoshis.toString()) },
+      $set: {
+        altcurrency: 'BAT',
+        probi: satoshi2probi(entry.satoshis),
+        fee: satoshi2probi(entry.fee),
+        quantum: satoshi2probi(entry.quantum),
+        inputs: satoshi2probi(entry.inputs)
+      },
       $unset: { satoshis: '' }
     }
 
@@ -138,11 +153,7 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: {
-        altcurrency: 'BTC',
-        probi: bson.Decimal128.fromString(entry.satoshis.toString()),
-        fee: bson.Decimal128.fromString(entry.fee.toString())
-      },
+      $set: { altcurrency: 'BAT', probi: satoshi2probi(entry.satoshis), fee: satoshi2probi(entry.fee) },
       $unset: { satoshis: '' }
     }
 
@@ -154,7 +165,7 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BTC', probi: bson.Decimal128.fromString(entry.satoshis.toString()) },
+      $set: { altcurrency: 'BAT', probi: satoshi2probi(entry.satoshis) },
       $unset: { satoshis: '' }
     }
 
@@ -166,7 +177,7 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { provider: 'bitgo', altcurrency: 'BTC' },
+      $set: { provider: 'testing', altcurrency: 'BAT' },
       $unset: { legalFormURL: '' }
     }
 
@@ -189,11 +200,7 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: {
-        altcurrency: 'BTC',
-        probi: bson.Decimal128.fromString(entry.satoshis.toString()),
-        fees: bson.Decimal128.fromString(entry.fees.toString())
-      },
+      $set: { altcurrency: 'BAT', probi: satoshi2probi(entry.satoshis), fees: satoshi2probi(entry.fees) },
       $unset: { satoshis: '' }
     }
 
@@ -226,7 +233,7 @@ exports.workers = {
         }
 
       , addresses         : { BTC: '...', ... ]
-      , altcurrency       : 'BTC'
+      , altcurrency       : 'BAT'
       , httpSigningPubKey :
       }
     }

@@ -200,6 +200,13 @@ const mixer = async (debug, runtime, publisher, qid) => {
     const voting = runtime.database.get('voting', debug)
     let fees, probi, query, slices, state
 
+    // current is always defined
+    const equals = (previous, current) => {
+      if (!previous) return (!!current)
+
+      return previous.dividedBy(1e11).round().equals(current.dividedBy(1e11).round())
+    }
+
     query = { surveyorId: quantum.surveyorId, exclude: false }
     if (qid) query._id = qid
     slices = await voting.find(query)
@@ -226,7 +233,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
         probi: probi,
         fees: fees
       })
-      if ((slice.probi) && (probi.truncated().equals(new BigNumber(slice.probi).truncated()))) continue
+      if (equals(slice.probi && new BigNumber(slice.probi.toString()), probi)) continue
 
       state = {
         $set: {
@@ -495,16 +502,23 @@ exports.workers = {
           }
         ])
         previous.forEach((entry) => {
-          if (typeof publishers[entry._id] === 'undefined') return
+          const p = publishers[entry._id]
 
-          publishers[entry._id].probi.minus(entry.probi.toString())
-          publishers[entry._id].fees.minus(entry.fees.toString())
-          if (publishers[entry._id].fees.isNegative()) publishers[entry._id].fees = new BigNumber(0)
+          if (typeof p === 'undefined') return
+
+          p.probi = p.probi.minus(new BigNumber(entry.probi.toString()))
+          if (p.probi.isNegative()) {
+            delete publishers[entry._id]
+            return
+          }
+
+          p.fees = p.fees.minus(new BigNumber(entry.fees.toString()))
+          if (p.fees.isNegative()) p.fees = new BigNumber(0)
         })
       }
 
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
-      if (usd) usd = usd.toFixed(15)
+      if (usd) usd = new BigNumber(usd.toString())
       info = publisherContributions(runtime, publishers, authority, authorized, verified, format, reportId, summaryP,
                                     threshold, usd)
       data = info.data
@@ -562,7 +576,7 @@ exports.workers = {
       entries = publisher ? (await settlements.find({ publisher: publisher })) : (await settlements.find())
 
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
-      if (usd) usd = usd.toFixed(15)
+      if (usd) usd = new BigNumber(usd.toString())
       info = publisherSettlements(runtime, entries, format, summaryP, usd)
       data = info.data
 
@@ -645,7 +659,7 @@ exports.workers = {
 
 // TBD: use preferred fiat, if available
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
-      if (usd) usd = usd.toFixed(15)
+      if (usd) usd = new BigNumber(usd.toString())
       data = []
       data1 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
       data2 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
