@@ -23,6 +23,7 @@ module.exports = Joi.extend({
       params: { altcurrency: Joi.string().regex(/^[0-9A-Z]{2,}$/) },
 
       validate (params, value, state, options) {
+        // FIXME add LTC check
         if (params.altcurrency === 'BTC') {
           try { base58check.decode(value) } catch (err) {
             return this.createError('string.badBase58', { v: value }, state, options)
