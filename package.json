@@ -16,7 +16,8 @@
     "start-eyeshade-worker": "DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "test": "npm run test-security",
     "test-security": "nsp check",
-    "test-api": "ava test/*.api.test.js"
+    "test-api": "ava test/*.api.test.js",
+    "test-integration": "ava test/*.integration.test.js"
   },
   "repository": {
     "type": "git",
