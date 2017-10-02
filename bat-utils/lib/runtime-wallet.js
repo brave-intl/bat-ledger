@@ -29,6 +29,8 @@ const Wallet = function (config, runtime) {
     })
   }
   if (config.wallet.uphold) {
+    if ((process.env.FIXIE_URL) && (!process.env.HTTPS_PROXY)) process.env.HTTPS_PROXY = process.env.FIXIE_URL
+
     const upholdBaseUrls = {
       'prod': 'https://api.uphold.com',
       'sandbox': 'https://api-sandbox.uphold.com'
