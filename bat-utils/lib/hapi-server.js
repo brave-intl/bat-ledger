@@ -240,7 +240,7 @@ const Server = async (options, runtime) => {
         id: request.id,
         method: request.method.toUpperCase(),
         pathname: request.url.pathname,
-        statffffusCode: request.response.statusCode
+        statusCode: request.response.statusCode
       },
       headers: request.response.headers,
       error: braveHapi.error.inspect(request.response._error)
