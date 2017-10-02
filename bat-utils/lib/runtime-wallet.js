@@ -282,10 +282,13 @@ Wallet.providers.uphold = {
         const wallet = await this.uphold.api('/me/cards', ({ body: request.octets, method: 'post', headers: request.headers }))
         const ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
         const btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
+        const ltcAddr = await this.uphold.createCardAddress(wallet.id, 'litecoin')
         return { 'wallet': { 'addresses': {
           'BAT': ethAddr.id,
           'BTC': btcAddr.id,
-          'CARD_ID': wallet.id
+          'CARD_ID': wallet.id,
+          'ETH': ethAddr.id,
+          'LTC': ltcAddr.id
         },
           'provider': 'uphold',
           'providerId': wallet.id,
