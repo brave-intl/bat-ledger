@@ -141,6 +141,8 @@ v1.settlement = {
    POST /v2/publishers/settlement/{hash}
  */
 
+const txHexRegExp = /^(0x)?[A-Fa-f0-9]+$/
+
 v2.settlement = {
   handler: (runtime) => {
     return async (request, reply) => {
@@ -149,6 +151,8 @@ v2.settlement = {
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
       let state, validity
+
+      if (!hash) for (let entry of payload) if (!entry.hash) return reply(boom.badData('missing hash for ' + entry.publisher))
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -162,7 +166,9 @@ v2.settlement = {
 
         entry.probi = bson.Decimal128.fromString(entry.probi.toString())
         if (entry.fees) entry.fees = bson.Decimal128.fromString(entry.fees.toString())
-        underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees' ]))
+        if (!entry.hash) entry.hash = hash
+        state.$set = underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees', 'hash' ])
+
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
 
@@ -180,13 +186,14 @@ v2.settlement = {
   tags: [ 'api' ],
 
   validate: {
-    params: { hash: Joi.string().hex().required().description('transaction hash') },
+    params: { hash: Joi.string().regex(txHexRegExp).optional().description('transaction hash') },
     payload: Joi.array().min(1).items(Joi.object().keys({
       publisher: braveJoi.string().publisher().required().description('the publisher identity'),
       address: Joi.string().required().description('altcurrency address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),
-      transactionId: Joi.string().guid().description('the transactionId')
+      transactionId: Joi.string().guid().description('the transactionId'),
+      hash: Joi.string().regex(txHexRegExp).optional().description('transaction hash')
     }).unknown(true)).required().description('publisher settlement report')
   },
 

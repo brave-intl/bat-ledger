@@ -233,13 +233,14 @@ const Server = async (options, runtime) => {
 
     debug('begin', { sdebug: params })
   }).on('response', (request) => {
+    if (!request.response) request.response = {}
     const logger = request._logger || []
     const params = {
       request: {
         id: request.id,
         method: request.method.toUpperCase(),
         pathname: request.url.pathname,
-        statusCode: request.response.statusCode
+        statffffusCode: request.response.statusCode
       },
       headers: request.response.headers,
       error: braveHapi.error.inspect(request.response._error)
