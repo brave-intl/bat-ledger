@@ -21,9 +21,7 @@ module.exports =
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',') : ['BAT', 'BTC', 'ETH'] }
 , wallet                : 
   { settlementAddress   :
-    { BTC               : process.env.BITGO_SETTLEMENT_ADDRESS || '3LtXRxKXfu76CHXMCvWmeBWek3xsTembRZ' 
-    , BAT               : process.env.BAT_SETTLEMENT_ADDRESS   || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
-    }
+    { BAT               : process.env.BAT_SETTLEMENT_ADDRESS   || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
   }
 , sentry                : { dsn: process.env.SENTRY_DSN || false }
 }
@@ -48,14 +46,6 @@ if (process.env.SERVICE !== 'eyeshade') {
     , clientId          : process.env.UPHOLD_CLIENT_ID     || 'none'
     , clientSecret      : process.env.UPHOLD_CLIENT_SECRET || 'none'
     , environment       : process.env.UPHOLD_ENVIRONMENT   || 'sandbox'
-    }
-  }
-  if (process.env.BITGO_TOKEN) {
-    module.exports.wallet.bitgo =
-    { accessToken       : process.env.BITGO_TOKEN
-    , enterpriseId      : process.env.BITGO_ENTERPRISE_ID
-    , environment       : process.env.BITGO_ENVIRONMENT
-    , unspendableXpub   : process.env.BITGO_UNSPENDABLE_XPUB
     }
   }
   if (process.env.COINBASE_WIDGET_CODE) {

@@ -2,14 +2,12 @@ const BigNumber = require('bignumber.js')
 const SDebug = require('sdebug')
 const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const bitcoinjs = require('bitcoinjs-lib')
-const bitgo = require('bitgo')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
 
 const braveHapi = require('./extras-hapi')
 const Currency = require('./runtime-currency')
-const timeout = require('./extras-utils').timeout
 
 const debug = new SDebug('wallet')
 
@@ -20,14 +18,6 @@ const Wallet = function (config, runtime) {
 
   this.config = config.wallet
   this.runtime = runtime
-  if (config.wallet.bitgo) {
-    if ((process.env.FIXIE_URL) && (!process.env.BITGO_USE_PROXY)) process.env.BITGO_USE_PROXY = process.env.FIXIE_URL
-
-    this.bitgo = new bitgo.BitGo({
-      accessToken: config.wallet.bitgo.accessToken,
-      env: config.wallet.bitgo.environment || 'prod'
-    })
-  }
   if (config.wallet.uphold) {
     if ((process.env.FIXIE_URL) && (!process.env.HTTPS_PROXY)) process.env.HTTPS_PROXY = process.env.FIXIE_URL
 
@@ -56,9 +46,6 @@ Wallet.prototype.create = async function (requestType, request) {
   let f = Wallet.providers.mock.create
   if (this.config.uphold) {
     f = Wallet.providers.uphold.create
-  }
-  if (this.config.bitgo && requestType === 'bitcoinMultisig') {
-    f = Wallet.providers.bitgo.create
   }
   if (!f) return {}
   return f.bind(this)(requestType, request)
@@ -142,137 +129,6 @@ Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
 }
 
 Wallet.providers = {}
-
-Wallet.providers.bitgo = {
-  create: async function (requestType, request) {
-    if (requestType !== 'bitcoinMultisig') {
-      throw new Error('provider bitgo create requestType ' + requestType + ' not supported')
-    }
-    const prefix = request['prefix']
-    const label = request['label']
-    const keychains = request['keychains']
-    const xpubs = []
-    let result
-
-    xpubs[0] = underscore.pick(await this.bitgo.keychains().add(underscore.extend({ label: 'user' }, keychains.user)), [ 'xpub' ])
-    xpubs[1] = underscore.pick(await this.bitgo.keychains().add({
-      label: 'unspendable',
-      xpub: this.config.bitgo.unspendableXpub
-    }), [ 'xpub' ])
-    xpubs[2] = underscore.pick(await this.bitgo.keychains().createBitGo({}), [ 'xpub' ])
-
-    result = await this.bitgo.wallets().add({
-      label: label,
-      m: 2,
-      n: 3,
-      keychains: xpubs,
-      enterprise: this.config.bitgo.enterpriseId,
-      disableTransactionNotifications: true
-    })
-    result.wallet.provider = 'bitgo'
-    result.wallet.altcurrency = 'BTC'
-
-    result.addWebhook({ url: prefix + '/callbacks/bitgo/sink', type: 'transaction', numConfirmations: 1 }, function (err) {
-      if (err) debug('wallet addWebhook', { label: label, message: err.toString() })
-
-      result.setPolicyRule({
-        id: 'com.brave.limit.velocity.30d',
-        type: 'velocityLimit',
-        condition: {
-          type: 'velocity',
-          amount: 7000000,
-          timeWindow: 30 * 86400,
-          groupTags: [],
-          excludeTags: []
-        },
-        action: { type: 'deny' }
-      }, function (err) {
-        if (err) debug('wallet setPolicyRule com.brave.limit.velocity.30d', { label: label, message: err.toString() })
-      })
-    })
-
-    result.addresses = {'BTC': result.id}
-
-    return result
-  },
-  balances: async function (info) {
-    const wallet = await this.bitgo.wallets().get({ type: 'bitcoin', id: info.address })
-
-    return {
-      balance: wallet.balance(),
-      spendable: wallet.spendableBalance(),
-      confirmed: wallet.confirmedBalance(),
-      unconfirmed: wallet.unconfirmedReceives()
-    }
-  },
-
-  submitTx: async function (info, unsignedTx, signedTx) {
-    const wallet = await this.bitgo.wallets().get({ type: 'bitcoin', id: info.address })
-    let details, result
-
-    result = await wallet.sendTransaction({ tx: signedTx })
-
-    for (let i = 0; i < 5; i++) {
-      try {
-        details = await this.bitgo.blockchain().getTransaction({ id: result.hash })
-        break
-      } catch (ex) {
-        debug('getTransaction', ex)
-        await timeout(1 * 1000)
-        debug('getTransaction', { retry: i + 1, max: 5 })
-      }
-    }
-    underscore.extend(result, { fee: details.fee.toString() })
-
-    for (let i = details.outputs.length - 1; i >= 0; i--) {
-      if (details.outputs[i].account !== this.config.settlementAddress['BTC']) continue
-
-      underscore.extend(result, { address: details.outputs[i].account, satoshis: details.outputs[i].value })
-      break
-    }
-
-    return result
-  },
-
-  unsignedTx: async function (info, amount, currency, balance) {
-    balance = Number(balance)
-    const rate = this.currency.rates.BTC[currency.toUpperCase()]
-
-    if (!rate) throw new Error('no such currency: ' + currency)
-
-    const estimate = await this.bitgo.estimateFee({ numBlocks: 6 })
-    const recipients = {}
-    let desired, minimum, transaction, wallet
-    let fee = estimate.feePerKb
-
-    desired = (amount / rate) * 1e8
-    minimum = Math.floor(desired * 0.90)
-    desired = Math.round(desired)
-    debug('unsignedTx', { balance: balance, desired: desired, minimum: minimum })
-    if (minimum > balance) return
-
-    if (desired > balance) desired = balance
-
-    wallet = await this.bitgo.wallets().get({ type: 'bitcoin', id: info.address })
-    for (let i = 0; i < 2; i++) {
-      recipients[this.config.settlementAddress['BTC']] = desired - fee
-
-      try {
-        transaction = await wallet.createTransaction({ recipients: recipients, feeRate: estimate.feePerKb })
-        debug('unsignedTx', { satoshis: desired, estimate: fee, actual: transaction.fee })
-      } catch (ex) {
-        debug('createTransaction', ex)
-        return
-      }
-      if (fee <= transaction.fee) break
-
-      fee = transaction.fee
-    }
-
-    return underscore.extend(underscore.pick(transaction, [ 'transactionHex', 'unspents', 'fee' ]),
-                             { xpub: transaction.walletKeychains[0].xpub })
-  }
-}
 
 Wallet.providers.uphold = {
   create: async function (requestType, request) {
@@ -397,8 +253,7 @@ Wallet.providers.mock = {
       if (altcurrency === 'BAT') {
         // TODO generate random addresses?
         return { 'wallet': { 'addresses': {
-          'BAT': this.config.settlementAddress['BAT'],
-          'BTC': this.config.settlementAddress['BTC']
+          'BAT': this.config.settlementAddress['BAT']
         },
           'provider': 'mockHttpSignature',
           'httpSigningPubKey': request.body.publicKey,
