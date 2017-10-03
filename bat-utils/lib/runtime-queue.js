@@ -12,7 +12,7 @@ bluebird.promisifyAll(redis.Multi.prototype)
 const Queue = function (config, runtime) {
   if (!(this instanceof Queue)) return new Queue(config, runtime)
 
-  if (!config.queue) throw new Error('config.queue undefined')
+  if (!config.queue) return
 
   if (config.queue.rsmq) config.queue = config.queue.rsmq
   if (typeof config.queue === 'string') {

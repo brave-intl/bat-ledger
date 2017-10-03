@@ -1,4 +1,4 @@
-version: "2"
+version: "2.1"
 
 networks:
   ledger:
@@ -26,6 +26,8 @@ services:
     depends_on:
       - mongo
       - redis
+    networks:
+      - ledger
   eyeshade-web:
     container_name: ledger-eyeshade-web
     ports:
@@ -39,6 +41,8 @@ services:
     depends_on:
       - mongo
       - redis
+    networks:
+      - ledger
   ledger-worker:
     container_name: ledger-worker
     command: "npm run start-ledger-worker"
@@ -48,6 +52,8 @@ services:
     depends_on:
       - mongo
       - redis
+    networks:
+      - ledger
   ledger-web:
     container_name: ledger-web
     ports:
@@ -59,3 +65,17 @@ services:
     depends_on:
       - mongo
       - redis
+    networks:
+      - ledger
+  balance-web:
+    container_name: balance-web
+    ports:
+      - "3003:3003"
+    command: "npm run start-balance"
+    extends:
+      file: base.yml
+      service: ledger
+    depends_on:
+      - redis
+    networks:
+      - ledger

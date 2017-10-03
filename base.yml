@@ -1,16 +1,14 @@
-version: "2"
+version: "2.1"
 
 services:
   ledger:
     image: bat-ledger
     build: .
     restart: always
-    networks:
-      - ledger
     environment:
-      - "MONGODB_URI=mongodb://mongo/ledger"
-      - "NODE_ENV=development"
-      - "REDIS_URL=redis:6379"
+      - "MONGODB_URI=${MONGODB_URI-mongodb://mongo}"
+      - "NODE_ENV=${NODE_ENV-development}"
+      - "REDIS_URL=${REDIS_URL-redis:6379}"
       - BAT_SETTLEMENT_ADDRESS
       - BITCOIN_AVERAGE_PUBLIC_KEY
       - BITCOIN_AVERAGE_SECRET_KEY
@@ -29,8 +27,10 @@ services:
       - LEDGER_GITHUB_CLIENT_SECRET
       - LEDGER_SLACK_CHANNEL
       - LEDGER_SLACK_ICON_URL
+      - PORT
       - PUBLISHERS_TOKEN
       - PUBLISHERS_URL
+      - SENTRY_DSN
       - SLACK_CHANNEL
       - SLACK_ICON_URL
       - SLACK_WEBHOOK

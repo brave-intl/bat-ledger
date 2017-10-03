@@ -10,7 +10,7 @@ const underscore = require('underscore')
 const Database = function (config, runtime) {
   if (!(this instanceof Database)) return new Database(config, runtime)
 
-  if (!config.database) throw new Error('config.database undefined')
+  if (!config.database) return
 
   if (config.database.mongo) config.database = config.database.mongo
   this.config = config.database

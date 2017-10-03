@@ -1,10 +1,15 @@
 const perServiceEnvs = ['MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL']
-if (process.env.SERVICE === 'eyeshade') {
+if (process.env.SERVICE === 'balance') {
+  process.env.PORT = process.env.PORT || 3003
+  perServiceEnvs.forEach(function(baseEnv) {
+    process.env[baseEnv] = process.env[baseEnv] || process.env['BALANCE_' + baseEnv]
+  })
+} else if (process.env.SERVICE === 'eyeshade') {
   process.env.PORT = process.env.PORT || 3002
   perServiceEnvs.forEach(function(baseEnv) {
     process.env[baseEnv] = process.env[baseEnv] || process.env['EYESHADE_' + baseEnv]
   })
-} else {
+} else if (process.env.SERVICE === 'eyeshade') {
   process.env.PORT = process.env.PORT || 3001
   perServiceEnvs.forEach(function(baseEnv) {
     process.env[baseEnv] = process.env[baseEnv] || process.env['LEDGER_' + baseEnv]
@@ -15,6 +20,8 @@ module.exports =
 { altcurrency           : process.env.ALTCURRENCY              || 'BAT'
 , database              :
   { mongo               : process.env.MONGODB_URI              || 'localhost/test' }
+, cache              :
+  { redis               : process.env.REDIS_URL ? 'redis://' + process.env.REDIS_URL : 'redis://localhost:6379' }
 , queue                 :
   { rsmq                : process.env.REDIS_URL                || 'localhost:6379' }
 , currency              :

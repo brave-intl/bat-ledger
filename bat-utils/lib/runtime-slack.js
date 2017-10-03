@@ -23,7 +23,7 @@ const Slack = function (config, runtime) {
       text: 'ping.'
     })
     this.slackjs.send(payload, (res, err, body) => {
-      if (err) {
+      if (err && err !== 'ok') { // seriously
         debug('notify', err)
         Raven.captureException(err)
       }

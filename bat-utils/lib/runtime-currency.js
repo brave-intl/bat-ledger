@@ -25,7 +25,7 @@ let singleton
 const Currency = function (config, runtime) {
   if (!(this instanceof Currency)) return new Currency(config, runtime)
 
-  if (!config.currency) throw new Error('config.currency undefined')
+  if (!config.currency || config.currency.static) return
 
   this.config = config.currency
   this.runtime = runtime
@@ -512,7 +512,7 @@ Currency.prototype.fiat2alt = function (currency, amount, altcurrency) {
 module.exports = function (config, runtime) {
   if (!singleton) {
     singleton = new Currency(config, runtime)
-    singleton.init()
+    if (!config.currency.static) singleton.init()
   }
 
   return singleton

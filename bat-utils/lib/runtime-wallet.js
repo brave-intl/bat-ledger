@@ -14,7 +14,7 @@ const debug = new SDebug('wallet')
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
 
-  if (!config.wallet) throw new Error('config.wallet undefined')
+  if (!config.wallet) return
 
   this.config = config.wallet
   this.runtime = runtime
@@ -38,8 +38,9 @@ const Wallet = function (config, runtime) {
     }
   }
 
-  if (!config.currency) config.currency = underscore.extend({ altcoins: [ 'BTC' ] }, this.config)
+  if (config.currency) {
   this.currency = new Currency(config, runtime)
+  }
 }
 
 Wallet.prototype.create = async function (requestType, request) {
