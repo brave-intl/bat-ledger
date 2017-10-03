@@ -232,6 +232,11 @@ const monitor2 = (altcoin, config, runtime) => {
 
           error: () => {
             debug('monitor2', underscore.defaults({ type: type, tag: tag }, data))
+            if (data.reason) {
+              runtime.captureException(data.reason, { extra: underscore.defaults({ type: type, tag: tag }, data) })
+            } else {
+              runtime.captureException(underscore.defaults({ type: type, tag: tag }, data))
+            }
             setTimeout(() => { pairing(symbol) }, (c2s[data.code] || 600) * msecs.second)
           },
 

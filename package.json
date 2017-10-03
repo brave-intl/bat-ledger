@@ -17,7 +17,8 @@
     "test": "npm run test-security",
     "test-security": "nsp check",
     "test-api": "ava test/*.api.test.js",
-    "test-integration": "ava test/*.integration.test.js"
+    "test-integration": "ava test/*.integration.test.js",
+    "test-transition": "ava test/*.transition.test.js"
   },
   "repository": {
     "type": "git",

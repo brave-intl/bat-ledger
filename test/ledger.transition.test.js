@@ -28,10 +28,8 @@ function uint8tohex (arr) {
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 test('transition', async t => {
-  // const btcSrv = { listener: process.env.LEDGER_SERVER || 'https://ledger-staging.brave.com' }
-  const btcSrv = { listener: process.env.LEDGER_SERVER || 'http://127.0.0.1:3001' }
-  // const batSrv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.basicattentiontoken.org' }
-  const batSrv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.brave.com' }
+  const btcSrv = { listener: process.env.LEDGER_SERVER || 'https://ledger-staging.brave.com' }
+  const batSrv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
   const personaId = uuid.v4().toLowerCase()
 
   var response = await request(btcSrv.listener).get('/v1/registrar/persona').expect(ok)
@@ -52,6 +50,7 @@ test('transition', async t => {
   const bitgoAddr = response.body.wallet.address
 
   console.log('btcPaymentId: ' + btcPaymentId)
+  console.log('bitgoAddr: ' + bitgoAddr)
 
   response = await request(batSrv.listener).get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
