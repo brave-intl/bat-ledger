@@ -25,7 +25,7 @@ v1.login = {
 
         credentials.scope = []
         data.data.forEach(team => {
-          if (team.organization.login === runtime.login.organization) credentials.scope.push(team.name)
+          if (team.organization.login === runtime.login.github.organization) credentials.scope.push(team.name)
         })
         if (credentials.scope.length === 0) {
           debug('failed ' + credentials.provider + ' ' + credentials.profile.email)
@@ -35,7 +35,7 @@ v1.login = {
         debug('login  ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope))
 
         request.cookieAuth.set(credentials)
-        reply.redirect(runtime.login.world)
+        reply.redirect(runtime.login.github.world)
       })
     }
   },
@@ -69,7 +69,7 @@ v1.logout = {
       }
 
       request.cookieAuth.clear()
-      reply.redirect(runtime.login.bye)
+      reply.redirect(runtime.login.github.bye)
     }
   },
 
