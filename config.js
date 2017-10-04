@@ -21,9 +21,9 @@ module.exports =
 , database              :
   { mongo               : process.env.MONGODB_URI              || 'localhost/test' }
 , cache              :
-  { redis               : process.env.REDIS_URL ? 'redis://' + process.env.REDIS_URL : 'redis://localhost:6379' }
+  { redis               : process.env.REDIS_URL                || 'redis://localhost:6379' }
 , queue                 :
-  { rsmq                : process.env.REDIS_URL                || 'localhost:6379' }
+  { rsmq                : process.env.REDIS_URL                || 'redis://localhost:6379' }
 , currency              :
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',') : ['BAT', 'BTC', 'ETH'] }
 , wallet                : 

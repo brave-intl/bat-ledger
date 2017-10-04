@@ -8,7 +8,7 @@ services:
     environment:
       - "MONGODB_URI=${MONGODB_URI-mongodb://mongo}"
       - "NODE_ENV=${NODE_ENV-development}"
-      - "REDIS_URL=${REDIS_URL-redis:6379}"
+      - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
       - BAT_SETTLEMENT_ADDRESS
       - BITCOIN_AVERAGE_PUBLIC_KEY
       - BITCOIN_AVERAGE_SECRET_KEY
