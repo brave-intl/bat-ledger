@@ -30,16 +30,17 @@ const Wallet = function (config, runtime) {
       clientId: this.config.uphold.clientId,
       clientSecret: this.config.uphold.clientSecret
     })
-    if (this.config.uphold.environment === 'sandbox') {
+    // FIXME
+    // if (this.config.uphold.environment === 'sandbox') {
       // have to do some hacky shit to use a personal access token
-      this.uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
-    } else {
-      this.uphold.authorize() // ?
-    }
+    this.uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
+    // } else {
+      // this.uphold.authorize() // ?
+    // }
   }
 
   if (config.currency) {
-  this.currency = new Currency(config, runtime)
+    this.currency = new Currency(config, runtime)
   }
 }
 
