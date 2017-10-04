@@ -31,6 +31,7 @@ module.exports =
     { BAT               : process.env.BAT_SETTLEMENT_ADDRESS   || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
   }
 , sentry                : { dsn: process.env.SENTRY_DSN || false }
+, login                 : { github: false }
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -77,7 +78,7 @@ if (process.env.SLACK_WEBHOOK) {
 }
 
 if (process.env.GITHUB_ORG) {
-  module.exports.login =
+  module.exports.login.github =
   { organization        : process.env.GITHUB_ORG
   , world               : process.env.GITHUB_LOGIN_WORLD || '/documentation'
   , bye                 : process.env.GITHUB_LOGIN_BYE || 'https://example.com'

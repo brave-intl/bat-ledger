@@ -18,7 +18,6 @@ const v2 = {}
 v2.balance =
 { handler: (runtime) => {
   return async (request, reply) => {
-    const altcurrency = 'BAT'
     const cardId = request.params.cardId
     let fresh = false
     let expireIn = 60 // 1 minute
@@ -38,13 +37,16 @@ v2.balance =
       fresh = true
     }
 
+    const altcurrency = cardInfo.currency
     const balanceProbi = new BigNumber(cardInfo.balance).times(runtime.currency.alt2scale(altcurrency))
     const spendableProbi = new BigNumber(cardInfo.available).times(runtime.currency.alt2scale(altcurrency))
 
     const balances = {
+      altcurrency: altcurrency,
       probi: spendableProbi.toString(),
       balance: spendableProbi.dividedBy(runtime.currency.alt2scale(altcurrency)).toFixed(4),
-      unconfirmed: balanceProbi.minus(spendableProbi).dividedBy(runtime.currency.alt2scale(altcurrency)).toFixed(4)
+      unconfirmed: balanceProbi.minus(spendableProbi).dividedBy(runtime.currency.alt2scale(altcurrency)).toFixed(4),
+      rates: runtime.currency.rates[altcurrency]
     }
 
     reply(balances)
@@ -66,6 +68,7 @@ v2.balance =
 
   response: {
     schema: Joi.object().keys({
+      altcurrency: Joi.string().required().description('the wallet currency'),
       balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
       unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
       rates: Joi.object().optional().description('current exchange rates to various currencies'),

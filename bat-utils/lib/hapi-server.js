@@ -111,43 +111,46 @@ const Server = async (options, runtime) => {
     debug('extensions registered')
 
     if (runtime.login) {
-      server.auth.strategy('github', 'bell', {
-        provider: 'github',
-        password: cryptiles.randomString(64),
-        clientId: runtime.login.clientId,
-        clientSecret: runtime.login.clientSecret,
-        isSecure: runtime.login.isSecure,
-        forceHttps: runtime.login.isSecure,
-        scope: ['user:email', 'read:org']
-      })
-      debug('github authentication: forceHttps=' + runtime.login.isSecure)
+      if (runtime.login.github) {
+        server.auth.strategy('github', 'bell', {
+          provider: 'github',
+          password: cryptiles.randomString(64),
+          clientId: runtime.login.github.clientId,
+          clientSecret: runtime.login.github.clientSecret,
+          isSecure: runtime.login.github.isSecure,
+          forceHttps: runtime.login.github.isSecure,
+          scope: ['user:email', 'read:org']
+        })
 
-      server.auth.strategy('session', 'cookie', {
-        password: runtime.login.ironKey,
-        cookie: 'sid',
-        isSecure: runtime.login.isSecure
-      })
-      debug('session authentication strategy via cookie')
-    } else {
-      debug('github authentication disabled')
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('github authentication was not enabled yet we are in production mode')
-      }
+        debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
 
-      const bearerAccessTokenConfig = {
-        allowQueryToken: true,
-        allowMultipleHeaders: false,
-        validateFunc: (token, callback) => {
-          const tokenlist = process.env.TOKEN_LIST && process.env.TOKEN_LIST.split(',')
-          callback(null, ((!tokenlist) || (tokenlist.indexOf(token) !== -1)), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
+        server.auth.strategy('session', 'cookie', {
+          password: runtime.login.github.ironKey,
+          cookie: 'sid',
+          isSecure: runtime.login.github.isSecure
+        })
+        debug('session authentication strategy via cookie')
+      } else {
+        debug('github authentication disabled')
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('github authentication was not enabled yet we are in production mode')
         }
+
+        const bearerAccessTokenConfig = {
+          allowQueryToken: true,
+          allowMultipleHeaders: false,
+          validateFunc: (token, callback) => {
+            const tokenlist = process.env.TOKEN_LIST && process.env.TOKEN_LIST.split(',')
+            callback(null, ((!tokenlist) || (tokenlist.indexOf(token) !== -1)), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
+          }
+        }
+
+        server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
+        server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
+
+        debug('session authentication strategy via bearer-access-token')
+        debug('github authentication strategy via bearer-access-token')
       }
-
-      server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
-      server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
-
-      debug('session authentication strategy via bearer-access-token')
-      debug('github authentication strategy via bearer-access-token')
     }
 
     server.auth.strategy('simple', 'bearer-access-token', {

@@ -9,12 +9,11 @@ const config = require('../config.js')
 const options = {
   parent: path.join(__dirname, 'controllers'),
   routes: utils.hapi.controllers.index,
-  controllers: utils.hapi.controllers,
   module: module
 }
 
 config.database = false
-config.currency.static = true
 config.queue = false
+config.login = false
 
 module.exports = utils.hapi.server(options, new utils.Runtime(config))
