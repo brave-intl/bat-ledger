@@ -361,7 +361,7 @@ v2.createPersona =
           BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
           CARD_ID: Joi.string().guid().optional().description('Card id'),
           ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
-          LTC: Joi.string().optional().description('LTC address')
+          LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
         })
       }).optional().description('wallet information'),
       payload: Joi.object().optional().description('additional information')
