@@ -9,7 +9,7 @@ if (process.env.SERVICE === 'balance') {
   perServiceEnvs.forEach(function(baseEnv) {
     process.env[baseEnv] = process.env[baseEnv] || process.env['EYESHADE_' + baseEnv]
   })
-} else if (process.env.SERVICE === 'eyeshade') {
+} else if (process.env.SERVICE === 'ledger') {
   process.env.PORT = process.env.PORT || 3001
   perServiceEnvs.forEach(function(baseEnv) {
     process.env[baseEnv] = process.env[baseEnv] || process.env['LEDGER_' + baseEnv]
