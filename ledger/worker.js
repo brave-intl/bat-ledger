@@ -11,4 +11,6 @@ const options = {
   module: module
 }
 
+config.cache = false
+
 utils.extras.worker(options, new utils.Runtime(config))

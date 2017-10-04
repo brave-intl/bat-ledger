@@ -7,6 +7,8 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+BigNumber.config({ EXPONENTIAL_AT: 28 })
+
 const v2 = {}
 
 /*

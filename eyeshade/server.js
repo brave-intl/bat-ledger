@@ -13,4 +13,6 @@ const options = {
   module: module
 }
 
+config.cache = false
+
 utils.hapi.server(options, new utils.Runtime(config))
