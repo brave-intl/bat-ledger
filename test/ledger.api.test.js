@@ -84,7 +84,6 @@ test('api : v2 contribution workflow with BAT', async t => {
 
   response = await request(srv.listener).get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
     .expect(ok)
-
   t.true(response.body.paymentId === paymentId)
 
   response = await request(srv.listener)

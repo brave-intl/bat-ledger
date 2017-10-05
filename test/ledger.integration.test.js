@@ -83,6 +83,10 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   personaCredential.finalize(response.body.verification)
 
+  response = await request(srv.listener).get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+    .expect(ok)
+  t.true(response.body.paymentId === paymentId)
+
   response = await request(srv.listener)
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
