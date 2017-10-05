@@ -11,6 +11,7 @@ const blipp = require('blipp')
 const boom = require('boom')
 const hapi = require('hapi')
 const inert = require('inert')
+const Netmask = require('netmask').Netmask
 const rateLimiter = require('hapi-rate-limiter')
 const SDebug = require('sdebug')
 const swagger = require('hapi-swagger')
@@ -23,6 +24,7 @@ const whitelist = require('./hapi-auth-whitelist')
 const Server = async (options, runtime) => {
   const debug = new SDebug('web')
 
+  const graylist = { addresses: process.env.IP_GRAYLIST && process.env.IP_GRAYLIST.split(',') }
   const server = new hapi.Server()
 
   server.connection({ port: process.env.PORT })
@@ -41,6 +43,17 @@ const Server = async (options, runtime) => {
       if (warning.name === 'DeprecationWarning') return
 
       debug('warning', underscore.pick(warning, [ 'name', 'message', 'stack' ]))
+    })
+  }
+
+  if (graylist.addresses) {
+    graylist.authorizedAddrs = []
+    graylist.authorizedBlocks = []
+
+    graylist.addresses.forEach((entry) => {
+      if ((entry.indexOf('/') === -1) && (entry.split('.').length === 4)) return graylist.authorizedAddrs.push(entry)
+
+      graylist.authorizedBlocks.push(new Netmask(entry))
     })
   }
 
@@ -68,6 +81,12 @@ const Server = async (options, runtime) => {
             let limit = 60
 
             if (ipaddr === '127.0.0.1') return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
+
+            if ((graylist.authorizedAddrs) &&
+                ((graylist.authorizedAddrs.indexOf(ipaddr) !== -1) ||
+                 (underscore.find(graylist.authorizedBlocks, (block) => { block.contains(ipaddr) })))) {
+              return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
+            }
 
             if (whitelist.authorizedP(ipaddr)) {
               authorization = request.raw.req.headers.authorization
