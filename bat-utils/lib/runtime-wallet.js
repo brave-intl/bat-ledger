@@ -168,12 +168,14 @@ Wallet.providers.uphold = {
     if (info.altcurrency === 'BAT') {
       // TODO This logic should be abstracted out into the PUT wallet payment endpoint
       // such that this takes desired directly
-      var desired
-      if (currency === info.altcurrency) {
-        desired = new BigNumber(amount).times(this.currency.alt2scale(info.altcurrency))
-      } else {
-        const rate = this.currency.rates.BAT[currency.toUpperCase()]
-        desired = new BigNumber(amount).times(this.currency.alt2scale(info.altcurrency)).dividedBy(new BigNumber(rate.toString()))
+      const currency = currency.toUpperCase()
+      let desired = new BigNumber(amount.toString()).times(this.currency.alt2scale(info.altcurrency))
+
+      if (currency !== info.altcurrency) {
+        const rate = this.currency.rates.BAT[currency]
+        if (!rate) throw new Error('no conversion rate for ' + currency + ' to BAT')
+
+        desired = desired.dividedBy(new BigNumber(rate.toString()))
       }
       const minimum = desired.times(0.90)
 
