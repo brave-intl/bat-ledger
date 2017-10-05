@@ -82,6 +82,11 @@ test('api : v2 contribution workflow with BAT', async t => {
   t.true(response.body.hasOwnProperty('verification'))
   personaCredential.finalize(response.body.verification)
 
+  response = await request(srv.listener).get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+    .expect(ok)
+
+  t.true(response.body.paymentId === paymentId)
+
   response = await request(srv.listener)
     .post('/v2/surveyor/contribution')
     .send({ 'adFree': {
