@@ -186,6 +186,10 @@ const Server = async (options, runtime) => {
     const remote = options.remoteP &&
           { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
 
+    if (process.env.NODE_ENV === 'production' && request.headers['x-forwarded-proto'] !== 'https') {
+      return reply('redirect to https').redirect('https://' + request.headers.host + request.path)
+    }
+
     if (request.headers['x-request-id']) request.id = request.headers['x-request-id']
     debug('begin', {
       sdebug: {
