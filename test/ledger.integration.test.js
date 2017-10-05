@@ -106,11 +106,14 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   t.true(response.body.hasOwnProperty('balance'))
   t.is(response.body.balance, '0.0000')
 
-  const rate = response.body.rates.USD
-  const desired = (donateAmt * rate).toFixed(4)
+  const upholdBaseUrls = {
+    'prod': 'https://api.uphold.com',
+    'sandbox': 'https://api-sandbox.uphold.com'
+  }
+  const environment = process.env.UPHOLD_ENVIRONMENT || 'sandbox'
 
   const uphold = new UpholdSDK({ // eslint-disable-line new-cap
-    baseUrl: 'https://api-sandbox.uphold.com',
+    baseUrl: upholdBaseUrls[environment],
     clientId: 'none',
     clientSecret: 'none'
   })
@@ -125,12 +128,14 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   do {
     response = await request(srv.listener)
-      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&currency=USD`)
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${donateAmt}&altcurrency=BAT`)
     if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await snooze(500)
   } while (response.status === 503 || response.body.balance === '0.0000')
   err = ok(response)
   if (err) throw err
+
+  t.is(Number(response.body.unsignedTx.denomination.amount), donateAmt)
 
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
@@ -195,6 +200,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   t.true(response.body.hasOwnProperty('surveyorIds'))
   const surveyorIds = response.body.surveyorIds
+  t.true(surveyorIds.length >= 5)
 
   viewingCredential.finalize(response.body.verification)
 

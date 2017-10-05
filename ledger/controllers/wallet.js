@@ -22,15 +22,21 @@ const read = function (runtime, apiVersion) {
   return async (request, reply) => {
     const amount = request.query.amount
     const balanceP = request.query.balance
-    const currency = request.query.currency
     const debug = braveHapi.debug(module, request)
     const paymentId = request.params.paymentId.toLowerCase()
     const refreshP = request.query.refresh
     const wallets = runtime.database.get('wallets', debug)
+    const altcurrency = request.query.altcurrency
+
+    let currency = request.query.currency
     let balances, result, state, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+
+    if (altcurrency && altcurrency !== wallet.altcurrency) {
+      return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
+    }
 
     result = {
       paymentStamp: wallet.paymentStamp || 0,
@@ -62,16 +68,22 @@ const read = function (runtime, apiVersion) {
       })
     }
 
-    if ((amount) && (currency)) {
+    if (amount) {
       if (refreshP) {
-        if (!runtime.currency.fiats[currency]) {
-          return reply(boom.notFound('no such currency: ' + currency))
-        }
-        if (!runtime.currency.rates[wallet.altcurrency] || !runtime.currency.rates[wallet.altcurrency][currency.toUpperCase()]) {
-          const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
-          const resp = boom.serverUnavailable(errMsg)
-          resp.output.headers['retry-after'] = '5'
-          return reply(resp)
+        if (currency) {
+          if (!runtime.currency.fiats[currency]) {
+            return reply(boom.notFound('no such currency: ' + currency))
+          }
+          if (!runtime.currency.rates[wallet.altcurrency] || !runtime.currency.rates[wallet.altcurrency][currency.toUpperCase()]) {
+            const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
+            const resp = boom.serverUnavailable(errMsg)
+            resp.output.headers['retry-after'] = '5'
+            return reply(resp)
+          }
+        } else if (altcurrency) {
+          currency = altcurrency
+        } else {
+          return reply(boom.badData('must pass at least one of currency or altcurrency'))
         }
         result = underscore.extend(result, await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed))
 
@@ -139,9 +151,10 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
       paymentId: Joi.string().guid().required().description('identity of the wallet')
     },
     query: {
-      amount: Joi.number().positive().optional().description('the payment amount in the fiat currency'),
+      amount: Joi.number().positive().optional().description('the payment amount in fiat currency if provied, otherwise the altcurrency'),
       balance: Joi.boolean().optional().default(false).description('return balance information'),
       currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
+      altcurrency: braveJoi.string().altcurrencyCode().optional().description('the altcurrency of the requested transaction'),
       refresh: Joi.boolean().optional().default(false).description('return balance and transaction information')
     }
   },
