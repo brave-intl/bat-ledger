@@ -39,6 +39,7 @@ const read = function (runtime, apiVersion) {
     }
 
     result = {
+      altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
       rates: currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency]
     }
@@ -61,7 +62,6 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       underscore.extend(result, {
-        altcurrency: wallet.altcurrency,
         probi: balances.confirmed.toString(),
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
         unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
