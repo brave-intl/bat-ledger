@@ -83,6 +83,10 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   personaCredential.finalize(response.body.verification)
 
+  response = await request(srv.listener).get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+    .expect(ok)
+  t.true(response.body.paymentId === paymentId)
+
   response = await request(srv.listener)
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
@@ -106,6 +110,8 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   t.true(response.body.hasOwnProperty('balance'))
   t.is(response.body.balance, '0.0000')
 
+  const desired = donateAmt.toFixed(4).toString()
+
   const upholdBaseUrls = {
     'prod': 'https://api.uphold.com',
     'sandbox': 'https://api-sandbox.uphold.com'
@@ -122,25 +128,25 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   const donorCardId = process.env.UPHOLD_DONOR_CARD_ID
 
   await uphold.createCardTransaction(donorCardId,
-    {'amount': donateAmt.toString(), 'currency': 'BAT', 'destination': userCardId},
+    {'amount': desired, 'currency': 'BAT', 'destination': userCardId},
     true // commit tx in one swoop
   )
 
   do {
     response = await request(srv.listener)
-      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${donateAmt}&altcurrency=BAT`)
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
     if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await snooze(500)
   } while (response.status === 503 || response.body.balance === '0.0000')
   err = ok(response)
   if (err) throw err
 
-  t.is(Number(response.body.unsignedTx.denomination.amount), donateAmt)
+  t.is(Number(response.body.unsignedTx.denomination.amount), Number(desired))
 
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
   await t.throws(uphold.createCardTransaction(userCardId,
-    {'amount': donateAmt.toString(), 'currency': 'BAT', 'destination': donorCardId},
+    {'amount': desired, 'currency': 'BAT', 'destination': donorCardId},
     true // commit tx in one swoop
   ))
 

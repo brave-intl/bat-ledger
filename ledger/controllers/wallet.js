@@ -39,6 +39,7 @@ const read = function (runtime, apiVersion) {
     }
 
     result = {
+      altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
       rates: currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency]
     }
@@ -61,7 +62,6 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       underscore.extend(result, {
-        altcurrency: wallet.altcurrency,
         probi: balances.confirmed.toString(),
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
         unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
@@ -151,6 +151,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
       paymentId: Joi.string().guid().required().description('identity of the wallet')
     },
     query: {
+      // FIXME since this amount is not in native probi - need some kind of sig fig limit
       amount: Joi.number().positive().optional().description('the payment amount in fiat currency if provied, otherwise the altcurrency'),
       balance: Joi.boolean().optional().default(false).description('return balance information'),
       currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
@@ -329,11 +330,41 @@ v2.write = { handler: (runtime) => { return write(runtime, 2) },
   }
 }
 
+/*
+   GET /v2/wallet
+ */
+v2.lookup = { handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const wallets = runtime.database.get('wallets', debug)
+    const publicKey = request.query.publicKey
+    const wallet = await wallets.findOne({ httpSigningPubKey: publicKey })
+    if (!wallet) return reply(boom.notFound('no such wallet with publicKey: ' + publicKey))
+    reply({ paymentId: wallet.paymentId })
+  }
+},
+  description: 'Lookup a wallet',
+  tags: [ 'api' ],
+
+  validate: {
+    query: {
+      publicKey: Joi.string().hex().optional().description('the publickey of the wallet to lookup')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      paymentId: Joi.string().guid().required().description('identity of the requested wallet')
+    })
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
-  braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write)
+  braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
+  braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
