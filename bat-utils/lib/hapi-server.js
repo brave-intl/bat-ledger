@@ -127,7 +127,7 @@ const Server = async (options, runtime) => {
       throw err
     }
 
-    if (process.env.DYNO) {
+    if (process.env.NODE_ENV === 'production') {
       server.register({ register: require('hapi-require-https'), options: { proxy: true } }, (err) => {
         if (err) debug('unable to register hapi-require-https', err)
       })
