@@ -62,6 +62,7 @@
     "hapi-auth-bearer-token": "5.1.0",
     "hapi-auth-cookie": "7.0.0",
     "hapi-rate-limiter": "brave/hapi-rate-limiter",
+    "hapi-require-https": "2.1.0",
     "hapi-swagger": "brave/hapi-swagger",
     "http-request-signature": "0.0.2",
     "inert": "^4.2.1",

@@ -327,7 +327,8 @@ v1.version =
 }
 
 /*
-   GET /v1/publisher/identity?url=...
+   GET /v1/publisher/identity?url=... (obsolete)
+
    GET /v2/publisher/identity?url=...
        [ used by publishers ]
  */
