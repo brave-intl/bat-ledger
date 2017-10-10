@@ -109,7 +109,7 @@ exports.initialize = async (debug, runtime) => {
     }
   ])
 
-  await convertDB(debug, runtime)
+  if (process.env.NODE_ENV === 'development') await convertDB(debug, runtime)
 }
 
 // TEMPORARY

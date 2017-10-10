@@ -310,17 +310,19 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
 
   data = []
   results.forEach((result) => {
-    let datum
+    let datum, lastxn
 
     probi = probi.plus(result.probi)
     fees = fees.plus(result.fees)
+    if (summaryP) lastxn = underscore.last(result.votes)
     datum = {
       publisher: result.publisher,
       altcurrency: result.altcurrency,
       probi: result.probi,
       fees: result.fees,
       'publisher USD': result.probi.times(usd).toFixed(currency.digits),
-      'processor USD': result.fees.times(usd).toFixed(currency.digits)
+      'processor USD': result.fees.times(usd).toFixed(currency.digits),
+      lastUpdated: lastxn && lastxn.lastUpdated && dateformat(lastxn.lastUpdated, datefmt)
     }
     if (authority) {
       underscore.extend(datum,
@@ -382,15 +384,19 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
 
   data = []
   results.forEach((result) => {
+    let lastxn
+
     probi = probi.plus(result.probi)
     fees = fees.plus(result.fees)
+    if (summaryP) lastxn = underscore.last(result.txns)
     data.push({
       publisher: result.publisher,
       altcurrency: result.altcurrency,
       probi: result.probi.toString(),
       fees: result.fees.toString(),
       'publisher USD': result.probi.times(usd).toFixed(currency.digits),
-      'processor USD': result.fees.times(usd).toFixed(currency.digits)
+      'processor USD': result.fees.times(usd).toFixed(currency.digits),
+      lastUpdated: lastxn && lastxn.created && dateformat(lastxn.created, datefmt)
     })
     if (!summaryP) {
       result.txns.forEach((txn) => {
