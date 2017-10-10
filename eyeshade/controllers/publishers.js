@@ -486,6 +486,46 @@ v1.put = {
 }
 
 /*
+   GET /v1/publishers/statement
+       [ used by publishers ]
+ */
+
+v1.getStatements = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const reportId = uuid.v4().toLowerCase()
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const debug = braveHapi.debug(module, request)
+
+      await runtime.queue.send(debug, 'report-publishers-statements',
+                               underscore.defaults({ reportId: reportId, reportURL: reportURL },
+                                                   { authority: 'automated', summary: true }))
+      reply({ reportURL: reportURL })
+    }
+  },
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Generates a statement for a publisher',
+  tags: [ 'api' ],
+
+  validate: {
+    query: {
+      access_token: Joi.string().guid().optional()
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+    })
+  }
+}
+
+/*
    GET /v1/publishers/{publisher}/statement
        [ used by publishers ]
  */
@@ -1012,6 +1052,7 @@ module.exports.routes = [
 /*
   braveHapi.routes.async().path('/v1/publishers/{publisher}/status').whitelist().config(v1.get),
  */
+  braveHapi.routes.async().path('/v1/publishers/statement').whitelist().config(v1.getStatements),
   braveHapi.routes.async().path('/v1/publishers/{publisher}/statement').whitelist().config(v1.getStatement),
   braveHapi.routes.async().path('/v1/publishers/{publisher}/verifications/{verificationId}').whitelist().config(v1.getToken),
   braveHapi.routes.async().path('/v1/publishers/{publisher}').whitelist().config(v1.get),
