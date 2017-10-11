@@ -641,6 +641,15 @@ exports.workers = {
       let data, data1, data2, file, entries, publishers, query, usd
       let ending = payload.ending
 
+
+      file = await create(runtime, 'publishers-statements-', payload)
+      try { await file.write(JSON.stringify(payload, true)) } catch (ex) {
+        debug('reports', { report: 'report-publishers-statements', reason: ex.toString() })
+        file.close()
+      }
+      return runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-statements completed' })
+
+
       if (publisher) {
         query = { publisher: publisher }
         if ((starting) || (ending)) {
