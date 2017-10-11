@@ -89,6 +89,7 @@
     "tweetnacl": "^1.0.0",
     "underscore": "1.8.3",
     "uuid": "3.1.0",
+    "validate-ip-node": "1.0.6",
     "vision": "^4.1.1",
     "wreck": "13.0.1"
   },
