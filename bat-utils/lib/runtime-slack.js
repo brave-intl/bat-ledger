@@ -18,7 +18,7 @@ const Slack = function (config, runtime) {
 
     underscore.defaults(payload, {
       channel: params.channel,
-      username: params.username || process.npminfo.name,
+      username: params.username || (process.npminfo.name + '@' + runtime.config.server.host),
       icon_url: params.icon_url,
       text: 'ping.'
     })
