@@ -131,10 +131,21 @@ Wallet.providers.uphold = {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
-        const wallet = await this.uphold.api('/me/cards', ({ body: request.octets, method: 'post', headers: request.headers }))
-        const ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
-        const btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
-        const ltcAddr = await this.uphold.createCardAddress(wallet.id, 'litecoin')
+        let btcAddr, ethAddr, ltcAddr, wallet
+
+        try {
+          wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
+          ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
+          btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
+          ltcAddr = await this.uphold.createCardAddress(wallet.id, 'litecoin')
+        } catch (ex) {
+          debug('create', {
+            provider: 'uphold',
+            reason: ex.toString(),
+            operation: btcAddr ? 'litecoin' : ethAddr ? 'bitcoin' : wallet ? 'ethereum' : '/me/cards'
+          })
+          throw ex
+        }
         return { 'wallet': { 'addresses': {
           'BAT': ethAddr.id,
           'BTC': btcAddr.id,
@@ -154,7 +165,15 @@ Wallet.providers.uphold = {
     }
   },
   balances: async function (info) {
-    const cardInfo = await this.uphold.getCard(info.providerId)
+    let cardInfo
+
+    try {
+      cardInfo = await this.uphold.getCard(info.providerId)
+    } catch (ex) {
+      debug('balances', { provider: 'uphold', reason: ex.toString(), operation: 'getCard' })
+      throw ex
+    }
+
     const balanceProbi = new BigNumber(cardInfo.balance).times(this.currency.alt2scale(info.altcurrency))
     const spendableProbi = new BigNumber(cardInfo.available).times(this.currency.alt2scale(info.altcurrency))
     return {
@@ -202,13 +221,21 @@ Wallet.providers.uphold = {
   },
   submitTx: async function (info, txn, signature) {
     if (info.altcurrency === 'BAT') {
-      const postedTx = await this.uphold.createCardTransaction(info.providerId,
-        // this will be replaced below, we're just placating
-        underscore.pick(underscore.extend(txn.denomination, {'destination': txn.destination}), ['amount', 'currency', 'destination']),
-        true, // commit tx in one swoop
-        null, // no otp code
-        {'headers': signature.headers, 'body': signature.octets}
-      )
+      let postedTx
+
+      try {
+        postedTx = await this.uphold.createCardTransaction(info.providerId,
+                                                           // this will be replaced below, we're just placating
+                                                           underscore.pick(underscore.extend(txn.denomination,
+                                                                                             { destination: txn.destination }),
+                                                                           ['amount', 'currency', 'destination']),
+                                                           true,        // commit tx in one swoop
+                                                           null,        // no otp code
+                                                           { headers: signature.headers, body: signature.octets })
+      } catch (ex) {
+        debug('submitTx', { provider: 'uphold', reason: ex.toString(), operation: 'createCardTransaction' })
+        throw ex
+      }
 
       if (postedTx.fees.length !== 0) { // fees should be 0 with an uphold held settlement address
         throw new Error(`unexpected fee(s) charged: ${JSON.stringify(postedTx.fees)}`)
