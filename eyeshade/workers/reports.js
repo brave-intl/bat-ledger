@@ -642,8 +642,46 @@ exports.workers = {
       let ending = payload.ending
 
       if (runtime.config.server.hostname === 'eyeshade-staging.mercury.basicattentiontoken.org') {
-        file = await create(runtime, 'publishers-statements-', underscore.extend({ format: 'json' }, payload))
-        try { await file.write(JSON.stringify(payload, null, 2), true) } catch (ex) {
+        data = [
+          {
+            publisher: 'dgeb1.com',
+            altcurrency: 'BAT',
+            probi: '20175000000000',
+            fees: '1061700000000',
+            'publisher USD': 9.75,
+            'processor USD': 0.51,
+            lastUpdated: '20161220-070939'
+          },
+          {
+            publisher: 'dgeb1.com',
+            altcurrency: 'BAT',
+            probi: '12487000000000',
+            fees: '657000000000',
+            'publisher USD': 6.03,
+            'processor USD': 0.32,
+            lastUpdated: '20170103-174733'
+          },
+          [],
+          {
+            publisher: 'TOTAL',
+            altcurrency: 'BAT',
+            probi: '20175000000000',
+            fees: '1061700000000',
+            'publisher USD': 9.75,
+            'processor USD': 0.51
+          },
+          {
+            publisher: 'TOTAL',
+            altcurrency: 'BAT',
+            probi: '12487000000000',
+            fees: '657000000000',
+            'publisher USD': 6.03,
+            'processor USD': 0.3
+          }
+        ]
+
+        file = await create(runtime, 'publishers-statements-', payload)
+        try { await file.write(json2csv({ data: data }), true) } catch (ex) {
           debug('reports', { report: 'report-publishers-statements', reason: ex.toString() })
           file.close()
         }
