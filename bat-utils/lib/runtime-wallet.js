@@ -124,9 +124,23 @@ Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
   return f.bind(this)(info, amount, currency, balance)
 }
 
+Wallet.prototype.ping = async function (provider) {
+  const f = Wallet.providers[provider].ping
+
+  if (!f) throw new Error('provider ' + provider + ' ping not supported')
+  return f.bind(this)(provider)
+}
+
+Wallet.prototype.providers = function () {
+  return underscore.keys(Wallet.providers)
+}
+
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
+  ping: async function (provider) {
+    return this.uphold.api('/ticker', 'BATUSD')
+  },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
