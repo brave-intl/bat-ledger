@@ -1,4 +1,4 @@
-const BigNumber = require('bignumber.js')
+// const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const underscore = require('underscore')
 
@@ -109,9 +109,35 @@ exports.initialize = async (debug, runtime) => {
     }
   ])
 
-  if (process.env.NODE_ENV === 'development') await convertDB(debug, runtime)
+  const publishers = runtime.database.get('publishers', debug)
+  let entries
+
+  entries = await publishers.find({ parameters: { $exists: true } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { authorized: true, authority: entry.provider }
+    }
+
+    await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
+  })
+
+  entries = await publishers.find({ parameters: { $exists: false } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { authorized: false }
+    }
+
+    await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
+  })
+
+//  if (process.env.NODE_ENV === 'development') await convertDB(debug, runtime)
 }
 
+/*
 // TEMPORARY
 const convertDB = async (debug, runtime) => {
   const contributions = runtime.database.get('contributions', debug)
@@ -218,6 +244,7 @@ const convertDB = async (debug, runtime) => {
     await tokens.update({ verificationId: entry.verificationId, publisher: entry.publisher }, state, { upsert: true })
   })
 }
+ */
 
 exports.workers = {
 /* sent by ledger POST /v1/registrar/persona/{personaId}
