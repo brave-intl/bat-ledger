@@ -139,7 +139,11 @@ Wallet.providers = {}
 
 Wallet.providers.uphold = {
   ping: async function (provider) {
-    return this.uphold.api('/ticker', { pair: 'BATUSD' })
+    try {
+      return { result: await this.uphold.api('/ticker/BATUSDT') }
+    } catch (ex) {
+      return { err: ex.toString() }
+    }
   },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
