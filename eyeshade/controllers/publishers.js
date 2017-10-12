@@ -252,6 +252,7 @@ v2.putWallet = {
     return async (request, reply) => {
       const publisher = request.params.publisher
       const payload = request.payload
+      const provider = payload.provider
       const verificationId = request.payload.verificationId
       const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
@@ -267,12 +268,15 @@ v2.putWallet = {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(underscore.omit(payload, [ 'verificationId', 'show_verification_status' ]),
-                                { visible: visible, verified: true, altcurrency: altcurrency })
+          { visible: visible, verified: true, altcurrency: altcurrency, authorized: true, authority: provider })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
-/* TODO: set authorized/authority
- */
+      runtime.notify(debug, {
+        channel: '#publishers-bot',
+        text: 'publisher ' + publisher + ' authorized by ' + provider
+      })
+
       reply({})
     }
   },

@@ -186,8 +186,6 @@ const altcoins = {
       }
 
       try { await rorschach({ BTC: rates }, tickers, config, runtime) } catch (ex) {
-        return
-
         console.log(ex.stack)
 
         now = underscore.now()
