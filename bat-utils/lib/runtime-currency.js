@@ -160,13 +160,13 @@ const altcoins = {
     id: 'bitcoin',
 
     p: (config, runtime) => {
-      if (!config.bitcoin_average) throw new Error('config.bitcoin_average undefined')
-
-      if (!config.bitcoin_average.publicKey) throw new Error('config.bitcoin_average.publicKey undefined')
-
-      if (!config.bitcoin_average.secretKey) throw new Error('config.bitcoin_average.secretKey undefined')
-
-      monitor2('BTC', config, runtime)
+      if (config.bitcoin_average) {
+        if (!config.bitcoin_average.publicKey) throw new Error('config.bitcoin_average.publicKey undefined')
+        if (!config.bitcoin_average.secretKey) throw new Error('config.bitcoin_average.secretKey undefined')
+        monitor2('BTC', config, runtime)
+      } else {
+        if (process.env.NODE_ENV === 'production') throw new Error('config.bitcoin_average undefined')
+      }
     },
 
     f: async (tickers, config, runtime) => {
