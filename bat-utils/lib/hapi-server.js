@@ -204,7 +204,7 @@ const Server = async (options, runtime) => {
         params: request.url.params,
         headers: underscore.omit(request.headers, (value, key, object) => {
           if ([ 'authorization', 'cookie' ].indexOf(key) !== -1) return true
-          return /^x-forwarded-/.test(key)
+          return /^x-forwarded-/i.test(key)
         }),
         remote: remote
       }
