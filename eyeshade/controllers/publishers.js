@@ -274,7 +274,7 @@ v2.putWallet = {
 
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'publisher ' + publisher + ' authorized by ' + provider
+        text: 'publisher ' + publisher + ' registered with ' + provider
       })
 
       reply({})
