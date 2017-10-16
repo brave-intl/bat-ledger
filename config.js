@@ -47,15 +47,15 @@ if (process.env.BITCOIN_AVERAGE_PUBLIC_KEY) {
     }
 }
 
-if (process.env.SERVICE !== 'eyeshade') {
-  if (process.env.UPHOLD_ACCESS_TOKEN || process.env.UPHOLD_CLIENT_ID) {
-    module.exports.wallet.uphold =
-    { accessToken       : process.env.UPHOLD_ACCESS_TOKEN
-    , clientId          : process.env.UPHOLD_CLIENT_ID     || 'none'
-    , clientSecret      : process.env.UPHOLD_CLIENT_SECRET || 'none'
-    , environment       : process.env.UPHOLD_ENVIRONMENT   || 'sandbox'
-    }
+if (process.env.UPHOLD_ACCESS_TOKEN || process.env.UPHOLD_CLIENT_ID) {
+  module.exports.wallet.uphold =
+  { accessToken       : process.env.UPHOLD_ACCESS_TOKEN
+  , clientId          : process.env.UPHOLD_CLIENT_ID     || 'none'
+  , clientSecret      : process.env.UPHOLD_CLIENT_SECRET || 'none'
+  , environment       : process.env.UPHOLD_ENVIRONMENT   || 'sandbox'
   }
+}
+if (process.env.SERVICE !== 'eyeshade') {
   if (process.env.COINBASE_WIDGET_CODE) {
     module.exports.wallet.coinbase =
     { widgetCode        : process.env.COINBASE_WIDGET_CODE }

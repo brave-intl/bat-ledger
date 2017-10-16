@@ -243,6 +243,140 @@ v2.getBalance = {
 }
 
 /*
+   GET /v2/publishers/{publisher}/wallet
+       [ used by publishers ]
+ */
+
+v2.getWallet = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const publisher = request.params.publisher
+      const currency = request.query.currency.toUpperCase()
+      const debug = braveHapi.debug(module, request)
+      const publishers = runtime.database.get('publishers', debug)
+      const settlements = runtime.database.get('settlements', debug)
+      const voting = runtime.database.get('voting', debug)
+      let amount, entries, entry, result, summary
+      let probi = new BigNumber(0)
+
+      summary = await voting.aggregate([
+        {
+          $match:
+          {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group:
+          {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await settlements.aggregate([
+        {
+          $match:
+          {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher }
+          }
+        },
+        {
+          $group:
+          {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
+      if (probi.lessThan(0)) probi = 0
+
+      amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
+      result = {
+        rates: runtime.currency.rates[altcurrency],
+        contributions: {
+          amount: amount,
+          currency: currency,
+          altcurrency: altcurrency,
+          probi: probi.truncated().toString()
+        }
+      }
+
+      entries = await settlements.find({ publisher: publisher }, { sort: { timestamp: -1 }, limit: 1 })
+      console.log(JSON.stringify(entries, null, 2))
+      entry = entries && entries[0]
+      if (entry) {
+        probi = new BigNumber(entry.probi.toString())
+        result.lastSettlement = {
+          amount: runtime.currency.alt2fiat(altcurrency, probi, currency) || 0,
+          currency: currency,
+          altcurrency: altcurrency,
+          probi: probi.toString(),
+          timestamp: (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+        }
+      }
+
+      entry = await publishers.findOne({ publisher: publisher })
+      try {
+        if ((entry) && (entry.provider)) result.wallet = await runtime.wallet.status(entry)
+      } catch (ex) {
+        debug('status', ex)
+      }
+
+      reply(result)
+    }
+  },
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Gets the balance for a verified publisher',
+  tags: [ 'api' ],
+
+  validate: {
+    params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
+    query: {
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+      access_token: Joi.string().guid().optional()
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      rates: Joi.object().optional().description('current exchange rates to various currencies'),
+      contributions: Joi.object().keys({
+        amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
+        currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+        altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
+        probi: braveJoi.string().numeric().optional().description('the balance in probi')
+      }).unknown(true).required().description('pending publisher contributions'),
+      lastSettlement: Joi.object().keys({
+        amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
+        currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+        altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
+        probi: braveJoi.string().numeric().optional().description('the balance in probi'),
+        timestamp: Joi.number().positive().optional().description('timestamp of settlement')
+      }).unknown(true).optional().description('last publisher settlement'),
+      wallet: Joi.object().keys({
+        provider: Joi.string().required().description('wallet provider'),
+        authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
+        preferredCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
+        availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('available currencies')
+      }).unknown(true).optional().description('publisher wallet information')
+    })
+  }
+}
+
+/*
    PUT /v2/publishers/{publisher}/wallet
        [ used by publishers ]
  */
@@ -747,6 +881,7 @@ module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/publishers').config(v1.bulk),
   braveHapi.routes.async().post().path('/v2/publishers/settlement/{hash}').config(v2.settlement),
   braveHapi.routes.async().path('/v2/publishers/{publisher}/balance').whitelist().config(v2.getBalance),
+  braveHapi.routes.async().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.getWallet),
   braveHapi.routes.async().put().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.putWallet),
   braveHapi.routes.async().path('/v1/publishers/statement').whitelist().config(v1.getStatements),
   braveHapi.routes.async().path('/v1/publishers/{publisher}/statement').whitelist().config(v1.getStatement),

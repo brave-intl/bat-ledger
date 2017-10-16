@@ -6,10 +6,14 @@ const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
 
-const braveHapi = require('./extras-hapi')
 const Currency = require('./runtime-currency')
 
 const debug = new SDebug('wallet')
+
+const upholdBaseUrls = {
+  prod: 'https://api.uphold.com',
+  sandbox: 'https://api-sandbox.uphold.com'
+}
 
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
@@ -21,10 +25,6 @@ const Wallet = function (config, runtime) {
   if (config.wallet.uphold) {
     if ((process.env.FIXIE_URL) && (!process.env.HTTPS_PROXY)) process.env.HTTPS_PROXY = process.env.FIXIE_URL
 
-    const upholdBaseUrls = {
-      'prod': 'https://api.uphold.com',
-      'sandbox': 'https://api-sandbox.uphold.com'
-    }
     this.uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
       baseUrl: upholdBaseUrls[this.config.uphold.environment],
       clientId: this.config.uphold.clientId,
@@ -124,11 +124,25 @@ Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
   return f.bind(this)(info, amount, currency, balance)
 }
 
+Wallet.prototype.submitTx = async function (info, txn, signature) {
+  const f = Wallet.providers[info.provider].submitTx
+
+  if (!f) throw new Error('provider ' + info.provider + ' submitTx not supported')
+  return f.bind(this)(info, txn, signature)
+}
+
 Wallet.prototype.ping = async function (provider) {
   const f = Wallet.providers[provider].ping
 
   if (!f) throw new Error('provider ' + provider + ' ping not supported')
   return f.bind(this)(provider)
+}
+
+Wallet.prototype.status = async function (info) {
+  const f = Wallet.providers[info.provider].status
+
+  if (!f) throw new Error('provider ' + info.provider + ' status not supported')
+  return f.bind(this)(info)
 }
 
 Wallet.prototype.providers = function () {
@@ -138,13 +152,6 @@ Wallet.prototype.providers = function () {
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
-  ping: async function (provider) {
-    try {
-      return { result: await this.uphold.api('/ticker/BATUSD') }
-    } catch (ex) {
-      return { err: ex.toString() }
-    }
-  },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
@@ -270,23 +277,36 @@ Wallet.providers.uphold = {
       throw new Error('wallet uphold submitTx for ' + info.altcurrency + ' not supported')
     }
   },
-  status: async function (provider, parameters) {
-    const result = {}
-    let user
+  ping: async function (provider) {
+    try {
+      return { result: await this.uphold.api('/ticker/BATUSD') }
+    } catch (ex) {
+      return { err: ex.toString() }
+    }
+  },
+  status: async function (info) {
+    let result, uphold, user
 
-    user = await braveHapi.wreck.get('https://' + provider + '/v0/me', {
-      headers: {
-        authorization: 'Bearer ' + parameters.access_token,
-        'content-type': 'application/json'
-      },
-      useProxyP: true
+    uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+      baseUrl: upholdBaseUrls[this.config.uphold.environment],
+      clientId: this.config.uphold.clientId,
+      clientSecret: this.config.uphold.clientSecret
     })
-    if (Buffer.isBuffer(user)) user = JSON.parse(user)
-    console.log('/v0/me: ' + JSON.stringify(user, null, 2))
+    uphold.storage.setItem('uphold.access_token', info.parameters.access_token)
 
-    user = { authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1, address: user.username }
-    if (this.currency.fiatP(user.settings.currency)) result.fiat = user.settings.currency
-    console.log('result: ' + JSON.stringify(result, null, 2))
+    try {
+      user = await uphold.api('/me')
+    } catch (ex) {
+      debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
+      throw ex
+    }
+
+    result = {
+      provider: info.provider,
+      authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
+      preferredCurrency: user.settings.currency,
+      availableCurrencies: underscore.keys(user.balances.currencies)
+    }
 
     return result
   }
