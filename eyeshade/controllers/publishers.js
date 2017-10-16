@@ -339,7 +339,7 @@ v2.getWallet = {
     mode: 'required'
   },
 
-  description: 'Gets the balance for a verified publisher',
+  description: 'Gets wallet information for a verified publisher',
   tags: [ 'api' ],
 
   validate: {
