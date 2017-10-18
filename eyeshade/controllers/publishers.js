@@ -113,6 +113,8 @@ v2.settlement = {
         if (validity.error) return reply(boom.badData(entry.address + ': ' + validity.error))
 
         entry.probi = bson.Decimal128.fromString(entry.probi.toString())
+        if (entry.amount) entry.amount = bson.Decimal128.fromString(entry.amount.toString())
+        entry.probi = bson.Decimal128.fromString(entry.probi.toString())
         if (entry.fees) entry.fees = bson.Decimal128.fromString(entry.fees.toString())
         if (!entry.hash) entry.hash = hash
         state.$set = underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees', 'hash' ])
@@ -140,6 +142,8 @@ v2.settlement = {
       address: Joi.string().required().description('altcurrency address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),
+      currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the deposit currency'),
+      amount: braveJoi.string().numeric().required().description('the amount in the deposit currency'),
       transactionId: Joi.string().guid().description('the transactionId'),
       hash: Joi.string().regex(txHexRegExp).optional().description('transaction hash')
     }).unknown(true)).required().description('publisher settlement report')
@@ -206,11 +210,11 @@ v2.getBalance = {
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
       reply({
-        amount: amount,
-        currency: currency,
+        rates: runtime.currency.rates[altcurrency],
         altcurrency: altcurrency,
         probi: probi.truncated().toString(),
-        rates: runtime.currency.rates[altcurrency]
+        amount: amount,
+        currency: currency
       })
     }
   },
@@ -233,11 +237,11 @@ v2.getBalance = {
 
   response: {
     schema: Joi.object().keys({
-      amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+      rates: Joi.object().optional().description('current exchange rates to various currencies'),
       altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
       probi: braveJoi.string().numeric().optional().description('the balance in probi'),
-      rates: Joi.object().optional().description('current exchange rates to various currencies')
+      amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
     })
   }
 }
@@ -310,17 +314,14 @@ v2.getWallet = {
       }
 
       entries = await settlements.find({ publisher: publisher }, { sort: { timestamp: -1 }, limit: 1 })
-      console.log(JSON.stringify(entries, null, 2))
       entry = entries && entries[0]
       if (entry) {
-        probi = new BigNumber(entry.probi.toString())
-        result.lastSettlement = {
-          amount: runtime.currency.alt2fiat(altcurrency, probi, currency) || 0,
-          currency: currency,
-          altcurrency: altcurrency,
-          probi: probi.toString(),
-          timestamp: (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-        }
+        result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
+          probi: entry.probi.toString(),
+          amount: entry.amount.toString(),
+          timestamp: (entry.timestamp.high_ * 1000) +
+            (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+        })
       }
 
       entry = await publishers.findOne({ publisher: publisher })
@@ -328,6 +329,7 @@ v2.getWallet = {
         if ((entry) && (entry.provider)) result.wallet = await runtime.wallet.status(entry)
       } catch (ex) {
         debug('status', ex)
+        runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
       }
 
       reply(result)
@@ -339,7 +341,7 @@ v2.getWallet = {
     mode: 'required'
   },
 
-  description: 'Gets information for a verified publisher',
+  description: 'Gets information for a publisher',
   tags: [ 'api' ],
 
   validate: {
@@ -360,10 +362,10 @@ v2.getWallet = {
         probi: braveJoi.string().numeric().optional().description('the balance in probi')
       }).unknown(true).required().description('pending publisher contributions'),
       lastSettlement: Joi.object().keys({
-        amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
-        currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
-        altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
-        probi: braveJoi.string().numeric().optional().description('the balance in probi'),
+        altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
+        probi: braveJoi.string().numeric().required().description('the balance in probi'),
+        currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the deposit currency'),
+        amount: braveJoi.string().numeric().optional().description('the amount in the deposit currency'),
         timestamp: Joi.number().positive().optional().description('timestamp of settlement')
       }).unknown(true).optional().description('last publisher settlement'),
       wallet: Joi.object().keys({
@@ -462,7 +464,7 @@ v1.getStatements = {
     mode: 'required'
   },
 
-  description: 'Generates a statement for a publisher',
+  description: 'Generates a statement for all publishers',
   tags: [ 'api' ],
 
   validate: {
@@ -938,12 +940,15 @@ module.exports.initialize = async (debug, runtime) => {
      // v2 and later
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
+        currency: '',
+        amount: bson.Decimal128.POSITIVE_ZERO,
 
         fees: bson.Decimal128.POSITIVE_ZERO,
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
-      others: [ { address: 1 }, { altcurrency: 1 }, { probi: 1 }, { fees: 1 }, { timestamp: 1 } ]
+      others: [ { address: 1 }, { altcurrency: 1 }, { probi: 1 }, { amount: 1 }, { currency: 1 }, { fees: 1 },
+                { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('tokens', debug),
