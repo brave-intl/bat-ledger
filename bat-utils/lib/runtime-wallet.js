@@ -110,13 +110,6 @@ Wallet.prototype.validateTxSignature = function (info, txn, signature) {
   }
 }
 
-Wallet.prototype.submitTx = async function (info, txn, signature) {
-  const f = Wallet.providers[info.provider].submitTx
-
-  if (!f) throw new Error('provider ' + info.provider + ' submitTx not supported')
-  return f.bind(this)(info, txn, signature)
-}
-
 Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
   const f = Wallet.providers[info.provider].unsignedTx
 

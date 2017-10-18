@@ -116,6 +116,8 @@ exports.initialize = async (debug, runtime) => {
 
 /*
 // TEMPORARY
+const BigNumber = require('bignumber.js')
+
 const convertDB = async (debug, runtime) => {
   const contributions = runtime.database.get('contributions', debug)
   const publishers = runtime.database.get('publishers', debug)
@@ -131,6 +133,10 @@ const convertDB = async (debug, runtime) => {
     // so        pbi/sat = 1.6e14
 
     if (satoshi) return bson.Decimal128.fromString(new BigNumber(satoshi.toString()).times(1.6e14).truncated().toString())
+  }
+
+  const satoshi2usd = (satoshi) => {
+    if (satoshi) return bson.Decimal128.fromString(new BigNumber(satoshi.toString()).times(4e-5).toFixed(2))
   }
 
   entries = await surveyors.find({ satoshis: { $exists: true } })
@@ -203,7 +209,13 @@ const convertDB = async (debug, runtime) => {
     let state
 
     state = {
-      $set: { altcurrency: 'BAT', probi: satoshi2probi(entry.satoshis), fees: satoshi2probi(entry.fees) },
+      $set: {
+        altcurrency: 'BAT',
+        probi: satoshi2probi(entry.satoshis),
+        currency: 'USD',
+        amount: satoshi2usd(entry.satoshis),
+        fees: satoshi2probi(entry.fees)
+      },
       $unset: { satoshis: '' }
     }
 
