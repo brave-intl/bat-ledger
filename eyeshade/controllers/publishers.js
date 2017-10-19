@@ -114,7 +114,6 @@ v2.settlement = {
 
         entry.probi = bson.Decimal128.fromString(entry.probi.toString())
         if (entry.amount) entry.amount = bson.Decimal128.fromString(entry.amount.toString())
-        entry.probi = bson.Decimal128.fromString(entry.probi.toString())
         if (entry.fees) entry.fees = bson.Decimal128.fromString(entry.fees.toString())
         if (!entry.hash) entry.hash = hash
         state.$set = underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees', 'hash' ])
