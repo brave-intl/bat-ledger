@@ -47,8 +47,7 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
 }
 
 const daily = async (debug, runtime) => {
-  const now = underscore.now()
-  let midnight, tomorrow
+  let midnight, now, tomorrow
 
   debug('daily', 'running')
 
@@ -62,6 +61,8 @@ const daily = async (debug, runtime) => {
     runtime.captureException(ex)
     debug('daily', ex)
   }
+
+  now = underscore.now()
   tomorrow = new Date(now)
   tomorrow.setHours(24, 0, 0, 0)
   setTimeout(() => { daily(debug, runtime) }, tomorrow - now)
