@@ -11,6 +11,7 @@ module.exports = Joi.extend({
   name: 'string',
   language: {
     badAltcurrencyCode: 'invalid alternate currency code',
+    badAnycurrencyCode: 'invalid alternate/fiat currency code',
     badBase58: 'bad Base58 encoding',
     badCountryCode: 'invalid country code',
     badCurrencyCode: 'invalid currency code',
@@ -39,6 +40,20 @@ module.exports = Joi.extend({
         const regexp = new RegExp(/^[0-9A-Z]{2,}$/)
 
         if (!regexp.test(value)) return this.createError('string.badAltcurrencyCode', { v: value }, state, options)
+
+        return value
+      }
+    },
+
+    { name: 'anycurrencyCode',
+
+      validate (params, value, state, options) {
+        const entry = currencyCodes.code(value)
+        const regexp = new RegExp(/^[0-9A-Z]{2,}$/)
+
+        if ((!entry) && (!regexp.test(value))) {
+          return this.createError('string.badAnycurrencyCode', { v: value }, state, options)
+        }
 
         return value
       }

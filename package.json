@@ -83,7 +83,7 @@
     "redis": "2.8.0",
     "rsmq": "^0.8.2",
     "rsmq-worker": "^0.5.2",
-    "sdebug": "^0.9.4",
+    "sdebug": "^0.9.5",
     "signalr-client-forked": "0.0.21",
     "tldjs": "2.2.0",
     "tweetnacl": "^1.0.0",

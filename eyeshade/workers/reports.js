@@ -1,6 +1,5 @@
 const BigNumber = require('bignumber.js')
 const bson = require('bson')
-const currencyCodes = require('currency-codes')
 const dateformat = require('dateformat')
 const json2csv = require('json2csv')
 const moment = require('moment')
@@ -8,10 +7,9 @@ const underscore = require('underscore')
 
 const braveHapi = require('bat-utils').extras.hapi
 
-let altcurrency
+BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 
-let currency = currencyCodes.code('USD')
-if (!currency) currency = { digits: 2 }
+let altcurrency
 
 const datefmt = 'yyyymmdd-HHMMss'
 const datefmt2 = 'yyyymmdd-HHMMss-l'
@@ -32,7 +30,7 @@ const create = async (runtime, prefix, params) => {
 }
 
 const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  const prefix = publisher ? ('/' + encodeURIComponent(publisher)) : ''
+  const prefix = publisher ? encodeURIComponent(publisher) : ''
   let result
 
   result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
@@ -49,8 +47,7 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
 }
 
 const daily = async (debug, runtime) => {
-  const now = underscore.now()
-  let midnight, tomorrow
+  let midnight, now, tomorrow
 
   debug('daily', 'running')
 
@@ -64,6 +61,8 @@ const daily = async (debug, runtime) => {
     runtime.captureException(ex)
     debug('daily', ex)
   }
+
+  now = underscore.now()
   tomorrow = new Date(now)
   tomorrow.setHours(24, 0, 0, 0)
   setTimeout(() => { daily(debug, runtime) }, tomorrow - now)
@@ -71,8 +70,7 @@ const daily = async (debug, runtime) => {
 }
 
 const hourly = async (debug, runtime) => {
-  const now = underscore.now()
-  let next
+  let next, now
 
   debug('hourly', 'running')
 
@@ -82,9 +80,53 @@ const hourly = async (debug, runtime) => {
     runtime.captureException(ex)
     debug('hourly', ex)
   }
+
+  now = underscore.now()
   next = now + 60 * 60 * 1000
   setTimeout(() => { hourly(debug, runtime) }, next - now)
   debug('hourly', 'running again ' + moment(next).fromNow())
+}
+
+const hourly2 = async (debug, runtime) => {
+  const publishers = runtime.database.get('publishers', debug)
+  let entries, next, now
+
+  debug('hourly2', 'running')
+
+  try {
+    entries = await publishers.find({ verified: true })
+    for (let entry of entries) {
+      const publisher = entry.publisher
+      let datum, info, result, state
+
+      try {
+        result = await publish(debug, runtime, 'get', publisher)
+        datum = underscore.findWhere(result, { verified: true })
+        if (!datum) continue
+
+        info = underscore.extend(underscore.pick(datum, [ 'name', 'email' ]), { phone: datum.phone_normalized })
+
+        if (underscore.isEqual(entry.info, info)) continue
+
+        state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $set: { info: info }
+        }
+        await publishers.update({ publisher: publisher }, state, { upsert: true })
+      } catch (ex) {
+        runtime.captureException(ex)
+        debug('hourly2', ex)
+      }
+    }
+  } catch (ex) {
+    runtime.captureException(ex)
+    debug('hourly2', ex)
+  }
+
+  now = underscore.now()
+  next = now + 60 * 60 * 1000
+  setTimeout(() => { hourly2(debug, runtime) }, next - now)
+  debug('hourly2', 'running again ' + moment(next).fromNow())
 }
 
 const quanta = async (debug, runtime, qid) => {
@@ -227,7 +269,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
       publishers[slice.publisher].fees = publishers[slice.publisher].fees.plus(fees)
       publishers[slice.publisher].votes.push({
         surveyorId: quantum.surveyorId,
-        lastUpdated: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
+        timestamp: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
         counts: slice.counts,
         altcurrency: altcurrency,
         probi: probi,
@@ -273,11 +315,14 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
 
   results = results.sort(publisherCompare)
   results.forEach((result) => {
-    result.probi = result.probi.truncated()
-    result.fees = result.fees.truncated()
+    result.probi = result.probi.truncated().toString()
+    result.fees = result.fees.truncated().toString()
+
     result.votes.forEach((vote) => {
-      vote.probi = vote.probi.truncated()
-      vote.fees = vote.fees.truncated()
+      vote['publisher USD'] = usd && vote.probi.times(usd).toFixed(2)
+      vote['processor USD'] = usd && vote.fees.times(usd).toFixed(2)
+      vote.probi = vote.probi.truncated().toString()
+      vote.fees = vote.fees.truncated().toString()
     })
   })
 
@@ -292,9 +337,11 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
         result = underscore.pick(entry, [ 'publisher', 'address', 'altcurrency', 'probi', 'fees' ])
         result.authority = authority
         result.transactionId = reportId
-        result.amount = entry.probi.times(usd).toFixed(currency.digits)
-        result.fee = entry.fees.times(usd).toFixed(currency.digits)
+/*
         result.currency = 'USD'
+        result.amount = usd && entry.probi.times(usd).toFixed(2)
+ */
+        result.fee = usd && entry.fees.times(usd).toFixed(2)
         if (result.altcurrency === 'BTC') result.satoshis = result.probi
         publishers.push(result)
       })
@@ -320,9 +367,9 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
       altcurrency: result.altcurrency,
       probi: result.probi,
       fees: result.fees,
-      'publisher USD': result.probi.times(usd).toFixed(currency.digits),
-      'processor USD': result.fees.times(usd).toFixed(currency.digits),
-      lastUpdated: lastxn && lastxn.lastUpdated && dateformat(lastxn.lastUpdated, datefmt)
+      'publisher USD': usd && new BigNumber(result.probi).times(usd).toFixed(2),
+      'processor USD': usd && new BigNumber(result.fees).times(usd).toFixed(2),
+      timestamp: lastxn && lastxn.timestamp && dateformat(lastxn.timestamp, datefmt)
     }
     if (authority) {
       underscore.extend(datum,
@@ -330,10 +377,10 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
     }
     data.push(datum)
     if (!summaryP) {
-      underscore.sortBy(result.votes, 'lastUpdated').forEach((vote) => {
+      underscore.sortBy(result.votes, 'timestamp').forEach((vote) => {
         data.push(underscore.extend({ publisher: result.publisher },
                                     underscore.omit(vote, [ 'surveyorId', 'updated' ]),
-                                    { transactionId: vote.surveyorId, lastUpdated: dateformat(vote.lastUpdated, datefmt) }))
+                                    { transactionId: vote.surveyorId, timestamp: dateformat(vote.timestamp, datefmt) }))
       })
     }
   })
@@ -343,7 +390,8 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
 
 const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
   const publishers = {}
-  let data, fees, results, probi
+
+  let amount, currency, data, fees, lastxn, results, probi
 
   entries.forEach((entry) => {
     if (entry.publisher === '') return
@@ -352,62 +400,84 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
       publishers[entry.publisher] = {
         altcurrency: altcurrency,
         probi: new BigNumber(0),
+        amount: new BigNumber(0),
         fees: new BigNumber(0)
       }
-      if (!summaryP) publishers[entry.publisher].txns = []
+      publishers[entry.publisher].txns = []
     }
 
-    publishers[entry.publisher].probi = publishers[entry.publisher].probi.plus(entry.probi)
-    publishers[entry.publisher].fees = publishers[entry.publisher].fees.plus(entry.fees)
-    entry.probi = entry.probi.toString()
-    entry.fees = entry.fees.toString()
+    underscore.extend(entry, {
+      probi: entry.probi.toString(), amount: entry.amount.toString(), fees: entry.fees.toString()
+    })
+
+    publishers[entry.publisher].probi = publishers[entry.publisher].probi.plus(new BigNumber(entry.probi))
+    publishers[entry.publisher].amount = publishers[entry.publisher].amount.plus(new BigNumber(entry.amount))
+    if (!entry.fees) entry.fees = 0
+    publishers[entry.publisher].fees = publishers[entry.publisher].fees.plus(new BigNumber(entry.fees))
+    if (typeof publishers[entry.publisher].currency === 'undefined') publishers[entry.publisher].currency = entry.currency
+    else if (publishers[entry.publisher].currency !== entry.currency) publishers[entry.publisher].currency = ''
     entry.created = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
     entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-    if (summaryP) return
-
     publishers[entry.publisher].txns.push(underscore.pick(entry, [
-      'altcurrency', 'probi', 'fees', 'settlementId', 'address', 'hash', 'created', 'modified'
+      'altcurrency', 'probi', 'currency', 'amount', 'fees', 'settlementId', 'address', 'hash', 'created', 'modified'
     ]))
   })
 
   results = []
   underscore.keys(publishers).forEach((publisher) => {
-    if (!summaryP) publishers[publisher].txns = underscore.sortBy(publishers[publisher].txns, 'created')
-    results.push(underscore.extend({ publisher: publisher }, publishers[publisher]))
+    const entry = publishers[publisher]
+
+    entry.txns = underscore.sortBy(entry.txns, 'created')
+    if (summaryP) {
+      lastxn = underscore.last(entry.txns)
+      delete entry.txns
+    }
+
+    results.push(underscore.extend({ publisher: publisher }, entry, {
+      probi: entry.probi.toString(), amount: entry.amount.toString(), fees: entry.fees.toString()
+    }))
   })
   results = results.sort(publisherCompare)
 
   if (format === 'json') return { data: results }
 
   probi = new BigNumber(0)
+  amount = new BigNumber(0)
   fees = new BigNumber(0)
 
   data = []
   results.forEach((result) => {
-    let lastxn
-
     probi = probi.plus(result.probi)
+    amount = amount.plus(result.amount)
     fees = fees.plus(result.fees)
-    if (summaryP) lastxn = underscore.last(result.txns)
+    if (typeof currency === 'undefined') currency = result.currency
+    else if (currency !== result.currency) currency = ''
     data.push({
       publisher: result.publisher,
       altcurrency: result.altcurrency,
       probi: result.probi.toString(),
+      currency: result.currency,
+      amount: result.amount.toString(),
       fees: result.fees.toString(),
-      'publisher USD': result.probi.times(usd).toFixed(currency.digits),
-      'processor USD': result.fees.times(usd).toFixed(currency.digits),
-      lastUpdated: lastxn && lastxn.created && dateformat(lastxn.created, datefmt)
+      timestamp: lastxn && lastxn.created && dateformat(lastxn.created, datefmt)
     })
     if (!summaryP) {
       result.txns.forEach((txn) => {
         data.push(underscore.extend({ publisher: result.publisher },
                                     underscore.omit(txn, [ 'hash', 'settlementId', 'created', 'modified' ]),
-                                    { transactionId: txn.hash, lastUpdated: txn.created && dateformat(txn.created, datefmt) }))
+                                    { transactionId: txn.hash, timestamp: txn.created && dateformat(txn.created, datefmt) }))
       })
     }
   })
 
-  return { data: data, altcurrency: altcurrency, probi: probi.toString(), fees: fees.toString() }
+  return {
+    data: data,
+    altcurrency: altcurrency,
+    probi: probi.toString(),
+    amount: currency ? amount.toString() : '',
+    currency: currency,
+    fees: fees.toString()
+  }
 }
 
 const date2objectId = (iso8601, ceilP) => {
@@ -431,6 +501,7 @@ exports.initialize = async (debug, runtime) => {
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
     setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
+    setTimeout(() => { hourly2(debug, runtime) }, 5 * 60 * 1000)
   }
 }
 
@@ -544,8 +615,8 @@ exports.workers = {
           altcurrency: info.altcurrency,
           probi: info.probi.truncated().toString(),
           fees: info.fees.truncated().toString(),
-          'publisher USD': info.probi.times(usd).toFixed(currency.digits),
-          'processor USD': info.fees.times(usd).toFixed(currency.digits)
+          'publisher USD': usd && info.probi.times(usd).toFixed(2),
+          'processor USD': usd && info.fees.times(usd).toFixed(2)
         })
       }
 
@@ -599,9 +670,9 @@ exports.workers = {
           publisher: 'TOTAL',
           altcurrency: info.altcurrency,
           probi: info.probi,
-          fees: info.fees,
-          'publisher USD': (info.probi * usd).toFixed(currency.digits),
-          'processor USD': (info.fees * usd).toFixed(currency.digits)
+          currency: info.currency,
+          amount: info.amount,
+          fees: info.fees
         })
       }
 
@@ -612,8 +683,11 @@ exports.workers = {
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-settlements completed' })
     },
 
-/* sent by GET /v1/reports/publisher/{publisher}/statements
+/* sent by GET /v1/publishers/{publisher}/statement
            GET /v1/reports/publishers/statements
+           GET /v1/reports/publisher/{publisher}/statements
+           GET /v1/reports/publishers/statements/{hash}
+           GET /v2/reports/publishers/statements
 
     { queue            : 'report-publishers-statements'
     , message          :
@@ -641,53 +715,6 @@ exports.workers = {
       let data, data1, data2, file, entries, publishers, query, usd
       let ending = payload.ending
 
-      if (runtime.config.server.hostname === 'eyeshade-staging.mercury.basicattentiontoken.org') {
-        data = [
-          {
-            publisher: 'dgeb1.com',
-            altcurrency: 'BAT',
-            probi: '20175000000000',
-            fees: '1061700000000',
-            'publisher USD': 9.75,
-            'processor USD': 0.51,
-            lastUpdated: '20161220-070939'
-          },
-          {
-            publisher: 'dgeb1.com',
-            altcurrency: 'BAT',
-            probi: '12487000000000',
-            fees: '657000000000',
-            'publisher USD': 6.03,
-            'processor USD': 0.32,
-            lastUpdated: '20170103-174733'
-          },
-          [],
-          {
-            publisher: 'TOTAL',
-            altcurrency: 'BAT',
-            probi: '20175000000000',
-            fees: '1061700000000',
-            'publisher USD': 9.75,
-            'processor USD': 0.51
-          },
-          {
-            publisher: 'TOTAL',
-            altcurrency: 'BAT',
-            probi: '12487000000000',
-            fees: '657000000000',
-            'publisher USD': 6.03,
-            'processor USD': 0.3
-          }
-        ]
-
-        file = await create(runtime, 'publishers-statements-', payload)
-        try { await file.write(json2csv({ data: data }), true) } catch (ex) {
-          debug('reports', { report: 'report-publishers-statements', reason: ex.toString() })
-          file.close()
-        }
-        return runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-statements completed' })
-      }
-
       if (publisher) {
         query = { publisher: publisher }
         if ((starting) || (ending)) {
@@ -710,7 +737,6 @@ exports.workers = {
         })
       }
 
-// TBD: use preferred fiat, if available
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
       if (usd) usd = new BigNumber(usd.toString())
       data = []
@@ -723,12 +749,20 @@ exports.workers = {
         entry[publisher] = publishers[publisher]
         info = publisherContributions(runtime, entry, undefined, undefined, undefined, 'csv', undefined, summaryP, undefined,
                                       usd)
+        info.data.forEach((datum) => {
+          datum.probi = datum.probi.toString()
+          datum.fees = datum.fees.toString()
+        })
         data = data.concat(info.data)
         data1.probi = data1.probi.plus(info.probi)
         data1.fees = data1.fees.plus(info.fees)
         if (!summaryP) data.push([])
 
         info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP, usd)
+        info.data.forEach((datum) => {
+          datum.probi = datum.probi.toString()
+          datum.amount = datum.amount.toString()
+        })
         data = data.concat(info.data)
         data2.probi = data2.probi.plus(info.probi)
         data2.fees = data2.fees.plus(info.fees)
@@ -741,22 +775,39 @@ exports.workers = {
           altcurrency: data1.altcurrency,
           probi: data1.probi.toString(),
           fees: data1.fees.toString(),
-          'publisher USD': data1.probi.times(usd).toFixed(currency.digits),
-          'processor USD': data1.fees.times(usd).toFixed(currency.digits)
+          'publisher USD': usd && data1.probi.times(usd).toFixed(2),
+          'processor USD': usd && data1.fees.times(usd).toFixed(2)
         })
         if (!summaryP) data.push([])
         data.push({
           publisher: 'TOTAL',
           altcurrency: data2.altcurrency,
-          probi: data2.probi.toString(),
-          fees: data2.fees.toString(),
-          'publisher USD': data2.probi.times(usd).toFixed(currency.digits),
-          'processor USD': data2.fees.times(usd).toFixed(currency.digits)
+          probi: data2.probi.toString()
         })
       }
 
       file = await create(runtime, 'publishers-statements-', payload)
-      try { await file.write(json2csv({ data: data }), true) } catch (ex) {
+      try {
+        await file.write(json2csv({
+          data: data,
+          fields: [
+            'timestamp', 'publisher',
+            'publisher USD', 'processor USD',
+            'currency', 'amount',
+            'transactionId',
+            'altcurrency', 'probi', 'fees',
+            'counts', 'address'
+          ],
+          fieldNames: [
+            'timestamp', 'publisher',
+            'estimated USD', 'estimated fees',
+            'currency', 'amount',
+            'transactionId',
+            'altcurrency', 'probi', 'fees',
+            'counts', 'address'
+          ]
+        }), true)
+      } catch (ex) {
         debug('reports', { report: 'report-publishers-statements', reason: ex.toString() })
         file.close()
       }

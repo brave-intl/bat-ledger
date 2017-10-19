@@ -113,6 +113,7 @@ v2.settlement = {
         if (validity.error) return reply(boom.badData(entry.address + ': ' + validity.error))
 
         entry.probi = bson.Decimal128.fromString(entry.probi.toString())
+        if (entry.amount) entry.amount = bson.Decimal128.fromString(entry.amount.toString())
         if (entry.fees) entry.fees = bson.Decimal128.fromString(entry.fees.toString())
         if (!entry.hash) entry.hash = hash
         state.$set = underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees', 'hash' ])
@@ -140,6 +141,8 @@ v2.settlement = {
       address: Joi.string().required().description('altcurrency address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),
+      currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the deposit currency'),
+      amount: braveJoi.string().numeric().required().description('the amount in the deposit currency'),
       transactionId: Joi.string().guid().description('the transactionId'),
       hash: Joi.string().regex(txHexRegExp).optional().description('transaction hash')
     }).unknown(true)).required().description('publisher settlement report')
@@ -206,11 +209,11 @@ v2.getBalance = {
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
       reply({
-        amount: amount,
-        currency: currency,
+        rates: runtime.currency.rates[altcurrency],
         altcurrency: altcurrency,
         probi: probi.truncated().toString(),
-        rates: runtime.currency.rates[altcurrency]
+        amount: amount,
+        currency: currency
       })
     }
   },
@@ -233,11 +236,146 @@ v2.getBalance = {
 
   response: {
     schema: Joi.object().keys({
-      amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+      rates: Joi.object().optional().description('current exchange rates to various currencies'),
       altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
       probi: braveJoi.string().numeric().optional().description('the balance in probi'),
-      rates: Joi.object().optional().description('current exchange rates to various currencies')
+      amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
+    })
+  }
+}
+
+/*
+   GET /v2/publishers/{publisher}/wallet
+       [ used by publishers ]
+ */
+
+v2.getWallet = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const publisher = request.params.publisher
+      const currency = request.query.currency.toUpperCase()
+      const debug = braveHapi.debug(module, request)
+      const publishers = runtime.database.get('publishers', debug)
+      const settlements = runtime.database.get('settlements', debug)
+      const voting = runtime.database.get('voting', debug)
+      let amount, entries, entry, result, summary
+      let probi = new BigNumber(0)
+
+      summary = await voting.aggregate([
+        {
+          $match:
+          {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group:
+          {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await settlements.aggregate([
+        {
+          $match:
+          {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher }
+          }
+        },
+        {
+          $group:
+          {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
+      if (probi.lessThan(0)) {
+        runtime.captureException(new Error('negative probi'), { publisher: publisher, probi: probi.toString() })
+        probi = 0
+      }
+
+      amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
+      result = {
+        rates: runtime.currency.rates[altcurrency],
+        contributions: {
+          amount: amount,
+          currency: currency,
+          altcurrency: altcurrency,
+          probi: probi.truncated().toString()
+        }
+      }
+
+      entries = await settlements.find({ publisher: publisher }, { sort: { timestamp: -1 }, limit: 1 })
+      entry = entries && entries[0]
+      if (entry) {
+        result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
+          probi: entry.probi.toString(),
+          amount: entry.amount.toString(),
+          timestamp: (entry.timestamp.high_ * 1000) +
+            (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+        })
+      }
+
+      entry = await publishers.findOne({ publisher: publisher })
+      try {
+        if ((entry) && (entry.provider)) result.wallet = await runtime.wallet.status(entry)
+      } catch (ex) {
+        debug('status', ex)
+        runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
+      }
+
+      reply(result)
+    }
+  },
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Gets information for a publisher',
+  tags: [ 'api' ],
+
+  validate: {
+    params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
+    query: {
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+      access_token: Joi.string().guid().optional()
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      rates: Joi.object().optional().description('current exchange rates to various currencies'),
+      contributions: Joi.object().keys({
+        amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
+        currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+        altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
+        probi: braveJoi.string().numeric().optional().description('the balance in probi')
+      }).unknown(true).required().description('pending publisher contributions'),
+      lastSettlement: Joi.object().keys({
+        altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
+        probi: braveJoi.string().numeric().required().description('the balance in probi'),
+        currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the deposit currency'),
+        amount: braveJoi.string().numeric().optional().description('the amount in the deposit currency'),
+        timestamp: Joi.number().positive().optional().description('timestamp of settlement')
+      }).unknown(true).optional().description('last publisher settlement'),
+      wallet: Joi.object().keys({
+        provider: Joi.string().required().description('wallet provider'),
+        authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
+        preferredCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
+        availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('available currencies')
+      }).unknown(true).optional().description('publisher wallet information')
     })
   }
 }
@@ -274,7 +412,7 @@ v2.putWallet = {
 
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'publisher ' + publisher + ' authorized by ' + provider
+        text: 'publisher ' + publisher + ' registered with ' + provider
       })
 
       reply({})
@@ -328,7 +466,7 @@ v1.getStatements = {
     mode: 'required'
   },
 
-  description: 'Generates a statement for a publisher',
+  description: 'Generates a statement for all publishers',
   tags: [ 'api' ],
 
   validate: {
@@ -747,6 +885,7 @@ module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/publishers').config(v1.bulk),
   braveHapi.routes.async().post().path('/v2/publishers/settlement/{hash}').config(v2.settlement),
   braveHapi.routes.async().path('/v2/publishers/{publisher}/balance').whitelist().config(v2.getBalance),
+  braveHapi.routes.async().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.getWallet),
   braveHapi.routes.async().put().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.putWallet),
   braveHapi.routes.async().path('/v1/publishers/statement').whitelist().config(v1.getStatements),
   braveHapi.routes.async().path('/v1/publishers/{publisher}/statement').whitelist().config(v1.getStatement),
@@ -779,6 +918,7 @@ module.exports.initialize = async (debug, runtime) => {
         provider: '',
         altcurrency: '',
         parameters: {},
+        info: {},
 
         timestamp: bson.Timestamp.ZERO
       },
@@ -803,12 +943,15 @@ module.exports.initialize = async (debug, runtime) => {
      // v2 and later
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
+        currency: '',
+        amount: bson.Decimal128.POSITIVE_ZERO,
 
         fees: bson.Decimal128.POSITIVE_ZERO,
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
-      others: [ { address: 1 }, { altcurrency: 1 }, { probi: 1 }, { fees: 1 }, { timestamp: 1 } ]
+      others: [ { address: 1 }, { altcurrency: 1 }, { probi: 1 }, { amount: 1 }, { currency: 1 }, { fees: 1 },
+                { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('tokens', debug),
