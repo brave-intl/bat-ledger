@@ -30,7 +30,7 @@ const create = async (runtime, prefix, params) => {
 }
 
 const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  const prefix = publisher ? ('/' + encodeURIComponent(publisher)) : ''
+  const prefix = publisher ? encodeURIComponent(publisher) : ''
   let result
 
   result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
@@ -95,27 +95,29 @@ const hourly2 = async (debug, runtime) => {
 
   try {
     entries = await publishers.find({ verified: true })
-    entries.forEach(async (entry) => {
+    for (let entry of entries) {
       const publisher = entry.publisher
       let datum, info, result, state
 
-      result = await publish(debug, runtime, 'get', publisher)
-      datum = underscore.findWhere(result, { verified: true })
-      if (!datum) return
+      try {
+        result = await publish(debug, runtime, 'get', publisher)
+        datum = underscore.findWhere(result, { verified: true })
+        if (!datum) continue
 
-      info = underscore.extend(underscore.pick(datum, [ 'name', 'email' ]),
-                               { phone: datum.phone_normalized, showVerification: datum.show_verification_status })
+        info = underscore.extend(underscore.pick(datum, [ 'name', 'email' ]), { phone: datum.phone_normalized })
 
-      if (underscore.isEqual(entry.info, info)) return
+        if (underscore.isEqual(entry.info, info)) continue
 
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: { info: info }
+        state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $set: { info: info }
+        }
+        await publishers.update({ publisher: publisher }, state, { upsert: true })
+      } catch (ex) {
+        runtime.captureException(ex)
+        debug('hourly2', ex)
       }
-      await publishers.update({ publisher: publisher }, state, { upsert: true })
-
-      debug('hourly2', { publisher: publisher, info: info })
-    })
+    }
   } catch (ex) {
     runtime.captureException(ex)
     debug('hourly2', ex)
@@ -497,9 +499,12 @@ exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
 
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
+/*
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
     setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
     setTimeout(() => { hourly2(debug, runtime) }, 5 * 60 * 1000)
+ */
+setTimeout(() => { hourly2(debug, runtime) }, 5 * 1000)
   }
 }
 
