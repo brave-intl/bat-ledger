@@ -299,7 +299,10 @@ v2.getWallet = {
         }
       ])
       if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
-      if (probi.lessThan(0)) probi = 0
+      if (probi.lessThan(0)) {
+        runtime.captureException(new Error('negative probi'), { publisher: publisher, probi: probi.toString() })
+        probi = 0
+      }
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
       result = {
