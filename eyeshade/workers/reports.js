@@ -69,8 +69,7 @@ const daily = async (debug, runtime) => {
 }
 
 const hourly = async (debug, runtime) => {
-  const now = underscore.now()
-  let next
+  let next, now
 
   debug('hourly', 'running')
 
@@ -80,9 +79,51 @@ const hourly = async (debug, runtime) => {
     runtime.captureException(ex)
     debug('hourly', ex)
   }
+
+  now = underscore.now()
   next = now + 60 * 60 * 1000
   setTimeout(() => { hourly(debug, runtime) }, next - now)
   debug('hourly', 'running again ' + moment(next).fromNow())
+}
+
+const hourly2 = async (debug, runtime) => {
+  const publishers = runtime.database.get('publishers', debug)
+  let entries, next, now
+
+  debug('hourly2', 'running')
+
+  try {
+    entries = await publishers.find({ verified: true })
+    entries.forEach(async (entry) => {
+      const publisher = entry.publisher
+      let datum, info, result, state
+
+      result = await publish(debug, runtime, 'get', publisher)
+      datum = underscore.findWhere(result, { verified: true })
+      if (!datum) return
+
+      info = underscore.extend(underscore.pick(datum, [ 'name', 'email' ]),
+                               { phone: datum.phone_normalized, showVerification: datum.show_verification_status })
+
+      if (underscore.isEqual(entry.info, info)) return
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: { info: info }
+      }
+      await publishers.update({ publisher: publisher }, state, { upsert: true })
+
+      debug('hourly2', { publisher: publisher, info: info })
+    })
+  } catch (ex) {
+    runtime.captureException(ex)
+    debug('hourly2', ex)
+  }
+
+  now = underscore.now()
+  next = now + 60 * 60 * 1000
+  setTimeout(() => { hourly2(debug, runtime) }, next - now)
+  debug('hourly2', 'running again ' + moment(next).fromNow())
 }
 
 const quanta = async (debug, runtime, qid) => {
@@ -457,6 +498,7 @@ exports.initialize = async (debug, runtime) => {
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
     setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
+    setTimeout(() => { hourly2(debug, runtime) }, 5 * 60 * 1000)
   }
 }
 

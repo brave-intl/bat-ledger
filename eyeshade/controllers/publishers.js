@@ -916,6 +916,7 @@ module.exports.initialize = async (debug, runtime) => {
         provider: '',
         altcurrency: '',
         parameters: {},
+        info: {},
 
         timestamp: bson.Timestamp.ZERO
       },
