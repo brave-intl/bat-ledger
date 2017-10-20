@@ -333,6 +333,7 @@ v2.getWallet = {
         debug('status', ex)
         runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
       }
+      if (!result.wallet) result.status = { provider: entry.provider, action: 'authorize' }
 
       reply(result)
     }
@@ -375,7 +376,11 @@ v2.getWallet = {
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
         preferredCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
         availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('available currencies')
-      }).unknown(true).optional().description('publisher wallet information')
+      }).unknown(true).optional().description('publisher wallet information'),
+      status: Joi.object().keys({
+        provider: Joi.string().required().description('wallet provider'),
+        action: Joi.any().allow('authorize').required().description('requested action')
+      }).unknown(true).optional().description('publisher wallet status')
     })
   }
 }

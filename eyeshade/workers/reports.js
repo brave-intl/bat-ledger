@@ -115,6 +115,7 @@ const hourly2 = async (debug, runtime) => {
         await publishers.update({ publisher: publisher }, state, { upsert: true })
       } catch (ex) {
         runtime.captureException(ex)
+        if (ex.data) delete ex.data.res
         debug('hourly2', ex)
       }
     }
@@ -931,29 +932,33 @@ exports.workers = {
         if (datum) {
           datum.created = new Date(parseInt(datum._id.toHexString().substring(0, 8), 16) * 1000).getTime()
           datum.modified = (datum.timestamp.high_ * 1000) + (datum.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-          underscore.extend(results[publisher], underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified' ]))
+          underscore.extend(results[publisher], underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]))
         }
 
-        try {
-          result = await publish(debug, runtime, 'get', publisher)
-          datum = underscore.findWhere(result, { id: results[publisher].verificationId })
-          if (datum) {
-            underscore.extend(results[publisher], underscore.pick(datum, [ 'name', 'email' ]),
+        if (verified) {
+          underscore.extend(results[publisher], datum.info || {})
+        } else {
+          try {
+            result = await publish(debug, runtime, 'get', publisher)
+            datum = underscore.findWhere(result, { id: results[publisher].verificationId })
+            if (datum) {
+              underscore.extend(results[publisher], underscore.pick(datum, [ 'name', 'email' ]),
                               { phone: datum.phone_normalized, showVerification: datum.show_verification_status })
-          }
-
-          results[publisher].history.forEach((record) => {
-            datum2 = underscore.findWhere(result, { id: record.verificationId })
-            if (datum2) {
-              underscore.extend(record, underscore.pick(datum2, [ 'name', 'email' ]),
-                                { phone: datum2.phone_normalized, showVerification: datum2.show_verification_status })
             }
-          })
-          if ((!datum) && (datum2)) {
-            underscore.extend(results[publisher], underscore.pick(datum2, [ 'name', 'email' ]),
+
+            results[publisher].history.forEach((record) => {
+              datum2 = underscore.findWhere(result, { id: record.verificationId })
+              if (datum2) {
+                underscore.extend(record, underscore.pick(datum2, [ 'name', 'email' ]),
+                                { phone: datum2.phone_normalized, showVerification: datum2.show_verification_status })
+              }
+            })
+            if ((!datum) && (datum2)) {
+              underscore.extend(results[publisher], underscore.pick(datum2, [ 'name', 'email' ]),
                               { phone: datum2.phone_normalized, showVerification: datum2.show_verification_status })
-          }
-        } catch (ex) { debug('publisher', { publisher: publisher, reason: ex.toString() }) }
+            }
+          } catch (ex) { debug('publisher', { publisher: publisher, reason: ex.toString() }) }
+        }
 
         if (elideP) {
           if (results[publisher].email) results[publisher].email = 'yes'
