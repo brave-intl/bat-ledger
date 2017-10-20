@@ -1,6 +1,5 @@
 const dns = require('dns')
 const os = require('os')
-const path = require('path')
 
 const asyncHandler = require('hapi-async-handler')
 const authBearerToken = require('hapi-auth-bearer-token')
@@ -311,29 +310,7 @@ const Server = async (options, runtime) => {
       throw err
     }
 
-    const children = {}
     let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
-
-    const f = (m) => {
-      m.children.forEach(entry => {
-        const components = path.parse(entry.filename).dir.split(path.sep)
-        const i = components.indexOf('node_modules')
-        let p, version
-
-        if (i >= 0) {
-          p = components[i + 1]
-          try {
-            version = require(path.join(components.slice(0, i + 2).join(path.sep), 'package.json')).version
-          } catch (ex) { return }
-
-          if (!children[p]) children[p] = version
-          else if (Array.isArray(children[p])) {
-            if (children[p].indexOf(version) < 0) children[p].push(version)
-          } else if (children[p] !== version) children[p] = [ children[p], version ]
-        }
-        f(entry)
-      })
-    }
 
     dns.setServers(resolvers)
     debug('webserver started',
@@ -343,14 +320,10 @@ const Server = async (options, runtime) => {
             {
               env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ])
             }))
-    process.npminfo.children = {}
     runtime.notify(debug, {
       text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
         (process.env.DYNO || 'web') + '/' + options.id
     })
-
-    f(options.module)
-    underscore.keys(children).sort().forEach(m => { process.npminfo.children[m] = children[m] })
 
     // Hook to notify start script.
     if (process.send) { process.send('started') }
