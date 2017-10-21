@@ -333,7 +333,7 @@ v2.getWallet = {
         debug('status', ex)
         runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
       }
-      if (!result.wallet) result.status = { provider: entry.provider, action: 'authorize' }
+      if (!result.wallet) result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
 
       reply(result)
     }
@@ -379,7 +379,7 @@ v2.getWallet = {
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
-        action: Joi.any().allow('authorize').required().description('requested action')
+        action: Joi.any().allow([ 'authorize', 're-authorize' ]).required().description('requested action')
       }).unknown(true).optional().description('publisher wallet status')
     })
   }
