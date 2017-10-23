@@ -32,7 +32,7 @@ const Server = async (options, runtime) => {
     runtime = options
     options = {}
   }
-  underscore.defaults(options, { id: server.info.id, module: module, remoteP: true })
+  underscore.defaults(options, { id: server.info.id, module: module, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
   debug.initialize({ web: { id: options.id } })
@@ -188,6 +188,11 @@ const Server = async (options, runtime) => {
   })
 
   server.ext('onRequest', (request, reply) => {
+    const headers = options.headersP &&
+          underscore.omit(request.headers, (value, key, object) => {
+            if ([ 'authorization', 'cookie' ].indexOf(key) !== -1) return true
+            return /^x-forwarded-/i.test(key)
+          })
     const remote = options.remoteP &&
           { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
 
@@ -201,10 +206,7 @@ const Server = async (options, runtime) => {
         },
         query: request.url.query,
         params: request.url.params,
-        headers: underscore.omit(request.headers, (value, key, object) => {
-          if ([ 'authorization', 'cookie' ].indexOf(key) !== -1) return true
-          return /^x-forwarded-/i.test(key)
-        }),
+        headers: headers,
         remote: remote
       }
     })
