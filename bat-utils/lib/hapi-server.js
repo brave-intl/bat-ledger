@@ -320,7 +320,8 @@ const Server = async (options, runtime) => {
             { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
             server.info,
             {
-              env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ])
+              env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
+              options: underscore.pick(options, [ 'headersP', 'remoteP' ])
             }))
     runtime.notify(debug, {
       text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
