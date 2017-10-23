@@ -277,7 +277,8 @@ const write = function (runtime, apiVersion) {
       address: wallet.addresses[result.altcurrency],
       surveyorId: surveyorId,
       viewingId: viewingId,
-      fee: fee
+      fee: fee,
+      votes: votes
     }, result))
   }
 }
