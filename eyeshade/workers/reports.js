@@ -935,7 +935,7 @@ exports.workers = {
           underscore.extend(results[publisher], underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]))
         }
 
-        if (verified) {
+        if (datum && verified) {
           underscore.extend(results[publisher], datum.info || {})
         } else {
           try {
