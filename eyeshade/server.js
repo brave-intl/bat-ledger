@@ -10,7 +10,9 @@ const options = {
   parent: path.join(__dirname, 'controllers'),
   routes: utils.hapi.controllers.index,
   controllers: utils.hapi.controllers,
-  module: module
+  module: module,
+  headersP: false,
+  remoteP: true
 }
 
 config.cache = false
