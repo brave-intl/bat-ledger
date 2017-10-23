@@ -161,9 +161,6 @@ exports.workers = {
       const surveyors = runtime.database.get('surveyors', debug)
       let state
 
-      if (typeof payload.probi === 'undefined') {
-        payload = underscore.omit(underscore.extend(payload, { altcurrency: 'BTC', probi: payload.satoshis }), [ 'satoshis' ])
-      }
       payload.probi = bson.Decimal128.fromString(payload.probi.toString())
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -197,9 +194,6 @@ exports.workers = {
       const wallets = runtime.database.get('wallets', debug)
       let state
 
-      if (typeof payload.probi === 'undefined') {
-        payload = underscore.omit(underscore.extend(payload, { altcurrency: 'BTC', probi: payload.satoshis }), [ 'satoshis' ])
-      }
       payload.probi = bson.Decimal128.fromString(payload.probi.toString())
       payload.fee = bson.Decimal128.fromString(payload.fee.toString())
       state = {
