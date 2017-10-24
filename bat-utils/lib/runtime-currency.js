@@ -1,5 +1,4 @@
 const BigNumber = require('bignumber.js')
-const bitcoinaverage = require('node-bitcoinaverage-api')
 const Client = require('signalr-client-forked').client
 const Joi = require('joi')
 const NodeCache = require('node-cache')
@@ -7,6 +6,7 @@ const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
 const underscore = require('underscore')
+const WebSocket = require('faye-websocket')
 
 const braveHapi = require('./extras-hapi')
 
@@ -19,7 +19,8 @@ const msecs = {
   second: 1000
 }
 
-let client
+let client1
+let client2
 let singleton
 
 const Currency = function (config, runtime) {
@@ -63,6 +64,7 @@ Currency.prototype.init = function () {
   setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 5 * msecs.minute)
 
   monitor1(this.config, this.runtime)
+  monitor2(this.config, this.runtime)
 }
 
 const schemaSR =
@@ -73,17 +75,17 @@ const schemaSR =
 
 const monitor1 = (config, runtime) => {
   const retry = () => {
-    try { if (client) client.end() } catch (ex) { debug('monitor1', { event: 'end', message: ex.toString() }) }
+    try { if (client1) client1.end() } catch (ex) { debug('monitor1', { event: 'end', message: ex.toString() }) }
 
-    client = undefined
+    client1 = undefined
     setTimeout(function () { monitor1(config, runtime) }, 15 * msecs.second)
   }
 
-  if (client) return
+  if (client1) return
 
-  client = new Client('http://socket.bittrex.com/signalR', [ 'coreHub' ])
+  client1 = new Client('http://socket.bittrex.com/signalR', [ 'coreHub' ])
 
-  client.on('coreHub', 'updateSummaryState', async (data) => {
+  client1.on('coreHub', 'updateSummaryState', async (data) => {
     const validity = Joi.validate(data.Deltas, schemaSR)
     let now
     let tickers
@@ -109,8 +111,6 @@ const monitor1 = (config, runtime) => {
     })
 
     try { tickers = await inkblot(config, runtime) } catch (ex) {
-      console.log(ex.stack)
-
       now = underscore.now()
       if (singleton.warnings > now) return
 
@@ -119,8 +119,6 @@ const monitor1 = (config, runtime) => {
     }
 
     try { await rorschach(rates, tickers, config, runtime) } catch (ex) {
-      console.log(ex.stack)
-
       now = underscore.now()
       if (singleton.warnings > now) return
 
@@ -129,65 +127,51 @@ const monitor1 = (config, runtime) => {
     }
   })
 
-  client.serviceHandlers.connected = client.serviceHandlers.reconnected = (connection) => {
+  client1.serviceHandlers.connected = client1.serviceHandlers.reconnected = (connection) => {
+    if (connection.connected) return
+
     debug('monitor1', { event: 'connected', connected: connection.connected })
     if (!connection.connected) retry()
   }
-  client.serviceHandlers.connectFailed = (err) => {
+  client1.serviceHandlers.connectFailed = (err) => {
     debug('monitor1', { event: 'connectFailed', message: err.toString() })
     retry()
   }
-  client.serviceHandlers.connectionLost = (err) => {
+  client1.serviceHandlers.connectionLost = (err) => {
     debug('monitor1', { event: 'connectionLost', message: err.toString() })
     retry()
   }
-  client.serviceHandlers.onerror = (err) => {
-    debug('monitor1', { event: 'err', message: err.toString() })
+  client1.serviceHandlers.onerror = (err) => {
+    debug('monitor1', { event: 'error', message: err.toString() })
     retry()
   }
-  client.serviceHandlers.disconnected = () => {
-    debug('monitor1', { event: 'disconnected' })
+  client1.serviceHandlers.disconnected = () => {
+//  debug('monitor1', { event: 'disconnected' })
     retry()
   }
 }
 
 const altcoins = {
-  BAT: {
-    id: 'basic-attention-token'
-  },
-
-  BTC: {
-    id: 'bitcoin',
-
-    p: (config, runtime) => {
-      if (config.bitcoin_average) {
-        if (!config.bitcoin_average.publicKey) throw new Error('config.bitcoin_average.publicKey undefined')
-        if (!config.bitcoin_average.secretKey) throw new Error('config.bitcoin_average.secretKey undefined')
-        monitor2('BTC', config, runtime)
-      } else {
-        if (process.env.NODE_ENV === 'production') throw new Error('config.bitcoin_average undefined')
-      }
-    },
-
-    f: async (tickers, config, runtime) => {
-      const fiats = singleton.cache.get('fiats:BTC')
+  _internal: {
+    f: async (altcoin, tickers, config, runtime) => {
+      const fiats = singleton.cache.get('fiats:' + altcoin)
       const rates = {}
       const unavailable = []
-      let now, rate
+      let now, rate, target
 
       if (!fiats) return
 
       fiats.forEach((fiat) => {
-        rate = singleton.cache.get('ticker:BTC' + fiat)
+        rate = singleton.cache.get('ticker:' + altcoin + fiat)
         rates[fiat] = (rate && rate.last) || (unavailable.push(fiat) && undefined)
       })
       if (unavailable.length > 0) {
-        return runtime.captureException('BTC.f fiat error: ' + unavailable.join(', ') + ' unavailable')
+        return runtime.captureException(altcoin + '.f fiat error: ' + unavailable.join(', ') + ' unavailable')
       }
 
-      try { await rorschach({ BTC: rates }, tickers, config, runtime) } catch (ex) {
-        console.log(ex.stack)
-
+      target = {}
+      target[altcoin] = rates
+      try { await rorschach(target, tickers, config, runtime) } catch (ex) {
         now = underscore.now()
         if (singleton.warnings > now) return
 
@@ -197,97 +181,114 @@ const altcoins = {
     }
   },
 
+  BAT: {
+    id: 'basic-attention-token'
+  },
+
+  BTC: {
+    id: 'bitcoin',
+
+    f: async (tickers, config, runtime) => {
+      return altcoins._internal.f('BTC', tickers, config, runtime)
+    }
+  },
+
   ETH: {
-    id: 'ethereum'
+    id: 'ethereum',
+
+    f: async (tickers, config, runtime) => {
+      return altcoins._internal.f('ETH', tickers, config, runtime)
+    }
   }
 }
 
-const monitor2 = (altcoin, config, runtime) => {
-  const publicKey = config.bitcoin_average.publicKey
-  const secretKey = config.bitcoin_average.secretKey
+const schemaGDAX =
+      Joi.object().keys({
+        type: Joi.any().required(),
+        product_id: Joi.string().regex(/^[0-9A-Z]{2,}-[0-9A-Z]{2,}$/).required(),
+        price: Joi.number().positive().required()
+      }).unknown(true).required()
 
-  bitcoinaverage.restfulClient(publicKey, secretKey).symbolsGlobal((err, result) => {
-    const c2s = {
-      1000: 10,     /* normal */
-      1001: 60,     /* going away */
-      1011: 60,     /* unexpected condition */
-      1012: 60,     /* service restart */
-      1013: 300     /* try again later */
-    }
+const monitor2 = (config, runtime) => {
+  const query = []
+
+  const retry = () => {
+    try { if (client2) client2.end() } catch (ex) { debug('monitor2', { event: 'end', message: ex.toString() }) }
+
+    client2 = undefined
+    setTimeout(function () { monitor2(config, runtime) }, 15 * msecs.second)
+  }
+
+  if (client2) return
+
+  config.altcoins.forEach((altcoin) => {
     const eligible = []
-    let symbols
 
-    if (err) return console.error(err)
-
-    const pairing = (symbol) => {
-      bitcoinaverage.websocketClient(publicKey, secretKey).connectToTickerWebsocket('global', symbol, (tag, type, data) => {
-        const f = {
-          open: () => {
-            if (data.operation === 'subscribe') return debug('monitor2', { tag: tag, event: 'subscribed' })
-          },
-
-          message: async () => {
-            if (data.event === 'message') singleton.cache.set('ticker:' + symbol, data.data)
-          },
-
-          error: () => {
-            debug('monitor2', underscore.defaults({ type: type, tag: tag }, data))
-            if (data.reason) {
-              runtime.captureException(data.reason, { extra: underscore.defaults({ type: type, tag: tag }, data) })
-            } else {
-              runtime.captureException(underscore.defaults({ type: type, tag: tag }, data))
-            }
-            setTimeout(() => { pairing(symbol) }, (c2s[data.code] || 600) * msecs.second)
-          },
-
-          close: () => {
-            debug('monitor2', underscore.defaults({ type: type, tag: tag }, data))
-            setTimeout(() => { pairing(symbol) }, (c2s[data.code] || 600) * msecs.second / (data.wasClean ? 2 : 1))
-          },
-
-          internal: () => {
-            if (data.type !== 'status') return
-
-            debug('monitor2', underscore.defaults({ type: type, tag: tag }, data))
-          }
-        }[type]
-        if (f) return f()
-      })
-    }
-
-    try {
-      symbols = JSON.parse(result).symbols
-    } catch (ex) {
-      console.log(ex.stack)
-      return runtime.captureException(ex)
-    }
+    if ((!altcoins[altcoin]) || (altcoin === 'BAT')) return
 
     fiats.forEach((fiat) => {
-      const symbol = altcoin + fiat
-
-      if (symbols.indexOf(symbol) === -1) return
-
+      query.push({ type: 'subscribe', product_id: altcoin + '-' + fiat })
       eligible.push(fiat)
-      pairing(symbol)
     })
 
     singleton.cache.set('fiats:' + altcoin, eligible)
   })
+
+  client2 = new WebSocket.Client('wss://ws-feed.gdax.com/')
+  client2.on('open', (event) => {
+//  debug('monitor2', { event: 'connected', connected: true })
+  })
+  client2.on('close', (event) => {
+    if (event.code !== 1000) {
+      debug('monitor2', underscore.extend({ event: 'disconnected' }, underscore.pick(event, [ 'code', 'reason' ])))
+    }
+    retry()
+  })
+  client2.on('error', (event) => {
+    debug('monitor2', { event: 'error', message: event.message })
+    retry()
+  })
+  client2.on('message', (event) => {
+    let data, validity
+
+    if (typeof event.data === 'undefined') {
+      retry()
+      return runtime.captureException(new Error('no event.data'))
+    }
+
+    try { data = JSON.parse(event.data) } catch (ex) {
+      retry()
+      return runtime.captureException(ex)
+    }
+
+    validity = Joi.validate(data, schemaGDAX)
+    if (validity.error) {
+      retry()
+      return runtime.captureException(validity.error)
+    }
+
+    singleton.cache.set('ticker:' + data.product_id.replace('-', ''), parseFloat(data.price))
+  })
+  try {
+    query.forEach((symbol) => { client2.send(JSON.stringify(symbol)) })
+  } catch (ex) {
+    retry()
+    return runtime.captureException(ex)
+  }
 }
 
 const maintenance = async (config, runtime) => {
   let tickers
 
   try { tickers = await inkblot(config, runtime) } catch (ex) {
-    console.log(ex.stack)
     return runtime.captureException(ex)
   }
 
-  config.altcoins.forEach((altcoin) => {
+  for (let altcoin of config.altcoins) {
     const f = altcoins[altcoin]
 
-    if ((f) && (f.f)) f.f(tickers, config, runtime)
-  })
+    if ((f) && (f.f)) await f.f(tickers, config, runtime)
+  }
 }
 
 const retrieve = async (url, props, schema) => {
@@ -315,6 +316,7 @@ const schemaCMC =
         price_btc: Joi.number().positive().required(),
         price_usd: Joi.number().positive().required()
       }).unknown(true).required()
+
 const inkblot = async (config, runtime) => {
   const unavailable = []
   let tickers = {}

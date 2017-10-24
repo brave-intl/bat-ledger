@@ -7,10 +7,13 @@ const batPublisher = require('bat-publisher')
 const underscore = require('underscore')
 const uuid = require('uuid')
 
-const braveHapi = require('bat-utils').extras.hapi
+const utils = require('bat-utils')
+const braveHapi = utils.extras.hapi
+const braveJoi = utils.extras.joi
 
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 const rulesetId = 1
 
@@ -331,8 +334,11 @@ v1.version =
 
    GET /v2/publisher/identity?url=...
        [ used by publishers ]
+
+   GET /v3/publisher/identity?publisher=...
  */
 
+/*
 v1.identity =
 { handler: (runtime) => {
   return async (request, reply) => {
@@ -359,52 +365,59 @@ v1.identity =
   response:
     { schema: Joi.object().optional().description('the publisher identity') }
 }
+ */
+
+const identity = async (debug, runtime, result) => {
+  const publishers = runtime.database.get('publishersV2', debug)
+  let entry
+
+  const re = (value, entries) => {
+    entries.forEach((reEntry) => {
+      let regexp
+
+      if ((entry) ||
+          (underscore.intersection(reEntry.publisher.split(''),
+                                [ '^', '$', '*', '+', '?', '[', '(', '{', '|' ]).length === 0)) return
+
+      try {
+        regexp = new RegExp(reEntry.publisher)
+        if (regexp.test(value)) entry = reEntry
+      } catch (ex) {
+        debug('invalid regexp ' + reEntry.publisher + ': ' + ex.toString())
+      }
+    })
+  }
+
+  entry = await publishers.findOne({ publisher: result.publisher, facet: 'domain' })
+
+  if (!entry) entry = await publishers.findOne({ publisher: result.SLD.split('.')[0], facet: 'SLD' })
+  if (!entry) re(result.SLD, await publishers.find({ facet: 'SLD' }))
+
+  if (!entry) entry = await publishers.findOne({ publisher: result.TLD, facet: 'TLD' })
+  if (!entry) re(result.TLD, await publishers.find({ facet: 'TLD' }))
+
+  if (!entry) return {}
+
+  return {
+    properties: underscore.omit(entry, [ '_id', 'publisher', 'timestamp' ]),
+    timestamp: entry.timestamp.toString()
+  }
+}
 
 v2.identity =
 { handler: (runtime) => {
   return async (request, reply) => {
     const url = request.query.url
     const debug = braveHapi.debug(module, request)
-    const publishers = runtime.database.get('publishersV2', debug)
     let result
     let entry = await rulesetEntryV2(request, runtime)
-
-    const re = (value, entries) => {
-      entries.forEach((reEntry) => {
-        let regexp
-
-        if ((entry) ||
-            (underscore.intersection(reEntry.publisher.split(''),
-                                  [ '^', '$', '*', '+', '?', '[', '(', '{', '|' ]).length === 0)) return
-
-        try {
-          regexp = new RegExp(reEntry.publisher)
-          if (regexp.test(value)) entry = reEntry
-        } catch (ex) {
-          debug('invalid regexp ' + reEntry.publisher + ': ' + ex.toString())
-        }
-      })
-    }
 
     try {
       result = batPublisher.getPublisherProps(url)
       if (!result) return reply(boom.notFound())
 
       result.publisher = batPublisher.getPublisher(url, entry.ruleset)
-      if (result.publisher) {
-        entry = await publishers.findOne({ publisher: result.publisher, facet: 'domain' })
-
-        if (!entry) entry = await publishers.findOne({ publisher: result.SLD.split('.')[0], facet: 'SLD' })
-        if (!entry) re(result.SLD, await publishers.find({ facet: 'SLD' }))
-
-        if (!entry) entry = await publishers.findOne({ publisher: result.TLD, facet: 'TLD' })
-        if (!entry) re(result.TLD, await publishers.find({ facet: 'TLD' }))
-
-        if (entry) {
-          result.properties = underscore.omit(entry, [ '_id', 'publisher', 'timestamp' ])
-          result.timestamp = entry.timestamp.toString()
-        }
-      }
+      if (result.publisher) underscore.extend(result, await identity(debug, runtime, result))
 
       reply(result)
     } catch (ex) {
@@ -423,11 +436,52 @@ v2.identity =
     { schema: Joi.object().optional().description('the publisher identity') }
 }
 
+v3.identity =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const publisher = request.query.publisher
+    const location = 'https://' + publisher
+    const debug = braveHapi.debug(module, request)
+    const publishers = runtime.database.get('publishersX', debug)
+    let result
+    let entry = await rulesetEntryV2(request, runtime)
+
+    try {
+      result = batPublisher.getPublisherProps(location)
+      if (!result) return reply(boom.notFound())
+
+      result = underscore.omit(result, underscore.keys(url.parse(location, true)), [ 'URL' ])
+      result.publisher = batPublisher.getPublisher(location, entry.ruleset)
+      if (!result.publisher) return reply(boom.notFound())
+
+      result.properties = {}
+      underscore.extend(result, await identity(debug, runtime, result))
+      entry = await publishers.findOne({ publisher: publisher })
+      if ((entry) && (entry.visible)) result.properties.verified = entry.verified
+
+      reply(result)
+    } catch (ex) {
+      reply(boom.badData(ex.toString()))
+    }
+  }
+},
+
+  description: 'Returns information about a publisher identity',
+  tags: [ 'api' ],
+
+  validate:
+    { query: { publisher: braveJoi.string().publisher().required().description('the publisher identity') } },
+
+  response:
+    { schema: Joi.object().optional().description('the publisher identity') }
+}
+
 /*
-   GET /v1/publisher/identity/verified
+   GET /v1/publisher/identity/verified (obsolete)
    GET /v2/publisher/identity/verified
  */
 
+/*
 v1.verified =
 { handler: (runtime) => {
   return async (request, reply) => {
@@ -457,6 +511,7 @@ v1.verified =
   response:
     { schema: Joi.array().items(Joi.string()).description('verified publishers') }
 }
+ */
 
 v2.verified =
 { handler: (runtime) => {
@@ -513,7 +568,9 @@ v2.verified =
 module.exports.routes = [
   braveHapi.routes.async().get().path('/v1/publisher/ruleset').config(v1.read),
   braveHapi.routes.async().get().path('/v1/publisher/ruleset/version').config(v1.version),
+/*
   braveHapi.routes.async().get().path('/v1/publisher/identity').config(v1.identity),
+*/
 
   braveHapi.routes.async().get().path('/v2/publisher/ruleset').config(v2.read),
   braveHapi.routes.async().post().path('/v2/publisher/ruleset').config(v2.create),
@@ -522,7 +579,12 @@ module.exports.routes = [
   braveHapi.routes.async().delete().path('/v2/publisher/ruleset/{publisher}').config(v2.delete),
   braveHapi.routes.async().get().path('/v2/publisher/identity').config(v2.identity),
 
+  braveHapi.routes.async().get().path('/v3/publisher/identity').config(v3.identity),
+
+/*
   braveHapi.routes.async().get().path('/v1/publisher/identity/verified').config(v1.verified),
+*/
+
   braveHapi.routes.async().get().path('/v2/publisher/identity/verified').config(v2.verified)
 ]
 
