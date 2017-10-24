@@ -130,6 +130,7 @@ const hourly2 = async (debug, runtime) => {
         runtime.captureException(ex)
         if (ex.data) {
           delete ex.data.res
+          console.log('!!!' + JSON.stringify(underscore.keys(ex.data)))
           if (ex.data.payload) ex.data.payload = ex.data.payload.toString()
         }
         debug('hourly2', JSON.stringify(ex))
