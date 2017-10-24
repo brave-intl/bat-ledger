@@ -96,6 +96,11 @@ const hourly2 = async (debug, runtime) => {
   debug('hourly2', 'running')
 
   try {
+    entries = await publishers.find()
+    for (let entry of entries) {
+      if (entry.verified) await tokens.remove({ publisher: entry.publisher, verified: false })
+    }
+
     entries = await tokens.find()
     entries.forEach((entry) => {
       if (entry.publisher === '') return
