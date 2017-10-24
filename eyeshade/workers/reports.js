@@ -98,7 +98,7 @@ const hourly2 = async (debug, runtime) => {
   try {
     entries = await publishers.find({ visible: { $exists: false } })
     for (let entry of entries) {
-      await publishers.update(entry.publisher, { $set: { visible: false } }, { upsert: true })
+      await publishers.udpate{{ publisher: entry.publisher }, { $set: { visible: false } }, { upsert: true })
     }
 
     entries = await tokens.find()
