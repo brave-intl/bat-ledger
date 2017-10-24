@@ -960,7 +960,6 @@ exports.workers = {
           if (results[publisher].address) results[publisher].address = 'yes'
           if (results[publisher].verificationId) results[publisher].verificationId = 'yes'
           if (results[publisher].token) results[publisher].token = 'yes'
-          if (results[publisher].legalFormURL) results[publisher].legalFormURL = 'yes'
         }
 
         data.push(results[publisher])
@@ -1009,7 +1008,7 @@ exports.workers = {
         'name', 'email', 'phone', 'provider', 'altcurrency', 'address', 'showVerificationStatus',
         'verificationId', 'reason',
         'daysInQueue', 'created', 'modified',
-        'token', 'legalFormURL' ]
+        'token' ]
       try { await file.write(json2csv({ data: data, fields: fields }), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-status', reason: ex.toString() })
         file.close()
