@@ -744,6 +744,8 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   await publish(debug, runtime, 'patch', entry.publisher, '/verifications', payload)
   if (!verified) return
 
+  await tokens.remove({ publisher: entry.publisher, verified: false })
+
   await runtime.queue.send(debug, 'publisher-report', underscore.pick(entry, [ 'publisher', 'verified', 'visible' ]))
   reply({ status: 'success', verificationId: entry.verificationId })
 }
