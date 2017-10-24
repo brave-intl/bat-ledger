@@ -88,31 +88,47 @@ const hourly = async (debug, runtime) => {
 }
 
 const hourly2 = async (debug, runtime) => {
+  const history = {}
   const publishers = runtime.database.get('publishers', debug)
+  const tokens = runtime.database.get('tokens', debug)
   let entries, next, now
 
   debug('hourly2', 'running')
 
   try {
-    entries = await publishers.find({ verified: true })
-    for (let entry of entries) {
-      const publisher = entry.publisher
-      let datum, info, result, state
+    entries = await tokens.find()
+    entries.forEach((entry) => {
+      if (entry.publisher === '') return
+
+      if (!history[entry.publisher]) history[entry.publisher] = []
+      history[entry.publisher].push(entry)
+    })
+
+    for (let publisher of underscore.keys(history)) {
+      const records = history[publisher]
+      let info, results, state
 
       try {
-        result = await publish(debug, runtime, 'get', publisher)
-        datum = underscore.findWhere(result, { verified: true })
-        if (!datum) continue
+        results = await publish(debug, runtime, 'get', publisher)
+        for (let result of results) {
+          const record = underscore.findWhere(records, { verificationId: result.id })
 
-        info = underscore.extend(underscore.pick(datum, [ 'name', 'email' ]), { phone: datum.phone_normalized })
+          if (!record) {
+            if (!record.verified) await tokens.remove({ verificationId: record.verificationId, publisher: publisher })
+            continue
+          }
 
-        if (underscore.isEqual(entry.info, info)) continue
+          info = underscore.extend(underscore.pick(result, [ 'name', 'email' ]), { phone: result.phone_normalized })
+          if (underscore.isEqual(record.info, info)) continue
 
-        state = {
-          $currentDate: { timestamp: { $type: 'timestamp' } },
-          $set: { info: info }
+          state = {
+            $currentDate: { timestamp: { $type: 'timestamp' } },
+            $set: { info: info }
+          }
+          await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
+
+          if (record.verified) await publishers.update({ publisher: publisher }, state, { upsert: true })
         }
-        await publishers.update({ publisher: publisher }, state, { upsert: true })
       } catch (ex) {
         runtime.captureException(ex)
         if (ex.data) delete ex.data.res
@@ -338,12 +354,9 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
         result = underscore.pick(entry, [ 'publisher', 'address', 'altcurrency', 'probi', 'fees' ])
         result.authority = authority
         result.transactionId = reportId
-/*
         result.currency = 'USD'
-        result.amount = usd && entry.probi.times(usd).toFixed(2)
- */
-        result.fee = usd && entry.fees.times(usd).toFixed(2)
-        if (result.altcurrency === 'BTC') result.satoshis = result.probi
+        result.amount = usd && new BigNumber(entry.probi).times(usd).toFixed(2)
+        result.fee = usd && new BigNumber(entry.fees).times(usd).toFixed(2)
         publishers.push(result)
       })
 
@@ -864,8 +877,8 @@ exports.workers = {
         if (!results[publisher].history) results[publisher].history = []
         entry.created = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
         entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-        results[publisher].history.push(underscore.pick(entry,
-                                                        [ 'verified', 'verificationId', 'token', 'reason', 'created', 'modified' ]))
+        results[publisher].history.push(underscore.extend(underscore.omit(entry, [ 'publisher', 'timestamp', 'info' ])),
+                                        entry.info || {})
       })
       if (typeof verified === 'boolean') {
         underscore.keys(results).forEach((publisher) => {
@@ -915,7 +928,7 @@ exports.workers = {
       })
 
       f = async (publisher) => {
-        let datum, datum2, result
+        let datum
 
         results[publisher].probi = probi[publisher] || new BigNumber(0)
         results[publisher].USD = runtime.currency.alt2fiat(altcurrency, results[publisher].probi, 'USD')
@@ -932,33 +945,11 @@ exports.workers = {
         if (datum) {
           datum.created = new Date(parseInt(datum._id.toHexString().substring(0, 8), 16) * 1000).getTime()
           datum.modified = (datum.timestamp.high_ * 1000) + (datum.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-          underscore.extend(results[publisher], underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]))
+          underscore.extend(results[publisher],
+                            underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]))
         }
 
-        if (datum && verified) {
-          underscore.extend(results[publisher], datum.info || {})
-        } else {
-          try {
-            result = await publish(debug, runtime, 'get', publisher)
-            datum = underscore.findWhere(result, { id: results[publisher].verificationId })
-            if (datum) {
-              underscore.extend(results[publisher], underscore.pick(datum, [ 'name', 'email' ]),
-                              { phone: datum.phone_normalized, showVerification: datum.show_verification_status })
-            }
-
-            results[publisher].history.forEach((record) => {
-              datum2 = underscore.findWhere(result, { id: record.verificationId })
-              if (datum2) {
-                underscore.extend(record, underscore.pick(datum2, [ 'name', 'email' ]),
-                                { phone: datum2.phone_normalized, showVerification: datum2.show_verification_status })
-              }
-            })
-            if ((!datum) && (datum2)) {
-              underscore.extend(results[publisher], underscore.pick(datum2, [ 'name', 'email' ]),
-                              { phone: datum2.phone_normalized, showVerification: datum2.show_verification_status })
-            }
-          } catch (ex) { debug('publisher', { publisher: publisher, reason: ex.toString() }) }
-        }
+        if (datum && verified) underscore.extend(results[publisher], datum.info || {})
 
         if (elideP) {
           if (results[publisher].email) results[publisher].email = 'yes'

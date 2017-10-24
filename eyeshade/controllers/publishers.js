@@ -970,6 +970,7 @@ module.exports.initialize = async (debug, runtime) => {
 
      // v2 and later
         visible: false,
+        info: {},
 
         reason: '',
         timestamp: bson.Timestamp.ZERO },
