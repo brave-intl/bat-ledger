@@ -289,6 +289,7 @@ Wallet.providers.uphold = {
 
     try {
       user = await uphold.api('/me')
+      debug('status', JSON.stringify(underscore.keys(user)))
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
       throw ex
