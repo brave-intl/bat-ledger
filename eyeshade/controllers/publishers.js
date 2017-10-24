@@ -330,7 +330,7 @@ v2.getWallet = {
       try {
         if ((entry) && (entry.provider)) result.wallet = await runtime.wallet.status(entry)
       } catch (ex) {
-        debug('status', JSON.stringify(ex))
+        debug('status', { reason: ex.toString(), stack: ex.stack })
         runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
       }
       if (!result.wallet) result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
