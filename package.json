@@ -54,6 +54,7 @@
     "dateformat": "3.0.2",
     "dotenv": "^4.0.0",
     "ethereum-address": "0.0.4",
+    "faye-websocket": "0.11.1",
     "github": "11.0.0",
     "glob": "^7.1.2",
     "gridfs-stream": "1.1.1",

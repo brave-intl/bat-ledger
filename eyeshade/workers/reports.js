@@ -51,6 +51,7 @@ const daily = async (debug, runtime) => {
 
   debug('daily', 'running')
 
+  now = underscore.now()
   midnight = new Date(now)
   midnight.setHours(0, 0, 0, 0)
   midnight = Math.floor(midnight.getTime() / 1000)
@@ -62,7 +63,6 @@ const daily = async (debug, runtime) => {
     debug('daily', { reason: ex.toString(), stack: ex.stack })
   }
 
-  now = underscore.now()
   tomorrow = new Date(now)
   tomorrow.setHours(24, 0, 0, 0)
   setTimeout(() => { daily(debug, runtime) }, tomorrow - now)
@@ -151,8 +151,7 @@ const hourly2 = async (debug, runtime) => {
         runtime.captureException(ex)
         if (ex.data) {
           delete ex.data.res
-          console.log('!!! ' + JSON.stringify(underscore.keys(ex.data)))
-          if (ex.data.payload) ex.data.payload = ex.data.payload.toString()
+          try { ex.data.payload = ex.data.payload.toString() } catch (ex2) {}
         }
         debug('hourly2', { reason: ex.toString(), stack: ex.stack })
       }
@@ -642,6 +641,22 @@ exports.workers = {
 
       file = await create(runtime, 'publishers-', payload)
       if (format === 'json') {
+        for (let offset in data) {
+          let entry, wallet
+          let datum = data[offset]
+
+          delete datum.currency
+          delete datum.amount
+          delete datum.fee
+
+          try {
+            entry = await publishersC.findOne({ publisher: datum.publisher })
+            if (!entry) continue
+
+            if (entry.provider) wallet = await runtime.wallet.status(entry)
+            datum.preferredCurrency = wallet && wallet.preferredCurrency
+          } catch (ex) { }
+        }
         await file.write(JSON.stringify(data, null, 2), true)
         return runtime.notify(debug, {
           channel: '#publishers-bot',
@@ -1026,7 +1041,7 @@ exports.workers = {
 
       fields = [ 'publisher', 'USD', 'probi',
         'verified', 'authorized', 'authority',
-        'name', 'email', 'phone', 'provider', 'altcurrency', 'address', 'showVerificationStatus',
+        'name', 'email', 'phone', 'provider', 'altcurrency', 'visible',
         'verificationId', 'reason',
         'daysInQueue', 'created', 'modified',
         'token' ]
