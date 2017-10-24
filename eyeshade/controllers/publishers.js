@@ -410,8 +410,9 @@ v2.putWallet = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.omit(payload, [ 'verificationId', 'show_verification_status' ]),
-          { visible: visible, verified: true, altcurrency: altcurrency, authorized: true, authority: provider })
+        $set: underscore.extend(underscore.omit(payload, [ 'verificationId', 'show_verification_status' ]), {
+          visible: visible, verified: true, altcurrency: altcurrency, authorized: true, authority: provider
+        })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
