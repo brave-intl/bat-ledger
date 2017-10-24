@@ -131,7 +131,10 @@ const hourly2 = async (debug, runtime) => {
         }
       } catch (ex) {
         runtime.captureException(ex)
-        if (ex.data) delete ex.data.res
+        if (ex.data) {
+          delete ex.data.res
+          if (ex.data.payload) ex.data.payload = ex.data.payload.toString()
+        }
         debug('hourly2', ex)
       }
     }
@@ -167,8 +170,10 @@ const quanta = async (debug, runtime, qid) => {
     params = underscore.pick(quantum, [ 'counts', 'inputs', 'fee', 'quantum' ])
     updateP = false
     underscore.keys(params).forEach((key) => {
+      if (typeof surveyor[key] === 'undefined') console.log('\n' + JSON.stringify(key) + '\n')
       if (!(params[key] instanceof bson.Decimal128)
           ? (params[key] !== surveyor[key])
+          : (typeof surveyor[key] === 'undefined') ? true
           : !(new BigNumber(params[key].toString()).truncated().equals(new BigNumber(surveyor[key].toString()).truncated()))) {
         updateP = true
       }
@@ -261,9 +266,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
 
     // current is always defined
     const equals = (previous, current) => {
-      if (!previous) return (!!current)
-
-      return previous.dividedBy(1e11).round().equals(current.dividedBy(1e11).round())
+      return previous && previous.dividedBy(1e11).round().equals(current.dividedBy(1e11).round())
     }
 
     query = { surveyorId: quantum.surveyorId, exclude: false }
