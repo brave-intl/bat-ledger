@@ -96,17 +96,23 @@ const hourly2 = async (debug, runtime) => {
   debug('hourly2', 'running')
 
   try {
+    entries = await publishers.find({ visible: { $exists: false } })
+    for (let entry of entries) {
+      await publishers.udpate(entry.publisher, { $set: { visible: false } }, { upsert: true })
+    }
+
     entries = await tokens.find()
     entries.forEach((entry) => {
       if (entry.publisher === '') return
 
       if (!history[entry.publisher]) history[entry.publisher] = []
+      if (typeof entry.visible === 'undefined') entry.visible = false
       history[entry.publisher].push(entry)
     })
 
     for (let publisher of underscore.keys(history)) {
       const records = history[publisher]
-      let info, results, state
+      let info, results, state, visible
 
       try {
         results = await publish(debug, runtime, 'get', publisher)
@@ -115,7 +121,12 @@ const hourly2 = async (debug, runtime) => {
 
           if (!record) continue
 
-          info = underscore.extend(underscore.pick(result, [ 'name', 'email' ]), { phone: result.phone_normalized })
+          visible = result.show_verification_status
+          info = underscore.extend(underscore.pick(result, [ 'name', 'email' ]), {
+            phone: result.phone_normalized,
+            preferredCurrency: result.preferredCurrency,
+            visible: visible
+          })
           if (underscore.isEqual(record.info, info)) continue
 
           state = {
@@ -124,7 +135,17 @@ const hourly2 = async (debug, runtime) => {
           }
           await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
 
-          if (record.verified) await publishers.update({ publisher: publisher }, state, { upsert: true })
+          if (!record.verified) continue
+
+          state = {
+            $currentDate: { timestamp: { $type: 'timestamp' } },
+            $set: { info: underscore.omit(info, [ 'visible' ]) }
+          }
+          if (typeof visible !== 'undefined') state.$set.visible = visible
+          await publishers.update({ publisher: publisher }, state, { upsert: true })
+          if (typeof visible === 'undefined') continue
+
+          await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, visible: visible })
         }
       } catch (ex) {
         runtime.captureException(ex)

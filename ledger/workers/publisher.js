@@ -3,6 +3,10 @@ const underscore = require('underscore')
 
 var exports = {}
 
+exports.initialize = async (debug, runtime) => {
+  await runtime.queue.create('publisher-report')
+}
+
 exports.workers = {
 /* send by eyeshade GET /v1/publishers/{publisher}/verify
 
@@ -21,11 +25,9 @@ exports.workers = {
       const tld = tldjs.getPublicSuffix(publisher)
       let state
 
-      if (!payload.visible) return
-
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend({ tld: tld }, underscore.omit(payload, [ 'publisher', 'public' ]))
+        $set: underscore.extend({ tld: tld }, underscore.omit(payload, [ 'publisher' ]))
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
     }
