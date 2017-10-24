@@ -98,7 +98,7 @@ const hourly2 = async (debug, runtime) => {
   try {
     entries = await publishers.find({ visible: { $exists: false } })
     for (let entry of entries) {
-      await publishers.udpate{{ publisher: entry.publisher }, { $set: { visible: false } }, { upsert: true })
+      await publishers.update(entry.publisher, { $set: { visible: false } }, { upsert: true })
     }
 
     entries = await tokens.find()
@@ -151,7 +151,7 @@ const hourly2 = async (debug, runtime) => {
         runtime.captureException(ex)
         if (ex.data) {
           delete ex.data.res
-          console.log('!!!' + JSON.stringify(underscore.keys(ex.data)))
+          console.log('!!! ' + JSON.stringify(underscore.keys(ex.data)))
           if (ex.data.payload) ex.data.payload = ex.data.payload.toString()
         }
         debug('hourly2', JSON.stringify(ex))
