@@ -59,7 +59,7 @@ const daily = async (debug, runtime) => {
     await runtime.database.purgeSince(debug, runtime, midnight * 1000)
   } catch (ex) {
     runtime.captureException(ex)
-    debug('daily', ex)
+    debug('daily', JSON.stringify(ex))
   }
 
   now = underscore.now()
@@ -78,7 +78,7 @@ const hourly = async (debug, runtime) => {
     await mixer(debug, runtime, undefined, undefined)
   } catch (ex) {
     runtime.captureException(ex)
-    debug('hourly', ex)
+    debug('hourly', JSON.stringify(ex))
   }
 
   now = underscore.now()
@@ -139,12 +139,12 @@ const hourly2 = async (debug, runtime) => {
           delete ex.data.res
           if (ex.data.payload) ex.data.payload = ex.data.payload.toString()
         }
-        debug('hourly2', ex)
+        debug('hourly2', JSON.stringify(ex))
       }
     }
   } catch (ex) {
     runtime.captureException(ex)
-    debug('hourly2', ex)
+    debug('hourly2', JSON.stringify(ex))
   }
 
   now = underscore.now()
