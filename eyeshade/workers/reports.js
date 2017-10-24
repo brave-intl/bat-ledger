@@ -59,7 +59,7 @@ const daily = async (debug, runtime) => {
     await runtime.database.purgeSince(debug, runtime, midnight * 1000)
   } catch (ex) {
     runtime.captureException(ex)
-    debug('daily', JSON.stringify(ex))
+    debug('daily', { reason: ex.toString(), stack: ex.stack })
   }
 
   now = underscore.now()
@@ -78,7 +78,7 @@ const hourly = async (debug, runtime) => {
     await mixer(debug, runtime, undefined, undefined)
   } catch (ex) {
     runtime.captureException(ex)
-    debug('hourly', JSON.stringify(ex))
+    debug('hourly', { reason: ex.toString(), stack: ex.stack })
   }
 
   now = underscore.now()
@@ -98,7 +98,7 @@ const hourly2 = async (debug, runtime) => {
   try {
     entries = await publishers.find({ visible: { $exists: false } })
     for (let entry of entries) {
-      await publishers.update(entry.publisher, { $set: { visible: false } }, { upsert: true })
+      await publishers.update({ publisher: entry.publisher }, { $set: { visible: false } }, { upsert: true })
     }
 
     entries = await tokens.find()
@@ -154,12 +154,12 @@ const hourly2 = async (debug, runtime) => {
           console.log('!!! ' + JSON.stringify(underscore.keys(ex.data)))
           if (ex.data.payload) ex.data.payload = ex.data.payload.toString()
         }
-        debug('hourly2', JSON.stringify(ex))
+        debug('hourly2', { reason: ex.toString(), stack: ex.stack })
       }
     }
   } catch (ex) {
     runtime.captureException(ex)
-    debug('hourly2', JSON.stringify(ex))
+    debug('hourly2', { reason: ex.toString(), stack: ex.stack })
   }
 
   now = underscore.now()
