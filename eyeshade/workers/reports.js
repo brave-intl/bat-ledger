@@ -118,10 +118,9 @@ const hourly2 = async (debug, runtime) => {
         for (let result of results) {
           const record = underscore.findWhere(records, { verificationId: result.id })
 
-          if (!record) {
-            if (!record.verified) await tokens.remove({ verificationId: record.verificationId, publisher: publisher })
-            continue
-          }
+          if (!record) continue
+
+          if (!record.verified) await tokens.remove({ verificationId: record.verificationId, publisher: publisher })
 
           info = underscore.extend(underscore.pick(result, [ 'name', 'email' ]), { phone: result.phone_normalized })
           if (underscore.isEqual(record.info, info)) continue
