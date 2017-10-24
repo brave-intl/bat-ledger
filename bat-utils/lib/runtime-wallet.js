@@ -280,14 +280,14 @@ Wallet.providers.uphold = {
   status: async function (info) {
     let result, uphold, user
 
-    uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
-      baseUrl: upholdBaseUrls[this.config.uphold.environment],
-      clientId: this.config.uphold.clientId,
-      clientSecret: this.config.uphold.clientSecret
-    })
-    uphold.storage.setItem('uphold.access_token', info.parameters.access_token)
-
     try {
+      uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+        baseUrl: upholdBaseUrls[this.config.uphold.environment],
+        clientId: this.config.uphold.clientId,
+        clientSecret: this.config.uphold.clientSecret
+      })
+      uphold.storage.setItem('uphold.access_token', info.parameters.access_token)
+
       user = await uphold.api('/me')
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
