@@ -167,10 +167,14 @@ const quanta = async (debug, runtime, qid) => {
     params = underscore.pick(quantum, [ 'counts', 'inputs', 'fee', 'quantum' ])
     updateP = false
     underscore.keys(params).forEach((key) => {
-      if (typeof surveyor[key] === 'undefined') console.log('\n' + JSON.stringify(key) + '\n')
+      if (typeof surveyor[key] === 'undefined') {
+        runtime.captureException(new Error('missing key'), { surveyorId: surveyor.surveyorId, key: key })
+        updateP = true
+        return
+      }
+
       if (!(params[key] instanceof bson.Decimal128)
           ? (params[key] !== surveyor[key])
-          : (typeof surveyor[key] === 'undefined') ? true
           : !(new BigNumber(params[key].toString()).truncated().equals(new BigNumber(surveyor[key].toString()).truncated()))) {
         updateP = true
       }
@@ -877,8 +881,8 @@ exports.workers = {
         if (!results[publisher].history) results[publisher].history = []
         entry.created = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
         entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-        results[publisher].history.push(underscore.extend(underscore.omit(entry, [ 'publisher', 'timestamp', 'info' ])),
-                                        entry.info || {})
+        results[publisher].history.push(underscore.extend(underscore.omit(entry, [ 'publisher', 'timestamp', 'info' ]),
+                                                          entry.info || {}))
       })
       if (typeof verified === 'boolean') {
         underscore.keys(results).forEach((publisher) => {
@@ -946,10 +950,8 @@ exports.workers = {
           datum.created = new Date(parseInt(datum._id.toHexString().substring(0, 8), 16) * 1000).getTime()
           datum.modified = (datum.timestamp.high_ * 1000) + (datum.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
           underscore.extend(results[publisher],
-                            underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]))
+                            underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]), datum.info)
         }
-
-        if (datum && verified) underscore.extend(results[publisher], datum.info || {})
 
         if (elideP) {
           if (results[publisher].email) results[publisher].email = 'yes'
