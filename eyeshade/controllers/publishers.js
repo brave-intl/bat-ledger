@@ -259,7 +259,7 @@ v2.getWallet = {
       const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let amount, entries, entry, result, summary
+      let amount, entries, entry, provider, result, summary
       let probi = new BigNumber(0)
 
       summary = await voting.aggregate([
@@ -327,13 +327,16 @@ v2.getWallet = {
       }
 
       entry = await publishers.findOne({ publisher: publisher })
+      provider = entry && entry.provider
       try {
-        if ((entry) && (entry.provider)) result.wallet = await runtime.wallet.status(entry)
+        if (provider) result.wallet = await runtime.wallet.status(entry)
       } catch (ex) {
         debug('status', { reason: ex.toString(), stack: ex.stack })
         runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
       }
-      if (!result.wallet) result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
+      if ((provider) && (!result.wallet)) {
+        result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
+      }
 
       reply(result)
     }
