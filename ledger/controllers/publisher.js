@@ -455,7 +455,7 @@ v3.identity =
       if (!result.publisher) return reply(boom.notFound())
 
       result.properties = {}
-      underscore.extend(result, await identity(debug, runtime, result))
+      underscore.extend(result, underscore.omit(await identity(debug, runtime, result), [ 'timestamp' ]))
       entry = await publishers.findOne({ publisher: publisher })
       if ((entry) && (entry.visible)) result.properties.verified = entry.verified
 
