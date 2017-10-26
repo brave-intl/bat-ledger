@@ -20,7 +20,7 @@ module.exports =
 { altcurrency           : process.env.ALTCURRENCY              || 'BAT'
 , database              :
   { mongo               : process.env.MONGODB_URI              || 'localhost/test' }
-, cache              :
+, cache                 :
   { redis               : process.env.REDIS_URL                || 'redis://localhost:6379' }
 , queue                 :
   { rsmq                : process.env.REDIS_URL                || 'redis://localhost:6379' }
