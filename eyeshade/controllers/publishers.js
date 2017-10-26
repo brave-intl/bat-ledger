@@ -562,9 +562,9 @@ v1.getToken = {
       token = crypto.randomBytes(32).toString('hex')
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: { token: token }
+        $set: { token: token, visible: visible }
       }
-      await tokens.update({ verificationId: verificationId, publisher: publisher, visible: visible }, state, { upsert: true })
+      await tokens.update({ verificationId: verificationId, publisher: publisher }, state, { upsert: true })
 
       reply({ token: token })
     }

@@ -118,32 +118,33 @@ const hourly2 = async (debug, runtime) => {
         results = await publish(debug, runtime, 'get', publisher)
         for (let result of results) {
           const record = underscore.findWhere(records, { verificationId: result.id })
+          let visibleP
 
           if (!record) continue
 
           visible = result.show_verification_status
-          info = underscore.extend(underscore.pick(result, [ 'name', 'email' ]), {
-            phone: result.phone_normalized,
-            preferredCurrency: result.preferredCurrency,
-            visible: visible
-          })
+          visibleP = (typeof visible !== 'undefined')
+          info = underscore.pick(result, [ 'name', 'email' ])
+          if (result.phone_normalized) info.phone = result.phone_normalized
+          if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
           if (underscore.isEqual(record.info, info)) continue
 
           state = {
             $currentDate: { timestamp: { $type: 'timestamp' } },
             $set: { info: info }
           }
+          if (visibleP) state.$set.visible = visible
           await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
 
           if (!record.verified) continue
 
           state = {
             $currentDate: { timestamp: { $type: 'timestamp' } },
-            $set: { info: underscore.omit(info, [ 'visible' ]) }
+            $set: { info: info }
           }
-          if (typeof visible !== 'undefined') state.$set.visible = visible
+          if (visibleP) state.$set.visible = visible
           await publishers.update({ publisher: publisher }, state, { upsert: true })
-          if (typeof visible === 'undefined') continue
+          if (!visibleP) continue
 
           await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, visible: visible })
         }
