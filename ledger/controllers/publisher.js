@@ -223,7 +223,7 @@ v2.update =
   response: {
     schema: Joi.object().keys({
       reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
-    }).unknown(true)
+    }).unknown(true).description('information about the most forthcoming report')
   }
 }
 
@@ -443,7 +443,7 @@ v3.identity =
     const location = 'https://' + publisher
     const debug = braveHapi.debug(module, request)
     const publishers = runtime.database.get('publishersX', debug)
-    let result
+    let result, timestamp
     let entry = await rulesetEntryV2(request, runtime)
 
     try {
@@ -455,9 +455,22 @@ v3.identity =
       if (!result.publisher) return reply(boom.notFound())
 
       result.properties = {}
-      underscore.extend(result, underscore.omit(await identity(debug, runtime, result), [ 'timestamp' ]))
+      underscore.extend(result, await identity(debug, runtime, result))
+
+      if (result.timestamp) {
+        result.properties.timestamp = result.timestamp
+        delete result.timestamp
+      }
+
       entry = await publishers.findOne({ publisher: publisher })
-      if ((entry) && (entry.visible)) result.properties.verified = entry.verified
+      if (entry) {
+        timestamp = entry.timestamp.toString()
+
+        if ((timestamp) && ((!result.properties.timestamp) || (timestamp > result.properties.timestamp))) {
+          result.properties.timestamp = timestamp
+        }
+        if (entry.visible) result.properties.verified = entry.verified
+      }
 
       reply(result)
     } catch (ex) {
@@ -474,6 +487,43 @@ v3.identity =
 
   response:
     { schema: Joi.object().optional().description('the publisher identity') }
+}
+
+v3.timestamp =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const publishers = runtime.database.get('publishersX', debug)
+    const publishersV2 = runtime.database.get('publishersV2', debug)
+    let entries, entry, timestamp
+
+    timestamp = '0'
+
+    entries = await publishers.find({}, { limit: 1, sort: { timestamp: -1 } })
+    entry = entries && entries[0]
+    if ((entry) && (entry.timestamp)) timestamp = entry.timestamp.toString()
+
+    entries = await publishersV2.find({}, { limit: 1, sort: { timestamp: -1 } })
+    entry = entries && entries[0]
+    if ((entry) && (entry.timestamp)) {
+      entry.timestamp = entry.timestamp.toString()
+      if (entry.timestamp > timestamp) timestamp = entry.timestamp
+    }
+
+    reply({ timestamp: timestamp })
+  }
+},
+
+  description: 'Returns information about a publisher identity',
+  tags: [ 'api' ],
+
+  validate: { },
+
+  response: {
+    schema: Joi.object().keys({
+      timestamp: Joi.string().regex(/^[0-9]+$/).required().description('an opaque, monotonically-increasing value')
+    }).unknown(true).description('information about the most recent publisher timestamp')
+  }
 }
 
 /*
@@ -580,6 +630,7 @@ module.exports.routes = [
   braveHapi.routes.async().get().path('/v2/publisher/identity').config(v2.identity),
 
   braveHapi.routes.async().get().path('/v3/publisher/identity').config(v3.identity),
+  braveHapi.routes.async().get().path('/v3/publisher/timestamp').config(v3.timestamp),
 
 /*
   braveHapi.routes.async().get().path('/v1/publisher/identity/verified').config(v1.verified),
