@@ -190,7 +190,9 @@ const quanta = async (debug, runtime, qid) => {
     updateP = false
     underscore.keys(params).forEach((key) => {
       if (typeof surveyor[key] === 'undefined') {
-        runtime.captureException(new Error('missing key'), { extra: { surveyorId: surveyor.surveyorId, key: key } })
+        if (key !== 'quantum') {
+          runtime.captureException(new Error('missing key'), { extra: { surveyorId: surveyor.surveyorId, key: key } })
+        }
         updateP = true
         return
       }
