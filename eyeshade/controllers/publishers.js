@@ -723,7 +723,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   const debug = braveHapi.debug(module, request)
   const publishers = runtime.database.get('publishers', debug)
   const tokens = runtime.database.get('tokens', debug)
-  let message, payload, state
+  let info, message, payload, results, state, visible, visibleP
 
   message = underscore.extend(underscore.clone(indices), { verified: verified, reason: reason })
   debug('verified', message)
@@ -746,16 +746,12 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   reason = reason || (verified ? 'ok' : 'unknown')
   payload = underscore.extend(underscore.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
-  try {
-    await publish(debug, runtime, 'patch', entry.publisher, '/verifications', payload)
-  } catch (ex) {
-    runtime.captureException(ex, { req: request, extra: underscore.extend({ publisher: entry.publisher }, payload) })
-  }
+  await publish(debug, runtime, 'patch', entry.publisher, '/verifications', payload)
   if (!verified) return
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
-    $set: underscore.pick(entry, [ 'verified', 'visible' ])
+    $set: underscore.pick(entry, [ 'verified', 'visible', 'info' ])
   }
   await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
 
@@ -763,6 +759,28 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   await runtime.queue.send(debug, 'publisher-report', underscore.pick(entry, [ 'publisher', 'verified', 'visible' ]))
   reply({ status: 'success', verificationId: entry.verificationId })
+
+  if (entry.info) return
+
+  results = await publish(debug, runtime, 'get', entry.publisher)
+  for (let result of results) {
+    if (result.id !== entry.verificationId) continue
+
+    visible = result.show_verification_status
+    visibleP = (typeof visible !== 'undefined')
+    info = underscore.pick(result, [ 'name', 'email' ])
+    if (result.phone_normalized) info.phone = result.phone_normalized
+    if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
+
+    state = {
+      $currentDate: { timestamp: { $type: 'timestamp' } },
+      $set: { info: info }
+    }
+    if (visibleP) state.$set.visible = visible
+    await tokens.update(indices, state, { upsert: true })
+
+    await publishers.update(indices, state, { upsert: true })
+  }
 }
 
 v1.verifyToken = {
