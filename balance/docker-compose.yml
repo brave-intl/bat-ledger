@@ -14,10 +14,12 @@ services:
     container_name: balance-web
     ports:
       - "3003:3003"
-    command: "npm run start-balance"
+    command: "npm run balance-server"
     extends:
       file: ../base.yml
       service: ledger
+    environment:
+      - "SERVICE=balance"
     depends_on:
       - redis
     networks:

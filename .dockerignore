@@ -2,3 +2,4 @@ docker-compose.yml
 node_modules
 .env
 data
+dist

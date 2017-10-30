@@ -16,3 +16,4 @@ COPY package.json /usr/src/app/
 COPY bat-utils/package.json /usr/src/app/bat-utils/
 RUN npm install
 COPY . /usr/src/app
+RUN npm run build

@@ -61,3 +61,6 @@ typings/
 .env
 _.env
 :.env
+
+# babel output
+dist

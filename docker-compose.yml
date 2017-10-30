@@ -16,28 +16,30 @@ services:
     networks:
       - ledger
   eyeshade-worker:
-    container_name: ledger-eyeshade-worker
-    command: "npm run start-eyeshade-worker"
+    container_name: eyeshade-worker
+    command: "npm run eyeshade-worker"
     extends:
       file: base.yml
       service: ledger
     environment:
       - "MONGODB_URI=mongodb://mongo/eyeshade"
+      - "SERVICE=eyeshade"
     depends_on:
       - mongo
       - redis
     networks:
       - ledger
   eyeshade-web:
-    container_name: ledger-eyeshade-web
+    container_name: eyeshade-web
     ports:
       - "3002:3002"
-    command: "npm run start-eyeshade"
+    command: "npm run eyeshade-server"
     extends:
       file: base.yml
       service: ledger
     environment:
       - "MONGODB_URI=mongodb://mongo/eyeshade"
+      - "SERVICE=eyeshade"
     depends_on:
       - mongo
       - redis
@@ -45,10 +47,12 @@ services:
       - ledger
   ledger-worker:
     container_name: ledger-worker
-    command: "npm run start-ledger-worker"
+    command: "npm run ledger-worker"
     extends:
       file: base.yml
       service: ledger
+    environment:
+      - "SERVICE=ledger"
     depends_on:
       - mongo
       - redis
@@ -58,10 +62,12 @@ services:
     container_name: ledger-web
     ports:
       - "3001:3001"
-    command: "npm run start-ledger"
+    command: "npm run ledger-server"
     extends:
       file: base.yml
       service: ledger
+    environment:
+      - "SERVICE=ledger"
     depends_on:
       - mongo
       - redis
@@ -71,10 +77,12 @@ services:
     container_name: balance-web
     ports:
       - "3003:3003"
-    command: "npm run start-balance"
+    command: "npm run balance-server"
     extends:
       file: base.yml
       service: ledger
+    environment:
+      - "SERVICE=balance"
     depends_on:
       - redis
     networks:
