@@ -721,6 +721,7 @@ const webResolver = async (debug, runtime, publisher, path) => {
 const verified = async (request, reply, runtime, entry, verified, backgroundP, reason) => {
   const indices = underscore.pick(entry, [ 'verificationId', 'publisher' ])
   const debug = braveHapi.debug(module, request)
+  const publishers = runtime.database.get('publishers', debug)
   const tokens = runtime.database.get('tokens', debug)
   let message, payload, state
 
@@ -745,8 +746,18 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   reason = reason || (verified ? 'ok' : 'unknown')
   payload = underscore.extend(underscore.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
-  await publish(debug, runtime, 'patch', entry.publisher, '/verifications', payload)
+  try {
+    await publish(debug, runtime, 'patch', entry.publisher, '/verifications', payload)
+  } catch (ex) {
+    runtime.captureException(ex, { req: request, extra: underscore.extend({ publisher: entry.publisher }, payload) })
+  }
   if (!verified) return
+
+  state = {
+    $currentDate: { timestamp: { $type: 'timestamp' } },
+    $set: underscore.pick(entry, [ 'verified', 'visible' ])
+  }
+  await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
 
   await tokens.remove({ publisher: entry.publisher, verified: false })
 
@@ -874,9 +885,9 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
         useProxyP: true
       })
     if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
-    debug('publishers', { method: method, publisher: publisher, endpoint: endpoint, reason: result })
+    debug('publish', { method: method, publisher: publisher, endpoint: endpoint, reason: result })
   } catch (ex) {
-    debug('publishers', { method: method, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
+    debug('publish', { method: method, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
   }
 
   return result
