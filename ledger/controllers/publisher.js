@@ -416,8 +416,10 @@ v2.identity =
       result = batPublisher.getPublisherProps(url)
       if (!result) return reply(boom.notFound())
 
-      result.publisher = batPublisher.getPublisher(url, entry.ruleset)
-      if (result.publisher) underscore.extend(result, await identity(debug, runtime, result))
+      if (!result.publisherType) {
+        result.publisher = batPublisher.getPublisher(url, entry.ruleset)
+        if (result.publisher) underscore.extend(result, await identity(debug, runtime, result))
+      }
 
       reply(result)
     } catch (ex) {
@@ -447,12 +449,14 @@ v3.identity =
     let entry = await rulesetEntryV2(request, runtime)
 
     try {
-      result = batPublisher.getPublisherProps(location)
+      result = batPublisher.getPublisherProps(publisher)
       if (!result) return reply(boom.notFound())
 
-      result = underscore.omit(result, underscore.keys(url.parse(location, true)), [ 'URL' ])
-      result.publisher = batPublisher.getPublisher(location, entry.ruleset)
-      if (!result.publisher) return reply(boom.notFound())
+      if (!result.publisherType) {
+        result = underscore.omit(result, underscore.keys(url.parse(location, true)), [ 'URL' ])
+        result.publisher = batPublisher.getPublisher(location, entry.ruleset)
+        if (!result.publisher) return reply(boom.notFound())
+      }
 
       result.properties = {}
       underscore.extend(result, await identity(debug, runtime, result))

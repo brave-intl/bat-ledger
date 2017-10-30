@@ -37,7 +37,7 @@
     "babel-cli": "^6.26.0",
     "babel-preset-stage-2": "^6.24.1",
     "bat-balance": "^1.0.3",
-    "bat-publisher": "^1.0.3",
+    "bat-publisher": "^1.1.3",
     "bat-utils": "file:./bat-utils",
     "bell": "8.7.0",
     "bignumber.js": "^4.0.4",
