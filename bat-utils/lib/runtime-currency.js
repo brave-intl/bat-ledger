@@ -291,7 +291,7 @@ const maintenance = async (config, runtime) => {
   }
 }
 
-const retrieve = async (url, props, schema) => {
+const retrieve = async (runtime, url, props, schema) => {
   let result, validity
 
   result = singleton.cache.get('url:' + url)
@@ -328,7 +328,7 @@ const inkblot = async (config, runtime) => {
     let entries
 
     try {
-      entries = await retrieve('https://api.coinmarketcap.com/v1/ticker/?convert=' + fiat)
+      entries = await retrieve(runtime, 'https://api.coinmarketcap.com/v1/ticker/?convert=' + fiat)
     } catch (ex) {
       ex.message = fiat + ': ' + ex.message
       throw ex
