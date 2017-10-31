@@ -93,7 +93,7 @@ const monitor1 = (config, runtime) => {
 
     if (validity.error) {
       retry()
-      return runtime.captureException(validity.error)
+      return runtime.captureException(validity.error, { extra: data.Deltas })
     }
 
     data.Deltas.forEach((delta) => {
@@ -264,7 +264,7 @@ const monitor2 = (config, runtime) => {
     validity = Joi.validate(data, schemaGDAX)
     if (validity.error) {
       retry()
-      return runtime.captureException(validity.error)
+      return runtime.captureException(validity.error, { extra: data })
     }
 
     singleton.cache.set('ticker:' + data.product_id.replace('-', ''), parseFloat(data.price))
@@ -291,7 +291,7 @@ const maintenance = async (config, runtime) => {
   }
 }
 
-const retrieve = async (url, props, schema) => {
+const retrieve = async (runtime, url, props, schema) => {
   let result, validity
 
   result = singleton.cache.get('url:' + url)
@@ -304,7 +304,10 @@ const retrieve = async (url, props, schema) => {
 
   result = JSON.parse(result)
   validity = schema ? Joi.validate(result, schema) : {}
-  if (validity.error) throw new Error(validity.error)
+  if (validity.error) {
+    runtime.captureException(validity.error, { extra: result })
+    throw new Error(validity.error)
+  }
 
   singleton.cache.set('url:' + url, result)
   return result
@@ -325,7 +328,7 @@ const inkblot = async (config, runtime) => {
     let entries
 
     try {
-      entries = await retrieve('https://api.coinmarketcap.com/v1/ticker/?convert=' + fiat)
+      entries = await retrieve(runtime, 'https://api.coinmarketcap.com/v1/ticker/?convert=' + fiat)
     } catch (ex) {
       ex.message = fiat + ': ' + ex.message
       throw ex
@@ -340,7 +343,7 @@ const inkblot = async (config, runtime) => {
 
       if (altcoins[src].id !== entry.id) return
 
-      if (validity.error) return runtime.captureException('monitor ticker error: ' + validity.error)
+      if (validity.error) return runtime.captureException('monitor ticker error: ' + validity.error, { extra: entry })
 
       underscore.keys(entry).forEach((key) => {
         const dst = key.substr(6).toUpperCase()

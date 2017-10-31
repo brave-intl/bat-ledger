@@ -205,8 +205,9 @@ v2.create =
 v2.update =
 { handler: (runtime) => {
   return async (request, reply) => {
-    const debug = braveHapi.debug(module, request)
+    const bump = request.query.bump
     const surveyorType = request.params.surveyorType
+    const debug = braveHapi.debug(module, request)
     const surveyors = runtime.database.get('surveyors', debug)
     let state, surveyor, validity
     let payload = request.payload
@@ -245,7 +246,7 @@ v2.update =
     surveyor.payload = payload
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
 
-    if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId)
+    if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId, bump)
   }
 },
 
@@ -259,6 +260,9 @@ v2.update =
   tags: [ 'api' ],
 
   validate: {
+    query: {
+      bump: Joi.number().integer().min(1).max(100).optional().description('number of additional requested surveyors')
+    },
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
@@ -475,7 +479,7 @@ const create = async (debug, runtime, surveyorType, payload, parentId) => {
 }
 module.exports.create = create
 
-const provision = async (debug, runtime, surveyorId) => {
+const provision = async (debug, runtime, surveyorId, bump) => {
   const surveyors = runtime.database.get('surveyors', debug)
   let entries, entry
 
@@ -486,12 +490,13 @@ const provision = async (debug, runtime, surveyorId) => {
   } else {
     entries = await surveyors.find({ surveyorType: 'contribution', available: true }, { limit: 1000, sort: { timestamp: -1 } })
   }
+  if (!bump) bump = 0
   entries.forEach(async (entry) => {
     const viewings = runtime.database.get('viewings', debug)
     let count, fixupP, surveyor, viewers
 
     if (!entry.surveyors) entry.surveyors = []
-    count = ((entry.payload.adFree.votes * 4) + slop) - entry.surveyors.length
+    count = ((entry.payload.adFree.votes * 4) + bump + slop) - entry.surveyors.length
     if (count < 1) return
 
     debug('surveyor', 'creating ' + count + ' voting surveyors for ' + entry.surveyorId)
