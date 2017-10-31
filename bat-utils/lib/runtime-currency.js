@@ -304,8 +304,10 @@ const monitor2 = (config, runtime) => {
 const maintenance = async (config, runtime) => {
   let tickers
 
-  try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {
-    runtime.captureException(ex)
+  if (singleton.oxr) {
+    try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {
+      runtime.captureException(ex)
+    }
   }
 
   try { tickers = await inkblot(config, runtime) } catch (ex) {
