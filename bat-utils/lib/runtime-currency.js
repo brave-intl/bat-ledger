@@ -93,7 +93,7 @@ const monitor1 = (config, runtime) => {
 
     if (validity.error) {
       retry()
-      return runtime.captureException(validity.error, { extra: data.Deltas })
+      return runtime.captureException(validity.error, { extra: { data: data.Deltas } })
     }
 
     data.Deltas.forEach((delta) => {
@@ -264,7 +264,7 @@ const monitor2 = (config, runtime) => {
     validity = Joi.validate(data, schemaGDAX)
     if (validity.error) {
       retry()
-      return runtime.captureException(validity.error, { extra: data })
+      return runtime.captureException(validity.error, { extra: { data: data } })
     }
 
     singleton.cache.set('ticker:' + data.product_id.replace('-', ''), parseFloat(data.price))
@@ -305,7 +305,7 @@ const retrieve = async (runtime, url, props, schema) => {
   result = JSON.parse(result)
   validity = schema ? Joi.validate(result, schema) : {}
   if (validity.error) {
-    runtime.captureException(validity.error, { extra: result })
+    runtime.captureException(validity.error, { extra: { data: result } })
     throw new Error(validity.error)
   }
 
@@ -343,7 +343,7 @@ const inkblot = async (config, runtime) => {
 
       if (altcoins[src].id !== entry.id) return
 
-      if (validity.error) return runtime.captureException('monitor ticker error: ' + validity.error, { extra: entry })
+      if (validity.error) return runtime.captureException('monitor ticker error: ' + validity.error, { extra: { data: entry } })
 
       underscore.keys(entry).forEach((key) => {
         const dst = key.substr(6).toUpperCase()
