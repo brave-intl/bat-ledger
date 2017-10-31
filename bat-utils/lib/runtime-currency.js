@@ -5,6 +5,7 @@ const NodeCache = require('node-cache')
 const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
+const oxr = require('oxr')
 const underscore = require('underscore')
 const WebSocket = require('faye-websocket')
 
@@ -24,6 +25,8 @@ let client2
 let singleton
 
 const Currency = function (config, runtime) {
+  let cacheTTL
+
   if (!(this instanceof Currency)) return new Currency(config, runtime)
 
   if (!config.currency || config.currency.static) return
@@ -50,6 +53,24 @@ const Currency = function (config, runtime) {
     }
     this.fiats[fiat] = true
   })
+
+  if (!this.config.oxr) return
+
+  cacheTTL = parseInt(this.config.oxr.cacheTTL, 10)
+  if (isNaN(cacheTTL) || (cacheTTL < 1)) cacheTTL = 7 * 24 * 1000 * 3600
+  this.oxr = oxr.cache({
+    store: {
+      get: function () {
+        return Promise.resolve(this.value)
+      },
+      put: function (value) {
+        this.value = value
+        return Promise.resolve(this.value)
+      }
+    },
+    ttl: parseInt(cacheTTL, 10)
+  }, oxr.factory({ appId: this.config.oxr.apiID }))
+  this.fxrates = {}
 }
 Currency.prototype.rates = {}
 
@@ -282,6 +303,12 @@ const monitor2 = (config, runtime) => {
 
 const maintenance = async (config, runtime) => {
   let tickers
+
+  if (singleton.oxr) {
+    try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {
+      runtime.captureException(ex)
+    }
+  }
 
   try { tickers = await inkblot(config, runtime) } catch (ex) {
     return runtime.captureException(ex)
