@@ -1,3 +1,5 @@
+/* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
+
 const perServiceEnvs = ['MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL']
 if (process.env.SERVICE === 'balance') {
   process.env.PORT = process.env.PORT || 3003
@@ -45,6 +47,14 @@ if (process.env.BITCOIN_AVERAGE_PUBLIC_KEY) {
     { publicKey         : process.env.BITCOIN_AVERAGE_PUBLIC_KEY
     , secretKey         : process.env.BITCOIN_AVERAGE_SECRET_KEY
     }
+}
+if (process.env.OXR_APP_ID) {
+  module.exports.currency.oxr =
+    { apiID             : process.env.OXR_APP_ID
+    , cacheTTL          : process.env.OXR_CACHE_TTL
+    }
+   {
+  }
 }
 
 if (process.env.UPHOLD_ACCESS_TOKEN || process.env.UPHOLD_CLIENT_ID) {

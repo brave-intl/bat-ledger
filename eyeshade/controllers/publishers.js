@@ -259,7 +259,7 @@ v2.getWallet = {
       const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let amount, entries, entry, provider, result, summary
+      let amount, entries, entry, provider, rates, result, summary
       let probi = new BigNumber(0)
 
       summary = await voting.aggregate([
@@ -330,6 +330,17 @@ v2.getWallet = {
       provider = entry && entry.provider
       try {
         if (provider) result.wallet = await runtime.wallet.status(entry)
+        if (result.wallet) {
+          rates = result.rates
+
+          underscore.union([ result.wallet.preferredCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
+            const fxrates = runtime.currency.fxrates
+
+            if ((rates[currency]) || (!rates[fxrates.base]) || (!fxrates.rates[currency])) return
+
+            rates[currency] = rates[fxrates.base] * fxrates.rates[currency]
+          })
+        }
       } catch (ex) {
         debug('status', { reason: ex.toString(), stack: ex.stack })
         runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
