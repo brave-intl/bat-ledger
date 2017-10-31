@@ -10,7 +10,7 @@ const WebSocket = require('faye-websocket')
 
 const braveHapi = require('./extras-hapi')
 
-const fiats = [ 'USD', 'EUR', 'GBP' ]
+const fiats = [ 'USD', 'EUR' ]
 
 const msecs = {
   day: 24 * 60 * 60 * 1000,
