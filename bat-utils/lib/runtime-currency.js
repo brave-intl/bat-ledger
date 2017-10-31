@@ -230,7 +230,6 @@ const monitor2 = (config, runtime) => {
       query.push({ type: 'subscribe', product_id: altcoin + '-' + fiat })
       eligible.push(fiat)
     })
-    debug('monitor2', { altcoin: altcoin, eligible: eligible })
 
     singleton.cache.set('fiats:' + altcoin, eligible)
   })
@@ -262,6 +261,8 @@ const monitor2 = (config, runtime) => {
       retry()
       return runtime.captureException(ex)
     }
+
+    if ((typeof data.type === 'undefined') || (typeof data.price === 'undefined')) return
 
     validity = Joi.validate(data, schemaGDAX)
     if (validity.error) {
