@@ -230,9 +230,11 @@ const monitor2 = (config, runtime) => {
       query.push({ type: 'subscribe', product_id: altcoin + '-' + fiat })
       eligible.push(fiat)
     })
+    debug('monitor2', { altcoin: altcoin, eligible: eligible })
 
     singleton.cache.set('fiats:' + altcoin, eligible)
   })
+  debug('monitor2', { query: query })
 
   client2 = new WebSocket.Client('wss://ws-feed.gdax.com/')
   client2.on('open', (event) => {
