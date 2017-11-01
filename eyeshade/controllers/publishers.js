@@ -464,7 +464,6 @@ v2.putWallet = {
 
 /*
    GET /v1/publishers/statement
-       [ used by publishers ]
  */
 
 v1.getStatements = {
