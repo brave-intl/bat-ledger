@@ -48,8 +48,8 @@ v1.bulk = {
       }
       for (let entry of payload) {
         entry.verificationId = uuid.v4().toLowerCase()
-        underscore.extend(state.$set, { verificationId: entry.verificationId, token: entry.verificationId })
-        await tokens.update({ publisher: entry.publisher }, state, { upsert: true })
+        underscore.extend(state.$set, { token: entry.verificationId })
+        await tokens.update({ publisher: entry.publisher, verificationId: entry.verificationId }, state, { upsert: true })
       }
 
       await runtime.queue.send(debug, 'publishers-bulk-create',
@@ -72,10 +72,10 @@ v1.bulk = {
     payload: Joi.array().min(1).items(Joi.object().keys({
       publisher: braveJoi.string().publisher().required().description('the publisher identity'),
       name: Joi.string().min(1).max(40).required().description('contact name'),
-      email: Joi.string().email().required().description('contact email'),
+      email: Joi.string().email().required().description('contact email address'),
       phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).required().description('contact phone number'),
-      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
-    }).unknown(true)).required().description('publisher settlement report')
+      show_verification_status: Joi.boolean().optional().default(true).description('public display authorized')
+    }).unknown(true)).required().description('publisher bulk entries')
   },
 
   response: {
@@ -259,7 +259,7 @@ v2.getWallet = {
       const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let amount, entries, entry, provider, result, summary
+      let amount, entries, entry, provider, rates, result, summary
       let probi = new BigNumber(0)
 
       summary = await voting.aggregate([
@@ -330,6 +330,17 @@ v2.getWallet = {
       provider = entry && entry.provider
       try {
         if (provider) result.wallet = await runtime.wallet.status(entry)
+        if (result.wallet) {
+          rates = result.rates
+
+          underscore.union([ result.wallet.preferredCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
+            const fxrates = runtime.currency.fxrates
+
+            if ((rates[currency]) || (!rates[fxrates.base]) || (!fxrates.rates[currency])) return
+
+            rates[currency] = rates[fxrates.base] * fxrates.rates[currency]
+          })
+        }
       } catch (ex) {
         debug('status', { reason: ex.toString(), stack: ex.stack })
         runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
@@ -453,7 +464,6 @@ v2.putWallet = {
 
 /*
    GET /v1/publishers/statement
-       [ used by publishers ]
  */
 
 v1.getStatements = {
@@ -954,6 +964,7 @@ module.exports.initialize = async (debug, runtime) => {
      // legalFormURL: '',
 
      // v2 and later
+        owner: '',
         visible: false,
         provider: '',
         altcurrency: '',
@@ -964,7 +975,7 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { publisher: 1 } ],
       others: [ { verified: 1 }, { authorized: 1 }, { authority: 1 },
-                { visible: 1 }, { provider: 1 }, { altcurrency: 1 },
+                { owner: 1 }, { visible: 1 }, { provider: 1 }, { altcurrency: 1 },
                 { timestamp: 1 } ]
     },
     {
@@ -981,6 +992,7 @@ module.exports.initialize = async (debug, runtime) => {
      // satoshis: 1
 
      // v2 and later
+        owner: '',
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
         currency: '',
@@ -990,8 +1002,9 @@ module.exports.initialize = async (debug, runtime) => {
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
-      others: [ { address: 1 }, { altcurrency: 1 }, { probi: 1 }, { amount: 1 }, { currency: 1 }, { fees: 1 },
-                { timestamp: 1 } ]
+      others: [ { address: 1 },
+                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 },
+                { fees: 1 }, { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('tokens', debug),
@@ -1002,6 +1015,7 @@ module.exports.initialize = async (debug, runtime) => {
         publisher: '',
         token: '',
         verified: false,
+        authority: '',
 
      // v2 and later
         visible: false,
@@ -1010,7 +1024,7 @@ module.exports.initialize = async (debug, runtime) => {
         reason: '',
         timestamp: bson.Timestamp.ZERO },
       unique: [ { verificationId: 1, publisher: 1 } ],
-      others: [ { token: 1 }, { verified: 1 },
+      others: [ { token: 1 }, { verified: 1 }, { authority: 1 },
                 { visible: 1 },
                 { reason: 1 }, { timestamp: 1 } ]
     }

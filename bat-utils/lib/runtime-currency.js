@@ -5,12 +5,13 @@ const NodeCache = require('node-cache')
 const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
+const oxr = require('oxr')
 const underscore = require('underscore')
 const WebSocket = require('faye-websocket')
 
 const braveHapi = require('./extras-hapi')
 
-const fiats = [ 'USD', 'EUR', 'GBP' ]
+const fiats = [ 'USD', 'EUR' ]
 
 const msecs = {
   day: 24 * 60 * 60 * 1000,
@@ -24,6 +25,8 @@ let client2
 let singleton
 
 const Currency = function (config, runtime) {
+  let cacheTTL
+
   if (!(this instanceof Currency)) return new Currency(config, runtime)
 
   if (!config.currency || config.currency.static) return
@@ -50,6 +53,24 @@ const Currency = function (config, runtime) {
     }
     this.fiats[fiat] = true
   })
+
+  if (!this.config.oxr) return
+
+  cacheTTL = parseInt(this.config.oxr.cacheTTL, 10)
+  if (isNaN(cacheTTL) || (cacheTTL < 1)) cacheTTL = 7 * 24 * 1000 * 3600
+  this.oxr = oxr.cache({
+    store: {
+      get: function () {
+        return Promise.resolve(this.value)
+      },
+      put: function (value) {
+        this.value = value
+        return Promise.resolve(this.value)
+      }
+    },
+    ttl: parseInt(cacheTTL, 10)
+  }, oxr.factory({ appId: this.config.oxr.apiID }))
+  this.fxrates = {}
 }
 Currency.prototype.rates = {}
 
@@ -95,7 +116,7 @@ const monitor1 = (config, runtime) => {
 
     if (validity.error) {
       retry()
-      return runtime.captureException(validity.error)
+      return runtime.captureException(validity.error, { extra: { data: data.Deltas } })
     }
 
     data.Deltas.forEach((delta) => {
@@ -235,6 +256,7 @@ const monitor2 = (config, runtime) => {
 
     singleton.cache.set('fiats:' + altcoin, eligible)
   })
+  debug('monitor2', { query: query })
 
   client2 = new WebSocket.Client('wss://ws-feed.gdax.com/')
   client2.on('open', (event) => {
@@ -263,10 +285,12 @@ const monitor2 = (config, runtime) => {
       return runtime.captureException(ex)
     }
 
+    if ((typeof data.type === 'undefined') || (typeof data.price === 'undefined')) return
+
     validity = Joi.validate(data, schemaGDAX)
     if (validity.error) {
       retry()
-      return runtime.captureException(validity.error)
+      return runtime.captureException(validity.error, { extra: { data: data } })
     }
 
     singleton.cache.set('ticker:' + data.product_id.replace('-', ''), parseFloat(data.price))
@@ -282,6 +306,12 @@ const monitor2 = (config, runtime) => {
 const maintenance = async (config, runtime) => {
   let tickers
 
+  if (singleton.oxr) {
+    try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {
+      runtime.captureException(ex)
+    }
+  }
+
   try { tickers = await inkblot(config, runtime) } catch (ex) {
     return runtime.captureException(ex)
   }
@@ -293,7 +323,7 @@ const maintenance = async (config, runtime) => {
   }
 }
 
-const retrieve = async (url, props, schema) => {
+const retrieve = async (runtime, url, props, schema) => {
   let result, validity
 
   result = singleton.cache.get('url:' + url)
@@ -306,7 +336,10 @@ const retrieve = async (url, props, schema) => {
 
   result = JSON.parse(result)
   validity = schema ? Joi.validate(result, schema) : {}
-  if (validity.error) throw new Error(validity.error)
+  if (validity.error) {
+    runtime.captureException(validity.error, { extra: { data: result } })
+    throw new Error(validity.error)
+  }
 
   singleton.cache.set('url:' + url, result)
   return result
@@ -327,7 +360,7 @@ const inkblot = async (config, runtime) => {
     let entries
 
     try {
-      entries = await retrieve('https://api.coinmarketcap.com/v1/ticker/?convert=' + fiat)
+      entries = await retrieve(runtime, 'https://api.coinmarketcap.com/v1/ticker/?convert=' + fiat)
     } catch (ex) {
       ex.message = fiat + ': ' + ex.message
       throw ex
@@ -342,7 +375,7 @@ const inkblot = async (config, runtime) => {
 
       if (altcoins[src].id !== entry.id) return
 
-      if (validity.error) return runtime.captureException('monitor ticker error: ' + validity.error)
+      if (validity.error) return runtime.captureException('monitor ticker error: ' + validity.error, { extra: { data: entry } })
 
       underscore.keys(entry).forEach((key) => {
         const dst = key.substr(6).toUpperCase()

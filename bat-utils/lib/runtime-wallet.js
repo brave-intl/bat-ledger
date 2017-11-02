@@ -278,7 +278,7 @@ Wallet.providers.uphold = {
     }
   },
   status: async function (info) {
-    let result, uphold, user
+    let currency, currencies, result, uphold, user
 
     try {
       uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
@@ -294,11 +294,22 @@ Wallet.providers.uphold = {
       throw ex
     }
 
+    currency = user.settings.currency
+    if (currency) {
+      currencies = underscore.keys(user.balances.currencies) || []
+      currencies.sort((a, b) => {
+        return ((b === currency) ? 1
+                : ((a === currency) || (a < b)) ? (-1)
+                : (a > b) ? 1 : 0)
+      })
+      if (currencies.indexOf(currency) === -1) currencies.unshift(currency)
+    } else currency = undefined
+
     result = {
       provider: info.provider,
       authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
-      preferredCurrency: user.settings.currency,
-      availableCurrencies: underscore.keys(user.balances.currencies)
+      preferredCurrency: currency,
+      availableCurrencies: currencies
     }
 
     return result
