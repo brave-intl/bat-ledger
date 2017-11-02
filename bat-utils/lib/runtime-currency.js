@@ -84,9 +84,7 @@ Currency.prototype.init = function () {
   maintenance(this.config, this.runtime)
   setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 5 * msecs.minute)
 
-  // seems most likely to be the source of memory leak
-  // monitor1(this.config, this.runtime)
-
+  monitor1(this.config, this.runtime)
   monitor2(this.config, this.runtime)
 }
 
