@@ -26,18 +26,14 @@ v1.bulk = {
     return async (request, reply) => {
       const payload = request.payload
       const authorizer = payload.authorizer
+      const info = payload.contactInfo
       const providers = payload.providers
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
       const tokens = runtime.database.get('tokens', debug)
-      let info, props, state
+      let props, state
 
-      info = {
-        name: authorizer.ownerName,
-        email: authorizer.verifiedEmail,
-        phone: authorizer.ownerPhone
-      }
       props = batPublisher.getPublisherProps(authorizer.owner)
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -91,9 +87,12 @@ v1.bulk = {
       authorizer: Joi.object().keys({
         owner: braveJoi.string().owner().required().description('the owner identity'),
         ownerEmail: Joi.string().email().optional().description('authorizer email address'),
-        ownerName: Joi.string().optional().description('authorizer name'),
-        ownerPhone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).required().description('phone number for owner'),
-        verifiedEmail: Joi.string().email().required().description('verified email address for owner')
+        ownerName: Joi.string().optional().description('authorizer name')
+      }),
+      contactInfo: Joi.object().keys({
+        name: Joi.string().required().description('authorizer name'),
+        phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).required().description('phone number for owner'),
+        email: Joi.string().email().required().description('verified email address for owner')
       }),
       providers: Joi.array().min(1).items(Joi.object().keys({
         publisher: braveJoi.string().publisher().required().description('the publisher identity'),
