@@ -33,6 +33,8 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
   const prefix = publisher ? encodeURIComponent(publisher) : ''
   let result
 
+  if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
+
   result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
     headers: {
       authorization: 'Bearer ' + runtime.config.publishers.access_token,
@@ -595,8 +597,7 @@ exports.workers = {
       entries.forEach((entry) => {
         if (typeof publishers[entry.publisher] === 'undefined') return
 
-        underscore.extend(publishers[entry.publisher],
-                          underscore.pick(entry, [ 'authorized', 'altcurrency', 'address', 'provider' ]))
+        underscore.extend(publishers[entry.publisher], underscore.pick(entry, [ 'authorized', 'altcurrency', 'provider' ]))
       })
       entries = await tokens.find({ verified: true })
       entries.forEach((entry) => {
