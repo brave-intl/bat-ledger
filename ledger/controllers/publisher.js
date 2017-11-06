@@ -518,7 +518,7 @@ v3.timestamp =
   }
 },
 
-  description: 'Returns information about a publisher identity',
+  description: 'Returns information about the latest publisher timestamp',
   tags: [ 'api' ],
 
   validate: { },
