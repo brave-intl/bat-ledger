@@ -91,7 +91,7 @@ v1.bulk = {
       }),
       contactInfo: Joi.object().keys({
         name: Joi.string().required().description('authorizer name'),
-        phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).required().description('phone number for owner'),
+        phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('phone number for owner'),
         email: Joi.string().email().required().description('verified email address for owner')
       }),
       providers: Joi.array().min(1).items(Joi.object().keys({
