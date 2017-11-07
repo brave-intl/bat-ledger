@@ -117,11 +117,14 @@ v1.getWallet = {
       const owner = request.params.owner
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owner', debug)
+      const owners = runtime.database.get('owners', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, entries, entry, provider, rates, result, summary
       let probi = new BigNumber(0)
+
+      entry = await owners.findOne({ owner: owner })
+      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
       summary = await voting.aggregate([
         {
