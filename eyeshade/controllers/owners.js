@@ -1,3 +1,4 @@
+const querystring = require('querystring')
 const url = require('url')
 
 const BigNumber = require('bignumber.js')
@@ -288,7 +289,7 @@ v1.putWallet = {
 
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'owner ' + owner + ' registered with ' + provider
+        text: 'owner ' + querystring.unescape(owner) + ' registered with ' + provider
       })
 
       reply({})

@@ -733,7 +733,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   const debug = braveHapi.debug(module, request)
   const publishers = runtime.database.get('publishers', debug)
   const tokens = runtime.database.get('tokens', debug)
-  let info, message, payload, results, state, visible, visibleP
+  let info, message, method, payload, results, state, visible, visibleP
 
   message = underscore.extend(underscore.clone(indices), { verified: verified, reason: reason })
   debug('verified', message)
@@ -778,6 +778,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
     visible = result.show_verification_status
     visibleP = (typeof visible !== 'undefined')
+    method = result.verification_method
     info = underscore.pick(result, [ 'name', 'email' ])
     if (result.phone_normalized) info.phone = result.phone_normalized
     if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
@@ -787,6 +788,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
       $set: { info: info }
     }
     if (visibleP) state.$set.visible = visible
+    if (method) state.$set.method = method
     await tokens.update(indices, state, { upsert: true })
 
     await publishers.update(indices, state, { upsert: true })
@@ -1020,12 +1022,13 @@ module.exports.initialize = async (debug, runtime) => {
      // v2 and later
         visible: false,
         info: {},
+        method: '',
 
         reason: '',
         timestamp: bson.Timestamp.ZERO },
       unique: [ { verificationId: 1, publisher: 1 } ],
       others: [ { token: 1 }, { verified: 1 }, { authority: 1 },
-                { visible: 1 },
+                { visible: 1, method: 1 },
                 { reason: 1 }, { timestamp: 1 } ]
     }
   ])

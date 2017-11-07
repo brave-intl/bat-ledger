@@ -108,8 +108,6 @@ const monitor1 = (config, runtime) => {
 
   client1.on('coreHub', 'updateSummaryState', async (data) => {
     const validity = Joi.validate(data.Deltas, schemaSR)
-    let now
-    let tickers
     let rates = {}
 
     if (validity.error) {
@@ -131,21 +129,7 @@ const monitor1 = (config, runtime) => {
       rates[dst][src] = delta.Last
     })
 
-    try { tickers = await inkblot(config, runtime) } catch (ex) {
-      now = underscore.now()
-      if (singleton.warnings > now) return
-
-      singleton.warnings = now + (15 * msecs.minute)
-      return runtime.captureException(ex)
-    }
-
-    try { await rorschach(rates, tickers, config, runtime) } catch (ex) {
-      now = underscore.now()
-      if (singleton.warnings > now) return
-
-      singleton.warnings = now + (15 * msecs.minute)
-      return runtime.captureException(ex)
-    }
+    setTimeout(function () { monitor1b(config, runtime, rates) }, 0)
   })
 
   client1.serviceHandlers.connected = client1.serviceHandlers.reconnected = (connection) => {
@@ -169,6 +153,25 @@ const monitor1 = (config, runtime) => {
   client1.serviceHandlers.disconnected = () => {
 //  debug('monitor1', { event: 'disconnected' })
     retry()
+  }
+}
+
+const monitor1b = async (config, runtime, rates) => {
+  const now = underscore.now()
+  let tickers
+
+  try { tickers = await inkblot(config, runtime) } catch (ex) {
+    if (singleton.warnings > now) return
+
+    singleton.warnings = now + (15 * msecs.minute)
+    return runtime.captureException(ex)
+  }
+
+  try { await rorschach(rates, tickers, config, runtime) } catch (ex) {
+    if (singleton.warnings > now) return
+
+    singleton.warnings = now + (15 * msecs.minute)
+    return runtime.captureException(ex)
   }
 }
 

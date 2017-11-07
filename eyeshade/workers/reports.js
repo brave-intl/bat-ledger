@@ -120,12 +120,13 @@ const hourly2 = async (debug, runtime) => {
         results = await publish(debug, runtime, 'get', publisher)
         for (let result of results) {
           const record = underscore.findWhere(records, { verificationId: result.id })
-          let visibleP
+          let method, visibleP
 
           if (!record) continue
 
           visible = result.show_verification_status
           visibleP = (typeof visible !== 'undefined')
+          method = result.verification_method
           info = underscore.pick(result, [ 'name', 'email' ])
           if (result.phone_normalized) info.phone = result.phone_normalized
           if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
@@ -136,6 +137,7 @@ const hourly2 = async (debug, runtime) => {
             $set: { info: info }
           }
           if (visibleP) state.$set.visible = visible
+          if (method) state.$set.method = method
           await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
 
           if (!record.verified) continue
