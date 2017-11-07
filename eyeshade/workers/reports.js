@@ -754,6 +754,7 @@ exports.workers = {
       , reportURL      : '...'
       , authority      : '...:...'
       , hash           : '...'
+      , owner          : '...'
       , publisher      : '...'
       , rollup         :  true  | false
       , summary        :  true  | false
@@ -766,6 +767,7 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const authority = payload.authority
       const hash = payload.hash
+      const owner = payload.owner
       const rollupP = payload.rollup
       const starting = payload.starting
       const summaryP = payload.summary
@@ -784,7 +786,7 @@ exports.workers = {
         entries = await settlements.find(query)
         publishers = await mixer(debug, runtime, publisher, query._id)
       } else {
-        entries = await settlements.find(hash ? { hash: hash } : {})
+        entries = await settlements.find(owner ? { owner: owner } : hash ? { hash: hash } : {})
         if (rollupP) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })

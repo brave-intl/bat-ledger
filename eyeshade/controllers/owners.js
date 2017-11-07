@@ -1,6 +1,6 @@
-// const url = require('url')
+const url = require('url')
 
-// const BigNumber = require('bignumber.js')
+const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
@@ -113,12 +113,10 @@ v1.bulk = {
 v1.getWallet = {
   handler: (runtime) => {
     return async (request, reply) => {
-      return reply(boom.notImplemented())
-/*
-      const publisher = request.params.publisher
+      const owner = request.params.owner
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
-      const publishers = runtime.database.get('publishers', debug)
+      const owners = runtime.database.get('owner', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, entries, entry, provider, rates, result, summary
@@ -129,7 +127,7 @@ v1.getWallet = {
           $match:
           {
             probi: { $gt: 0 },
-            publisher: { $eq: publisher },
+            owner: { $eq: owner },
             altcurrency: { $eq: altcurrency },
             exclude: false
           }
@@ -137,7 +135,7 @@ v1.getWallet = {
         {
           $group:
           {
-            _id: '$publisher',
+            _id: '$owner',
             probi: { $sum: '$probi' }
           }
         }
@@ -149,20 +147,20 @@ v1.getWallet = {
           $match:
           {
             probi: { $gt: 0 },
-            publisher: { $eq: publisher }
+            owner: { $eq: owner }
           }
         },
         {
           $group:
           {
-            _id: '$publisher',
+            _id: '$owner',
             probi: { $sum: '$probi' }
           }
         }
       ])
       if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
       if (probi.lessThan(0)) {
-        runtime.captureException(new Error('negative probi'), { extra: { publisher: publisher, probi: probi.toString() } })
+        runtime.captureException(new Error('negative probi'), { extra: { owner: owner, probi: probi.toString() } })
         probi = 0
       }
 
@@ -177,7 +175,7 @@ v1.getWallet = {
         }
       }
 
-      entries = await settlements.find({ publisher: publisher }, { sort: { timestamp: -1 }, limit: 1 })
+      entries = await settlements.find({ owner: owner }, { sort: { timestamp: -1 }, limit: 1 })
       entry = entries && entries[0]
       if (entry) {
         result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
@@ -188,7 +186,7 @@ v1.getWallet = {
         })
       }
 
-      entry = await publishers.findOne({ publisher: publisher })
+      entry = await owners.findOne({ owner: owner })
       provider = entry && entry.provider
       try {
         if (provider) result.wallet = await runtime.wallet.status(entry)
@@ -205,14 +203,13 @@ v1.getWallet = {
         }
       } catch (ex) {
         debug('status', { reason: ex.toString(), stack: ex.stack })
-        runtime.captureException(ex, { req: request, extra: { publisher: publisher } })
+        runtime.captureException(ex, { req: request, extra: { owner: owner } })
       }
       if ((provider) && (!result.wallet)) {
         result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
       }
 
       reply(result)
- */
     }
   },
 
@@ -270,38 +267,31 @@ v1.getWallet = {
 v1.putWallet = {
   handler: (runtime) => {
     return async (request, reply) => {
-      return reply(boom.notImplemented())
-/*
-      const publisher = request.params.publisher
+      const owner = request.params.owner
       const payload = request.payload
       const provider = payload.provider
-      const verificationId = request.payload.verificationId
       const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
-      const publishers = runtime.database.get('publishers', debug)
-      const tokens = runtime.database.get('tokens', debug)
+      const owners = runtime.database.get('owners', debug)
       let entry, state
 
-      entry = await tokens.findOne({ verificationId: verificationId, publisher: publisher })
-      if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
-
-      if (!entry.verified) return reply(boom.badData('not verified: ' + publisher + ' using ' + verificationId))
+      entry = await owners.findOne({ owner: owner })
+      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.omit(payload, [ 'verificationId', 'show_verification_status' ]), {
+        $set: underscore.extend(payload, {
           visible: visible, verified: true, altcurrency: altcurrency, authorized: true, authority: provider
         })
       }
-      await publishers.update({ publisher: publisher }, state, { upsert: true })
+      await owners.update({ owner: owner }, state, { upsert: true })
 
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'publisher ' + publisher + ' registered with ' + provider
+        text: 'owner ' + owner + ' registered with ' + provider
       })
 
       reply({})
- */
     }
   },
 
@@ -317,10 +307,8 @@ v1.putWallet = {
     params: { owner: braveJoi.string().owner().required().description('the owner identity') },
     query: { access_token: Joi.string().guid().optional() },
     payload: {
-      verificationId: Joi.string().guid().required().description('identity of the requestor'),
       provider: Joi.string().required().description('wallet provider'),
-      parameters: Joi.object().required().description('wallet parameters'),
-      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
+      parameters: Joi.object().required().description('wallet parameters')
     }
   },
 
@@ -336,8 +324,6 @@ v1.putWallet = {
 v1.getStatement = {
   handler: (runtime) => {
     return async (request, reply) => {
-      return reply(boom.notImplemented())
-/*
       const owner = request.params.owner
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
@@ -348,12 +334,11 @@ v1.getStatement = {
       entry = await owners.findOne({ owner: owner })
       if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
-      await runtime.queue.send(debug, 'report-owners-statements',
+      await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, owner: owner },
                                                    request.query,
-                                                   { authority: 'automated', summary: false }))
+                                                   { authority: 'automated', rollup: true, summary: false }))
       reply({ reportURL: reportURL })
- */
     }
   },
 
@@ -425,6 +410,4 @@ module.exports.initialize = async (debug, runtime) => {
                 { timestamp: 1 } ]
     }
   ])
-
-  await runtime.queue.create('report-owners-statements')
 }
