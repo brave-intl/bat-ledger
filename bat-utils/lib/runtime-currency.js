@@ -106,7 +106,7 @@ const monitor1 = (config, runtime) => {
 
   client1 = new Client('http://socket.bittrex.com/signalR', [ 'coreHub' ])
 
-  client1.on('coreHub', 'updateSummaryState', async (data) => {
+  client1.on('coreHub', 'updateSummaryState', (data) => {
     const validity = Joi.validate(data.Deltas, schemaSR)
     let rates = {}
 
