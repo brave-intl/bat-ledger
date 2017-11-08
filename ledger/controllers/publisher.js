@@ -39,6 +39,10 @@ const rulesetEntryV2 = async (request, runtime) => {
 
   entryV2.ruleset.forEach(rule => { if (rule.consequent) ruleset.push(rule) })
   ruleset = [
+    { condition: 'SLD === \'youtube.com\' && pathname.indexOf(\'/channel/\') === 0',
+      consequent: '\'youtube#channel:\' + pathname.split(\'/\')[2]',
+      description: 'youtube channels'
+    },
     { condition: '/^[a-z][a-z].gov$/.test(SLD)',
       consequent: 'QLD + "." + SLD',
       description: 'governmental sites'
@@ -518,7 +522,7 @@ v3.timestamp =
   }
 },
 
-  description: 'Returns information about a publisher identity',
+  description: 'Returns information about the latest publisher timestamp',
   tags: [ 'api' ],
 
   validate: { },

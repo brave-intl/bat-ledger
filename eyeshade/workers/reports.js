@@ -33,6 +33,8 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
   const prefix = publisher ? encodeURIComponent(publisher) : ''
   let result
 
+  if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
+
   result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
     headers: {
       authorization: 'Bearer ' + runtime.config.publishers.access_token,
@@ -118,12 +120,13 @@ const hourly2 = async (debug, runtime) => {
         results = await publish(debug, runtime, 'get', publisher)
         for (let result of results) {
           const record = underscore.findWhere(records, { verificationId: result.id })
-          let visibleP
+          let method, visibleP
 
           if (!record) continue
 
           visible = result.show_verification_status
           visibleP = (typeof visible !== 'undefined')
+          method = result.verification_method
           info = underscore.pick(result, [ 'name', 'email' ])
           if (result.phone_normalized) info.phone = result.phone_normalized
           if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
@@ -134,6 +137,7 @@ const hourly2 = async (debug, runtime) => {
             $set: { info: info }
           }
           if (visibleP) state.$set.visible = visible
+          if (method) state.$set.method = method
           await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
 
           if (!record.verified) continue
@@ -190,7 +194,7 @@ const quanta = async (debug, runtime, qid) => {
     updateP = false
     underscore.keys(params).forEach((key) => {
       if (typeof surveyor[key] === 'undefined') {
-        if ((key !== 'quantum') && (key !== 'inputs')) {
+        if ((key !== 'quantum') && (key !== 'inputs') && (key !== 'fee')) {
           runtime.captureException(new Error('missing key'), { extra: { surveyorId: surveyor.surveyorId, key: key } })
         }
         updateP = true
@@ -595,8 +599,7 @@ exports.workers = {
       entries.forEach((entry) => {
         if (typeof publishers[entry.publisher] === 'undefined') return
 
-        underscore.extend(publishers[entry.publisher],
-                          underscore.pick(entry, [ 'authorized', 'altcurrency', 'address', 'provider' ]))
+        underscore.extend(publishers[entry.publisher], underscore.pick(entry, [ 'authorized', 'altcurrency', 'provider' ]))
       })
       entries = await tokens.find({ verified: true })
       entries.forEach((entry) => {
@@ -753,6 +756,7 @@ exports.workers = {
       , reportURL      : '...'
       , authority      : '...:...'
       , hash           : '...'
+      , owner          : '...'
       , publisher      : '...'
       , rollup         :  true  | false
       , summary        :  true  | false
@@ -765,6 +769,7 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const authority = payload.authority
       const hash = payload.hash
+      const owner = payload.owner
       const rollupP = payload.rollup
       const starting = payload.starting
       const summaryP = payload.summary
@@ -783,7 +788,7 @@ exports.workers = {
         entries = await settlements.find(query)
         publishers = await mixer(debug, runtime, publisher, query._id)
       } else {
-        entries = await settlements.find(hash ? { hash: hash } : {})
+        entries = await settlements.find(owner ? { owner: owner } : hash ? { hash: hash } : {})
         if (rollupP) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })

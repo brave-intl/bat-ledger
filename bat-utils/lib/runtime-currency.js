@@ -40,6 +40,7 @@ const Currency = function (config, runtime) {
 
   this.fiats = {}
   this.rates = Currency.prototype.rates
+  this.altrates = {}
   this.tickers = {}
 
   if (!this.config.altcoins) this.config.altcoins = [ 'BAT', 'ETH' ]
@@ -106,11 +107,8 @@ const monitor1 = (config, runtime) => {
 
   client1 = new Client('http://socket.bittrex.com/signalR', [ 'coreHub' ])
 
-  client1.on('coreHub', 'updateSummaryState', async (data) => {
+  client1.on('coreHub', 'updateSummaryState', (data) => {
     const validity = Joi.validate(data.Deltas, schemaSR)
-    let now
-    let tickers
-    let rates = {}
 
     if (validity.error) {
       retry()
@@ -124,28 +122,12 @@ const monitor1 = (config, runtime) => {
 
       if ((src === dst) || (config.allcoins.indexOf(src) === -1) || (config.allcoins.indexOf(dst) === -1)) return
 
-      if (!rates[src]) rates[src] = {}
-      rates[src][dst] = 1.0 / delta.Last
+      if (!singleton.altrates[src]) singleton.altrates[src] = {}
+      singleton.altrates[src][dst] = 1.0 / delta.Last
 
-      if (!rates[dst]) rates[dst] = {}
-      rates[dst][src] = delta.Last
+      if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
+      singleton.altrates[dst][src] = delta.Last
     })
-
-    try { tickers = await inkblot(config, runtime) } catch (ex) {
-      now = underscore.now()
-      if (singleton.warnings > now) return
-
-      singleton.warnings = now + (15 * msecs.minute)
-      return runtime.captureException(ex)
-    }
-
-    try { await rorschach(rates, tickers, config, runtime) } catch (ex) {
-      now = underscore.now()
-      if (singleton.warnings > now) return
-
-      singleton.warnings = now + (15 * msecs.minute)
-      return runtime.captureException(ex)
-    }
   })
 
   client1.serviceHandlers.connected = client1.serviceHandlers.reconnected = (connection) => {
@@ -302,7 +284,11 @@ const monitor2 = (config, runtime) => {
 }
 
 const maintenance = async (config, runtime) => {
-  let tickers
+  const now = underscore.now()
+  let rates, tickers
+
+  rates = singleton.altrates
+  singleton.altrates = {}
 
   if (singleton.oxr) {
     try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {
@@ -311,7 +297,17 @@ const maintenance = async (config, runtime) => {
   }
 
   try { tickers = await inkblot(config, runtime) } catch (ex) {
-    return runtime.captureException(ex)
+    if (singleton.warnings <= now) {
+      singleton.warnings = now + (15 * msecs.minute)
+      runtime.captureException(ex)
+    }
+  }
+
+  try { await rorschach(rates, tickers, config, runtime) } catch (ex) {
+    if (singleton.warnings <= now) {
+      singleton.warnings = now + (15 * msecs.minute)
+      runtime.captureException(ex)
+    }
   }
 
   for (let altcoin of config.altcoins) {
