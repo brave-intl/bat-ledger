@@ -292,7 +292,8 @@ v1.putWallet = {
 
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'owner ' + querystring.unescape(owner) + ' registered with ' + provider
+        text: 'owner ' + entry.ownerName + ' <' + entry.ownerEmail + '> ' + querystring.unescape(owner) + ' registered with ' +
+          provider
       })
 
       reply({})
