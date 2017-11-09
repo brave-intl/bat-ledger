@@ -1,7 +1,9 @@
+const BigNumber = require('bignumber.js')
 const Joi = require('joi')
 const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
+const uuid = require('uuid')
 
 const utils = require('bat-utils')
 const braveJoi = utils.extras.joi
@@ -9,29 +11,38 @@ const braveHapi = utils.extras.hapi
 
 const v1 = {}
 
-const findGrant = async (debug, runtime, paymentId, promotionId) => {
-  const query = { active: true, paymentId: { $exists: false } }
-  const grants = runtime.database.get('grants', debug)
-  let entries, grant, promotions, state
+/*
+   GET /v1/promotions
+ */
 
-  if (!paymentId) return grants.findOne(query)
+v1.all = { handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const promotions = runtime.database.get('promotions', debug)
+    let entries, results
 
-  if (promotionId) {
-// NB: race condition between these two calls...
-    grant = await grants.findOne(underscore.extend(query, { paymentId: paymentId, promotionId: promotionId }))
-    if (grant) return null
+    entries = await promotions.find({}, { sort: { priority: 1 } })
 
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: { paymentId: paymentId }
-    }
-    return grants.findOneAndUpdate(underscore.extend(query, { paymentId: { $exists: false } }), state, { upsert: false })
+    results = []
+    entries.forEach((entry) => {
+      if (entry.promotionId === '') return
+
+      results.push(underscore.omit(entry, [ '_id', 'batchId', 'timestamp' ]))
+    })
+    console.log(JSON.stringify(results, null, 2))
+    reply(results)
   }
+},
+  description: 'See if a promotion is available',
+  tags: [ 'api' ],
 
-  promotions = []
-  entries = await grants.find({ paymentId: paymentId })
-  entries.forEach((entry) => { if (promotions.indexOf(entry.promotionId) === -1) promotions.push(entry.promotionId) })
-  return grants.findOne(underscore.extend(query, { promotionId: { $nin: promotions } }))
+  validate: { query: {} },
+
+  response: {
+    schema: Joi.array().min(0).items(Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).unknown(true).description('promotion properties'))
+  }
 }
 
 /*
@@ -41,15 +52,27 @@ const findGrant = async (debug, runtime, paymentId, promotionId) => {
 v1.read = { handler: (runtime) => {
   return async (request, reply) => {
     const paymentId = request.query.paymentId
+    const query = { active: true, count: { $gt: 0 } }
     const debug = braveHapi.debug(module, request)
-    const grant = await findGrant(debug, runtime, paymentId)
+    const grants = runtime.database.get('grants', debug)
+    const promotions = runtime.database.get('promotions', debug)
+    let entries, promotion, promotionIds
 
-    if (!grant) return reply(boom.notFound('no promotions available'))
+    if (paymentId) {
+      promotionIds = []
+      entries = await grants.find({ paymentId: paymentId })
+      entries.forEach((entry) => { promotionIds.push(entry.promotionId) })
+      underscore.extend(query, { promotionId: { $nin: promotionIds } })
+    }
 
-    reply(underscore.extend(underscore.pick(grant, [ 'promotionId', 'altcurrency' ]), { probi: grant.probi.toString() }))
+    entries = await promotions.find(query, { sort: { priority: 1 } })
+    promotion = entries && entries[0]
+    if (!promotion) return reply(boom.notFound('no promotions available'))
+
+    reply(underscore.omit(promotion, [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]))
   }
 },
-  description: 'See if a grant is available',
+  description: 'See if a promotion is available',
   tags: [ 'api' ],
 
   validate: {
@@ -58,10 +81,8 @@ v1.read = { handler: (runtime) => {
 
   response: {
     schema: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier'),
-      altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
-      probi: braveJoi.string().numeric().description('the grant amount in probi')
-    }).unknown(true).description('properties of an available promotion')
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).unknown(true).description('promotion properties')
   }
 }
 
@@ -73,19 +94,45 @@ v1.write = { handler: (runtime) => {
   return async (request, reply) => {
     const paymentId = request.params.paymentId.toLowerCase()
     const promotionId = request.payload.promotionId
+    const query = { active: true, paymentId: paymentId, promotionId: promotionId }
     const debug = braveHapi.debug(module, request)
+    const grants = runtime.database.get('grants', debug)
+    const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let grant, wallet
+    let count, grant, state, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    grant = await findGrant(debug, runtime, paymentId, promotionId)
-    if (grant === null) return reply(boom.badData('promotion already in use'))
+    grant = await grants.findOne(query)
+    if (grant) return reply(boom.badData('promotion already in use'))
 
+    state = {
+      $currentDate: { timestamp: { $type: 'timestamp' } },
+      $set: { paymentId: paymentId }
+    }
+    underscore.extend(query, { paymentId: { $exists: false } })
+    grant = await grants.findOneAndUpdate(query, state, { upsert: false })
     if (!grant) return reply(boom.notFound('no promotions available'))
 
-    reply({})
+    count = await grants.count({ promotionId: promotionId, paymentId: paymentId })
+    if (count !== 1) {    // race condition!
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $unset: { paymentId: '' }
+      }
+      await grants.update({ _id: grant._id }, state, { upsert: false })
+      return reply(boom.badData('promotion already in use'))
+    }
+
+    state = {
+      $currentDate: { timestamp: { $type: 'timestamp' } },
+      $inc: { count: -1 }
+    }
+    await promotions.update({ promotionId: grant.promotionId }, state, { upsert: true })
+
+    return reply(underscore.extend(underscore.pick(grant, [ 'grantId', 'altcurrency' ]),
+                                   { probi: new BigNumber(grant.probi.toString()).toString() }))
   }
 },
   description: 'Request a grant for a wallet',
@@ -99,8 +146,11 @@ v1.write = { handler: (runtime) => {
     }).required().description('promotion derails')
   },
 
-  response:
-    { schema: Joi.object().length(0) }
+  response: {
+    schema: Joi.object().keys({
+      grantId: Joi.string().required().description('the grant-identifier')
+    }).unknown(true).description('grant properties')
+  }
 }
 
 /*
@@ -110,18 +160,59 @@ v1.write = { handler: (runtime) => {
 v1.create =
 { handler: (runtime) => {
   return async (request, reply) => {
-    const entries = request.payload
+    const payload = request.payload
+    const batchId = uuid.v4().toLowerCase()
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
-    let state
+    const promotions = runtime.database.get('promotions', debug)
+    let count, state
 
-    for (let entry of entries) {
+    const oops = async (ex) => {
+      try {
+        await grants.remove({ batchId: batchId }, { justOne: false })
+      } catch (ex2) {
+        runtime.captureException(ex2, { req: request, extra: { collection: 'grants', batchId: 'batchId' } })
+      }
+      try {
+        await promotions.remove({ batchId: batchId }, { justOne: false })
+      } catch (ex2) {
+        runtime.captureException(ex2, { req: request, extra: { collection: 'promotions', batchId: 'batchId' } })
+      }
+
+      return boom.boomify(ex, { statusCode: 422 })
+    }
+
+    for (let entry of payload.grants) {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.pick(entry, [ 'active', 'promotionId', 'altcurrency', 'grantSignature' ]),
-                                { probi: bson.Decimal128.fromString(entry.probi) })
+        $set: underscore.extend(underscore.pick(entry, [ 'promotionId', 'altcurrency', 'grantSignature' ]),
+                                { probi: bson.Decimal128.fromString(entry.probi), batchId: batchId })
       }
-      await grants.update({ grantId: entry.grantId }, state, { upsert: true })
+      try {
+        await grants.update({ grantId: entry.grantId }, state, { upsert: true })
+      } catch (ex) { return oops(ex) }
+    }
+
+    for (let entry of payload.promotions) {
+      try {
+        count = await grants.count({ promotionId: entry.promotionId, paymentId: { $exists: false } })
+      } catch (ex) { return oops(ex) }
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: underscore.extend(underscore.omit(entry, [ 'promotionId' ]), { batchId: batchId, count: count })
+      }
+      try {
+        await promotions.update({ promotionId: entry.promotionId }, state, { upsert: true })
+      } catch (ex) { return oops(ex) }
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: underscore.pick(entry, [ 'active', 'priority' ])
+      }
+      try {
+        await grants.update({ promotionId: entry.promotionId }, state, { upsert: false, multi: true })
+      } catch (ex) { return oops(ex) }
     }
 
     reply({})
@@ -138,14 +229,20 @@ v1.create =
   tags: [ 'api' ],
 
   validate: {
-    payload: Joi.array().min(1).items(Joi.object().keys({
-      grantId: Joi.string().required().description('the grant-identifier'),
-      active: Joi.boolean().optional().default(true).description('the grant status'),
-      promotionId: Joi.string().required().description('the promotion-identifier'),
-      altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
-      probi: braveJoi.string().numeric().description('the grant amount in probi'),
-      grantSignature: Joi.string().required().description('the grant-signature')
-    })).required().description('bulk grants for upload')
+    payload: Joi.object().keys({
+      grants: Joi.array().min(0).items(Joi.object().keys({
+        grantId: Joi.string().required().description('the grant-identifier'),
+        promotionId: Joi.string().required().description('the associated promotion'),
+        altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+        probi: braveJoi.string().numeric().description('the grant amount in probi'),
+        grantSignature: Joi.string().required().description('the grant-signature')
+      })).description('grants for bulk upload'),
+      promotions: Joi.array().min(0).items(Joi.object().keys({
+        promotionId: Joi.string().required().description('the promotion-identifier'),
+        priority: Joi.number().integer().min(0).required().description('the promotion priority (lower is better)'),
+        active: Joi.boolean().optional().default(true).description('the promotion status')
+      }).unknown(true).description('promotions for bulk upload'))
+    }).required().description('data for bulk upload')
   },
 
   response:
@@ -153,6 +250,7 @@ v1.create =
 }
 
 module.exports.routes = [
+  braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v1/grants').config(v1.read),
   braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.write),
   braveHapi.routes.async().post().path('/v1/grants').config(v1.create)
@@ -166,7 +264,6 @@ module.exports.initialize = async (debug, runtime) => {
       property: 'grantId',
       empty: {
         grantId: '',
-        active: false,
 
         promotionId: '',
         altcurrency: '',
@@ -174,16 +271,38 @@ module.exports.initialize = async (debug, runtime) => {
 
         grantSignature: '',
 
+        // duplicated from promotion to avoid having to do an aggregation pipeline
+        active: false,
+        priority: 99999,
+
         paymentId: '',
 
-        count: 0,
+        batchId: '',
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { grantId: 1 } ],
-      others: [ { active: 1 },
-                { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
+      others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
+                { active: 1 }, { priority: 1 },
                 { paymentId: '' },
-                { timestamp: 1 } ]
+                { batchId: 1 }, { timestamp: 1 } ]
+    },
+    {
+      category: runtime.database.get('promotions', debug),
+      name: 'promotions',
+      property: 'promotionId',
+      empty: {
+        promotionId: '',
+        priority: 99999,
+
+        active: false,
+        count: 0,
+
+        batchId: '',
+        timestamp: bson.Timestamp.ZERO
+      },
+      unique: [ { promotionId: 1 }, { priority: 1 } ],
+      others: [ { active: 1 }, { count: 1 },
+                { batchId: 1 }, { timestamp: 1 } ]
     }
   ])
 }
