@@ -107,7 +107,7 @@
   "devDependencies": {
     "ava": "^0.22.0",
     "babel-eslint": "^8.0.0",
-    "bitgo": "^4.6.0",
+    "bitgo": "4.12.0",
     "npm-check-updates": "^2.12.1",
     "nsp": "^2.8.0",
     "standard": "10.0.3",
