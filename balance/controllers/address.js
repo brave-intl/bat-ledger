@@ -109,7 +109,7 @@ v2.walletBalance =
         if (ex.isBoom) {
           return reply(ex)
         } else {
-          return reply(boom.badImplementation('an unknown error has occured'))
+          return reply(boom.boomify(ex))
         }
       }
       fresh = true
