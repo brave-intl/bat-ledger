@@ -98,12 +98,7 @@ v2.walletBalance =
       try {
         const url = `${runtime.config.ledger.url}/v2/wallet/${paymentId}?refresh=true`
         debug('GET', url)
-        walletInfo = await braveHapi.wreck.get(url, {
-          redirects: 3,
-          rejectUnauthorized: true,
-          timeout: (5 * 1000),
-          useProxyP: true
-        })
+        walletInfo = await braveHapi.wreck.get(url, { useProxyP: true })
         if (Buffer.isBuffer(walletInfo)) walletInfo = JSON.parse(walletInfo)
       } catch (ex) {
         if (ex.isBoom) {
