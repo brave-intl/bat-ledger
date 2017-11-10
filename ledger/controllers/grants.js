@@ -317,4 +317,5 @@ module.exports.initialize = async (debug, runtime) => {
   ])
 
   await runtime.queue.create('grant-report')
+  await runtime.queue.create('redeem-report')
 }

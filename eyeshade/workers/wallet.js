@@ -301,6 +301,28 @@ exports.workers = {
         $set: underscore.omit(payload, [ 'grantId' ])
       }
       await grants.update({ grantId: grantId }, state, { upsert: true })
+    },
+
+/* sent by PUT /v1/wallet/{paymentId} (if one or more grants are redeemed)
+
+{ queue           : 'redeem-report'
+, message         :
+  { grantIds      : '...'
+  , redeemed      : { ... }
+  }
+}
+ */
+  'redeem-report':
+    async (debug, runtime, payload) => {
+      const grantIds = payload.grantIds
+      const grants = runtime.database.get('grants', debug)
+      let state
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: underscore.omit(payload, [ 'grantIds' ])
+      }
+      await grants.update({ grantIds: { $in: grantIds } }, state, { upsert: true })
     }
 }
 
