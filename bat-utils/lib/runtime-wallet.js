@@ -6,8 +6,7 @@ const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
 
-const utils = require('bat-utils')
-const braveHapi = utils.extras.hapi
+const braveHapi = require('./extras-hapi')
 
 const Currency = require('./runtime-currency')
 
