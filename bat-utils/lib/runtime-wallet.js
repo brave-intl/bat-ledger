@@ -146,50 +146,54 @@ Wallet.prototype.providers = function () {
 
 Wallet.prototype._redeem = async function (info, txn, signature) {
   const grants = this.runtime.database.get('grants', debug)
-  let balance, entries, payload, result, state
+  let balance, desired, entries, grantIds, payload, result, state
 
   if (!this.runtime.config.redeemer) return
 
+  // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
   entries = await grants.find({ paymentId: info.paymentId, redeemed: { $exists: false } }, { sort: { probi: 1 } })
   if (entries.length === 0) return
 
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
-  if (balance.greaterThanOrEqualTo(new BigNumber(txn.denomination.amount))) return
+  desired = new BigNumber(txn.denomination.amount)
+  if (balance.greaterThanOrEqualTo(desired)) return
 
   payload = {
+    grants: [],
     wallet: underscore.pick(info, [ 'provider', 'providerId' ]),
     txn: txn,
     signature: signature
   }
+  grantIds = []
   for (let entry of entries) {
-    if (balance.plus(new BigNumber(entry.probi.toString())).lessThan(new BigNumber(txn.denomination.amount))) continue
-
     entry.probi = entry.probi.toString()
-    underscore.extend(payload, {
-      grant: underscore.pick(entry, [ 'altcurrency', 'probi', 'grantId', 'promotionId' ]),
-      grantSignature: entry.grantSignature
-    })
-    result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
-      headers: {
-        authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
-        'content-type': 'application/json'
-      },
-      payload: JSON.stringify(payload),
-      useProxyP: true
-    })
-    if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+    payload.grants.push(underscore.pick(entry, [ 'altcurrency', 'probi', 'grantId', 'promotionId', 'grantSignature' ]))
+    grantIds.push(entry.grantId)
 
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: { redeemed: result }
-    }
-    await grants.update({ grantId: entry.grantId }, state, { upsert: true })
-
-    await this.runtime.queue.send(debug, 'grant-report', underscore.extend({ grantId: entry.brantId }, state.$set))
-
-    return result
+    balance = balance.plus(new BigNumber(entry.probi.toString()))
+    if (balance.greaterThanOrEqualTo(desired)) break
   }
+
+  result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
+    headers: {
+      authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
+      'content-type': 'application/json'
+    },
+    payload: JSON.stringify(payload),
+    useProxyP: true
+  })
+  if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+
+  state = {
+    $currentDate: { timestamp: { $type: 'timestamp' } },
+    $set: { redeemed: result }
+  }
+  await grants.update({ grantId: { $in: grantIds } }, state, { upsert: false, multi: true })
+
+  await this.runtime.queue.send(debug, 'redeem-report', underscore.extend({ grantIds: grantIds }, state.$set))
+
+  return result
 }
 
 Wallet.providers = {}
