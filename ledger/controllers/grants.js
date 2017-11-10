@@ -21,6 +21,8 @@ v1.all = { handler: (runtime) => {
     const promotions = runtime.database.get('promotions', debug)
     let entries, results
 
+    if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
+
     entries = await promotions.find({}, { sort: { priority: 1 } })
 
     results = []
@@ -29,7 +31,6 @@ v1.all = { handler: (runtime) => {
 
       results.push(underscore.omit(entry, [ '_id', 'batchId', 'timestamp' ]))
     })
-    console.log(JSON.stringify(results, null, 2))
     reply(results)
   }
 },
@@ -100,6 +101,8 @@ v1.write = { handler: (runtime) => {
     const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
     let count, grant, result, state, wallet
+
+    if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
