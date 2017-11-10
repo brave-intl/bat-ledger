@@ -6,6 +6,9 @@ const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
 
+const utils = require('bat-utils')
+const braveHapi = utils.extras.hapi
+
 const Currency = require('./runtime-currency')
 
 const debug = new SDebug('wallet')
@@ -142,6 +145,54 @@ Wallet.prototype.providers = function () {
   return underscore.keys(Wallet.providers)
 }
 
+Wallet.prototype._redeem = async function (info, txn, signature) {
+  const grants = this.runtime.database.get('grants', debug)
+  let balance, entries, payload, result, state
+
+  if (!this.runtime.config.redeemer) return
+
+  entries = await grants.find({ paymentId: info.paymentId, redeemed: { $exists: false } }, { sort: { probi: 1 } })
+  if (entries.length === 0) return
+
+  if (!info.balances) info.balances = await this.balances(info)
+  balance = new BigNumber(info.balances.confirmed)
+  if (balance.greaterThanOrEqualTo(new BigNumber(txn.denomination.amount))) return
+
+  payload = {
+    wallet: underscore.pick(info, [ 'provider', 'providerId' ]),
+    txn: txn,
+    signature: signature
+  }
+  for (let entry of entries) {
+    if (balance.plus(new BigNumber(entry.probi.toString())).lessThan(new BigNumber(txn.denomination.amount))) continue
+
+    entry.probi = entry.probi.toString()
+    underscore.extend(payload, {
+      grant: underscore.pick(entry, [ 'altcurrency', 'probi', 'grantId', 'promotionId' ]),
+      grantSignature: entry.grantSignature
+    })
+    result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
+      headers: {
+        authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
+        'content-type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      useProxyP: true
+    })
+    if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+
+    state = {
+      $currentDate: { timestamp: { $type: 'timestamp' } },
+      $set: { redeemed: result }
+    }
+    await grants.update({ grantId: entry.grantId }, state, { upsert: true })
+
+    await this.runtime.queue.send(debug, 'grant-report', underscore.extend({ grantId: entry.brantId }, state.$set))
+
+    return result
+  }
+}
+
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
@@ -240,6 +291,9 @@ Wallet.providers.uphold = {
   submitTx: async function (info, txn, signature) {
     if (info.altcurrency === 'BAT') {
       let postedTx
+
+      postedTx = await this._redeem(info, txn, signature)
+      if (postedTx) return postedTx
 
       try {
         postedTx = await this.uphold.createCardTransaction(info.providerId,
