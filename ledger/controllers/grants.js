@@ -99,7 +99,7 @@ v1.write = { handler: (runtime) => {
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let count, grant, state, wallet
+    let count, grant, result, state, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -129,10 +129,14 @@ v1.write = { handler: (runtime) => {
       $currentDate: { timestamp: { $type: 'timestamp' } },
       $inc: { count: -1 }
     }
-    await promotions.update({ promotionId: grant.promotionId }, state, { upsert: true })
+    await promotions.update({ promotionId: promotionId }, state, { upsert: true })
 
-    return reply(underscore.extend(underscore.pick(grant, [ 'grantId', 'altcurrency' ]),
-                                   { probi: new BigNumber(grant.probi.toString()).toString() }))
+    result = underscore.extend(underscore.pick(grant, [ 'grantId', 'altcurrency' ]),
+                               { probi: new BigNumber(grant.probi.toString()).toString() })
+    await runtime.queue.send(debug, 'grant-report',
+                             underscore.extend({ paymentId: paymentId, promotionId: promotionId }, result))
+
+    return reply(result)
   }
 },
   description: 'Request a grant for a wallet',
@@ -148,7 +152,9 @@ v1.write = { handler: (runtime) => {
 
   response: {
     schema: Joi.object().keys({
-      grantId: Joi.string().required().description('the grant-identifier')
+      grantId: Joi.string().required().description('the grant-identifier'),
+      altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+      probi: braveJoi.string().numeric().description('the grant amount in probi')
     }).unknown(true).description('grant properties')
   }
 }
@@ -276,6 +282,7 @@ module.exports.initialize = async (debug, runtime) => {
         priority: 99999,
 
         paymentId: '',
+        redeemed: false,
 
         batchId: '',
         timestamp: bson.Timestamp.ZERO
@@ -283,7 +290,7 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { grantId: 1 } ],
       others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
                 { active: 1 }, { priority: 1 },
-                { paymentId: '' },
+                { paymentId: 1 }, { redeemed: 1 },
                 { batchId: 1 }, { timestamp: 1 } ]
     },
     {
@@ -305,4 +312,6 @@ module.exports.initialize = async (debug, runtime) => {
                 { batchId: 1 }, { timestamp: 1 } ]
     }
   ])
+
+  await runtime.queue.create('grant-report')
 }
