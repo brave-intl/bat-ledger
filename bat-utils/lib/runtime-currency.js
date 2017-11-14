@@ -114,6 +114,11 @@ const monitor1 = (config, runtime) => {
     }
     client1.serviceHandlers.onerror = (err) => {
       debug('monitor1', { event: 'error', message: err.toString() })
+      if (err.toString() !== 'Negotiate Unknown') return
+
+      debug('monitor1', { event: 'error', err: JSON.stringify(err) })
+      client1.end()
+      client1.start()
     }
     client1.serviceHandlers.bindingError = (err) => {
       debug('monitor1', { event: 'binding', message: err.toString() })
