@@ -29,7 +29,7 @@ const read = function (runtime, apiVersion) {
     const altcurrency = request.query.altcurrency
 
     let currency = request.query.currency
-    let balances, promotions, result, state, wallet
+    let balances, result, state, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
