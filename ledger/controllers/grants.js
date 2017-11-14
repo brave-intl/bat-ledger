@@ -1,5 +1,6 @@
 const BigNumber = require('bignumber.js')
 const Joi = require('joi')
+const l10nparser = require('accept-language-parser')
 const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
@@ -20,8 +21,6 @@ v1.all = { handler: (runtime) => {
     const debug = braveHapi.debug(module, request)
     const promotions = runtime.database.get('promotions', debug)
     let entries, results
-
-    if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
 
     entries = await promotions.find({}, { sort: { priority: 1 } })
 
@@ -50,14 +49,39 @@ v1.all = { handler: (runtime) => {
    GET /v1/grants
  */
 
+// from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
+const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/g
+
 v1.read = { handler: (runtime) => {
   return async (request, reply) => {
+    const lang = request.query.lang
     const paymentId = request.query.paymentId
+    const languages = l10nparser.parse(lang)
     const query = { active: true, count: { $gt: 0 } }
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
-    let entries, promotion, promotionIds
+    let candidates, entries, priority, promotion, promotionIds
+
+    const l10n = (o) => {
+      const labels = [ 'greeting', 'message', 'text' ]
+
+      for (let key in o) {
+        let f = {
+          object: () => {
+            l10n(o[key])
+          },
+          string: () => {
+            if ((labels.indexOf(key) === -1) && !(key.endsWith('Button') || key.endsWith('Markup') || key.endsWith('Text'))) {
+//            return
+            }
+
+            // TBD: localization here...
+          }
+        }[typeof o[key]]
+        if (f) f()
+      }
+    }
 
     if (paymentId) {
       promotionIds = []
@@ -66,9 +90,24 @@ v1.read = { handler: (runtime) => {
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
     }
 
-    entries = await promotions.find(query, { sort: { priority: 1 } })
-    promotion = entries && entries[0]
-    if (!promotion) return reply(boom.notFound('no promotions available'))
+    entries = await promotions.find(query)
+    if ((!entries) || (!entries[0])) return reply(boom.notFound('no promotions available'))
+
+    candidates = []
+    priority = Number.POSITIVE_INFINITY
+    entries.forEach((entry) => {
+      if (entry.priority > priority) return
+
+      if (priority < entry.priority) {
+        candidates = []
+        priority = entry.priority
+      }
+      candidates.push(entry)
+    })
+    promotion = underscore.shuffle(candidates)[0]
+
+    debug('grants', { languages: languages })
+    l10n(promotion)
 
     reply(underscore.omit(promotion, [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]))
   }
@@ -77,7 +116,10 @@ v1.read = { handler: (runtime) => {
   tags: [ 'api' ],
 
   validate: {
-    query: { paymentId: Joi.string().guid().optional().description('identity of the wallet') }
+    query: {
+      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
+      paymentId: Joi.string().guid().optional().description('identity of the wallet')
+    }
   },
 
   response: {
@@ -188,7 +230,7 @@ v1.create =
         runtime.captureException(ex2, { req: request, extra: { collection: 'promotions', batchId: 'batchId' } })
       }
 
-      return boom.boomify(ex, { statusCode: 422 })
+      return reply(boom.boomify(ex, { statusCode: 422 }))
     }
 
     for (let entry of payload.grants) {
@@ -310,7 +352,7 @@ module.exports.initialize = async (debug, runtime) => {
         batchId: '',
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { promotionId: 1 }, { priority: 1 } ],
+      unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
                 { batchId: 1 }, { timestamp: 1 } ]
     }
