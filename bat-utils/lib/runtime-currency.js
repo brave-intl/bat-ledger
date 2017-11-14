@@ -1,8 +1,8 @@
 const BigNumber = require('bignumber.js')
+const Client = require('signalr-client-forked').client
 const Joi = require('joi')
 const NodeCache = require('node-cache')
 const SDebug = require('sdebug')
-const bittrex = require('node-bittrex-api')
 const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
 const oxr = require('oxr')
@@ -22,7 +22,6 @@ const msecs = {
 
 let client1
 let client2
-let flatlineP
 let singleton
 
 const Currency = function (config, runtime) {
@@ -83,7 +82,7 @@ Currency.prototype.init = function () {
     if ((f) && (f.p)) f.p(this.config, this.runtime)
   })
 
-  setTimeout(function () { maintenance(this.config, this.runtime) }.bind(this), 30 * msecs.seconds)
+  maintenance(this.config, this.runtime)
   setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 5 * msecs.minute)
 
   monitor1(this.config, this.runtime)
@@ -97,61 +96,62 @@ const schemaSR =
       }).unknown(true)).required()
 
 const monitor1 = (config, runtime) => {
-  bittrex.websockets.client((client) => {
-    client1 = client
+  const retry = () => {
+    try { if (client1) client1.end() } catch (ex) { debug('monitor1', { event: 'end', message: ex.toString() }) }
 
-    client1.serviceHandlers.bound = () => {
-      debug('monitor1', { event: 'bound' })
-    }
-    client1.serviceHandlers.connectFailed = (err) => {
-      debug('monitor1', { event: 'connectFailed', message: err.toString() })
-    }
-    client1.serviceHandlers.connected = (connection) => {
-      debug('monitor1', { event: 'connected', connected: connection.connected })
-    }
-    client1.serviceHandlers.disconnected = () => {
-      debug('monitor1', { event: 'disconnected' })
-    }
-    client1.serviceHandlers.onerror = (err) => {
-      debug('monitor1', { event: 'error', message: err.toString() })
-    }
-    client1.serviceHandlers.bindingError = (err) => {
-      debug('monitor1', { event: 'binding', message: err.toString() })
-    }
-    client1.serviceHandlers.connectionLost = (err) => {
-      debug('monitor1', { event: 'connectionLost', message: err.toString() })
-    }
-    client1.serviceHandlers.reconnecting = (retry) => {
-      debug('monitor1', { event: 'reconnecting', retry: retry })
-      // counter-intuitive return of "cancel retry"
-      return false
-    }
-  })
+    client1 = undefined
+    setTimeout(function () { monitor1(config, runtime) }, 15 * msecs.second)
+  }
 
-  bittrex.websockets.listen((data, client) => {
-    let validity = Joi.validate(data.Deltas, schemaSR)
+  if (client1) return
 
-    if ((data.M !== 'updateSummaryState') || (!Array.isArray(data.A))) return
+  client1 = new Client('http://socket.bittrex.com/signalR', [ 'coreHub' ])
 
-    data.A.forEach((datum) => {
-      validity = Joi.validate(datum.Deltas, schemaSR)
-      if (validity.error) return runtime.captureException(validity.error, { extra: { data: datum.Deltas } })
+  client1.on('coreHub', 'updateSummaryState', (data) => {
+    const validity = Joi.validate(data.Deltas, schemaSR)
 
-      datum.Deltas.forEach((delta) => {
-        const pair = delta.MarketName.split('-')
-        const src = pair[0]
-        const dst = pair[1]
+    if (validity.error) {
+      retry()
+      return runtime.captureException(validity.error, { extra: { data: data.Deltas } })
+    }
 
-        if ((src === dst) || (config.allcoins.indexOf(src) === -1) || (config.allcoins.indexOf(dst) === -1)) return
+    data.Deltas.forEach((delta) => {
+      const pair = delta.MarketName.split('-')
+      const src = pair[0]
+      const dst = pair[1]
 
-        if (!singleton.altrates[src]) singleton.altrates[src] = {}
-        singleton.altrates[src][dst] = 1.0 / delta.Last
+      if ((src === dst) || (config.allcoins.indexOf(src) === -1) || (config.allcoins.indexOf(dst) === -1)) return
 
-        if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
-        singleton.altrates[dst][src] = delta.Last
-      })
+      if (!singleton.altrates[src]) singleton.altrates[src] = {}
+      singleton.altrates[src][dst] = 1.0 / delta.Last
+
+      if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
+      singleton.altrates[dst][src] = delta.Last
     })
   })
+
+  client1.serviceHandlers.connected = client1.serviceHandlers.reconnected = (connection) => {
+    if (connection.connected) return
+
+    debug('monitor1', { event: 'connected', connected: connection.connected })
+    if (!connection.connected) retry()
+  }
+  client1.serviceHandlers.connectFailed = (err) => {
+    debug('monitor1', { event: 'connectFailed', message: err.toString() })
+    retry()
+  }
+  client1.serviceHandlers.connectionLost = (err) => {
+    debug('monitor1', { event: 'connectionLost', message: err.toString() })
+    retry()
+  }
+  client1.serviceHandlers.onerror = (err) => {
+    debug('monitor1', { event: 'error', message: err.toString() })
+    retry()
+  }
+  client1.serviceHandlers.disconnected = () => {
+//  debug('monitor1', { event: 'disconnected' })
+    retry()
+  }
 }
 
 const altcoins = {
@@ -289,17 +289,6 @@ const maintenance = async (config, runtime) => {
 
   rates = singleton.altrates
   singleton.altrates = {}
-  if ((client1) === (underscore.keys(rates).length === 0)) {
-    debug('maintenance', { message: 'no trades reported' })
-    if (flatlineP) {
-      runtime.captureException(new Error('maintenance reports flatline'))
-      process.exit(0)
-    }
-
-    client1.end()
-    client1.start()
-    flatlineP = true
-  }
 
   if (singleton.oxr) {
     try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {

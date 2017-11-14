@@ -25,12 +25,11 @@ const read = function (runtime, apiVersion) {
     const debug = braveHapi.debug(module, request)
     const paymentId = request.params.paymentId.toLowerCase()
     const refreshP = request.query.refresh
-    const grants = runtime.database.get('grants', debug)
     const wallets = runtime.database.get('wallets', debug)
     const altcurrency = request.query.altcurrency
 
     let currency = request.query.currency
-    let balances, promotions, result, state, wallet
+    let balances, result, state, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -62,26 +61,6 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
-      promotions = await grants.aggregate([
-        {
-          $match:
-          {
-            paymentId: paymentId
-          }
-        },
-        {
-          $group:
-          {
-            _id: '$paymentId',
-            probi: { $sum: '$probi' }
-          }
-        }
-      ])
-      debug('promotions', promotions)
-      if (promotions.length > 0) {
-        balances.confirmed = new BigNumber(balances.confirmed).plus(new BigNumber(promotions[0].probi.toString()))
-      }
-
       underscore.extend(result, {
         probi: balances.confirmed.toString(),
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
@@ -436,26 +415,52 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { viewingId: 1 }, { uId: 1 } ],
       others: [ { altcurrency: 1 }, { probi: 1 }, { count: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('grants', debug),
-      name: 'grants',
-      property: 'grantId',
-      empty: {
-        grantId: '',
-        altcurrency: '',
-        probi: '0',
-
-        paymentId: '',
-
-        count: 0,
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { grantId: 1 } ],
-      others: [ { altcurrency: 1 }, { probi: 1 }, { paymentId: '' }, { timestamp: 1 } ]
     }
   ])
 
+  await convertDB(debug, runtime)
   await runtime.queue.create('contribution-report')
   await runtime.queue.create('wallet-report')
+}
+
+// TEMPORARY
+const convertDB = async (debug, runtime) => {
+  const wallets = runtime.database.get('wallets', debug)
+  const viewings = runtime.database.get('viewings', debug)
+  let entries
+
+  entries = await wallets.find({ altcurrency: { $exists: false } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { altcurrency: 'BTC' }
+    }
+
+    await wallets.update({ paymentId: entry.paymentId }, state, { upsert: true })
+  })
+
+  entries = await viewings.find({ satoshis: { $exists: true } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { altcurrency: 'BTC', probi: entry.satoshis.toString() },
+      $unset: { satoshis: '' }
+    }
+
+    await viewings.update({ surveyorId: entry.surveyorId }, state, { upsert: true })
+  })
+
+  entries = await wallets.find({ address: { $exists: true } })
+  entries.forEach(async (entry) => {
+    let state
+
+    state = {
+      $set: { addresses: { 'BTC': entry.address } },
+      $unset: { address: '' }
+    }
+
+    await wallets.update({ paymentId: entry.paymentId }, state, { upsert: true })
+  })
 }

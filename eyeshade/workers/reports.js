@@ -98,8 +98,6 @@ const hourly2 = async (debug, runtime) => {
   debug('hourly2', 'running')
 
   try {
-    if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
-
     entries = await publishers.find({ visible: { $exists: false } })
     for (let entry of entries) {
       await publishers.update({ publisher: entry.publisher }, { $set: { visible: false } }, { upsert: true })

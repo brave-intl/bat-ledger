@@ -721,13 +721,6 @@ const webResolver = async (debug, runtime, publisher, path) => {
     return await braveHapi.wreck.get('https://' + publisher + path,
                                      { redirects: 3, rejectUnauthorized: true, timeout: (5 * 1000) })
   } catch (ex) {
-    try {
-      debug('webResolver', 'https://www.' + publisher + path)
-      return await braveHapi.wreck.get('https://www.' + publisher + path,
-                                       { redirects: 3, rejectUnauthorized: true, timeout: (5 * 1000) })
-    } catch (ex2) {
-    }
-
     if (((!ex.isBoom) || (!ex.output) || (ex.output.statusCode !== 504)) && (ex.code !== 'ECONNREFUSED')) {
       debug('webResolver', publisher + ': ' + ex.toString())
     }
