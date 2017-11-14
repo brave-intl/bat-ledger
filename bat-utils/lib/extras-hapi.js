@@ -1,3 +1,4 @@
+const crypto = require('crypto')
 const ProxyAgent = require('proxy-agent')
 const SDebug = require('sdebug')
 const underscore = require('underscore')
@@ -30,6 +31,31 @@ exports.domainCompare = (a, b) => {
     d = a.shift().localeCompare(b.shift())
     if (d !== 0) return (d < 0 ? (-1) : 1)
   }
+}
+
+const constantTimeEquals = (a, b) => {
+  let mismatch = a.length !== b.length
+  if (mismatch) {
+    b = a
+  }
+  mismatch |= !crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  return !mismatch
+}
+
+exports.isSimpleTokenValid = (tokenList, token) => {
+  if (!(Array.isArray(tokenList) && tokenList.every((element) => typeof element === 'string'))) {
+    throw new TypeError('tokenList must be an array of strings')
+  }
+  if (typeof token !== 'string') {
+    throw new TypeError('token must be a string')
+  }
+
+  for (var i = 0; i < tokenList.length; i++) {
+    if (constantTimeEquals(tokenList[i], token)) {
+      return true
+    }
+  }
+  return false
 }
 
 const AsyncRoute = function () {
