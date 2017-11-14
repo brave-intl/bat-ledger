@@ -14,6 +14,13 @@ v1.all = { handler: (runtime) => {
     reply({ altrates: runtime.currency.altrates, rates: runtime.currency.rates })
   }
 },
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
+  },
+
   description: 'Report all currency rates',
   tags: [ 'api' ],
 
