@@ -418,49 +418,6 @@ module.exports.initialize = async (debug, runtime) => {
     }
   ])
 
-  await convertDB(debug, runtime)
   await runtime.queue.create('contribution-report')
   await runtime.queue.create('wallet-report')
-}
-
-// TEMPORARY
-const convertDB = async (debug, runtime) => {
-  const wallets = runtime.database.get('wallets', debug)
-  const viewings = runtime.database.get('viewings', debug)
-  let entries
-
-  entries = await wallets.find({ altcurrency: { $exists: false } })
-  entries.forEach(async (entry) => {
-    let state
-
-    state = {
-      $set: { altcurrency: 'BTC' }
-    }
-
-    await wallets.update({ paymentId: entry.paymentId }, state, { upsert: true })
-  })
-
-  entries = await viewings.find({ satoshis: { $exists: true } })
-  entries.forEach(async (entry) => {
-    let state
-
-    state = {
-      $set: { altcurrency: 'BTC', probi: entry.satoshis.toString() },
-      $unset: { satoshis: '' }
-    }
-
-    await viewings.update({ surveyorId: entry.surveyorId }, state, { upsert: true })
-  })
-
-  entries = await wallets.find({ address: { $exists: true } })
-  entries.forEach(async (entry) => {
-    let state
-
-    state = {
-      $set: { addresses: { 'BTC': entry.address } },
-      $unset: { address: '' }
-    }
-
-    await wallets.update({ paymentId: entry.paymentId }, state, { upsert: true })
-  })
 }

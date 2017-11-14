@@ -1,8 +1,8 @@
 const BigNumber = require('bignumber.js')
-const Client = require('signalr-client-forked').client
 const Joi = require('joi')
 const NodeCache = require('node-cache')
 const SDebug = require('sdebug')
+const binance = require('node-binance-api')
 const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
 const oxr = require('oxr')
@@ -20,8 +20,8 @@ const msecs = {
   second: 1000
 }
 
-let client1
 let client2
+let flatlineP
 let singleton
 
 const Currency = function (config, runtime) {
@@ -39,8 +39,8 @@ const Currency = function (config, runtime) {
   this.cache = new NodeCache({ stdTTL: 1 * msecs.minute })
 
   this.fiats = {}
+  this.altrates = Currency.prototype.altrates
   this.rates = Currency.prototype.rates
-  this.altrates = {}
   this.tickers = {}
 
   if (!this.config.altcoins) this.config.altcoins = [ 'BAT', 'ETH' ]
@@ -73,6 +73,7 @@ const Currency = function (config, runtime) {
   }, oxr.factory({ appId: this.config.oxr.apiID }))
   this.fxrates = {}
 }
+Currency.prototype.altrates = {}
 Currency.prototype.rates = {}
 
 Currency.prototype.init = function () {
@@ -82,76 +83,53 @@ Currency.prototype.init = function () {
     if ((f) && (f.p)) f.p(this.config, this.runtime)
   })
 
-  maintenance(this.config, this.runtime)
-  setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 5 * msecs.minute)
+  setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 1 * msecs.minute)
 
   monitor1(this.config, this.runtime)
   monitor2(this.config, this.runtime)
 }
 
-const schemaSR =
-      Joi.array().min(1).items(Joi.object().keys({
-        MarketName: Joi.string().regex(/^[0-9A-Z]{2,}-[0-9A-Z]{2,}$/).required(),
-        Last: Joi.number().positive().required()
-      }).unknown(true)).required()
+const schemaBINANCE =
+      Joi.object().keys({
+        e: Joi.string().required(),
+        s: Joi.string().regex(/^[0-9A-Z]{2,}[0-9A-Z]{2,}$/).required(),
+        p: Joi.number().positive().required()
+      }).unknown(true).required()
 
 const monitor1 = (config, runtime) => {
-  const retry = () => {
-    try { if (client1) client1.end() } catch (ex) { debug('monitor1', { event: 'end', message: ex.toString() }) }
+  const symbols = []
 
-    client1 = undefined
-    setTimeout(function () { monitor1(config, runtime) }, 15 * msecs.second)
-  }
-
-  if (client1) return
-
-  client1 = new Client('http://socket.bittrex.com/signalR', [ 'coreHub' ])
-
-  client1.on('coreHub', 'updateSummaryState', (data) => {
-    const validity = Joi.validate(data.Deltas, schemaSR)
-
-    if (validity.error) {
-      retry()
-      return runtime.captureException(validity.error, { extra: { data: data.Deltas } })
-    }
-
-    data.Deltas.forEach((delta) => {
-      const pair = delta.MarketName.split('-')
-      const src = pair[0]
-      const dst = pair[1]
-
-      if ((src === dst) || (config.allcoins.indexOf(src) === -1) || (config.allcoins.indexOf(dst) === -1)) return
-
-      if (!singleton.altrates[src]) singleton.altrates[src] = {}
-      singleton.altrates[src][dst] = 1.0 / delta.Last
-
-      if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
-      singleton.altrates[dst][src] = delta.Last
-    })
+  singleton.config.altcoins.forEach((altcoin) => {
+    if (altcoin === 'BTC') symbols.push('BTCUSDT')
+    else if (altcoin === 'ETH') symbols.push('ETHUSDT', 'ETHBTC')
+    else symbols.push(altcoin + 'BTC')
   })
 
-  client1.serviceHandlers.connected = client1.serviceHandlers.reconnected = (connection) => {
-    if (connection.connected) return
+  symbols.forEach((symbol) => {
+    binance.websockets.subscribe(symbol.toLowerCase() + '@aggTrade', (trade) => {
+      const validity = Joi.validate(trade, schemaBINANCE)
+      const symbol = trade.s
+      const src = symbol.substr(0, 3)
+      let dst = symbol.substr(3)
 
-    debug('monitor1', { event: 'connected', connected: connection.connected })
-    if (!connection.connected) retry()
-  }
-  client1.serviceHandlers.connectFailed = (err) => {
-    debug('monitor1', { event: 'connectFailed', message: err.toString() })
-    retry()
-  }
-  client1.serviceHandlers.connectionLost = (err) => {
-    debug('monitor1', { event: 'connectionLost', message: err.toString() })
-    retry()
-  }
-  client1.serviceHandlers.onerror = (err) => {
-    debug('monitor1', { event: 'error', message: err.toString() })
-    retry()
-  }
-  client1.serviceHandlers.disconnected = () => {
-//  debug('monitor1', { event: 'disconnected' })
-    retry()
-  }
+      if (validity.error) return runtime.captureException(validity.error, { extra: { trade: trade } })
+
+      flatlineP = false
+      if (dst === 'USDT') dst = 'USD'
+      if ((trade.e !== 'aggTrade') || (src === dst) || (config.allcoins.indexOf(src) === -1) ||
+          (config.allcoins.indexOf(dst) === -1)) {
+        return
+      }
+
+      if (!singleton.altrates[src]) singleton.altrates[src] = {}
+      singleton.altrates[src][dst] = trade.p
+
+      if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
+      singleton.altrates[dst][src] = 1.0 / trade.p
+
+      Currency.prototype.altrates = singleton.altrates
+    }, true)
+  })
 }
 
 const altcoins = {
@@ -240,7 +218,7 @@ const monitor2 = (config, runtime) => {
 
   client2 = new WebSocket.Client('wss://ws-feed.gdax.com/')
   client2.on('open', (event) => {
-//  debug('monitor2', { event: 'connected', connected: true })
+    debug('monitor2', { event: 'connected', connected: true })
   })
   client2.on('close', (event) => {
     if (event.code !== 1000) {
@@ -285,10 +263,14 @@ const monitor2 = (config, runtime) => {
 
 const maintenance = async (config, runtime) => {
   const now = underscore.now()
-  let rates, tickers
+  let tickers
 
-  rates = singleton.altrates
-  singleton.altrates = {}
+  if (flatlineP) {
+    debug('maintenance', { message: 'no trades reported' })
+    runtime.captureException(new Error('maintenance reports flatline'))
+    process.exit(0)
+  }
+  flatlineP = true
 
   if (singleton.oxr) {
     try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {
@@ -303,7 +285,7 @@ const maintenance = async (config, runtime) => {
     }
   }
 
-  try { await rorschach(rates, tickers, config, runtime) } catch (ex) {
+  try { await rorschach(singleton.altrates, tickers, config, runtime) } catch (ex) {
     if (singleton.warnings <= now) {
       singleton.warnings = now + (15 * msecs.minute)
       runtime.captureException(ex)
@@ -402,7 +384,10 @@ const rorschach = async (rates, tickers, config, runtime) => {
   const compare = (currency, fiat, rate1, rate2) => {
     const ratio = rate1 / rate2
 
-    if ((ratio < 0.9) || (ratio > 1.1)) throw new Error(currency + ' error: ' + fiat + ' ' + rate1 + ' vs. ' + rate2)
+    if ((ratio >= 0.9) && (ratio <= 1.1)) return
+
+    debug('rorschach', { altcoin: currency, fiat: fiat, rate1: rate1, rate2: rate2 })
+    throw new Error(currency + ' error: ' + fiat + ' ' + rate1 + ' vs. ' + rate2)
   }
 
   rates = normalize(rates, config, runtime)
