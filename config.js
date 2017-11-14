@@ -78,12 +78,18 @@ if (process.env.SERVICE !== 'eyeshade') {
   }
 }
 
+if (process.env.SERVICE === 'balance' && process.env.LEDGER_URL) {
+  module.exports.ledger =
+  { url                 : process.env.LEDGER_URL || 'http://127.0.0.1:3001' }
+}
+
 if (process.env.SERVICE === 'eyeshade' && process.env.PUBLISHERS_URL) {
   module.exports.publishers =
   { url                 : process.env.PUBLISHERS_URL || 'http://127.0.0.1:3000'
   , access_token        : process.env.PUBLISHERS_TOKEN || '00000000-0000-4000-0000-000000000000'
   }
 }
+
 
 if (process.env.SLACK_WEBHOOK) {
   module.exports.slack =
