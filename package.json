@@ -82,7 +82,7 @@
     "monotonic-timestamp": "0.0.9",
     "netmask": "1.0.6",
     "node-anonize2-relic": "0.1.6",
-    "node-bittrex-api": "0.7.7",
+    "node-binance-api": "0.2.5",
     "node-cache": "4.1.1",
     "node-slack": "0.0.7",
     "oxr": "1.0.2",
@@ -107,7 +107,7 @@
   "devDependencies": {
     "ava": "^0.22.0",
     "babel-eslint": "^8.0.0",
-    "bitgo": "4.12.0",
+    "bitgo": "^4.6.0",
     "npm-check-updates": "^2.12.1",
     "nsp": "^3.1.0",
     "standard": "10.0.3",
