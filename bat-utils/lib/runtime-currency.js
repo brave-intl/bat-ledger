@@ -289,7 +289,8 @@ const maintenance = async (config, runtime) => {
 
   rates = singleton.altrates
   singleton.altrates = {}
-  if ((client1) === (underscore.keys(rates).length === 0)) {
+  if ((!client1) || (underscore.keys(rates).length !== 0)) flatlineP = false
+  else {
     debug('maintenance', { message: 'no trades reported' })
     if (flatlineP) {
       runtime.captureException(new Error('maintenance reports flatline'))
