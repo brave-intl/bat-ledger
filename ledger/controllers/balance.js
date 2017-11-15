@@ -142,9 +142,11 @@ v1.version =
 }
 
 module.exports.routes = [
+/*
   braveHapi.routes.async().get().path('/v1/balance/providers').config(v1.read),
   braveHapi.routes.async().post().path('/v1/balance/providers').config(v1.create),
   braveHapi.routes.async().delete().path('/v1/balance/providers').config(v1.delete),
+ */
   braveHapi.routes.async().get().path('/v1/balance/providers/version').config(v1.version)
 ]
 
