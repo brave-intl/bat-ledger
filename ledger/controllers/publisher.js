@@ -665,9 +665,9 @@ module.exports.initialize = async (debug, runtime) => {
       category: runtime.database.get('publishers', debug),
       name: 'publishers',
       property: 'publisher',
-      empty: { publisher: '', tld: '', verified: false, timestamp: bson.Timestamp.ZERO },
+      empty: { publisher: '', tld: '', verified: false, visible: false, timestamp: bson.Timestamp.ZERO },
       unique: [ { publisher: 1 } ],
-      others: [ { tld: 1 }, { verified: 1 }, { timestamp: 1 } ]
+      others: [ { tld: 1 }, { verified: 1 }, { visible: 1 }, { timestamp: 1 } ]
     },
     {
       category: publishers,
