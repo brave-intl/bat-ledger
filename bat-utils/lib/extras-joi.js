@@ -117,7 +117,6 @@ module.exports = Joi.extend({
     { name: 'publisher',
 
       validate (params, value, state, options) {
-        value = value.toLowerCase()
         if (!batPublisher.isPublisher(value)) return this.createError('string.badFormat', { v: value }, state, options)
 
         return value
