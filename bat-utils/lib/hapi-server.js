@@ -96,7 +96,7 @@ const Server = async (options, runtime) => {
                 token = request.query.access_token
               }
               tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-              limit = braveHapi.isSimpleTokenValid(tokenlist, token) ? 60000 : 3000
+              limit = (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)) ? 60000 : 3000
             }
 
             return { limit: limit, window: 60 }
@@ -167,7 +167,7 @@ const Server = async (options, runtime) => {
           allowMultipleHeaders: false,
           validateFunc: (token, callback) => {
             const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-            callback(null, braveHapi.isSimpleTokenValid(tokenlist, token), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
+            callback(null, (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
           }
         }
 
