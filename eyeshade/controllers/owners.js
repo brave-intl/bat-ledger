@@ -65,8 +65,11 @@ v1.bulk = {
           authority: authorizer.owner,
           info: info
         })
-
         await tokens.update({ publisher: entry.publisher, verificationId: entry.verificationId }, state, { upsert: true })
+
+        await runtime.queue.send(debug, 'publisher-report',
+                                 underscore.extend({ publisher: entry.publisher },
+                                                   underscore.pick(state.$set, [ 'verified', 'visible' ])))
       }
 
       reply({})
@@ -415,4 +418,6 @@ module.exports.initialize = async (debug, runtime) => {
                 { timestamp: 1 } ]
     }
   ])
+
+  await runtime.queue.create('publisher-report')
 }
