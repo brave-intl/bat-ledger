@@ -104,32 +104,37 @@ const monitor1 = (config, runtime) => {
     else if (altcoin === 'ETH') symbols.push('ETHUSDT', 'ETHBTC')
     else symbols.push(altcoin + 'BTC')
   })
+  debug('monitor1', { symbols: symbols })
 
-  symbols.forEach((symbol) => {
-    binance.websockets.subscribe(symbol.toLowerCase() + '@aggTrade', (trade) => {
-      const validity = Joi.validate(trade, schemaBINANCE)
-      const symbol = trade.s
-      const src = symbol.substr(0, 3)
-      let dst = symbol.substr(3)
+  symbols.forEach((symbol) => { monitor1a(symbol, false, config, runtime) })
+}
 
-      if (validity.error) return runtime.captureException(validity.error, { extra: { trade: trade } })
+const monitor1a = (symbol, retryP, config, runtime) => {
+  if (retryP) debug('monitor1', { symbol: symbol, retryP: retryP })
 
-      flatlineP = false
-      if (dst === 'USDT') dst = 'USD'
-      if ((trade.e !== 'aggTrade') || (src === dst) || (config.allcoins.indexOf(src) === -1) ||
-          (config.allcoins.indexOf(dst) === -1)) {
-        return
-      }
+  binance.websockets.subscribe(symbol.toLowerCase() + '@aggTrade', (trade) => {
+    const validity = Joi.validate(trade, schemaBINANCE)
+    const symbol = trade.s
+    const src = symbol.substr(0, 3)
+    let dst = symbol.substr(3)
 
-      if (!singleton.altrates[src]) singleton.altrates[src] = {}
-      singleton.altrates[src][dst] = trade.p
+    if (validity.error) return runtime.captureException(validity.error, { extra: { trade: trade } })
 
-      if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
-      singleton.altrates[dst][src] = 1.0 / trade.p
+    flatlineP = false
+    if (dst === 'USDT') dst = 'USD'
+    if ((trade.e !== 'aggTrade') || (src === dst) || (config.allcoins.indexOf(src) === -1) ||
+        (config.allcoins.indexOf(dst) === -1)) {
+      return
+    }
 
-      Currency.prototype.altrates = singleton.altrates
-    }, true)
-  })
+    if (!singleton.altrates[src]) singleton.altrates[src] = {}
+    singleton.altrates[src][dst] = trade.p
+
+    if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
+    singleton.altrates[dst][src] = 1.0 / trade.p
+
+    Currency.prototype.altrates = singleton.altrates
+  }, () => { setTimeout(function () { monitor1a(symbol, true, config, runtime) }, 15 * msecs.second) })
 }
 
 const altcoins = {
