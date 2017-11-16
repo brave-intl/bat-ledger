@@ -116,7 +116,7 @@ const hourly2 = async (debug, runtime) => {
 
     for (let publisher of underscore.keys(history)) {
       const records = history[publisher]
-      let info, results, state, visible
+      let info, params, results, state, visible
 
       try {
         results = await publish(debug, runtime, 'get', publisher)
@@ -132,27 +132,27 @@ const hourly2 = async (debug, runtime) => {
           info = underscore.pick(result, [ 'name', 'email' ])
           if (result.phone_normalized) info.phone = result.phone_normalized
           if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
-          if (underscore.isEqual(record.info, info)) continue
-
           state = {
             $currentDate: { timestamp: { $type: 'timestamp' } },
             $set: { info: info }
           }
           if (visibleP) state.$set.visible = visible
-          if (method) state.$set.method = method
+          params = underscore.pick(record, [ 'info', 'visible' ])
+          if (method) {
+            state.$set.method = method
+            params.method = record.method
+          }
+
+          if (underscore.isEqual(params, state.$set)) continue
+
           await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
 
           if (!record.verified) continue
 
-          state = {
-            $currentDate: { timestamp: { $type: 'timestamp' } },
-            $set: { info: info }
-          }
-          if (visibleP) state.$set.visible = visible
+          state.$set = underscore.pick(state.$set, [ 'info', 'visible' ])
           await publishers.update({ publisher: publisher }, state, { upsert: true })
-          if (!visibleP) continue
 
-          await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, visible: visible })
+          await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, verified: true, visible: visible })
         }
       } catch (ex) {
         runtime.captureException(ex)
