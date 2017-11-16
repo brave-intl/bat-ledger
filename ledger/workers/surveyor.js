@@ -70,7 +70,7 @@ exports.initialize = async (debug, runtime) => {
 
   schedule = process.env.SURVEYOR_CRON_SCHEDULE || '0 0 0 * * 0,3,5'
 
-  interval = cron.parseExpression(schedule, { })
+  interval = cron.parseExpression(schedule, {})
   next = interval.next().getTime()
   setTimeout(() => { daily(debug, runtime) }, next - underscore.now())
   debug('daily', 'running ' + moment(next).fromNow())

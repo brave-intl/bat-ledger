@@ -663,7 +663,7 @@ exports.workers = {
 
             if (entry.provider) wallet = await runtime.wallet.status(entry)
             datum.preferredCurrency = wallet && wallet.preferredCurrency
-          } catch (ex) { }
+          } catch (ex) {}
         }
         await file.write(JSON.stringify(data, null, 2), true)
         return runtime.notify(debug, {
