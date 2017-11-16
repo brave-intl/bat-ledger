@@ -525,7 +525,7 @@ v3.timestamp =
   description: 'Returns information about the latest publisher timestamp',
   tags: [ 'api' ],
 
-  validate: { },
+  validate: {},
 
   response: {
     schema: Joi.object().keys({
@@ -574,7 +574,7 @@ v1.verified =
 v2.verified =
 { handler: (runtime) => {
   return async (request, reply) => {
-    reply({})
+    reply([])
   }
 },
 
