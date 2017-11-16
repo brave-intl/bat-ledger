@@ -525,7 +525,7 @@ v3.timestamp =
   description: 'Returns information about the latest publisher timestamp',
   tags: [ 'api' ],
 
-  validate: { },
+  validate: {},
 
   response: {
     schema: Joi.object().keys({
@@ -574,36 +574,12 @@ v1.verified =
 v2.verified =
 { handler: (runtime) => {
   return async (request, reply) => {
-    const debug = braveHapi.debug(module, request)
-    const tld = request.query.tld || { $exists: true }
-    const publishers = runtime.database.get('publishers', debug)
-    let entries, modifiers, query, result
-    let limit = parseInt(request.query.limit, 10)
-    let timestamp = request.query.timestamp
-
-    try { timestamp = (timestamp || 0) ? bson.Timestamp.fromString(timestamp) : bson.Timestamp.ZERO } catch (ex) {
-      return reply(boom.badRequest('invalid value for the timestamp parameter: ' + timestamp))
-    }
-
-    if (isNaN(limit) || (limit > 512)) limit = 512
-    query = { timestamp: { $gte: timestamp }, tld: tld }
-    modifiers = { sort: { timestamp: 1 } }
-
-    entries = await publishers.find(query, underscore.extend({ limit: limit }, modifiers))
-    result = []
-    entries.forEach(entry => {
-      if (entry.publisher === '') return
-
-      result.push(underscore.extend(underscore.omit(entry, [ '_id', 'timestamp' ]),
-                                    { timestamp: entry.timestamp.toString() }))
-    })
-
-    reply(result)
+    reply([])
   }
 },
 
   description: 'Returns information about publisher verification entries',
-  tags: [ 'api' ],
+  tags: [ 'api', 'deprecated' ],
 
   validate: {
     query: {
@@ -661,6 +637,7 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { rulesetId: 1 } ],
       others: [ { type: 1 }, { version: 1 }, { timestamp: 1 } ]
     },
+/* deprecated
     {
       category: runtime.database.get('publishers', debug),
       name: 'publishers',
@@ -669,6 +646,7 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { publisher: 1 } ],
       others: [ { tld: 1 }, { verified: 1 }, { visible: 1 }, { timestamp: 1 } ]
     },
+ */
     {
       category: publishers,
       name: 'publishersV2',
