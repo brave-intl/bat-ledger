@@ -17,6 +17,8 @@ const upholdBaseUrls = {
   sandbox: 'https://api-sandbox.uphold.com'
 }
 
+BigNumber.config({ EXPONENTIAL_AT: 28, DECIMAL_PLACES: 18 })
+
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
 
@@ -280,7 +282,7 @@ Wallet.providers.uphold = {
 
       // NOTE skipping fee calculation here as transfers within uphold have none
 
-      desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toFixed(this.currency.decimals[info.altcurrency]).toString()
+      desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toString()
 
       return { 'requestType': 'httpSignature',
         'unsignedTx': { 'denomination': { 'amount': desired, currency: 'BAT' },
