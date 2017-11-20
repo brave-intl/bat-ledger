@@ -1,4 +1,5 @@
 const BigNumber = require('bignumber.js')
+const batPublisher = require('bat-publisher')
 const bson = require('bson')
 const dateformat = require('dateformat')
 const json2csv = require('json2csv')
@@ -345,6 +346,18 @@ const mixer = async (debug, runtime, publisher, qid) => {
 }
 
 const publisherCompare = (a, b) => {
+  const aProps = batPublisher.getPublisherProps(a.publisher)
+  const bProps = batPublisher.getPublisherProps(b.publisher)
+
+  if (aProps.publisherType) {
+    return ((!bProps.publisherType) ? 1
+            : (aProps.providerName !== b.providerName) ? (aProps.providerName - b.providerName)
+            : (aProps.providerSuffix !== b.providerSuffix) ? (aProps.providerSuffix - b.providerSuffix)
+            : (aProps.providerValue - bProps.providerValue))
+  }
+
+  if (bProps.publisherType) return (-1)
+
   return braveHapi.domainCompare(a.publisher, b.publisher)
 }
 
@@ -901,6 +914,7 @@ exports.workers = {
       const elideP = payload.elide
       const summaryP = payload.summary
       const verified = payload.verified
+      const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const tokens = runtime.database.get('tokens', debug)
@@ -979,7 +993,7 @@ exports.workers = {
       })
 
       f = async (publisher) => {
-        let datum
+        let datum, owner
 
         results[publisher].probi = probi[publisher] || new BigNumber(0)
         results[publisher].USD = runtime.currency.alt2fiat(altcurrency, results[publisher].probi, 'USD')
@@ -998,6 +1012,18 @@ exports.workers = {
           datum.modified = (datum.timestamp.high_ * 1000) + (datum.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
           underscore.extend(results[publisher],
                             underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]), datum.info)
+
+          owner = (datum.owner) && (await owners.findOne({ owner: datum.owner }))
+          if (owner) {
+            if (!owner.info) owner.info = {}
+
+            results[publisher].owner = owner.info && owner.info.name
+            if (!datum.provider) results[publisher].provider = owner.provider
+
+            if (!results[publisher].name) results[publisher].name = owner.info.name
+            if (!results[publisher].email) results[publisher].email = owner.info.email
+            if (!results[publisher].phone) results[publisher].phone = owner.info.phone
+          }
         }
 
         if (elideP) {
@@ -1023,14 +1049,20 @@ exports.workers = {
 
       data = []
       results.forEach((result) => {
+        const props = batPublisher.getPublisherProps(result.publisher)
+        const publisher = result.publisher
+
+        if ((props) && (props.URL)) result.publisher = props.URL
         if (!result.created) {
           underscore.extend(result, underscore.pick(underscore.last(result.history), [ 'created', 'modified' ]))
         }
-        data.push(underscore.extend(underscore.omit(result, [ 'history' ]), {
+        result = underscore.extend(underscore.omit(result, [ 'history' ]), {
           created: dateformat(result.created, datefmt),
-          modified: dateformat(result.modified, datefmt),
-          daysInQueue: daysago(result.created)
-        }))
+          modified: dateformat(result.modified, datefmt)
+        })
+        if (result.reason !== 'bulk loaded') result.daysInQueue = daysago(result.created)
+        data.push(result)
+
         if (!summaryP) {
           result.history.forEach((record) => {
             if (elideP) {
@@ -1040,7 +1072,7 @@ exports.workers = {
               if (record.verificationId) record.verificationId = 'yes'
               if (record.token) record.token = 'yes'
             }
-            data.push(underscore.extend({ publisher: result.publisher }, record,
+            data.push(underscore.extend({ publisher: publisher }, record,
               { created: dateformat(record.created, datefmt),
                 modified: dateformat(record.modified, datefmt),
                 daysInQueue: daysago(record.created)
@@ -1049,12 +1081,12 @@ exports.workers = {
         }
       })
 
-      fields = [ 'publisher', 'USD', 'probi',
+      fields = [ 'owner', 'publisher', 'USD', 'probi',
         'verified', 'authorized', 'authority',
         'name', 'email', 'phone', 'provider', 'altcurrency', 'visible',
         'verificationId', 'reason',
-        'daysInQueue', 'created', 'modified',
-        'token' ]
+        'daysInQueue', 'created', 'modified' ]
+      if (!summaryP) fields.push('token')
       try { await file.write(json2csv({ data: data, fields: fields }), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-status', reason: ex.toString() })
         file.close()
