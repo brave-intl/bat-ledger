@@ -176,7 +176,7 @@ v1.write = { handler: (runtime) => {
     }
     await promotions.update({ promotionId: promotionId }, state, { upsert: true })
 
-    result = underscore.extend(underscore.pick(grant, [ 'grantId', 'altcurrency' ]),
+    result = underscore.extend(underscore.pick(grant, [ 'altcurrency' ]),
                                { probi: new BigNumber(grant.probi.toString()).toString() })
     await runtime.queue.send(debug, 'grant-report',
                              underscore.extend({ paymentId: paymentId, promotionId: promotionId }, result))
@@ -197,9 +197,8 @@ v1.write = { handler: (runtime) => {
 
   response: {
     schema: Joi.object().keys({
-      grantId: Joi.string().required().description('the grant-identifier'),
-      altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
-      probi: braveJoi.string().numeric().description('the grant amount in probi')
+      altcurrency: braveJoi.string().altcurrencyCode().required().default('BAT').description('the grant altcurrency'),
+      probi: braveJoi.string().numeric().required().description('the grant amount in probi')
     }).unknown(true).description('grant properties')
   }
 }
