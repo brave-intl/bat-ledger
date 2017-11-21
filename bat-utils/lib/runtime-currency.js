@@ -103,13 +103,13 @@ const monitor1 = (config, runtime) => {
   const symbols = []
 
   singleton.config.altcoins.forEach((altcoin) => {
-    if (altcoin === 'BTC') symbols.push('BTCUSDT')
-    else if (altcoin === 'ETH') symbols.push('ETHUSDT', 'ETHBTC')
-    else symbols.push(altcoin + 'BTC')
+    if (altcoin === 'BTC') symbols.push('BTC-USDT')
+    else if (altcoin === 'ETH') symbols.push('ETH-USDT', 'ETH-BTC')
+    else symbols.push(altcoin + '-BTC')
   })
   debug('monitor1', { symbols: symbols })
 
-  symbols.forEach((symbol) => { monitor1a(symbol, false, config, runtime) })
+  symbols.forEach((symbol) => { monitor1a(symbol.split('-').join(''), false, config, runtime) })
 }
 
 const monitor1a = (symbol, retryP, config, runtime) => {
@@ -200,6 +200,7 @@ const schemaGDAX =
 
 const monitor2 = (config, runtime) => {
   const query = []
+  const symbols = []
 
   const retry = () => {
     try { if (client2) client2.end() } catch (ex) { debug('monitor2', { event: 'end', message: ex.toString() }) }
@@ -217,12 +218,13 @@ const monitor2 = (config, runtime) => {
 
     fiats.forEach((fiat) => {
       query.push({ type: 'subscribe', product_id: altcoin + '-' + fiat })
+      symbols.push(altcoin + '-' + fiat)
       eligible.push(fiat)
     })
 
     singleton.cache.set('fiats:' + altcoin, eligible)
   })
-  debug('monitor2', { query: query })
+  debug('monitor2', { symbols: symbols })
 
   client2 = new WebSocket.Client('wss://ws-feed.gdax.com/')
   client2.on('open', (event) => {
