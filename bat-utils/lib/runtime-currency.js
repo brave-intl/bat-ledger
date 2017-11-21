@@ -25,8 +25,6 @@ let flatlineP
 let singleton
 
 const Currency = function (config, runtime) {
-  let cacheTTL
-
   if (!(this instanceof Currency)) return new Currency(config, runtime)
 
   if (!config.currency || config.currency.static) return
@@ -39,9 +37,11 @@ const Currency = function (config, runtime) {
   this.cache = new NodeCache({ stdTTL: 1 * msecs.minute })
 
   this.fiats = {}
-  this.altrates = Currency.prototype.altrates
-  this.rates = Currency.prototype.rates
   this.tickers = {}
+
+  this.altrates = Currency.prototype.altrates
+  this.fxrates = Currency.prototype.fxrates
+  this.rates = Currency.prototype.rates
 
   if (!this.config.altcoins) this.config.altcoins = [ 'BAT', 'ETH' ]
   if ((this.config.altcurrency) && (this.config.altcoins.indexOf(this.config.altcurrency) === -1)) {
@@ -54,26 +54,26 @@ const Currency = function (config, runtime) {
     }
     this.fiats[fiat] = true
   })
-
-  if (!this.config.oxr) return
-
-  cacheTTL = parseInt(this.config.oxr.cacheTTL, 10)
-  if (isNaN(cacheTTL) || (cacheTTL < 1)) cacheTTL = 7 * 24 * 1000 * 3600
-  this.oxr = oxr.cache({
-    store: {
-      get: function () {
-        return Promise.resolve(this.value)
-      },
-      put: function (value) {
-        this.value = value
-        return Promise.resolve(this.value)
-      }
-    },
-    ttl: parseInt(cacheTTL, 10)
-  }, oxr.factory({ appId: this.config.oxr.apiID }))
-  this.fxrates = {}
 }
+
+Currency.prototype.schemas = {
+  rates: Joi.object().keys({
+    altrates: Joi.object().keys({}).pattern(/^[0-9A-Z]{2,}$/,
+                                            Joi.object().keys({}).pattern(/^[0-9A-Z]{2,}$/,
+                                                                          Joi.number().positive())).optional(),
+
+    fxrates: Joi.object().keys({
+      rates: Joi.object().keys({}).pattern(/^[0-9A-Z]{2,}$/, Joi.number().positive()).required()
+    }).unknown(true).optional(),
+
+    rates: Joi.object().keys({}).pattern(/^[0-9A-Z]{2,}$/,
+                                         Joi.object().keys({}).pattern(/^[0-9A-Z]{2,}$/,
+                                                                       Joi.number().positive())).optional()
+  }).required()
+}
+
 Currency.prototype.altrates = {}
+Currency.prototype.fxrates = {}
 Currency.prototype.rates = {}
 
 Currency.prototype.init = function () {
@@ -85,8 +85,11 @@ Currency.prototype.init = function () {
 
   setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 1 * msecs.minute)
 
+  if (this.config.helper) return maintenance(this.config, this.runtime)
+
   monitor1(this.config, this.runtime)
   monitor2(this.config, this.runtime)
+  monitor3(this.config, this.runtime)
 }
 
 const schemaBINANCE =
@@ -100,13 +103,13 @@ const monitor1 = (config, runtime) => {
   const symbols = []
 
   singleton.config.altcoins.forEach((altcoin) => {
-    if (altcoin === 'BTC') symbols.push('BTC-USDT')
-    else if (altcoin === 'ETH') symbols.push('ETH-USDT', 'ETH-BTC')
-    else symbols.push(altcoin + '-BTC')
+    if (altcoin === 'BTC') symbols.push('BTCUSDT')
+    else if (altcoin === 'ETH') symbols.push('ETHUSDT', 'ETHBTC')
+    else symbols.push(altcoin + 'BTC')
   })
   debug('monitor1', { symbols: symbols })
 
-  symbols.forEach((symbol) => { monitor1a(symbol.split('-').join(''), false, config, runtime) })
+  symbols.forEach((symbol) => { monitor1a(symbol, false, config, runtime) })
 }
 
 const monitor1a = (symbol, retryP, config, runtime) => {
@@ -197,7 +200,6 @@ const schemaGDAX =
 
 const monitor2 = (config, runtime) => {
   const query = []
-  const symbols = []
 
   const retry = () => {
     try { if (client2) client2.end() } catch (ex) { debug('monitor2', { event: 'end', message: ex.toString() }) }
@@ -215,13 +217,12 @@ const monitor2 = (config, runtime) => {
 
     fiats.forEach((fiat) => {
       query.push({ type: 'subscribe', product_id: altcoin + '-' + fiat })
-      symbols.push(altcoin + '-' + fiat)
       eligible.push(fiat)
     })
 
     singleton.cache.set('fiats:' + altcoin, eligible)
   })
-  debug('monitor2', { symbols: symbols })
+  debug('monitor2', { query: query })
 
   client2 = new WebSocket.Client('wss://ws-feed.gdax.com/')
   client2.on('open', (event) => {
@@ -268,9 +269,30 @@ const monitor2 = (config, runtime) => {
   }
 }
 
+const monitor3 = (config, runtime) => {
+  let cacheTTL
+
+  if (!config.oxr) return
+
+  cacheTTL = parseInt(config.oxr.cacheTTL, 10)
+  if (isNaN(cacheTTL) || (cacheTTL < 1)) cacheTTL = 7 * 24 * 1000 * 3600
+  singleton.oxr = oxr.cache({
+    store: {
+      get: function () {
+        return Promise.resolve(this.value)
+      },
+      put: function (value) {
+        this.value = value
+        return Promise.resolve(this.value)
+      }
+    },
+    ttl: parseInt(cacheTTL, 10)
+  }, oxr.factory({ appId: config.oxr.apiID }))
+}
+
 const maintenance = async (config, runtime) => {
   const now = underscore.now()
-  let tickers
+  let results, tickers
 
   if (flatlineP) {
     debug('maintenance', { message: 'no trades reported' })
@@ -278,6 +300,30 @@ const maintenance = async (config, runtime) => {
     process.exit(0)
   }
   flatlineP = true
+
+  if (config.helper) {
+    try {
+      results = await retrieve(runtime, config.helper.url + '/v1/rates', {
+        headers: {
+          authorization: 'Bearer ' + config.helper.access_token,
+          'content-type': 'application/json'
+        },
+        useProxyP: true
+      }, Currency.prototype.schemas.rates)
+      flatlineP = false
+    } catch (ex) {
+      runtime.captureException(ex)
+    }
+
+    underscore.keys(results).forEach((key) => {
+      if (typeof singleton[key] !== 'object') return
+
+      underscore.extend(singleton[key], results[key])
+      Currency.prototype[key] = singleton[key]
+    })
+
+    return
+  }
 
   if (singleton.oxr) {
     try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {

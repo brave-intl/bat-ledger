@@ -15,6 +15,8 @@ const options = {
   remoteP: true
 }
 
-config.cache = false
+config.database = false
+config.queue = false
+config.wallet = false
 
 module.exports = utils.hapi.server(options, new utils.Runtime(config))
