@@ -12,6 +12,7 @@
     "build-utils": "babel bat-utils -d dist/bat-utils && cp bat-utils/package.json dist/bat-utils/package.json",
     "eyeshade-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/eyeshade/server.js",
     "eyeshade-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/eyeshade/worker.js",
+    "helper-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/helper/server.js",
     "heroku-postbuild": "npm run build",
     "ledger-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/server.js",
     "ledger-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/worker.js",
