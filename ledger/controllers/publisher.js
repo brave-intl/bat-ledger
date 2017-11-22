@@ -27,7 +27,10 @@ const rulesetEntry = async (request, runtime) => {
   if ((!entry) || (entry.version.indexOf(version) !== 0)) {
     if (entry) rulesets.remove({ rulesetId: rulesetId })
 
-    entry = { ruleset: batPublisher.ruleset, version: version }
+    entry = {
+      ruleset: typeof batPublisher.ruleset === 'function' ? batPublisher.ruleset() : batPublisher.ruleset,
+      version: version
+    }
   }
 
   return entry
@@ -658,14 +661,17 @@ module.exports.initialize = async (debug, runtime) => {
   ])
 
   entry = await rulesets.findOne({ rulesetId: rulesetId })
-  validity = Joi.validate(entry ? entry.ruleset : batPublisher.ruleset, batPublisher.schema)
+  validity = Joi.validate(entry ? entry.ruleset
+                                : typeof batPublisher.ruleset === 'function' ? batPublisher.ruleset() : batPublisher.ruleset,
+                          batPublisher.schema)
   if (validity.error) throw new Error(validity.error)
 
   batPublisher.getRules((err, rules) => {
     let validity
     if (err) throw new Error(err)
 
-    if ((!rules) || (underscore.isEqual(batPublisher.ruleset, rules))) return
+    if ((!rules) || (underscore.isEqual(typeof batPublisher.ruleset === 'function' ? batPublisher.ruleset() : batPublisher.ruleset,
+                                        rules))) return
 
     validity = Joi.validate(rules, batPublisher.schema)
     if (validity.error) throw new Error(validity.error)
