@@ -88,7 +88,8 @@ module.exports =
 , cache                 :
   { redis               : process.env.REDIS_URL                 || 'redis://localhost:6379' }
 , currency              :
-  { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',') : ['BAT', 'BTC', 'ETH'] }
+  { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',')
+                                                        : [ 'BAT', 'BTC', 'ETH', 'LTC' ] }
 , database              :
   { mongo               : process.env.MONGODB_URI               || 'localhost/test' }
 , login                 : { github: false }

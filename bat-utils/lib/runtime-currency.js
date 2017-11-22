@@ -102,7 +102,7 @@ const schemaBINANCE =
 const monitor1 = (config, runtime) => {
   const symbols = []
 
-  singleton.config.altcoins.forEach((altcoin) => {
+  config.altcoins.forEach((altcoin) => {
     if (altcoin === 'BTC') symbols.push('BTC-USDT')
     else if (altcoin === 'ETH') symbols.push('ETH-USDT', 'ETH-BTC')
     else symbols.push(altcoin + '-BTC')
@@ -187,6 +187,14 @@ const altcoins = {
 
     f: async (tickers, config, runtime) => {
       return altcoins._internal.f('ETH', tickers, config, runtime)
+    }
+  },
+
+  LTC: {
+    id: 'litecoin',
+
+    f: async (tickers, config, runtime) => {
+      return altcoins._internal.f('LTC', tickers, config, runtime)
     }
   }
 }
