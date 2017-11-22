@@ -398,7 +398,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
 
         if (!entry.authorized) return
 
-        result = underscore.pick(entry, [ 'publisher', 'address', 'altcurrency', 'probi', 'fees' ])
+        result = underscore.pick(entry, [ 'publisher', 'altcurrency', 'probi', 'fees' ])
         result.authority = authority
         result.transactionId = reportId
         result.currency = 'USD'
@@ -433,8 +433,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
       timestamp: lastxn && lastxn.timestamp && dateformat(lastxn.timestamp, datefmt)
     }
     if (authority) {
-      underscore.extend(datum,
-                        { verified: result.verified, address: result.address ? 'yes' : 'no', authorized: result.authorized })
+      underscore.extend(datum, { verified: result.verified, authorized: result.authorized })
     }
     data.push(datum)
     if (!summaryP) {
@@ -599,6 +598,7 @@ exports.workers = {
       const summaryP = payload.summary
       const threshold = payload.threshold || 0
       const verified = payload.verified
+      const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const tokens = runtime.database.get('tokens', debug)
@@ -675,7 +675,14 @@ exports.workers = {
             if (!entry) continue
 
             if (entry.provider) wallet = await runtime.wallet.status(entry)
-            datum.preferredCurrency = wallet && wallet.preferredCurrency
+            if ((!wallet) && (entry.owner)) {
+              entry = await owners.findOne({ owner: entry.owner })
+              if (entry.provider) wallet = await runtime.wallet.status(entry)
+            }
+            if (wallet) {
+              datum.address = wallet.id
+              datum.currency = wallet.preferredCurrency
+            }
           } catch (ex) {}
         }
         await file.write(JSON.stringify(data, null, 2), true)
@@ -1029,7 +1036,6 @@ exports.workers = {
         if (elideP) {
           if (results[publisher].email) results[publisher].email = 'yes'
           if (results[publisher].phone) results[publisher].phone = 'yes'
-          if (results[publisher].address) results[publisher].address = 'yes'
           if (results[publisher].verificationId) results[publisher].verificationId = 'yes'
           if (results[publisher].token) results[publisher].token = 'yes'
         }
@@ -1068,7 +1074,6 @@ exports.workers = {
             if (elideP) {
               if (record.email) record.email = 'yes'
               if (record.phone) record.phone = 'yes'
-              if (record.address) record.address = 'yes'
               if (record.verificationId) record.verificationId = 'yes'
               if (record.token) record.token = 'yes'
             }

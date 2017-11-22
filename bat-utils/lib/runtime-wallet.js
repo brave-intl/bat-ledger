@@ -311,6 +311,7 @@ Wallet.providers.uphold = {
       preferredCurrency: currency,
       availableCurrencies: currencies
     }
+    if (result.authorized) result.id = user.id
 
     return result
   }

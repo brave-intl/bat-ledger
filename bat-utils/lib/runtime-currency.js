@@ -294,7 +294,7 @@ const monitor3 = (config, runtime) => {
 
 const maintenance = async (config, runtime) => {
   const now = underscore.now()
-  let results, tickers
+  let fxrates, results, tickers
 
   if (flatlineP) {
     debug('maintenance', { message: 'no trades reported' })
@@ -328,9 +328,10 @@ const maintenance = async (config, runtime) => {
   }
 
   if (singleton.oxr) {
-    try { singleton.fxrates = await singleton.oxr.latest() } catch (ex) {
+    try { fxrates = await singleton.oxr.latest() } catch (ex) {
       runtime.captureException(ex)
     }
+    if ((fxrates) && (fxrates.rates)) singleton.fxrates = fxrates
   }
 
   try { tickers = await inkblot(config, runtime) } catch (ex) {
