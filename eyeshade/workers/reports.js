@@ -680,7 +680,7 @@ exports.workers = {
               if (entry.provider) wallet = await runtime.wallet.status(entry)
             }
             if (wallet) {
-              datum.address = wallet.id
+              datum.address = wallet.address
               datum.currency = wallet.preferredCurrency
             }
           } catch (ex) {}
