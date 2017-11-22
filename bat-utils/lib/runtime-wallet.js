@@ -146,7 +146,7 @@ Wallet.prototype.providers = function () {
   return underscore.keys(Wallet.providers)
 }
 
-Wallet.prototype._redeem = async function (info, txn, signature) {
+Wallet.prototype.redeem = async function (info, txn, signature) {
   const grants = this.runtime.database.get('grants', debug)
   let balance, desired, entries, grantIds, payload, result, state
 
@@ -168,24 +168,43 @@ Wallet.prototype._redeem = async function (info, txn, signature) {
     signature: signature
   }
   grantIds = []
+  let grantTotal = new BigNumber(0)
   for (let entry of entries) {
     entry.probi = entry.probi.toString()
     payload.grants.push(underscore.pick(entry, [ 'altcurrency', 'probi', 'grantId', 'promotionId', 'grantSignature' ]))
     grantIds.push(entry.grantId)
 
     balance = balance.plus(new BigNumber(entry.probi.toString()))
+    grantTotal = grantTotal.plus(new BigNumber(entry.probi.toString()))
     if (balance.greaterThanOrEqualTo(desired)) break
   }
 
-  result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
-    headers: {
-      authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
-      'content-type': 'application/json'
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
-  if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+  if (this.runtime.config.redeemer.cardId) { // temporary local redemption for integration with browser
+    try {
+      await this.uphold.createCardTransaction(this.runtime.config.redeemer.cardId,
+        { amount: grantTotal,
+          currency: info.altcurrency,
+          destination: info.providerId
+        },
+        true,        // commit tx in one swoop
+        null        // no otp code
+      )
+    } catch (ex) {
+      debug('redeem', { provider: 'uphold', reason: ex.toString(), operation: 'fulfillGrant' })
+      throw ex
+    }
+    result = await this.submitTx(info, txn, signature)
+  } else {
+    result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
+      headers: {
+        authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
+        'content-type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      useProxyP: true
+    })
+    if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+  }
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -296,9 +315,6 @@ Wallet.providers.uphold = {
   submitTx: async function (info, txn, signature) {
     if (info.altcurrency === 'BAT') {
       let postedTx
-
-      postedTx = await this._redeem(info, txn, signature)
-      if (postedTx) return postedTx
 
       try {
         postedTx = await this.uphold.createCardTransaction(info.providerId,

@@ -256,7 +256,10 @@ const write = function (runtime, apiVersion) {
       return reply(resp)
     }
 
-    result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx)
+    if (!result) {
+      result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+    }
 
     // FIXME double check uphold statuses
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
