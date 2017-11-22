@@ -182,12 +182,11 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
   if (this.runtime.config.redeemer.cardId) { // temporary local redemption for integration with browser
     try {
       await this.uphold.createCardTransaction(this.runtime.config.redeemer.cardId,
-        { amount: grantTotal,
+        { amount: grantTotal.dividedBy(this.currency.alt2scale(info.altcurrency)).toString(),
           currency: info.altcurrency,
           destination: info.providerId
         },
-        true,        // commit tx in one swoop
-        null        // no otp code
+        true        // commit tx in one swoop
       )
     } catch (ex) {
       debug('redeem', { provider: 'uphold', reason: ex.toString(), operation: 'fulfillGrant' })
