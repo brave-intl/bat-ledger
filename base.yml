@@ -33,6 +33,9 @@ services:
       - PORT
       - PUBLISHERS_TOKEN
       - PUBLISHERS_URL
+      - REDEEMER_CARD_ID
+      - REDEEMER_TOKEN
+      - REDEEMER_URL
       - SENTRY_DSN
       - SLACK_CHANNEL
       - SLACK_ICON_URL

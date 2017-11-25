@@ -59,7 +59,7 @@ v1.read = { handler: (runtime) => {
     const languages = l10nparser.parse(lang)
     const query = { active: true, count: { $gt: 0 } }
     const debug = braveHapi.debug(module, request)
-    const grants = runtime.database.get('grants', debug)
+    const wallets = runtime.database.get('wallets', debug)
     const promotions = runtime.database.get('promotions', debug)
     let candidates, entries, priority, promotion, promotionIds
 
@@ -85,8 +85,8 @@ v1.read = { handler: (runtime) => {
 
     if (paymentId) {
       promotionIds = []
-      entries = await grants.find({ paymentId: paymentId })
-      entries.forEach((entry) => { promotionIds.push(entry.promotionId) })
+      const wallet = await wallets.findOne({ paymentId: paymentId })
+      wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
     }
 
@@ -137,37 +137,37 @@ v1.write = { handler: (runtime) => {
   return async (request, reply) => {
     const paymentId = request.params.paymentId.toLowerCase()
     const promotionId = request.payload.promotionId
-    const query = { active: true, paymentId: paymentId, promotionId: promotionId }
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let count, grant, result, state, wallet
+    let grant, result, state, wallet
 
     if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
+
+    const promotion = await promotions.findOne({ promotionId: promotionId })
+    if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
+    if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    grant = await grants.findOne(query)
-    if (grant) return reply(boom.badData('promotion already in use'))
-
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: { paymentId: paymentId }
+    if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
+      return reply(boom.badData('promotion already applied to wallet'))
     }
-    underscore.extend(query, { paymentId: { $exists: false } })
-    grant = await grants.findOneAndUpdate(query, state, { upsert: false })
-    if (!grant) return reply(boom.notFound('no promotions available'))
 
-    count = await grants.count({ promotionId: promotionId, paymentId: paymentId })
-    if (count !== 1) {    // race condition!
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $unset: { paymentId: '' }
-      }
-      await grants.update({ _id: grant._id }, state, { upsert: false })
-      return reply(boom.badData('promotion already in use'))
+    // pop off one grant
+    grant = await grants.findOneAndDelete({ status: 'active', promotionId: promotionId })
+    if (!grant) return reply(boom.notFound('promotion not available'))
+
+    // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
+    wallet = await wallets.findOneAndUpdate({ 'paymentId': paymentId, 'grants.promotionId': { '$ne': promotionId } },
+                            { $push: { grants: grant } }
+    )
+    if (!wallet) {
+      // reinsert grant, another request already added a grant for this promotion to the wallet
+      grants.insertOne(grant)
+      return reply(boom.badData('promotion already applied to wallet'))
     }
 
     state = {
@@ -176,6 +176,7 @@ v1.write = { handler: (runtime) => {
     }
     await promotions.update({ promotionId: promotionId }, state, { upsert: true })
 
+    // FIXME read probi / altcurrency from token
     result = underscore.extend(underscore.pick(grant, [ 'altcurrency' ]),
                                { probi: new BigNumber(grant.probi.toString()).toString() })
     await runtime.queue.send(debug, 'grant-report',
@@ -205,7 +206,7 @@ v1.write = { handler: (runtime) => {
 
 /*
    POST /v1/grants
- */
+*/
 
 v1.create =
 { handler: (runtime) => {
@@ -235,8 +236,8 @@ v1.create =
     for (let entry of payload.grants) {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.pick(entry, [ 'promotionId', 'altcurrency', 'grantSignature' ]),
-                                { probi: bson.Decimal128.fromString(entry.probi), batchId: batchId })
+        $set: underscore.extend(underscore.pick(entry, [ 'promotionId', 'altcurrency', 'token', 'probi' ]),
+                                { status: 'active', batchId: batchId })
       }
       try {
         await grants.update({ grantId: entry.grantId }, state, { upsert: true })
@@ -285,7 +286,7 @@ v1.create =
         promotionId: Joi.string().required().description('the associated promotion'),
         altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
         probi: braveJoi.string().numeric().description('the grant amount in probi'),
-        grantSignature: Joi.string().required().description('the grant-signature')
+        token: Joi.string().required().description('the grant-signature')
       })).description('grants for bulk upload'),
       promotions: Joi.array().min(0).items(Joi.object().keys({
         promotionId: Joi.string().required().description('the promotion-identifier'),
@@ -313,28 +314,34 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'grants',
       property: 'grantId',
       empty: {
+        // these will be part of the "token"
         grantId: '',
-
         promotionId: '',
         altcurrency: '',
         probi: '0',
 
-        grantSignature: '',
+        token: '',
 
+        // duplicated from "token" for unique
+        // grantId: '',
+        // duplicated from "token" for filtering
+        // promotionId: '',
+
+        // FIXME not sure about the comment below
         // duplicated from promotion to avoid having to do an aggregation pipeline
-        active: false,
-        priority: 99999,
+        // active: false,
+        // priority: 99999,
 
-        paymentId: '',
-        redeemed: false,
+        status: '', // active, completed, expired
 
         batchId: '',
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { grantId: 1 } ],
       others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
-                { active: 1 }, { priority: 1 },
-                { paymentId: 1 }, { redeemed: 1 },
+                // { active: 1 }, { priority: 1 },
+                // { paymentId: 1 }, { redeemed: 1 },
+                { status: 1 },
                 { batchId: 1 }, { timestamp: 1 } ]
     },
     {

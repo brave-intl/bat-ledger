@@ -147,14 +147,14 @@ Wallet.prototype.providers = function () {
 }
 
 Wallet.prototype.redeem = async function (info, txn, signature) {
-  const grants = this.runtime.database.get('grants', debug)
-  let balance, desired, entries, grantIds, payload, result, state
+  let balance, desired, grants, grantIds, payload, result
 
   if (!this.runtime.config.redeemer) return
 
   // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
-  entries = await grants.find({ paymentId: info.paymentId, redeemed: { $exists: false } }, { sort: { probi: 1 } })
-  if (entries.length === 0) return
+  // grants = await grants.find({ paymentId: info.paymentId, redeemed: { $exists: false } }, { sort: { probi: 1 } })
+  grants = info.grants.filter((grant) => grant.status === 'active')
+  if (grants.length === 0) return
 
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
@@ -163,19 +163,20 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
 
   payload = {
     grants: [],
-    wallet: underscore.pick(info, [ 'provider', 'providerId' ]),
-    txn: txn,
-    signature: signature
+    // TODO might need paymentId
+    wallet: underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]),
+    transaction: Buffer.from(JSON.stringify(underscore.pick(signature, [ 'headers', 'octets' ]))).toString('base64')
   }
   grantIds = []
   let grantTotal = new BigNumber(0)
-  for (let entry of entries) {
-    entry.probi = entry.probi.toString()
-    payload.grants.push(underscore.pick(entry, [ 'altcurrency', 'probi', 'grantId', 'promotionId', 'grantSignature' ]))
-    grantIds.push(entry.grantId)
+  for (let grant of grants) {
+    payload.grants.push(grant.token)
+    grantIds.push(grant.grantId)
 
-    balance = balance.plus(new BigNumber(entry.probi.toString()))
-    grantTotal = grantTotal.plus(new BigNumber(entry.probi.toString()))
+    // FIXME probi from token
+    const probi = new BigNumber(grant.probi)
+    balance = balance.plus(probi)
+    grantTotal = grantTotal.plus(probi)
     if (balance.greaterThanOrEqualTo(desired)) break
   }
 
@@ -204,16 +205,7 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
     })
     if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
   }
-
-  state = {
-    $currentDate: { timestamp: { $type: 'timestamp' } },
-    $set: { redeemed: result }
-  }
-  await grants.update({ grantId: { $in: grantIds } }, state, { upsert: false, multi: true })
-
-  await this.runtime.queue.send(debug, 'redeem-report', underscore.extend({ grantIds: grantIds }, state.$set))
-
-  return result
+  return underscore.extend(result, { grantIds: grantIds })
 }
 
 Wallet.providers = {}
