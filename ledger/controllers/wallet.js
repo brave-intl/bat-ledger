@@ -9,6 +9,7 @@ const underscore = require('underscore')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const braveUtils = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
@@ -25,12 +26,11 @@ const read = function (runtime, apiVersion) {
     const debug = braveHapi.debug(module, request)
     const paymentId = request.params.paymentId.toLowerCase()
     const refreshP = request.query.refresh
-    const grants = runtime.database.get('grants', debug)
     const wallets = runtime.database.get('wallets', debug)
     const altcurrency = request.query.altcurrency
 
     let currency = request.query.currency
-    let balances, promotions, result, state, wallet
+    let balances, result, state, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -62,24 +62,13 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
-      promotions = await grants.aggregate([
-        {
-          $match:
-          {
-            paymentId: paymentId
+      if (wallet.grants) {
+        wallet.grants.forEach((grant) => {
+          if (grant.status === 'active') {
+            const grantContent = braveUtils.extractJws(grant.token)
+            balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
           }
-        },
-        {
-          $group:
-          {
-            _id: '$paymentId',
-            probi: { $sum: '$probi' }
-          }
-        }
-      ])
-      debug('promotions', promotions)
-      if (promotions.length > 0) {
-        balances.confirmed = new BigNumber(balances.confirmed).plus(new BigNumber(promotions[0].probi.toString()))
+        })
       }
 
       underscore.extend(result, {
@@ -256,10 +245,22 @@ const write = function (runtime, apiVersion) {
       return reply(resp)
     }
 
-    result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx)
+    if (!result) {
+      result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+    }
 
-    // FIXME double check uphold statuses
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
+
+    if (result.grantIds) {
+      // oh mongo
+      result.grantIds.forEach((grantId) => {
+        wallets.update({ 'paymentId': paymentId, 'grants.grantId': grantId }, { $set: { 'grants.$.status': 'completed' } })
+      })
+
+      await runtime.queue.send(debug, 'redeem-report', underscore.extend({ grantIds: result.grantIds }, { redeemed: true }))
+      result = underscore.omit(result, ['grantIds'])
+    }
 
     now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
@@ -411,7 +412,8 @@ module.exports.initialize = async (debug, runtime) => {
         httpSigningPubKey: '',
         providerId: '',
 
-        timestamp: bson.Timestamp.ZERO
+        timestamp: bson.Timestamp.ZERO,
+        grants: []
       },
       unique: [ { paymentId: 1 } ],
       others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 } ]
@@ -436,23 +438,6 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { viewingId: 1 }, { uId: 1 } ],
       others: [ { altcurrency: 1 }, { probi: 1 }, { count: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('grants', debug),
-      name: 'grants',
-      property: 'grantId',
-      empty: {
-        grantId: '',
-        altcurrency: '',
-        probi: '0',
-
-        paymentId: '',
-
-        count: 0,
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { grantId: 1 } ],
-      others: [ { altcurrency: 1 }, { probi: 1 }, { paymentId: '' }, { timestamp: 1 } ]
     }
   ])
 

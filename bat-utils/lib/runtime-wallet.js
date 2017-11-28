@@ -7,6 +7,7 @@ const underscore = require('underscore')
 const { verify } = require('http-request-signature')
 
 const braveHapi = require('./extras-hapi')
+const braveUtils = require('./extras-utils')
 
 const Currency = require('./runtime-currency')
 
@@ -16,6 +17,8 @@ const upholdBaseUrls = {
   prod: 'https://api.uphold.com',
   sandbox: 'https://api-sandbox.uphold.com'
 }
+
+BigNumber.config({ EXPONENTIAL_AT: 28, DECIMAL_PLACES: 18 })
 
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
@@ -144,15 +147,14 @@ Wallet.prototype.providers = function () {
   return underscore.keys(Wallet.providers)
 }
 
-Wallet.prototype._redeem = async function (info, txn, signature) {
-  const grants = this.runtime.database.get('grants', debug)
-  let balance, desired, entries, grantIds, payload, result, state
+Wallet.prototype.redeem = async function (info, txn, signature) {
+  let balance, desired, grants, grantIds, payload, result
 
   if (!this.runtime.config.redeemer) return
 
   // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
-  entries = await grants.find({ paymentId: info.paymentId, redeemed: { $exists: false } }, { sort: { probi: 1 } })
-  if (entries.length === 0) return
+  grants = info.grants.filter((grant) => grant.status === 'active')
+  if (grants.length === 0) return
 
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
@@ -161,39 +163,49 @@ Wallet.prototype._redeem = async function (info, txn, signature) {
 
   payload = {
     grants: [],
-    wallet: underscore.pick(info, [ 'provider', 'providerId' ]),
-    txn: txn,
-    signature: signature
+    // TODO might need paymentId later
+    wallet: underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]),
+    transaction: Buffer.from(JSON.stringify(underscore.pick(signature, [ 'headers', 'octets' ]))).toString('base64')
   }
   grantIds = []
-  for (let entry of entries) {
-    entry.probi = entry.probi.toString()
-    payload.grants.push(underscore.pick(entry, [ 'altcurrency', 'probi', 'grantId', 'promotionId', 'grantSignature' ]))
-    grantIds.push(entry.grantId)
+  let grantTotal = new BigNumber(0)
+  for (let grant of grants) {
+    payload.grants.push(grant.token)
+    grantIds.push(grant.grantId)
 
-    balance = balance.plus(new BigNumber(entry.probi.toString()))
+    const grantContent = braveUtils.extractJws(grant.token)
+    const probi = new BigNumber(grantContent.probi)
+    balance = balance.plus(probi)
+    grantTotal = grantTotal.plus(probi)
     if (balance.greaterThanOrEqualTo(desired)) break
   }
 
-  result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
-    headers: {
-      authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
-      'content-type': 'application/json'
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
-  if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
-
-  state = {
-    $currentDate: { timestamp: { $type: 'timestamp' } },
-    $set: { redeemed: result }
+  if (this.runtime.config.redeemer.cardId) { // temporary local redemption for integration with browser
+    try {
+      await this.uphold.createCardTransaction(this.runtime.config.redeemer.cardId,
+        { amount: grantTotal.dividedBy(this.currency.alt2scale(info.altcurrency)).toString(),
+          currency: info.altcurrency,
+          destination: info.providerId
+        },
+        true        // commit tx in one swoop
+      )
+    } catch (ex) {
+      debug('redeem', { provider: 'uphold', reason: ex.toString(), operation: 'fulfillGrant' })
+      throw ex
+    }
+    result = await this.submitTx(info, txn, signature)
+  } else {
+    result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
+      headers: {
+        authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
+        'content-type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      useProxyP: true
+    })
+    if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
   }
-  await grants.update({ grantId: { $in: grantIds } }, state, { upsert: false, multi: true })
-
-  await this.runtime.queue.send(debug, 'redeem-report', underscore.extend({ grantIds: grantIds }, state.$set))
-
-  return result
+  return underscore.extend(result, { grantIds: grantIds })
 }
 
 Wallet.providers = {}
@@ -280,7 +292,7 @@ Wallet.providers.uphold = {
 
       // NOTE skipping fee calculation here as transfers within uphold have none
 
-      desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toFixed(this.currency.decimals[info.altcurrency]).toString()
+      desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toString()
 
       return { 'requestType': 'httpSignature',
         'unsignedTx': { 'denomination': { 'amount': desired, currency: 'BAT' },
@@ -294,9 +306,6 @@ Wallet.providers.uphold = {
   submitTx: async function (info, txn, signature) {
     if (info.altcurrency === 'BAT') {
       let postedTx
-
-      postedTx = await this._redeem(info, txn, signature)
-      if (postedTx) return postedTx
 
       try {
         postedTx = await this.uphold.createCardTransaction(info.providerId,
