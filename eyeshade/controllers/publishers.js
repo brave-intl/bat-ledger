@@ -89,34 +89,25 @@ v1.bulk = {
    POST /v2/publishers/settlement/{hash}
  */
 
-const txHexRegExp = /^(0x)?[A-Fa-f0-9]+$/
-
 v2.settlement = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const hash = request.params.hash
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
-      let state, validity
-
-      if (!hash) for (let entry of payload) if (!entry.hash) return reply(boom.badData('missing hash for ' + entry.publisher))
+      const fields = [ 'probi', 'amount', 'fees', 'commission' ]
+      let state
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: { hash: hash }
+        $set: {}
       }
       for (let entry of payload) {
         if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
 
-        validity = Joi.validate(entry.address, braveJoi.string().altcurrencyAddress(entry.altcurrency))
-        if (validity.error) return reply(boom.badData(entry.address + ': ' + validity.error))
-
-        entry.probi = bson.Decimal128.fromString(entry.probi.toString())
-        if (entry.amount) entry.amount = bson.Decimal128.fromString(entry.amount.toString())
-        if (entry.fees) entry.fees = bson.Decimal128.fromString(entry.fees.toString())
-        if (!entry.hash) entry.hash = hash
-        state.$set = underscore.pick(entry, [ 'address', 'altcurrency', 'probi', 'fees', 'hash' ])
+        entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
+        fields.forEach((field) => { state.$set[field] = bson.Decimal128.fromString(entry[field].toString()) })
+        underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash' ]))
 
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
@@ -135,16 +126,17 @@ v2.settlement = {
   tags: [ 'api' ],
 
   validate: {
-    params: { hash: Joi.string().regex(txHexRegExp).optional().description('transaction hash') },
     payload: Joi.array().min(1).items(Joi.object().keys({
       publisher: braveJoi.string().publisher().required().description('the publisher identity'),
-      address: Joi.string().required().description('altcurrency address'),
+      address: Joi.string().guid().required().description('settlement address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),
       currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the deposit currency'),
       amount: braveJoi.string().numeric().required().description('the amount in the deposit currency'),
+      commission: braveJoi.string().numeric().default('0.00').description('settlement commission'),
+      fee: braveJoi.string().numeric().default('0.00').description('additional settlement fee'),
       transactionId: Joi.string().guid().description('the transactionId'),
-      hash: Joi.string().regex(txHexRegExp).optional().description('transaction hash')
+      hash: Joi.string().guid().required().description('settlement-identifier')
     }).unknown(true)).required().description('publisher settlement report')
   },
 
@@ -1007,13 +999,14 @@ module.exports.initialize = async (debug, runtime) => {
         probi: bson.Decimal128.POSITIVE_ZERO,
         currency: '',
         amount: bson.Decimal128.POSITIVE_ZERO,
+        commission: bson.Decimal128.POSITIVE_ZERO,
 
         fees: bson.Decimal128.POSITIVE_ZERO,
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
       others: [ { address: 1 },
-                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 },
+                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
                 { fees: 1 }, { timestamp: 1 } ]
     },
     {

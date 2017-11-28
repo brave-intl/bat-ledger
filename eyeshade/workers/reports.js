@@ -451,7 +451,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
 const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
   const publishers = {}
 
-  let amount, currency, data, fees, lastxn, results, probi
+  let amount, commission, currency, data, fees, lastxn, results, probi
 
   entries.forEach((entry) => {
     if (entry.publisher === '') return
@@ -461,25 +461,32 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
         altcurrency: altcurrency,
         probi: new BigNumber(0),
         amount: new BigNumber(0),
-        fees: new BigNumber(0)
+        fees: new BigNumber(0),
+        commission: new BigNumber(0)
       }
       publishers[entry.publisher].txns = []
     }
 
     underscore.extend(entry, {
-      probi: entry.probi.toString(), amount: entry.amount.toString(), fees: entry.fees.toString()
+      probi: entry.probi.toString(),
+      amount: entry.amount.toString(),
+      fees: entry.fees.toString(),
+      commission: entry.commission.toString()
     })
 
     publishers[entry.publisher].probi = publishers[entry.publisher].probi.plus(new BigNumber(entry.probi))
     publishers[entry.publisher].amount = publishers[entry.publisher].amount.plus(new BigNumber(entry.amount))
     if (!entry.fees) entry.fees = 0
     publishers[entry.publisher].fees = publishers[entry.publisher].fees.plus(new BigNumber(entry.fees))
+    if (!entry.commission) entry.commission = 0
+    publishers[entry.publisher].commission = publishers[entry.publisher].commission.plus(new BigNumber(entry.commission))
     if (typeof publishers[entry.publisher].currency === 'undefined') publishers[entry.publisher].currency = entry.currency
     else if (publishers[entry.publisher].currency !== entry.currency) publishers[entry.publisher].currency = ''
     entry.created = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
     entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
     publishers[entry.publisher].txns.push(underscore.pick(entry, [
-      'altcurrency', 'probi', 'currency', 'amount', 'fees', 'settlementId', 'address', 'hash', 'created', 'modified'
+      'altcurrency', 'probi', 'currency', 'amount', 'fees', 'commission', 'settlementId', 'address', 'hash', 'created',
+      'modified'
     ]))
   })
 
@@ -494,7 +501,10 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
     }
 
     results.push(underscore.extend({ publisher: publisher }, entry, {
-      probi: entry.probi.toString(), amount: entry.amount.toString(), fees: entry.fees.toString()
+      probi: entry.probi.toString(),
+      amount: entry.amount.toString(),
+      fees: entry.fees.toString(),
+      commission: entry.commission.toString()
     }))
   })
   results = results.sort(publisherCompare)
@@ -504,12 +514,14 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
   probi = new BigNumber(0)
   amount = new BigNumber(0)
   fees = new BigNumber(0)
+  commission = new BigNumber(0)
 
   data = []
   results.forEach((result) => {
     probi = probi.plus(result.probi)
     amount = amount.plus(result.amount)
     fees = fees.plus(result.fees)
+    commission = commission.plus(result.commission)
     if (typeof currency === 'undefined') currency = result.currency
     else if (currency !== result.currency) currency = ''
     data.push({
@@ -519,6 +531,7 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
       currency: result.currency,
       amount: result.amount.toString(),
       fees: result.fees.toString(),
+      commission: result.commission.toString(),
       timestamp: lastxn && lastxn.created && dateformat(lastxn.created, datefmt)
     })
     if (!summaryP) {
@@ -536,7 +549,8 @@ const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
     probi: probi.toString(),
     amount: currency ? amount.toString() : '',
     currency: currency,
-    fees: fees.toString()
+    fees: fees.toString(),
+    commission: commission.toString()
   }
 }
 
@@ -701,6 +715,15 @@ exports.workers = {
           'publisher USD': usd && info.probi.times(usd).toFixed(2),
           'processor USD': usd && info.fees.times(usd).toFixed(2)
         })
+      } else if (data.length === 0) {
+        data.push({
+          publisher: publisher,
+          altcurrency: altcurrency,
+          probi: 0,
+          fees: 0,
+          'publisher USD': 0,
+          'processor USD': 0
+        })
       }
 
       try { await file.write(json2csv({ data: data }), true) } catch (ex) {
@@ -756,6 +779,15 @@ exports.workers = {
           currency: info.currency,
           amount: info.amount,
           fees: info.fees
+        })
+      } else if (data.length === 0) {
+        data.push({
+          publisher: publisher,
+          altcurrency: altcurrency,
+          probi: 0,
+          currency: '',
+          amount: 0,
+          fees: 0
         })
       }
 
