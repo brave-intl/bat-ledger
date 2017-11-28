@@ -304,19 +304,17 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   t.true(response.body.hasOwnProperty('balance'))
   t.is(response.body.balance, '0.0000')
 
-  // get available promotions
+  // get available grant
   response = await request(srv.listener)
-    .get('/v1/promotions')
+    .get('/v1/grants')
     .expect(ok)
 
-  t.true(Array.isArray(response.body))
-  t.true(response.body.length > 0)
-  t.true(response.body[0].hasOwnProperty('promotionId'))
+  t.true(response.body.hasOwnProperty('promotionId'))
 
   // request grant
   response = await request(srv.listener)
       .put(`/v1/grants/${paymentId}`)
-      .send({'promotionId': response.body[0].promotionId})
+      .send({'promotionId': response.body.promotionId})
       .expect(ok)
   console.log(response.body)
   t.true(response.body.hasOwnProperty('probi'))

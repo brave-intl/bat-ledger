@@ -95,7 +95,9 @@ v1.read = { handler: (runtime) => {
     if (paymentId) {
       promotionIds = []
       const wallet = await wallets.findOne({ paymentId: paymentId })
-      wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
+      if (wallet.grants) {
+        wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
+      }
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
     }
 
