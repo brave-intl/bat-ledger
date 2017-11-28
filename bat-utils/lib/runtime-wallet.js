@@ -7,6 +7,7 @@ const underscore = require('underscore')
 const { verify } = require('http-request-signature')
 
 const braveHapi = require('./extras-hapi')
+const braveUtils = require('./extras-utils')
 
 const Currency = require('./runtime-currency')
 
@@ -173,8 +174,8 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
     payload.grants.push(grant.token)
     grantIds.push(grant.grantId)
 
-    // FIXME probi from token
-    const probi = new BigNumber(grant.probi)
+    const grantContent = braveUtils.extractJws(grant.token)
+    const probi = new BigNumber(grantContent.probi)
     balance = balance.plus(probi)
     grantTotal = grantTotal.plus(probi)
     if (balance.greaterThanOrEqualTo(desired)) break

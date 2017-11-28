@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const Joi = require('joi')
 const l10nparser = require('accept-language-parser')
 const boom = require('boom')
@@ -9,6 +8,16 @@ const uuid = require('uuid')
 const utils = require('bat-utils')
 const braveJoi = utils.extras.joi
 const braveHapi = utils.extras.hapi
+const braveUtils = utils.extras.utils
+
+const grantSchema = Joi.object().keys({
+  grantId: Joi.string().guid().required().description('the grant-identifier'),
+  promotionId: Joi.string().guid().required().description('the associated promotion'),
+  altcurrency: braveJoi.string().altcurrencyCode().required().description('the grant altcurrency'),
+  probi: braveJoi.string().numeric().required().description('the grant amount in probi'),
+  maturityTime: Joi.number().positive().required().description('the time the grant becomes redeemable'),
+  expiryTime: Joi.number().positive().required().description('the time the grant expires')
+})
 
 const v1 = {}
 
@@ -176,9 +185,9 @@ v1.write = { handler: (runtime) => {
     }
     await promotions.update({ promotionId: promotionId }, state, { upsert: true })
 
-    // FIXME read probi / altcurrency from token
-    result = underscore.extend(underscore.pick(grant, [ 'altcurrency' ]),
-                               { probi: new BigNumber(grant.probi.toString()).toString() })
+    const grantContent = braveUtils.extractJws(grant.token)
+
+    result = underscore.extend(underscore.pick(grantContent, [ 'altcurrency', 'probi' ]))
     await runtime.queue.send(debug, 'grant-report',
                              underscore.extend({ paymentId: paymentId, promotionId: promotionId }, result))
 
@@ -234,13 +243,18 @@ v1.create =
     }
 
     for (let entry of payload.grants) {
+      const grantContent = braveUtils.extractJws(entry)
+      const validity = Joi.validate(grantContent, grantSchema)
+      if (validity.error) {
+        return reply(boom.badData(validity.error))
+      }
+
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.pick(entry, [ 'promotionId', 'altcurrency', 'token', 'probi' ]),
-                                { status: 'active', batchId: batchId })
+        $set: { token: entry, promotionId: grantContent.promotionId, status: 'active', batchId: batchId }
       }
       try {
-        await grants.update({ grantId: entry.grantId }, state, { upsert: true })
+        await grants.update({ grantId: grantContent.grantId }, state, { upsert: true })
       } catch (ex) { return oops(ex) }
     }
 
@@ -276,18 +290,14 @@ v1.create =
     mode: 'required'
   },
 
-  description: 'Defines the list of ledger balance providers',
+  description: 'Create one or more grants',
   tags: [ 'api' ],
 
   validate: {
     payload: Joi.object().keys({
-      grants: Joi.array().min(0).items(Joi.object().keys({
-        grantId: Joi.string().required().description('the grant-identifier'),
-        promotionId: Joi.string().required().description('the associated promotion'),
-        altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
-        probi: braveJoi.string().numeric().description('the grant amount in probi'),
-        token: Joi.string().required().description('the grant-signature')
-      })).description('grants for bulk upload'),
+      grants: Joi.array().min(0).items(
+        Joi.string().required().description('the jws encoded grant')
+      ).description('grants for bulk upload'),
       promotions: Joi.array().min(0).items(Joi.object().keys({
         promotionId: Joi.string().required().description('the promotion-identifier'),
         priority: Joi.number().integer().min(0).required().description('the promotion priority (lower is better)'),
@@ -314,18 +324,12 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'grants',
       property: 'grantId',
       empty: {
-        // these will be part of the "token"
-        grantId: '',
-        promotionId: '',
-        altcurrency: '',
-        probi: '0',
-
         token: '',
 
         // duplicated from "token" for unique
-        // grantId: '',
+        grantId: '',
         // duplicated from "token" for filtering
-        // promotionId: '',
+        promotionId: '',
 
         // FIXME not sure about the comment below
         // duplicated from promotion to avoid having to do an aggregation pipeline

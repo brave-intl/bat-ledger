@@ -9,6 +9,7 @@ const underscore = require('underscore')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const braveUtils = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
@@ -64,8 +65,8 @@ const read = function (runtime, apiVersion) {
       if (wallet.grants) {
         wallet.grants.forEach((grant) => {
           if (grant.status === 'active') {
-            // FIXME read probi from grant token
-            balances.confirmed = new BigNumber(balances.confirmed).plus(new BigNumber(grant.probi.toString()))
+            const grantContent = braveUtils.extractJws(grant.token)
+            balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
           }
         })
       }
