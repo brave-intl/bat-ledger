@@ -13,6 +13,18 @@ const services = {
         module.exports.wallet.coinbase = { widgetCode : process.env.COINBASE_WIDGET_CODE }
       }
 
+      if (process.env.REDEEMER_URL) {
+        module.exports.redeemer =
+        { url               : process.env.REDEEMER_URL   || 'http://127.0.0.1:3004'
+        , access_token      : process.env.REDEEMER_TOKEN || '00000000-0000-4000-0000-000000000000'
+        }
+      }
+      if (process.env.REDEEMER_CARD_ID) {
+        module.exports.redeemer =
+        { cardId               : process.env.REDEEMER_CARD_ID
+        }
+      }
+
       helper()
       uphold()
     }

@@ -9,6 +9,7 @@ const underscore = require('underscore')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const braveUtils = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
@@ -61,6 +62,15 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
+      if (wallet.grants) {
+        wallet.grants.forEach((grant) => {
+          if (grant.status === 'active') {
+            const grantContent = braveUtils.extractJws(grant.token)
+            balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
+          }
+        })
+      }
+
       underscore.extend(result, {
         probi: balances.confirmed.toString(),
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
@@ -235,10 +245,22 @@ const write = function (runtime, apiVersion) {
       return reply(resp)
     }
 
-    result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx)
+    if (!result) {
+      result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+    }
 
-    // FIXME double check uphold statuses
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
+
+    if (result.grantIds) {
+      // oh mongo
+      result.grantIds.forEach((grantId) => {
+        wallets.update({ 'paymentId': paymentId, 'grants.grantId': grantId }, { $set: { 'grants.$.status': 'completed' } })
+      })
+
+      await runtime.queue.send(debug, 'redeem-report', underscore.extend({ grantIds: result.grantIds }, { redeemed: true }))
+      result = underscore.omit(result, ['grantIds'])
+    }
 
     now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
@@ -390,7 +412,8 @@ module.exports.initialize = async (debug, runtime) => {
         httpSigningPubKey: '',
         providerId: '',
 
-        timestamp: bson.Timestamp.ZERO
+        timestamp: bson.Timestamp.ZERO,
+        grants: []
       },
       unique: [ { paymentId: 1 } ],
       others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 } ]
