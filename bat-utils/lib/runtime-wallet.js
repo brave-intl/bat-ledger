@@ -153,7 +153,6 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
   if (!this.runtime.config.redeemer) return
 
   // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
-  // grants = await grants.find({ paymentId: info.paymentId, redeemed: { $exists: false } }, { sort: { probi: 1 } })
   grants = info.grants.filter((grant) => grant.status === 'active')
   if (grants.length === 0) return
 
@@ -164,7 +163,7 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
 
   payload = {
     grants: [],
-    // TODO might need paymentId
+    // TODO might need paymentId later
     wallet: underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]),
     transaction: Buffer.from(JSON.stringify(underscore.pick(signature, [ 'headers', 'octets' ]))).toString('base64')
   }

@@ -331,11 +331,6 @@ module.exports.initialize = async (debug, runtime) => {
         // duplicated from "token" for filtering
         promotionId: '',
 
-        // FIXME not sure about the comment below
-        // duplicated from promotion to avoid having to do an aggregation pipeline
-        // active: false,
-        // priority: 99999,
-
         status: '', // active, completed, expired
 
         batchId: '',
@@ -343,8 +338,6 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { grantId: 1 } ],
       others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
-                // { active: 1 }, { priority: 1 },
-                // { paymentId: 1 }, { redeemed: 1 },
                 { status: 1 },
                 { batchId: 1 }, { timestamp: 1 } ]
     },
