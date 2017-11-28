@@ -999,7 +999,7 @@ module.exports.initialize = async (debug, runtime) => {
         probi: bson.Decimal128.POSITIVE_ZERO,
         currency: '',
         amount: bson.Decimal128.POSITIVE_ZERO,
-        commission: bson.Decimal128.POSITIVE_ZERO,    // conversion fees (i.e., for settlement)
+        commission: bson.Decimal128.POSITIVE_ZERO,    // conversion + network fees (i.e., for settlement)
 
         fees: bson.Decimal128.POSITIVE_ZERO,          // network fees (i.e., for contribution)
         timestamp: bson.Timestamp.ZERO
