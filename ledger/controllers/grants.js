@@ -95,6 +95,7 @@ v1.read = { handler: (runtime) => {
     if (paymentId) {
       promotionIds = []
       const wallet = await wallets.findOne({ paymentId: paymentId })
+      if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
       if (wallet.grants) {
         wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
       }
