@@ -117,3 +117,27 @@ services:
       - redis
     networks:
       - ledger
+  grant-redis:
+    container_name: grant-redis
+    image: redis:latest
+    networks:
+      - ledger
+  grant-web:
+    container_name: grant-web
+    image: bat-go
+    ports:
+      - "3333:3333"
+    environment:
+      - "REDIS_URL=${REDIS_URL-redis://grant-redis:6379}"
+      - BAT_SETTLEMENT_ADDRESS
+      - GRANT_SIGNATOR_PUBLIC_KEY
+      - GRANT_WALLET_CARD_ID
+      - GRANT_WALLET_PRIVATE_KEY
+      - GRANT_WALLET_PUBLIC_KEY
+      - TOKEN_LIST
+      - UPHOLD_ACCESS_TOKEN
+    depends_on:
+      - mongo
+      - grant-redis
+    networks:
+      - ledger
