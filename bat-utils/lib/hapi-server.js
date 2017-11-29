@@ -83,7 +83,7 @@ const Server = async (options, runtime) => {
 
             if ((graylist.authorizedAddrs) &&
                 ((graylist.authorizedAddrs.indexOf(ipaddr) !== -1) ||
-                 (underscore.find(graylist.authorizedBlocks, (block) => { block.contains(ipaddr) })))) {
+                 (underscore.find(graylist.authorizedBlocks, (block) => { return block.contains(ipaddr) })))) {
               return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
             }
 

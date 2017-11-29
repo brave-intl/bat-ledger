@@ -1,4 +1,5 @@
 const Joi = require('joi')
+const Netmask = require('netmask').Netmask
 const l10nparser = require('accept-language-parser')
 const boom = require('boom')
 const bson = require('bson')
@@ -9,6 +10,7 @@ const utils = require('bat-utils')
 const braveJoi = utils.extras.joi
 const braveHapi = utils.extras.hapi
 const braveUtils = utils.extras.utils
+const whitelist = utils.hapi.auth.whitelist
 
 const grantSchema = Joi.object().keys({
   grantId: Joi.string().guid().required().description('the grant-identifier'),
@@ -21,6 +23,26 @@ const grantSchema = Joi.object().keys({
 
 const v1 = {}
 
+const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
+
+if (qalist.addresses) {
+  qalist.authorizedAddrs = []
+  qalist.authorizedBlocks = []
+
+  qalist.addresses.forEach((entry) => {
+    if ((entry.indexOf('/') === -1) && (entry.split('.').length === 4)) return qalist.authorizedAddrs.push(entry)
+
+    qalist.authorizedBlocks.push(new Netmask(entry))
+  })
+}
+
+const qaOnlyP = (request) => {
+  const ipaddr = whitelist.ipaddr(request)
+
+  return (qalist.authorizedAddrs) && (qalist.authorizedAddrs.indexOf(ipaddr) === -1) &&
+    (!underscore.find(qalist.authorizedBlocks, (block) => { return block.contains(ipaddr) }))
+}
+
 /*
    GET /v1/promotions
  */
@@ -30,6 +52,8 @@ v1.all = { handler: (runtime) => {
     const debug = braveHapi.debug(module, request)
     const promotions = runtime.database.get('promotions', debug)
     let entries, results
+
+    if (qaOnlyP(request)) return reply(boom.notFound())
 
     entries = await promotions.find({}, { sort: { priority: 1 } })
 
@@ -91,6 +115,8 @@ v1.read = { handler: (runtime) => {
         if (f) f()
       }
     }
+
+    if (qaOnlyP(request)) return reply(boom.notFound())
 
     if (paymentId) {
       promotionIds = []
