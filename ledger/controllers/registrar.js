@@ -169,7 +169,13 @@ const createPersona = function (runtime, apiVersion) {
     }
 
     try {
+      const now = underscore.now()
       verification = registrar.register(proof)
+      runtime.newrelic.recordCustomEvent('register', {
+        registrarId: registrar.registrarId,
+        registrarType: registrar.registrarType,
+        duration: underscore.now() - now
+      })
     } catch (ex) {
       return reply(boom.badData('invalid registrar proof: ' + JSON.stringify(proof)))
     }

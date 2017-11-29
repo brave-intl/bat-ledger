@@ -325,7 +325,13 @@ v2.phase1 =
     }[surveyor.surveyorType]
     if ((!!f) && (await f())) return
 
+    const now = underscore.now()
     signature = surveyor.sign(uId)
+    runtime.newrelic.recordCustomEvent('sign', {
+      surveyorId: surveyor.surveyorId,
+      surveyorType: surveyor.surveyorType,
+      duration: underscore.now() - now
+    })
 
     var payload = surveyor.payload
     if (request.params.apiV === 'v1') {
@@ -378,7 +384,13 @@ v2.phase2 =
     if (!surveyor) return
 
     try {
+      const now = underscore.now()
       result = surveyor.verify(proof)
+      runtime.newrelic.recordCustomEvent('verify', {
+        surveyorId: surveyor.surveyorId,
+        surveyorType: surveyor.surveyorType,
+        duration: underscore.now() - now
+      })
       data = JSON.parse(result.data)
     } catch (ex) {
       return reply(boom.badData('invalid surveyor proof: ' + JSON.stringify(proof)))

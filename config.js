@@ -108,6 +108,8 @@ module.exports =
 , queue                 :
   { rsmq                : process.env.REDIS_URL                 || 'redis://localhost:6379' }
 , sentry                : { dsn: process.env.SENTRY_DSN         || false }
+, newrelic              : { key: process.env.NEWRELIC_LICENSE_KEY
+                                                                || false }
 , wallet                : { }
 }
 if (service.f) service.f()

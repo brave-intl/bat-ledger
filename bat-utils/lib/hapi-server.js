@@ -268,6 +268,7 @@ const Server = async (options, runtime) => {
     debug('begin', { sdebug: params })
   }).on('response', (request) => {
     if (!request.response) request.response = {}
+    const flattened = {}
     const logger = request._logger || []
     const params = {
       request: {
@@ -290,6 +291,19 @@ const Server = async (options, runtime) => {
     logger.forEach((entry) => {
       if ((entry.data) && (typeof entry.data.msec === 'number')) { params.request.duration = entry.data.msec }
     })
+
+    if ((runtime.newrelic) && (request.response._error)) {
+      underscore.keys(params).forEach(param => {
+        underscore.keys(params[param]).forEach(key => {
+          if ((param === 'error') && ((key === 'message') || (key === 'payload') || (key === 'stack'))) return
+
+          flattened[param + '.' + key] = params[param][key]
+        })
+      })
+      flattened.url = flattened['request.pathname']
+      delete flattened['request.pathname']
+      runtime.newrelic.noticeError(request.response._error, flattened)
+    }
 
     debug('end', { sdebug: params })
   })

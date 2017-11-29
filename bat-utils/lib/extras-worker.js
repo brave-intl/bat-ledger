@@ -41,7 +41,7 @@ const Worker = async (options, runtime) => {
       entries[queue] = true
 
       await runtime.queue.create(queue)
-      runtime.queue.listen(queue, async (err, debug, payload) => {
+      runtime.queue.listen(queue, runtime.newrelic.createBackgroundTransaction(name, async (err, debug, payload) => {
         if (err) {
           runtime.captureException(err)
           return debug(queue + ' listen', err)
@@ -49,8 +49,10 @@ const Worker = async (options, runtime) => {
 
         try { await working[queue](debug, runtime, payload) } catch (ex) {
           debug(queue, { payload: payload, err: ex, stack: ex.stack })
+          runtime.newrelic.noticeError(ex, payload)
         }
-      })
+        runtime.newrelic.endTransaction()
+      }))
 
       listeners[name].push(queue)
     }

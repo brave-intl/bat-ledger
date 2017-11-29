@@ -84,6 +84,7 @@
     "monk": "brave/monk",
     "monotonic-timestamp": "0.0.9",
     "netmask": "1.0.6",
+    "newrelic": "2.4.1",
     "node-anonize2-relic": "0.1.6",
     "node-binance-api": "0.2.5",
     "node-cache": "4.1.1",
