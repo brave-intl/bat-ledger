@@ -304,13 +304,6 @@ const maintenance = async (config, runtime) => {
   const now = underscore.now()
   let fxrates, results, tickers
 
-  if (flatlineP) {
-    debug('maintenance', { message: 'no trades reported' })
-    runtime.captureException(new Error('maintenance reports flatline'))
-    process.exit(0)
-  }
-  flatlineP = true
-
   if (config.helper) {
     try {
       results = await retrieve(runtime, config.helper.url + '/v1/rates', {
@@ -320,7 +313,6 @@ const maintenance = async (config, runtime) => {
         },
         useProxyP: true
       }, Currency.prototype.schemas.rates)
-      flatlineP = false
     } catch (ex) {
       runtime.captureException(ex)
     }
@@ -334,6 +326,13 @@ const maintenance = async (config, runtime) => {
 
     return
   }
+
+  if (flatlineP) {
+    debug('maintenance', { message: 'no trades reported' })
+    runtime.captureException(new Error('maintenance reports flatline'))
+    process.exit(0)
+  }
+  flatlineP = true
 
   if (singleton.oxr) {
     try { fxrates = await singleton.oxr.latest() } catch (ex) {
