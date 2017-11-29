@@ -164,7 +164,7 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
   payload = {
     grants: [],
     // TODO might need paymentId later
-    wallet: underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]),
+    wallet: underscore.extend(underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]), { publicKey: info.httpSigningPubKey }),
     transaction: Buffer.from(JSON.stringify(underscore.pick(signature, [ 'headers', 'octets' ]))).toString('base64')
   }
   grantIds = []
