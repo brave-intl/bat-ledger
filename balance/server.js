@@ -12,7 +12,7 @@ if (config.newrelic) {
     const appname = path.parse(__filename).name
 
     if (process.env.NODE_ENV === 'production') {
-      config.newrelic.appname = appname + '@' + tldjs.getSubdomain(process.env.HOST)
+      config.newrelic.appname = appname + '.' + tldjs.getSubdomain(process.env.HOST)
     } else {
       config.newrelic.appname = 'bat-' + process.env.SERVICE + '-' + appname + '@' + os.hostname()
     }
