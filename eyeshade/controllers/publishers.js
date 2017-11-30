@@ -515,7 +515,7 @@ v1.getStatement = {
       await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, publisher: publisher },
                                                    request.query,
-                                                   { authority: 'automated', summary: false }))
+                                                   { authority: 'automated', summary: true }))
       reply({ reportURL: reportURL })
     }
   },
