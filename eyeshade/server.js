@@ -5,14 +5,17 @@ const os = require('os')
 const path = require('path')
 
 const tldjs = require('tldjs')
-const underscore = require('underscore')
 
 const config = require('../config.js')
 if (config.newrelic) {
-  console.log('\nnewrelic=' + JSON.stringify(config.newrelic, null, 2))
   if (!config.newrelic.appname) {
-    config.newrelic.appname = 'bat-' + process.env.SERVICE + '-server@' +
-      ((process.env.NODE_ENV !== 'production') ? os.hostname() : tldjs.getSubdomain(process.env.HOST))
+    const appname = path.parse(__filename).name
+
+    if (process.env.NODE_ENV === 'production') {
+      config.newrelic.appname = appname + '@' + tldjs.getSubdomain(process.env.HOST)
+    } else {
+      config.newrelic.appname = 'bat-' + process.env.SERVICE + '-' + appname + '@' + os.hostname()
+    }
   }
   process.env.NEW_RELIC_APP_NAME = config.newrelic.appname
 
