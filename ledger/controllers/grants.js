@@ -185,7 +185,7 @@ v1.write = { handler: (runtime) => {
 
     const promotion = await promotions.findOne({ promotionId: promotionId })
     if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
-    if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
+    if (!promotion.active) return reply(boom.badData('promotion is not active: ' + promotionId))
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -196,7 +196,7 @@ v1.write = { handler: (runtime) => {
 
     // pop off one grant
     grant = await grants.findOneAndDelete({ status: 'active', promotionId: promotionId })
-    if (!grant) return reply(boom.notFound('promotion not available'))
+    if (!grant) return reply(boom.badData('promotion not available'))
 
     // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
     wallet = await wallets.findOneAndUpdate({ 'paymentId': paymentId, 'grants.promotionId': { '$ne': promotionId } },
