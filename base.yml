@@ -10,6 +10,8 @@ services:
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
       - BALANCE_CACHE_TTL_S
+      - BALANCE_TOKEN
+      - BALANCE_URL
       - BAT_SETTLEMENT_ADDRESS
       - BITCOIN_AVERAGE_PUBLIC_KEY
       - BITCOIN_AVERAGE_SECRET_KEY
