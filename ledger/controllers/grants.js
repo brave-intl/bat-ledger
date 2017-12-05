@@ -208,6 +208,22 @@ v1.write = { handler: (runtime) => {
       return reply(boom.badData('promotion already applied to wallet'))
     }
 
+    if (runtime.config.balance) {
+      // invalidate any cached balance
+      try {
+        await braveHapi.wreck.delete(runtime.config.balance.url + '/v2/wallet/' + paymentId + '/balance',
+          {
+            headers: {
+              authorization: 'Bearer ' + runtime.config.balance.access_token,
+              'content-type': 'application/json'
+            },
+            useProxyP: true
+          })
+      } catch (ex) {
+        runtime.captureException(ex, { req: request })
+      }
+    }
+
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
       $inc: { count: -1 }

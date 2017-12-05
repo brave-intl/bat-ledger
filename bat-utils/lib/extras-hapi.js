@@ -189,6 +189,12 @@ const WreckPatch = async (server, opts) => {
   return payload
 }
 
-exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut }
+const WreckDelete = async (server, opts) => {
+  const params = WreckProxy(server, opts)
+  const { res, payload } = await wreck.delete(params.server, params.opts) // eslint-disable-line no-unused-vars
+  return payload
+}
+
+exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
 
 module.exports = exports

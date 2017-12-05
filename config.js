@@ -24,6 +24,12 @@ const services = {
         { cardId               : process.env.REDEEMER_CARD_ID
         }
       }
+      if (process.env.BALANCE_URL) {
+        module.exports.balance =
+          { url                 : process.env.BALANCE_URL    || 'http://127.0.0.1:3000'
+          , access_token        : process.env.BALANCE_TOKEN  || '00000000-0000-4000-0000-000000000000'
+          }
+      }
 
       helper()
       uphold()
