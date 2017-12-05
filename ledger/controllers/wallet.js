@@ -65,6 +65,7 @@ const read = function (runtime, apiVersion) {
       if (wallet.grants) {
         wallet.grants.forEach((grant) => {
           if (grant.status === 'active') {
+            // TODO check claimTimestamp against validDuration - update to expired state & exclude from calc
             const grantContent = braveUtils.extractJws(grant.token)
             balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
           }

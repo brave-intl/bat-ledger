@@ -198,14 +198,33 @@ v1.write = { handler: (runtime) => {
     grant = await grants.findOneAndDelete({ status: 'active', promotionId: promotionId })
     if (!grant) return reply(boom.badData('promotion not available'))
 
+    const grantInfo = underscore.extend(underscore.pick(grant, ['token', 'grantId', 'promotionId', 'status']),
+      {claimTimestamp: Date.now()}
+    )
+
     // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
     wallet = await wallets.findOneAndUpdate({ 'paymentId': paymentId, 'grants.promotionId': { '$ne': promotionId } },
-                            { $push: { grants: grant } }
+                            { $push: { grants: grantInfo } }
     )
     if (!wallet) {
       // reinsert grant, another request already added a grant for this promotion to the wallet
       grants.insertOne(grant)
       return reply(boom.badData('promotion already applied to wallet'))
+    }
+
+    // register the users claim to the grant with the redemption server
+    const payload = { wallet: underscore.pick(wallet, ['altcurrency', 'provider', 'providerId']) }
+    try {
+      result = await braveHapi.wreck.put(runtime.config.redeemer.url + '/v1/grants/' + grant.grantId, {
+        headers: {
+          authorization: 'Bearer ' + runtime.config.redeemer.access_token,
+          'content-type': 'application/json'
+        },
+        payload: JSON.stringify(payload),
+        useProxyP: true
+      })
+    } catch (ex) {
+      runtime.captureException(ex, { req: request })
     }
 
     if (runtime.config.balance) {
