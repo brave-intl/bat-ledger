@@ -160,7 +160,7 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
 
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
-  desired = new BigNumber(txn.denomination.amount)
+  desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
   if (balance.greaterThanOrEqualTo(desired)) return
 
   payload = {
