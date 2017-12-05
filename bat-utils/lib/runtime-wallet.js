@@ -152,6 +152,8 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
 
   if (!this.runtime.config.redeemer) return
 
+  if (!info.grants) return
+
   // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
   grants = info.grants.filter((grant) => grant.status === 'active')
   if (grants.length === 0) return
