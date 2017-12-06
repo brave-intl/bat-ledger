@@ -158,6 +158,8 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
   grants = info.grants.filter((grant) => grant.status === 'active')
   if (grants.length === 0) return
 
+  // TODO check claimTimestamp against validDuration - update to expired state & exclude from calc
+
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
   desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
