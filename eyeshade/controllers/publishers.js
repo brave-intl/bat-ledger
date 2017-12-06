@@ -86,7 +86,7 @@ v1.bulk = {
 }
 
 /*
-   POST /v2/publishers/settlement/{hash}
+   POST /v2/publishers/settlement
  */
 
 v2.settlement = {
@@ -515,7 +515,7 @@ v1.getStatement = {
       await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, publisher: publisher },
                                                    request.query,
-                                                   { authority: 'automated', summary: false }))
+                                                   { authority: 'automated', summary: true }))
       reply({ reportURL: reportURL })
     }
   },
@@ -935,7 +935,7 @@ const notify = async (debug, runtime, publisher, payload) => {
 
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/publishers').config(v1.bulk),
-  braveHapi.routes.async().post().path('/v2/publishers/settlement/{hash}').config(v2.settlement),
+  braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement),
   braveHapi.routes.async().path('/v2/publishers/{publisher}/balance').whitelist().config(v2.getBalance),
   braveHapi.routes.async().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.getWallet),
   braveHapi.routes.async().put().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.putWallet),

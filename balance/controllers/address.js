@@ -140,7 +140,39 @@ v2.walletBalance =
   }
 }
 
+/*
+   DELETE /v2/wallet/{paymentId}/balance
+ */
+
+v2.invalidateWalletBalance =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const paymentId = request.params.paymentId
+
+    await runtime.cache.del(paymentId, 'ledgerBalance:walletInfo')
+
+    reply({})
+  }
+},
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Invalidate the cached balance of a ledger wallet',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    }
+  },
+
+  response: { schema: Joi.object().length(0) }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/card/BAT/{cardId}/balance').config(v2.batBalance),
-  braveHapi.routes.async().path('/v2/wallet/{paymentId}/balance').config(v2.walletBalance)
+  braveHapi.routes.async().path('/v2/wallet/{paymentId}/balance').config(v2.walletBalance),
+  braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance)
 ]

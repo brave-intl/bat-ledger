@@ -24,7 +24,7 @@ const internals = {
 exports.authorizedP = (ipaddr) => {
   if ((authorizedAddrs) &&
         ((authorizedAddrs.indexOf(ipaddr) !== -1) ||
-         (underscore.find(authorizedBlocks, (block) => { block.contains(ipaddr) })))) return true
+         (underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) })))) return true
 }
 
 exports.ipaddr = (request) => {
@@ -37,7 +37,7 @@ exports.authenticate = (request, reply) => {
 
   if ((authorizedAddrs) &&
         (authorizedAddrs.indexOf(ipaddr) === -1) &&
-        (!underscore.find(authorizedBlocks, (block) => { block.contains(ipaddr) }))) return reply(boom.notAcceptable())
+        (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) return reply(boom.notAcceptable())
 
   try {
     result = reply.continue({ credentials: { ipaddr: ipaddr } })

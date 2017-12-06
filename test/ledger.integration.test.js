@@ -293,17 +293,6 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   t.true(response.body.payload.adFree.hasOwnProperty('probi'))
   // const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
 
-  do { // This depends on currency conversion rates being available, retry until then are available
-    response = await request(srv.listener)
-      .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
-    if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
-  } while (response.status === 503)
-  var err = ok(response)
-  if (err) throw err
-
-  t.true(response.body.hasOwnProperty('balance'))
-  t.is(response.body.balance, '0.0000')
-
   // get available grant
   response = await request(srv.listener)
     .get('/v1/grants')
@@ -328,7 +317,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await snooze(500)
   } while (response.status === 503 || response.body.balance === '0.0000')
-  err = ok(response)
+  var err = ok(response)
   if (err) throw err
 
   t.is(Number(response.body.unsignedTx.denomination.amount), Number(desired))
@@ -393,7 +382,8 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   viewingCredential.finalize(response.body.verification)
 
-  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
+  // const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
+  const votes = ['basicattentiontoken.org']
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
     response = await request(srv.listener)

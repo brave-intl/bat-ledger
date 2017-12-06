@@ -152,19 +152,23 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
 
   if (!this.runtime.config.redeemer) return
 
+  if (!info.grants) return
+
   // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
   grants = info.grants.filter((grant) => grant.status === 'active')
   if (grants.length === 0) return
 
+  // TODO check claimTimestamp against validDuration - update to expired state & exclude from calc
+
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
-  desired = new BigNumber(txn.denomination.amount)
+  desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
   if (balance.greaterThanOrEqualTo(desired)) return
 
   payload = {
     grants: [],
     // TODO might need paymentId later
-    wallet: underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]),
+    wallet: underscore.extend(underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]), { publicKey: info.httpSigningPubKey }),
     transaction: Buffer.from(JSON.stringify(underscore.pick(signature, [ 'headers', 'octets' ]))).toString('base64')
   }
   grantIds = []
