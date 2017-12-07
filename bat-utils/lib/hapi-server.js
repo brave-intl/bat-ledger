@@ -8,6 +8,7 @@ const cryptiles = require('cryptiles')
 const bell = require('bell')
 const blipp = require('blipp')
 const boom = require('boom')
+const epimetheus = require('epimetheus')
 const hapi = require('hapi')
 const inert = require('inert')
 const Netmask = require('netmask').Netmask
@@ -56,6 +57,7 @@ const Server = async (options, runtime) => {
     })
   }
 
+  epimetheus.instrument(server)
   server.register(
     [ bell,
       blipp,
