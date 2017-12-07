@@ -363,6 +363,7 @@ const publisherCompare = (a, b) => {
 
 const publisherContributions = (runtime, publishers, authority, authorized, verified, format, reportId, summaryP, threshold,
                               usd) => {
+  const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
   let data, fees, results, probi
 
   results = []
@@ -383,8 +384,8 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
     result.fees = result.fees.truncated().toString()
 
     result.votes.forEach((vote) => {
-      vote['publisher USD'] = usd && vote.probi.times(usd).toFixed(2)
-      vote['processor USD'] = usd && vote.fees.times(usd).toFixed(2)
+      vote['publisher USD'] = usd && vote.probi.times(usd).dividedBy(scale).toFixed(2)
+      vote['processor USD'] = usd && vote.fees.times(usd).dividedBy(scale).toFixed(2)
       vote.probi = vote.probi.truncated().toString()
       vote.fees = vote.fees.truncated().toString()
     })
@@ -402,8 +403,8 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
         result.authority = authority
         result.transactionId = reportId
         result.currency = 'USD'
-        result.amount = usd && new BigNumber(entry.probi).times(usd).toFixed(2)
-        result.fee = usd && new BigNumber(entry.fees).times(usd).toFixed(2)
+        result.amount = usd && new BigNumber(entry.probi).times(usd).dividedBy(scale).toFixed(2)
+        result.fee = usd && new BigNumber(entry.fees).times(usd).dividedBy(scale).toFixed(2)
         publishers.push(result)
       })
 
@@ -428,8 +429,8 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
       altcurrency: result.altcurrency,
       probi: result.probi,
       fees: result.fees,
-      'publisher USD': usd && new BigNumber(result.probi).times(usd).toFixed(2),
-      'processor USD': usd && new BigNumber(result.fees).times(usd).toFixed(2),
+      'publisher USD': usd && new BigNumber(result.probi).times(usd).dividedBy(scale).toFixed(2),
+      'processor USD': usd && new BigNumber(result.fees).times(usd).dividedBy(scale).toFixed(2),
       timestamp: lastxn && lastxn.timestamp && dateformat(lastxn.timestamp, datefmt)
     }
     if (authority) {
@@ -448,9 +449,8 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
   return { data: data, altcurrency: altcurrency, probi: probi, fees: fees }
 }
 
-const publisherSettlements = (runtime, entries, format, summaryP, usd) => {
+const publisherSettlements = (runtime, entries, format, summaryP) => {
   const publishers = {}
-
   let amount, commission, currency, data, fees, lastxn, results, probi
 
   entries.forEach((entry) => {
@@ -616,6 +616,7 @@ exports.workers = {
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const tokens = runtime.database.get('tokens', debug)
+      const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
 
       publishers = await mixer(debug, runtime, publisher, undefined)
@@ -668,8 +669,7 @@ exports.workers = {
         })
       }
 
-      usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
-      if (usd) usd = new BigNumber(usd.toString())
+      usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || new BigNumber(0)
       info = publisherContributions(runtime, publishers, authority, authorized, verified, format, reportId, summaryP,
                                     threshold, usd)
       data = info.data
@@ -712,8 +712,8 @@ exports.workers = {
           altcurrency: info.altcurrency,
           probi: info.probi.truncated().toString(),
           fees: info.fees.truncated().toString(),
-          'publisher USD': usd && info.probi.times(usd).toFixed(2),
-          'processor USD': usd && info.fees.times(usd).toFixed(2)
+          'publisher USD': usd && info.probi.times(usd).dividedBy(scale).toFixed(2),
+          'processor USD': usd && info.fees.times(usd).dividedBy(scale).toFixed(2)
         })
       } else if (data.length === 0) {
         data.push({
@@ -754,13 +754,11 @@ exports.workers = {
       const publisher = payload.publisher
       const summaryP = payload.summary
       const settlements = runtime.database.get('settlements', debug)
-      let data, entries, file, info, usd
+      let data, entries, file, info
 
       entries = publisher ? (await settlements.find({ publisher: publisher })) : (await settlements.find())
 
-      usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
-      if (usd) usd = new BigNumber(usd.toString())
-      info = publisherSettlements(runtime, entries, format, summaryP, usd)
+      info = publisherSettlements(runtime, entries, format, summaryP)
       data = info.data
 
       file = await create(runtime, 'publishers-settlements-', payload)
@@ -829,6 +827,7 @@ exports.workers = {
       const summaryP = payload.summary
       const publisher = payload.publisher
       const settlements = runtime.database.get('settlements', debug)
+      const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, data1, data2, file, entries, publishers, query, usd
       let ending = payload.ending
 
@@ -854,8 +853,7 @@ exports.workers = {
         })
       }
 
-      usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || 0
-      if (usd) usd = new BigNumber(usd.toString())
+      usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || new BigNumber(0)
       data = []
       data1 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
       data2 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
@@ -875,7 +873,7 @@ exports.workers = {
         data1.fees = data1.fees.plus(info.fees)
         if (!summaryP) data.push([])
 
-        info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP, usd)
+        info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP)
         info.data.forEach((datum) => {
           datum.probi = datum.probi.toString()
           datum.amount = datum.amount.toString()
@@ -892,8 +890,8 @@ exports.workers = {
           altcurrency: data1.altcurrency,
           probi: data1.probi.toString(),
           fees: data1.fees.toString(),
-          'publisher USD': usd && data1.probi.times(usd).toFixed(2),
-          'processor USD': usd && data1.fees.times(usd).toFixed(2)
+          'publisher USD': usd && data1.probi.times(usd).dividedBy(scale).toFixed(2),
+          'processor USD': usd && data1.fees.times(usd).dividedBy(scale).toFixed(2)
         })
         if (!summaryP) data.push([])
         data.push({
@@ -903,27 +901,36 @@ exports.workers = {
         })
       }
 
+      data.forEach((datum) => {
+        const probi2alt = (probi) => { return new BigNumber(probi).dividedBy(runtime.currency.alt2scale(altcurrency)) }
+
+        if (typeof datum.probi !== 'undefined') datum.probi = probi2alt(datum.probi)
+        if (typeof datum.fees !== 'undefined') datum.fees = probi2alt(datum.fees)
+      })
+
       file = await create(runtime, 'publishers-statements-', payload)
       try {
-        await file.write(json2csv({
-          data: data,
-          fields: [
-            'timestamp', 'publisher',
-            'publisher USD', 'processor USD',
-            'currency', 'amount',
-            'transactionId',
-            'altcurrency', 'probi', 'fees',
-            'counts', 'address'
-          ],
-          fieldNames: [
-            'timestamp', 'publisher',
-            'estimated USD', 'estimated fees',
-            'currency', 'amount',
-            'transactionId',
-            'altcurrency', 'probi', 'fees',
-            'counts', 'address'
-          ]
-        }), true)
+        let fields = []
+        let fieldNames = []
+
+        fields.push('timestamp', 'publisher')
+        fieldNames.push('timestamp', 'publisher')
+        fields.push('publisher USD', 'processor USD')
+        fieldNames.push('estimated USD', 'estimated fees')
+        fields.push('currency', 'amount')
+        fieldNames.push('currency', 'amount')
+        if (!summaryP) {
+          fields.push('transactionId', 'altcurrency')
+          fieldNames.push('transactionId', 'altcurrency')
+        }
+        fields.push('probi', 'fees')
+        fieldNames.push(altcurrency, altcurrency + ' fees')
+        if (!summaryP) {
+          fields.push('counts', 'address')
+          fieldNames.push('counts', 'address')
+        }
+
+        await file.write(json2csv({ data: data, fields: fields, fieldNames: fieldNames }), true)
       } catch (ex) {
         debug('reports', { report: 'report-publishers-statements', reason: ex.toString() })
         file.close()

@@ -1,13 +1,14 @@
 const BigNumber = require('bignumber.js')
 const Joi = require('joi')
 const NodeCache = require('node-cache')
+const Promise = require('bluebird')
 const SDebug = require('sdebug')
+const WebSocket = require('faye-websocket')
 const binance = require('node-binance-api')
 const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
 const oxr = require('oxr')
 const underscore = require('underscore')
-const WebSocket = require('faye-websocket')
 
 const braveHapi = require('./extras-hapi')
 
@@ -77,19 +78,21 @@ Currency.prototype.fxrates = {}
 Currency.prototype.rates = {}
 
 Currency.prototype.init = function () {
-  this.config.altcoins.forEach((altcoin) => {
+  const self = this
+
+  self.config.altcoins.forEach((altcoin) => {
     const f = altcoins[altcoin]
 
-    if ((f) && (f.p)) f.p(this.config, this.runtime)
+    if ((f) && (f.p)) f.p(self.config, self.runtime)
   })
 
-  setInterval(function () { maintenance(this.config, this.runtime) }.bind(this), 1 * msecs.minute)
+  setInterval(function () { maintenance(self.config, self.runtime) }, 1 * msecs.minute)
 
-  if (this.config.helper) return maintenance(this.config, this.runtime)
+  if (self.config.helper) return maintenance(self.config, self.runtime)
 
-  monitor1(this.config, this.runtime)
-  monitor2(this.config, this.runtime)
-  monitor3(this.config, this.runtime)
+  monitor1(self.config, self.runtime)
+  monitor2(self.config, self.runtime)
+  monitor3(self.config, self.runtime)
 }
 
 const schemaBINANCE =
@@ -322,6 +325,10 @@ const maintenance = async (config, runtime) => {
 
       underscore.extend(singleton[key], results[key])
       Currency.prototype[key] = singleton[key]
+    })
+
+    singleton.config.altcoins.forEach((currency) => {
+      debug(currency + ' fiat rates', JSON.stringify(underscore.pick(singleton.rates[currency], fiats)))
     })
 
     return
@@ -566,11 +573,11 @@ Currency.prototype.alt2fiat = function (altcurrency, probi, currency, floatP) {
 
   if (!(probi instanceof BigNumber)) probi = new BigNumber(probi.toString())
   amount = probi.times(new BigNumber(rate.toString()))
+  if (floatP) return amount
+
   if (scale) amount = amount.dividedBy(scale)
 
-  if (!floatP) return amount.toFixed(entry ? entry.digits : 2)
-
-  return amount.toNumber()
+  return amount.toFixed(entry ? entry.digits : 2)
 }
 
 Currency.prototype.fiat2alt = function (currency, amount, altcurrency) {
