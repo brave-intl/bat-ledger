@@ -305,9 +305,11 @@ const monitor3 = (config, runtime) => {
 
 const maintenance = async (config, runtime) => {
   const now = underscore.now()
-  let fxrates, results, tickers
+  let fxrates, rates, results, tickers
 
   if (config.helper) {
+    rates = JSON.parse(JSON.stringify(singleton.rates))
+
     try {
       results = await retrieve(runtime, config.helper.url + '/v1/rates', {
         headers: {
@@ -326,8 +328,9 @@ const maintenance = async (config, runtime) => {
       underscore.extend(singleton[key], results[key])
       Currency.prototype[key] = singleton[key]
     })
-
     singleton.config.altcoins.forEach((currency) => {
+      if (underscore.isEqual(rates[currency], singleton.rates[currency])) return
+
       debug(currency + ' fiat rates', JSON.stringify(underscore.pick(singleton.rates[currency], fiats)))
     })
 
