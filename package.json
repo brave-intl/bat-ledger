@@ -82,7 +82,7 @@
     "minimatch": "^3.0.4",
     "moment": "^2.18.1",
     "mongodb": "^2.2.31",
-    "monk": "brave/monk",
+    "monk": "6.0.5",
     "monotonic-timestamp": "0.0.9",
     "netmask": "1.0.6",
     "newrelic": "2.4.1",
@@ -106,8 +106,8 @@
     "wreck": "13.0.1"
   },
   "engines": {
-    "node": "7.10.1",
-    "npm": "4.2.0"
+    "node": "8.9.2",
+    "npm": "5.5.1"
   },
   "devDependencies": {
     "ava": "^0.22.0",
