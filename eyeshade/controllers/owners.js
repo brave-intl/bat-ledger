@@ -281,7 +281,9 @@ v1.putWallet = {
       const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
-      let entry, state
+      const publishers = runtime.database.get('publishers', debug)
+      const sites = []
+      let entry, entries, state
 
       entry = await owners.findOne({ owner: owner })
       if (!entry) return reply(boom.notFound('no such entry: ' + owner))
@@ -294,10 +296,17 @@ v1.putWallet = {
       }
       await owners.update({ owner: owner }, state, { upsert: true })
 
+      entries = await publishers.find({ owner: owner })
+      entries.forEach((entry) => {
+        const props = batPublisher.getPublisherProps(entry.publisher)
+
+        if (props && props.URL) sites.push(props.URL)
+      })
+      if (sites.length === 0) sites.push('none')
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'owner ' + entry.ownerName + ' <' + entry.ownerEmail + '> ' + querystring.unescape(owner) + ' registered with ' +
-          provider
+          provider + ': ' + sites.join(' ')
       })
 
       reply({})
