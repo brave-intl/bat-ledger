@@ -43,6 +43,7 @@ Database.prototype.middleware = (context) => {
         prefix = collection.name + '.' + prefix
         if (params === collection.name) query = ''
       }
+      ndebug('%s: %s', prefix, query || '')
       if (query) prefix += ' ' + query
 
       return next(args, method).then((result) => {
@@ -89,10 +90,10 @@ Database.prototype.file = async function (filename, mode, options) {
 }
 
 Database.prototype.purgeSince = async function (debug, runtime, timestamp) {
-  const reports = this.db.get('fs.files', debug)
+  const reports = this.get('fs.files', debug)
   let entries, names
 
-  await reports.index({ uploadDate: 1 }, { unique: false })
+  await reports.createIndex({ uploadDate: 1 }, { unique: false })
 
   entries = await reports.find({
     _id: { $lte: bson.ObjectId(Math.floor(timestamp / 1000.0).toString(16) + '0000000000000000') }
