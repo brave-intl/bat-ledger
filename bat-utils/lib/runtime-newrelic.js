@@ -4,10 +4,10 @@ const Newrelic = function (config, runtime) {
   if (!(this instanceof Newrelic)) return new Newrelic(config, runtime)
 
   let newrelic = {
-    createBackgroundTransaction: (name, group, cb) => { return (cb || group) },
+    startBackgroundTransaction: (name, group, cb) => { return ((cb || group)()) },
+    getTransaction: () => { return { end: () => {} } },
     noticeError: (ex, params) => {},
-    recordCustomEvent: (eventType, attributes) => {},
-    endTransaction: () => {}
+    recordCustomEvent: (eventType, attributes) => {}
   }
 
   if ((!config.newrelic) || (!config.newrelic.key)) return newrelic
