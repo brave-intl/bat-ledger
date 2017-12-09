@@ -43,7 +43,6 @@ Database.prototype.middleware = (context) => {
         prefix = collection.name + '.' + prefix
         if (params === collection.name) query = ''
       }
-      ndebug('%s: %s', prefix, query || '')
       if (query) prefix += ' ' + query
 
       return next(args, method).then((result) => {
