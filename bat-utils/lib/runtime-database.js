@@ -52,9 +52,9 @@ Database.prototype.middleware = (context) => {
           if (result._id) values = result._id
           else if (Array.isArray(result) && (typeof result.length === 'number')) {
             values = []
-            result.forEach((entry) => { if (entry._id) values.push(entry._id) })
+            if (result.length < 4) { result.forEach((entry) => { if (entry._id) values.push(entry._id) }) }
             if (result.length === values.length) values = stringify(values)
-            else values = result.length + ' result' + (result.length === 1 ? 's' : '')
+            else values = result.length + ' result' + (result.length !== 1 ? 's' : '')
           }
         }
 

@@ -4,7 +4,9 @@ const underscore = require('underscore')
 const reports = require('./reports.js')
 const create = reports.create
 const publish = reports.publish
-const timeout = require('bat-utils').extras.utils.timeout
+const utils = require('bat-utils').extras.utils
+const utf8ify = utils.utf8ify
+const timeout = utils.timeout
 
 var exports = {}
 
@@ -71,9 +73,9 @@ exports.workers = {
 
       file = await create(runtime, 'publishers-', payload)
       if (format === 'json') {
-        await file.write(JSON.stringify(publishers, null, 2), true)
+        await file.write(utf8ify(publishers), true)
       } else {
-        try { await file.write(json2csv({ data: publishers }), true) } catch (ex) {
+        try { await file.write(utf8ify(json2csv({ data: publishers })), true) } catch (ex) {
           debug('reports', { report: 'bulk-publishers-create', reason: ex.toString() })
           file.close()
         }

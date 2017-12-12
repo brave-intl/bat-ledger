@@ -9,4 +9,13 @@ exports.extractJws = (jws) => {
   return JSON.parse(buf.toString('utf8'))
 }
 
+// courtesy of https://stackoverflow.com/questions/31649362/json-stringify-and-unicode-characters#31652607
+exports.utf8ify = (data) => {
+  if (typeof data !== 'string') data = JSON.stringify(data, null, 2)
+
+  return data.replace(/[\u007F-\uFFFF]/g, (c) => {
+    return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).substr(-4)
+  })
+}
+
 module.exports = exports

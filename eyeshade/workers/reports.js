@@ -6,7 +6,9 @@ const json2csv = require('json2csv')
 const moment = require('moment')
 const underscore = require('underscore')
 
-const braveHapi = require('bat-utils').extras.hapi
+const braveExtras = require('bat-utils').extras
+const braveHapi = braveExtras.hapi
+const utf8ify = braveExtras.utils.utf8ify
 
 BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 
@@ -348,6 +350,9 @@ const mixer = async (debug, runtime, publisher, qid) => {
 const publisherCompare = (a, b) => {
   const aProps = batPublisher.getPublisherProps(a.publisher)
   const bProps = batPublisher.getPublisherProps(b.publisher)
+
+// cf., https://en.wikipedia.org/wiki/Robustness_principle
+  if (!aProps) { return (bProps ? (-1) : 0) } else if (!bProps) { return 1 }
 
   if (aProps.publisherType) {
     return ((!bProps.publisherType) ? 1
@@ -699,7 +704,7 @@ exports.workers = {
             }
           } catch (ex) {}
         }
-        await file.write(JSON.stringify(data, null, 2), true)
+        await file.write(utf8ify(data), true)
         return runtime.notify(debug, {
           channel: '#publishers-bot',
           text: authority + ' report-publishers-contributions completed'
@@ -726,7 +731,7 @@ exports.workers = {
         })
       }
 
-      try { await file.write(json2csv({ data: data }), true) } catch (ex) {
+      try { await file.write(utf8ify(json2csv({ data: data })), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-contributions', reason: ex.toString() })
         file.close()
       }
@@ -763,7 +768,7 @@ exports.workers = {
 
       file = await create(runtime, 'publishers-settlements-', payload)
       if (format === 'json') {
-        await file.write(JSON.stringify(data, null, 2), true)
+        await file.write(utf8ify(data), true)
         return runtime.notify(debug, {
           channel: '#publishers-bot',
           text: authority + ' report-publishers-settlements completed' })
@@ -789,7 +794,7 @@ exports.workers = {
         })
       }
 
-      try { await file.write(json2csv({ data: data }), true) } catch (ex) {
+      try { await file.write(utf8ify(json2csv({ data: data })), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-settlements', reason: ex.toString() })
         file.close()
       }
@@ -842,7 +847,7 @@ exports.workers = {
         publishers = await mixer(debug, runtime, publisher, query._id)
       } else {
         entries = await settlements.find(owner ? { owner: owner } : hash ? { hash: hash } : {})
-        if (rollupP) {
+        if ((rollupP) && (entries.length > 0)) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
           entries = await settlements.find(query)
@@ -930,7 +935,7 @@ exports.workers = {
           fieldNames.push('counts', 'address')
         }
 
-        await file.write(json2csv({ data: data, fields: fields, fieldNames: fieldNames }), true)
+        await file.write(utf8ify(json2csv({ data: data, fields: fields, fieldNames: fieldNames })), true)
       } catch (ex) {
         debug('reports', { report: 'report-publishers-statements', reason: ex.toString() })
         file.close()
@@ -1088,7 +1093,7 @@ exports.workers = {
 
       file = await create(runtime, 'publishers-status-', payload)
       if (format === 'json') {
-        await file.write(JSON.stringify(data, null, 2), true)
+        await file.write(utf8ify(data), true)
         return runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-status completed' })
       }
 
@@ -1131,7 +1136,7 @@ exports.workers = {
         'verificationId', 'reason',
         'daysInQueue', 'created', 'modified' ]
       if (!summaryP) fields.push('token')
-      try { await file.write(json2csv({ data: data, fields: fields }), true) } catch (ex) {
+      try { await file.write(utf8ify(json2csv({ data: data, fields: fields })), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-status', reason: ex.toString() })
         file.close()
       }
@@ -1226,7 +1231,7 @@ exports.workers = {
 
       file = await create(runtime, 'surveyors-contributions-', payload)
       if (format === 'json') {
-        await file.write(JSON.stringify(results, null, 2), true)
+        await file.write(utf8ify(results), true)
         return runtime.notify(debug, {
           channel: '#publishers-bot',
           text: authority + ' report-surveyors-contributions completed'
@@ -1241,7 +1246,7 @@ exports.workers = {
       fields = [ 'surveyorId', 'probi', 'fee', 'inputs', 'quantum' ]
       if (!summaryP) fields.push('publisher')
       fields = fields.concat([ 'votes', 'created', 'modified' ])
-      try { await file.write(json2csv({ data: results, fields: fields }), true) } catch (ex) {
+      try { await file.write(utf8ify(json2csv({ data: results, fields: fields })), true) } catch (ex) {
         debug('reports', { report: 'report-surveyors-contributions', reason: ex.toString() })
         file.close()
       }
