@@ -9,7 +9,7 @@ const braveJoi = utils.extras.joi
 const v1 = {}
 
 /*
-   GET /v1/address/{paymentId}
+   GET /v1/address/{altcurrency}/{address}
  */
 
 v1.get =
