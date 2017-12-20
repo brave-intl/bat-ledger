@@ -382,8 +382,8 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   viewingCredential.finalize(response.body.verification)
 
-  // const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
-  const votes = ['basicattentiontoken.org']
+  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
+  // const votes = ['basicattentiontoken.org']
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
     response = await request(srv.listener)
