@@ -1162,7 +1162,7 @@ exports.workers = {
       const summaryP = payload.summary
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let data, fields, file, previous, results, slices, publishers
+      let data, fields, file, mixerP, previous, results, slices, publishers
 
       if (!summaryP) {
         previous = await settlements.aggregate([
@@ -1188,6 +1188,22 @@ exports.workers = {
       }
 
       data = underscore.sortBy(await quanta(debug, runtime, undefined), 'created')
+      if (!summaryP) {
+        for (let quantum of data) {
+          slices = await voting.find({ surveyorId: quantum.surveyorId, exclude: false })
+          for (let slice of slices) {
+            if (slice.probi) continue
+
+            mixerP = true
+            break
+          }
+
+          if (mixerP) break
+        }
+
+        if (mixerP) await mixer(debug, runtime, undefined, undefined)
+      }
+
       results = []
       for (let quantum of data) {
         quantum = underscore.extend(quantum, {
@@ -1203,7 +1219,7 @@ exports.workers = {
         slices.forEach((slice) => {
           let probi
 
-          slice.probi = new BigNumber(slice.probi.toString())
+          slice.probi = new BigNumber(slice.probi ? slice.probi.toString() : '0')
           if (publishers[slice.publisher]) {
             probi = new BigNumber(publishers[slice.publisher].probi.toString())
 
