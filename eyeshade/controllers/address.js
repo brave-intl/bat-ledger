@@ -26,7 +26,7 @@ v1.get =
 
     if (validity.error) return reply(boom.badData(validity.error))
 
-    pair['addresses.' + altcurrency] = address
+    pair['addresses.' + altcurrency] = new RegExp('^' + address + '$', 'i')
     wallet = await wallets.findOne(pair)
     if (!wallet) return reply(boom.notFound('invalid altcurrency/address: ' + altcurrency + '/' + address))
 
