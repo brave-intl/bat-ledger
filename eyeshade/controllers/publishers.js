@@ -321,7 +321,7 @@ v2.getWallet = {
       entry = await publishers.findOne({ publisher: publisher })
       provider = entry && entry.provider
       try {
-        if (provider) result.wallet = await runtime.wallet.status(entry)
+        if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
           result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'preferredCurrency', 'availableCurrencies' ])
           rates = result.rates
