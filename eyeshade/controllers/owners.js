@@ -13,9 +13,26 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const verifier = require('./publishers.js')
+const getToken = verifier.getToken
+const putToken = verifier.putToken
+
 const v1 = {}
+const v2 = {}
 
 let altcurrency
+
+const ownerString = (owner, info) => {
+  const name = info && (info.name || info.ownerName)
+  const email = info && (info.email || info.ownerEmail)
+  let result = name
+
+  if (result && email) result += ' <' + email + '>'
+  if (result) result += ' '
+  result += owner
+
+  return result
+}
 
 /*
    POST /v1/owners
@@ -25,54 +42,61 @@ let altcurrency
 v1.bulk = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const payload = request.payload
-      const authorizer = payload.authorizer
-      const info = payload.contactInfo
-      const providers = payload.providers
-      const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
-      const tokens = runtime.database.get('tokens', debug)
-      let props, state
+      const authorizer = request.payload.authorizer
+      const providers = request.payload.providers || []
+      let extras
 
-      props = batPublisher.getPublisherProps(authorizer.owner)
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.omit(authorizer, [ 'owner' ]), {
-          authorized: true,
-          altcurrency: altcurrency,
-          info: info
-        }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
-      }
-      await owners.update({ owner: authorizer.owner }, state, { upsert: true })
-
-      for (let entry of providers) {
-        state.$set = underscore.extend(underscore.omit(entry, [ 'publisher', 'show_verification_status' ]), {
-          verified: true,
-          authorized: true,
-          authority: authorizer.owner,
-          owner: authorizer.owner,
-          visible: entry.show_verification_status || false,
-          altcurrency: altcurrency,
-          info: info
-        })
-        await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
-
-        entry.verificationId = uuid.v4().toLowerCase()
-        state.$set = underscore.extend(underscore.pick(state.$set, [ 'verified', 'visible' ]), {
-          token: entry.verificationId,
-          reason: 'bulk loaded',
-          authority: authorizer.owner,
-          info: info
-        })
-        await tokens.update({ publisher: entry.publisher, verificationId: entry.verificationId }, state, { upsert: true })
-
-        await runtime.queue.send(debug, 'publisher-report',
-                                 underscore.extend({ publisher: entry.publisher },
-                                                   underscore.pick(state.$set, [ 'verified', 'visible' ])))
+      if (authorizer.ownerEmail || authorizer.ownerName) {
+        extras = underscore.omit(authorizer, [ 'owner' ])
+        providers.forEach((provider) => { underscore.extend(provider, extras) })
       }
 
-      reply({})
+      bulk(request, reply, runtime, authorizer.owner, request.payload.contactInfo, providers)
+    }
+  },
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Creates publisher entries in bulk',
+  tags: [ 'api', 'deprecated' ],
+
+  validate: {
+    query: {
+      access_token: Joi.string().guid().optional()
+    },
+    payload: Joi.object().keys({
+      authorizer: Joi.object().keys({
+        owner: braveJoi.string().owner().required().description('the owner identity'),
+        ownerEmail: Joi.string().email().optional().description('authorizer email address'),
+        ownerName: Joi.string().optional().description('authorizer name')
+      }).required(),
+      contactInfo: Joi.object().keys({
+        name: Joi.string().required().description('authorizer name'),
+        phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('phone number for owner'),
+        email: Joi.string().email().required().description('verified email address for owner')
+      }).optional(),
+      providers: Joi.array().min(1).items(Joi.object().keys({
+        publisher: braveJoi.string().publisher().required().description('the publisher identity'),
+        show_verification_status: Joi.boolean().optional().default(true).description('public display authorized')
+      }).optional())
+    }).required().description('publisher bulk entries for owner')
+  },
+
+  response:
+    { schema: Joi.object().length(0) }
+}
+
+/*
+   POST /v2/owners
+       [ used by publishers ]
+*/
+
+v2.bulk = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      bulk(request, reply, runtime, request.payload.owner, request.payload.contactInfo)
     }
   },
   auth: {
@@ -88,25 +112,86 @@ v1.bulk = {
       access_token: Joi.string().guid().optional()
     },
     payload: Joi.object().keys({
-      authorizer: Joi.object().keys({
-        owner: braveJoi.string().owner().required().description('the owner identity'),
-        ownerEmail: Joi.string().email().optional().description('authorizer email address'),
-        ownerName: Joi.string().optional().description('authorizer name')
-      }),
+      owner: braveJoi.string().owner().required().description('the owner identity'),
       contactInfo: Joi.object().keys({
         name: Joi.string().required().description('authorizer name'),
         phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('phone number for owner'),
         email: Joi.string().email().required().description('verified email address for owner')
-      }),
+      }).optional(),
       providers: Joi.array().min(1).items(Joi.object().keys({
         publisher: braveJoi.string().publisher().required().description('the publisher identity'),
-        show_verification_status: Joi.boolean().optional().default(true).description('public display authorized')
-      }))
+        show_verification_status: Joi.boolean().optional().default(true).description('public display authorized'),
+        ownerEmail: Joi.string().email().optional().description('authorizer email address'),
+        ownerName: Joi.string().optional().description('authorizer name')
+      }).optional())
     }).required().description('publisher bulk entries for owner')
   },
 
   response:
     { schema: Joi.object().length(0) }
+}
+
+const bulk = async (request, reply, runtime, owner, info, providers) => {
+  const debug = braveHapi.debug(module, request)
+  const owners = runtime.database.get('owners', debug)
+  const publishers = runtime.database.get('publishers', debug)
+  const tokens = runtime.database.get('tokens', debug)
+  let props, state
+
+  props = batPublisher.getPublisherProps(owner)
+  if (!props) return reply(boom.notFound('no such entry: ' + owner))
+
+  if (!info) info = {}
+  if (!providers) providers = []
+
+  state = {
+    $currentDate: { timestamp: { $type: 'timestamp' } },
+    $set: underscore.extend({
+      authorized: true,
+      altcurrency: altcurrency,
+      info: info
+    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
+  }
+  await owners.update({ owner: owner }, state, { upsert: true })
+
+  for (let entry of providers) {
+    const previous = await publishers.findOne({ publisher: entry.publisher })
+
+    if ((previous) && (previous.owner) && (previous.owner !== owner)) {
+      runtime.notify(debug, {
+        channel: '#publishers-bot',
+        text: 'new owner ' + ownerString(owner, info) + 'for ' + entry.publisher + ', previously' +
+          ownerString(previous.owner, previous.info)
+      })
+    }
+
+    state.$set = underscore.extend(underscore.omit(entry, [ 'publisher', 'show_verification_status' ]), {
+      verified: true,
+      authorized: true,
+      authority: owner,
+      owner: owner,
+      visible: entry.show_verification_status || false,
+      altcurrency: altcurrency,
+      info: info
+    })
+
+    await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
+
+    entry.verificationId = uuid.v4().toLowerCase()
+    state.$set = underscore.extend(underscore.pick(state.$set, [ 'verified', 'visible' ]), {
+      token: entry.verificationId,
+      reason: 'bulk loaded',
+      authority: owner,
+      info: info
+    })
+    await tokens.update({ publisher: entry.publisher, verificationId: entry.verificationId }, state, { upsert: true })
+
+    await runtime.queue.send(debug, 'publisher-report',
+                             underscore.extend({ owner: owner, publisher: entry.publisher },
+                                               underscore.pick(state.$set, [ 'verified', 'visible' ])))
+  }
+
+  reply({})
 }
 
 /*
@@ -305,7 +390,7 @@ v1.putWallet = {
       if (sites.length === 0) sites.push('none')
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'owner ' + entry.ownerName + ' <' + entry.ownerEmail + '> ' + querystring.unescape(owner) + ' registered with ' +
+        text: 'owner ' + ownerString(querystring.unescape(owner), entry) + ' ' + ' registered with ' +
           provider + ': ' + sites.join(' ')
       })
 
@@ -384,11 +469,84 @@ v1.getStatement = {
   }
 }
 
+/*
+   GET /v1/owners/{owner}/verify/{publisher}
+       [ used by publishers ]
+ */
+
+v1.getToken = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      getToken(request, reply, runtime, request.params.owner, request.params.publisher, request.query.backgroundP)
+    }
+  },
+
+  description: 'Verifies a publisher claimed by an owner',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      owner: braveJoi.string().owner().required().description('the owner identity'),
+      publisher: braveJoi.string().publisher().required().description('the publisher identity')
+    },
+    query: { backgroundP: Joi.boolean().optional().default(false).description('running in the background') }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      status: Joi.string().valid('success', 'failure').required().description('victory is mine!'),
+      verificationId: Joi.string().guid().optional().description('identity of the verified requestor')
+    })
+  }
+}
+
+/*
+   PUT /v1/owners/{owner}/verify/{publisher}
+       [ used by publishers ]
+ */
+
+v1.putToken = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      return putToken(request, reply, runtime, null, request.params.owner, request.params.publisher,
+                      request.payload.verificationId, request.query.show_verification_status)
+    }
+  },
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Gets a verification token for a publisher',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      owner: braveJoi.string().owner().required().description('the owner identity'),
+      publisher: braveJoi.string().publisher().required().description('the publisher identity')
+    },
+    query: {
+      access_token: Joi.string().guid().optional(),
+      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
+    },
+    payload: {
+      verificationId: Joi.string().guid().required().description('identity of the requestor')
+    }
+  },
+
+  response:
+    { schema: Joi.object().keys({ token: Joi.string().hex().length(64).required().description('verification token') }) }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/owners').whitelist().config(v1.bulk),
+  braveHapi.routes.async().post().path('/v2/owners').whitelist().config(v2.bulk),
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
-  braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement)
+  braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement),
+  braveHapi.routes.async().path('/v1/owners/{owner}/verify/{publisher}').config(v1.getToken),
+  braveHapi.routes.async().put().path('/v1/owners/{owner}/verify/{publisher}').whitelist().config(v1.putToken)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -401,8 +559,8 @@ module.exports.initialize = async (debug, runtime) => {
       property: 'owner',
       empty: {
         owner: '',              // 'oauth#' + provider + ':' + (profile.id || profile._id)
-        ownerEmail: '',         // profile.email
-        ownerName: '',          // profile.username || profile.user
+        ownerEmail: '',
+        ownerName: '',
         ownerPhone: '',
         verifiedEmail: '',
 
