@@ -1091,7 +1091,7 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'publishers',
       property: 'publisher',
       empty: {
-        publisher: '',
+        publisher: '',    // domain OR 'oauth#' + provider + ':' + (profile.id || profile._id)
         verified: false,
         authorized: false,
         authority: '',
@@ -1102,17 +1102,28 @@ module.exports.initialize = async (debug, runtime) => {
 
      // v2 and later
         owner: '',
+
+        providerName: '',
+        providerSuffix: '',
+        providerValue: '',
+        authorizerEmail: '',
+        authorizerName: '',
+
         visible: false,
+
         provider: '',
         altcurrency: '',
         parameters: {},
+
         info: {},
 
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { publisher: 1 } ],
       others: [ { verified: 1 }, { authorized: 1 }, { authority: 1 },
-                { owner: 1 }, { visible: 1 }, { provider: 1 }, { altcurrency: 1 },
+                { owner: 1 },
+                { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 }, { authorizerEmail: 1 }, { authorizerName: 1 },
+                { visible: 1 }, { provider: 1 }, { altcurrency: 1 },
                 { timestamp: 1 } ]
     },
     {

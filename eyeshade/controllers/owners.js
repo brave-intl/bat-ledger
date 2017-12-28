@@ -44,14 +44,15 @@ v1.bulk = {
     return async (request, reply) => {
       const authorizer = request.payload.authorizer
       const providers = request.payload.providers || []
-      let extras
+      const channels = []
+      let info = {}
 
-      if (authorizer.ownerEmail || authorizer.ownerName) {
-        extras = underscore.omit(authorizer, [ 'owner' ])
-        providers.forEach((provider) => { underscore.extend(provider, extras) })
-      }
+      if (authorizer.ownerEmail || authorizer.ownerName) info = { email: authorizer.ownerEmail, name: authorizer.ownerName }
+      providers.forEach((provider) => {
+        channels.push(underscore.extend({ channeId: provider.publisher, visible: provider.show_verification_status }, info))
+      })
 
-      bulk(request, reply, runtime, authorizer.owner, request.payload.contactInfo, providers)
+      bulk(request, reply, runtime, authorizer.owner, request.payload.contactInfo, channels)
     }
   },
   auth: {
@@ -96,7 +97,7 @@ v1.bulk = {
 v2.bulk = {
   handler: (runtime) => {
     return async (request, reply) => {
-      bulk(request, reply, runtime, request.payload.owner, request.payload.contactInfo)
+      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.channels)
     }
   },
   auth: {
@@ -112,17 +113,17 @@ v2.bulk = {
       access_token: Joi.string().guid().optional()
     },
     payload: Joi.object().keys({
-      owner: braveJoi.string().owner().required().description('the owner identity'),
+      ownerId: braveJoi.string().owner().required().description('the owner identity'),
       contactInfo: Joi.object().keys({
-        name: Joi.string().required().description('authorizer name'),
-        phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('phone number for owner'),
-        email: Joi.string().email().required().description('verified email address for owner')
+        name: Joi.string().required().description('owner name'),
+        phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('owner phone number'),
+        email: Joi.string().email().required().description('owner verified email address')
       }).optional(),
-      providers: Joi.array().min(1).items(Joi.object().keys({
-        publisher: braveJoi.string().publisher().required().description('the publisher identity'),
-        show_verification_status: Joi.boolean().optional().default(true).description('public display authorized'),
-        ownerEmail: Joi.string().email().optional().description('authorizer email address'),
-        ownerName: Joi.string().optional().description('authorizer name')
+      channels: Joi.array().min(1).items(Joi.object().keys({
+        channelId: braveJoi.string().publisher().required().description('the publisher identity'),
+        visible: Joi.boolean().optional().default(true).description('promotional display authorized'),
+        authorizerEmail: Joi.string().email().optional().description('authorizer email address'),
+        authorizerName: Joi.string().optional().description('authorizer name')
       }).optional())
     }).required().description('publisher bulk entries for owner')
   },
@@ -131,7 +132,7 @@ v2.bulk = {
     { schema: Joi.object().length(0) }
 }
 
-const bulk = async (request, reply, runtime, owner, info, providers) => {
+const bulk = async (request, reply, runtime, owner, info, channels) => {
   const debug = braveHapi.debug(module, request)
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
@@ -141,8 +142,12 @@ const bulk = async (request, reply, runtime, owner, info, providers) => {
   props = batPublisher.getPublisherProps(owner)
   if (!props) return reply(boom.notFound('no such entry: ' + owner))
 
+  for (let channel of channels) {
+    if (!batPublisher.getPublisherProps(channel.channelId)) return reply(boom.notFound('no such entry: ' + channel.channelId))
+  }
+
   if (!info) info = {}
-  if (!providers) providers = []
+  if (!channels) channels = []
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -154,44 +159,98 @@ const bulk = async (request, reply, runtime, owner, info, providers) => {
   }
   await owners.update({ owner: owner }, state, { upsert: true })
 
-  for (let entry of providers) {
-    const previous = await publishers.findOne({ publisher: entry.publisher })
+  for (let channel of channels) {
+    const previous = await publishers.findOne({ publisher: channel.channelId })
 
     if ((previous) && (previous.owner) && (previous.owner !== owner)) {
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'new owner ' + ownerString(owner, info) + 'for ' + entry.publisher + ', previously' +
+        text: 'new owner ' + ownerString(owner, info) + 'for ' + channel.channelId + ', previously' +
           ownerString(previous.owner, previous.info)
       })
     }
 
-    state.$set = underscore.extend(underscore.omit(entry, [ 'publisher', 'show_verification_status' ]), {
+    props = batPublisher.getPublisherProps(channel.channelId)
+
+    state.$set = underscore.extend(underscore.omit(channel, [ 'channelId' ]), {
       verified: true,
       authorized: true,
       authority: owner,
       owner: owner,
-      visible: entry.show_verification_status || false,
       altcurrency: altcurrency,
-      info: info
-    })
+      info: underscore.defaults({ name: channel.authorizerName, email: channel.authorizerEmail }, info)
+    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
 
-    await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
+    await publishers.update({ publisher: channel.channelId }, state, { upsert: true })
 
-    entry.verificationId = uuid.v4().toLowerCase()
+    channel.verificationId = uuid.v4().toLowerCase()
     state.$set = underscore.extend(underscore.pick(state.$set, [ 'verified', 'visible' ]), {
-      token: entry.verificationId,
+      token: channel.verificationId,
       reason: 'bulk loaded',
       authority: owner,
       info: info
     })
-    await tokens.update({ publisher: entry.publisher, verificationId: entry.verificationId }, state, { upsert: true })
+    await tokens.update({ publisher: channel.channelId, verificationId: channel.verificationId }, state, { upsert: true })
 
     await runtime.queue.send(debug, 'publisher-report',
-                             underscore.extend({ owner: owner, publisher: entry.publisher },
+                             underscore.extend({ owner: owner, publisher: channel.channelId },
                                                underscore.pick(state.$set, [ 'verified', 'visible' ])))
   }
 
   reply({})
+}
+
+/*
+   DELETE /v1/owners/{owner}/{publisher}
+       [ used by publishers ]
+ */
+
+v1.deletePublisher = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const owner = request.params.owner
+      const publisher = request.params.publisher
+      const debug = braveHapi.debug(module, request)
+      const owners = runtime.database.get('owners', debug)
+      const publishers = runtime.database.get('publishers', debug)
+      let entry, state
+
+      entry = await owners.findOne({ owner: owner })
+      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
+
+      entry = await publishers.findOne({ owner: owner, publisher: publisher })
+      if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $unset: { owner: '' }
+      }
+      await publishers.update({ publisher: publisher }, state, { upsert: true })
+
+      reply({})
+    }
+  },
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Unlinks a publisher from an owner',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      owner: braveJoi.string().owner().required().description('the owner identity'),
+      publisher: braveJoi.string().publisher().required().description('the publisher identity')
+    },
+    query: {
+      access_token: Joi.string().guid().optional()
+    }
+  },
+
+  response:
+    { schema: Joi.object().length(0) }
 }
 
 /*
@@ -546,7 +605,8 @@ module.exports.routes = [
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
   braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement),
   braveHapi.routes.async().path('/v1/owners/{owner}/verify/{publisher}').config(v1.getToken),
-  braveHapi.routes.async().put().path('/v1/owners/{owner}/verify/{publisher}').whitelist().config(v1.putToken)
+  braveHapi.routes.async().put().path('/v1/owners/{owner}/verify/{publisher}').whitelist().config(v1.putToken),
+  braveHapi.routes.async().delete().path('/v1/owners/{owner}/{publisher}').whitelist().config(v1.deletePublisher)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -559,10 +619,6 @@ module.exports.initialize = async (debug, runtime) => {
       property: 'owner',
       empty: {
         owner: '',              // 'oauth#' + provider + ':' + (profile.id || profile._id)
-        ownerEmail: '',
-        ownerName: '',
-        ownerPhone: '',
-        verifiedEmail: '',
 
         providerName: '',
         providerSuffix: '',
@@ -570,17 +626,16 @@ module.exports.initialize = async (debug, runtime) => {
 
         authorized: false,
         authority: '',
-
         provider: '',
         altcurrency: '',
         parameters: {},
+
         info: {},
 
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { owner: 1 } ],
-      others: [ { ownerEmail: 1 }, { ownerName: 1 }, { verifiedEmail: 1 },
-                { providerName: 1 }, { providerSuffix: 1 },
+      others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
                 { authorized: 1 }, { authority: 1 },
                 { provider: 1 }, { altcurrency: 1 },
                 { timestamp: 1 } ]
