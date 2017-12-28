@@ -115,7 +115,7 @@ v2.bulk = {
     payload: Joi.object().keys({
       ownerId: braveJoi.string().owner().required().description('the owner identity'),
       contactInfo: Joi.object().keys({
-        name: Joi.string().required().description('owner name'),
+        name: Joi.string().optional().description('owner name'),
         phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('owner phone number'),
         email: Joi.string().email().required().description('owner verified email address')
       }).optional(),
