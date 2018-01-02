@@ -205,7 +205,7 @@ const bulk = async (request, reply, runtime, owner, info, channels) => {
        [ used by publishers ]
  */
 
-v1.deletePublisher = {
+v1.unlinkPublisher = {
   handler: (runtime) => {
     return async (request, reply) => {
       const owner = request.params.owner
@@ -606,7 +606,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement),
   braveHapi.routes.async().path('/v1/owners/{owner}/verify/{publisher}').config(v1.getToken),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/verify/{publisher}').whitelist().config(v1.putToken),
-  braveHapi.routes.async().delete().path('/v1/owners/{owner}/{publisher}').whitelist().config(v1.deletePublisher)
+  braveHapi.routes.async().delete().path('/v1/owners/{owner}/{publisher}').whitelist().config(v1.unlinkPublisher)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
