@@ -49,7 +49,7 @@ v1.bulk = {
 
       if (authorizer.ownerEmail || authorizer.ownerName) info = { email: authorizer.ownerEmail, name: authorizer.ownerName }
       providers.forEach((provider) => {
-        channels.push(underscore.extend({ channeId: provider.publisher, visible: provider.show_verification_status }, info))
+        channels.push(underscore.extend({ channelId: provider.publisher, visible: provider.show_verification_status }, info))
       })
 
       bulk(request, reply, runtime, authorizer.owner, request.payload.contactInfo, channels)
