@@ -513,7 +513,7 @@ Wallet.providers.simplex = {
       rate = underscore.pick(this.currency.rates[currency] || {}, fiat)
       if (!rate) return
 
-      amount = this.currency.alt2fiat(currency, amount, fiat, true).toFixed(0)
+      amount = Math.ceil(this.currency.alt2fiat(currency, amount, fiat, true))
       currency = fiat
     }
 
@@ -541,6 +541,7 @@ Wallet.providers.simplex = {
 
       quote = underscore.extend(result, { expires: expires })
     }
+    quote.payment_id = uuid.v4().toLowerCase()
 
     result = await braveHapi.wreck.post(this.runtime.config.simplex.url + '/wallet/merchant/v1/payments/partner/data', {
       headers: {
@@ -563,7 +564,7 @@ Wallet.providers.simplex = {
         transaction_details: {
           payment_details: {
             quote_id: quote.quote_id,
-            payment_id: uuid.v4().toLowerCase(),
+            payment_id: quote.payment_id,
             order_id: uuid.v4().toLowerCase(),
             fiat_total_amount: {
               currency: quote.fiat_money.currency,
@@ -595,7 +596,7 @@ Wallet.providers.simplex = {
         payment_flow_type: 'wallet',
         return_url: 'about:preferences#payments',
         quote_id: quote.quote_id,
-        payment_id: underscore.last(quote.paymentIds),
+        payment_id: quote.payment_id,
         user_id: quote.user_id,
         'destination_wallet[address]': info.addresses.BTC,
         'destination_wallet[currency]': params.currency,
