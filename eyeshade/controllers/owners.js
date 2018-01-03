@@ -64,9 +64,7 @@ v1.bulk = {
   tags: [ 'api', 'deprecated' ],
 
   validate: {
-    query: {
-      access_token: Joi.string().guid().optional()
-    },
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     payload: Joi.object().keys({
       authorizer: Joi.object().keys({
         owner: braveJoi.string().owner().required().description('the owner identity'),
@@ -109,9 +107,7 @@ v2.bulk = {
   tags: [ 'api' ],
 
   validate: {
-    query: {
-      access_token: Joi.string().guid().optional()
-    },
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     payload: Joi.object().keys({
       ownerId: braveJoi.string().owner().required().description('the owner identity'),
       contactInfo: Joi.object().keys({
@@ -240,12 +236,10 @@ v1.unlinkPublisher = {
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: {
       owner: braveJoi.string().owner().required().description('the owner identity'),
       publisher: braveJoi.string().publisher().required().description('the publisher identity')
-    },
-    query: {
-      access_token: Joi.string().guid().optional()
     }
   },
 
@@ -374,11 +368,9 @@ v1.getWallet = {
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { owner: braveJoi.string().owner().required().description('the owner identity') },
-    query: {
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
-      access_token: Joi.string().guid().optional()
-    }
+    query: { currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency') }
   },
 
   response: {
@@ -466,8 +458,7 @@ v1.putWallet = {
   tags: [ 'api' ],
 
   validate: {
-    params: { owner: braveJoi.string().owner().required().description('the owner identity') },
-    query: { access_token: Joi.string().guid().optional() },
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     payload: {
       provider: Joi.string().required().description('wallet provider'),
       parameters: Joi.object().required().description('wallet parameters')
@@ -513,11 +504,11 @@ v1.getStatement = {
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { owner: braveJoi.string().owner().required().description('the owner identity') },
     query: {
       starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format'),
-      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format'),
-      access_token: Joi.string().guid().optional()
+      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format')
     }
   },
 
@@ -581,17 +572,13 @@ v1.putToken = {
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: {
       owner: braveJoi.string().owner().required().description('the owner identity'),
       publisher: braveJoi.string().publisher().required().description('the publisher identity')
     },
-    query: {
-      access_token: Joi.string().guid().optional(),
-      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
-    },
-    payload: {
-      verificationId: Joi.string().guid().required().description('identity of the requestor')
-    }
+    query: { show_verification_status: Joi.boolean().optional().default(true).description('authorizes display') },
+    payload: { verificationId: Joi.string().guid().required().description('identity of the requestor') }
   },
 
   response:
