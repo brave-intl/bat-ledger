@@ -735,9 +735,14 @@ exports.workers = {
               entry = await owners.findOne({ owner: entry.owner })
               if (entry.provider) wallet = await runtime.wallet.status(entry)
             }
-            if (wallet) {
+            if ((wallet) && (wallet.address) && (wallet.preferredCurrency)) {
               datum.address = wallet.address
               datum.currency = wallet.preferredCurrency
+            } else {
+              runtime.notify(debug, {
+                channel: '#publishers-bot',
+                text: 'publisher ' + datum.publisher + ' lacking settlement address and/or preferredCurrency'
+              })
             }
           } catch (ex) {}
         }
