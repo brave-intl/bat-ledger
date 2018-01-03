@@ -366,6 +366,42 @@ const publisherCompare = (a, b) => {
   return braveHapi.domainCompare(a.publisher, b.publisher)
 }
 
+const labelize = async (debug, runtime, data) => {
+  const labels = {}
+  const owners = runtime.database.get('owners', debug)
+  const publishersC = runtime.database.get('publishers', debug)
+
+  for (let offset in data) {
+    const datum = data[offset]
+    const publisher = datum.publisher
+    let entry, owner, props
+
+    if (!publisher) continue
+
+    if (labels[publisher]) {
+      datum.publisher = labels[publisher]
+      continue
+    }
+
+    props = batPublisher.getPublisherProps(publisher)
+    labels[publisher] = publisher
+
+    if (props && props.publisherType) entry = await publishersC.findOne({ publisher: publisher })
+    if (entry) {
+      labels[publisher] = props.URL
+      if ((!entry.info) && (entry.owner)) {
+        owner = await owners.findOne({ owner: entry.owner })
+        if (owner) entry = owner
+      }
+
+      if (entry.info && entry.info.name) labels[publisher] = entry.info.name + ' <' + labels[publisher] + '>'
+    }
+    datum.publisher = labels[publisher]
+  }
+
+  return data
+}
+
 const publisherContributions = (runtime, publishers, authority, authorized, verified, format, reportId, summaryP, threshold,
                               usd) => {
   const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
@@ -545,6 +581,7 @@ const publisherSettlements = (runtime, entries, format, summaryP) => {
                                     underscore.omit(txn, [ 'hash', 'settlementId', 'created', 'modified' ]),
                                     { transactionId: txn.hash, timestamp: txn.created && dateformat(txn.created, datefmt) }))
       })
+      if (entries.length > 1) data.push([])
     }
   })
 
@@ -698,9 +735,14 @@ exports.workers = {
               entry = await owners.findOne({ owner: entry.owner })
               if (entry.provider) wallet = await runtime.wallet.status(entry)
             }
-            if (wallet) {
+            if ((wallet) && (wallet.address) && (wallet.preferredCurrency)) {
               datum.address = wallet.address
               datum.currency = wallet.preferredCurrency
+            } else {
+              runtime.notify(debug, {
+                channel: '#publishers-bot',
+                text: 'publisher ' + datum.publisher + ' lacking settlement address and/or preferredCurrency'
+              })
             }
           } catch (ex) {}
         }
@@ -731,7 +773,7 @@ exports.workers = {
         })
       }
 
-      try { await file.write(utf8ify(json2csv({ data: data })), true) } catch (ex) {
+      try { await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, data) })), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-contributions', reason: ex.toString() })
         file.close()
       }
@@ -794,7 +836,7 @@ exports.workers = {
         })
       }
 
-      try { await file.write(utf8ify(json2csv({ data: data })), true) } catch (ex) {
+      try { await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, data) })), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-settlements', reason: ex.toString() })
         file.close()
       }
@@ -947,7 +989,11 @@ exports.workers = {
           fieldNames.push('counts', 'address')
         }
 
-        await file.write(utf8ify(json2csv({ data: data, fields: fields, fieldNames: fieldNames })), true)
+        await file.write(utf8ify(json2csv({
+          data: await labelize(debug, runtime, data),
+          fields: fields,
+          fieldNames: fieldNames
+        })), true)
       } catch (ex) {
         debug('reports', { report: 'report-publishers-statements', reason: ex.toString() })
         file.close()
@@ -1125,7 +1171,7 @@ exports.workers = {
         if (result.reason !== 'bulk loaded') result.daysInQueue = daysago(result.created)
         data.push(result)
 
-        if (!summaryP) {
+        if ((!summaryP) && (result.history)) {
           result.history.forEach((record) => {
             if (elideP) {
               if (record.email) record.email = 'yes'
@@ -1274,7 +1320,9 @@ exports.workers = {
       fields = [ 'surveyorId', 'probi', 'fee', 'inputs', 'quantum' ]
       if (!summaryP) fields.push('publisher')
       fields = fields.concat([ 'votes', 'created', 'modified' ])
-      try { await file.write(utf8ify(json2csv({ data: results, fields: fields })), true) } catch (ex) {
+      try {
+        await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, results), fields: fields })), true)
+      } catch (ex) {
         debug('reports', { report: 'report-surveyors-contributions', reason: ex.toString() })
         file.close()
       }
