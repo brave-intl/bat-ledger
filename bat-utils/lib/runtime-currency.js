@@ -340,6 +340,7 @@ const maintenance = async (config, runtime) => {
   if (flatlineP) {
     debug('maintenance', { message: 'no trades reported' })
     runtime.captureException(new Error('maintenance reports flatline'))
+    if (process.env.NODE_ENV !== 'production') process.exit(0)
   }
   flatlineP = true
 
