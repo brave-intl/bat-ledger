@@ -327,7 +327,8 @@ const mixer = async (debug, runtime, publisher, qid) => {
         counts: slice.counts,
         altcurrency: altcurrency,
         probi: probi,
-        fees: fees
+        fees: fees,
+        cohort: slice.cohort || 'control'
       })
       if (equals(slice.probi && new BigNumber(slice.probi.toString()), probi)) continue
 
@@ -338,7 +339,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
           fees: bson.Decimal128.fromString(fees.toString())
         }
       }
-      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher }, state, { upsert: true })
+      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' }, state, { upsert: true })
     }
   }
 
@@ -481,7 +482,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
     if (!summaryP) {
       underscore.sortBy(result.votes, 'timestamp').forEach((vote) => {
         data.push(underscore.extend({ publisher: result.publisher },
-                                    underscore.omit(vote, [ 'surveyorId', 'updated' ]),
+                                    underscore.omit(vote, [ 'surveyorId', 'updated', 'cohort' ]),
                                     { transactionId: vote.surveyorId, timestamp: dateformat(vote.timestamp, datefmt) }))
       })
     }
