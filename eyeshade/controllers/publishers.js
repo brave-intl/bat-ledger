@@ -711,15 +711,20 @@ const putToken = async (request, reply, runtime, owner, publisher, verificationI
 v2.patchPublisher = {
   handler: (runtime) => {
     return async (request, reply) => {
+      const owner = request.params.owner
       const publisher = request.params.publisher
       const payload = request.payload
       const authorized = payload.authorized
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       const debug = braveHapi.debug(module, request)
+      const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
       let entry, state
 
-      entry = await publishers.findOne({ publisher: publisher })
+      entry = await owners.findOne({ owner: owner })
+      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
+
+      entry = await publishers.findOne({ owner: owner, publisher: publisher })
       if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
 
       state = {
@@ -728,7 +733,7 @@ v2.patchPublisher = {
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
-      if (authorized) await notify(debug, runtime, publisher, { type: 'payments_activated' })
+      if (authorized) await notify(debug, runtime, owner, publisher, { type: 'payments_activated' })
 
       reply({})
     }
@@ -744,7 +749,10 @@ v2.patchPublisher = {
   tags: [ 'api' ],
 
   validate: {
-    params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
+    params: {
+      owner: braveJoi.string().owner().required().description('the owner identity'),
+      publisher: braveJoi.string().publisher().required().description('the publisher identity')
+    },
     payload: {
       authorized: Joi.boolean().optional().default(false).description('authorize the publisher')
     }
@@ -974,7 +982,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   reason = reason || (verified ? 'ok' : 'unknown')
   payload = underscore.extend(underscore.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
-  await publish(debug, runtime, 'patch', entry.publisher, '/verifications', payload)
+  await publish(debug, runtime, 'patch', entry.owner, entry.publisher, '/verifications', payload)
   if (!verified) return
 
   state = {
@@ -1000,7 +1008,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   if (entry.info) return
 
-  results = await publish(debug, runtime, 'get', entry.publisher)
+  results = await publish(debug, runtime, 'get', entry.owner, entry.publisher)
   for (let result of results) {
     if (result.id !== entry.verificationId) continue
 
@@ -1023,31 +1031,33 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   }
 }
 
-const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  let result
+const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
+  let path, result
 
+  path = '/api'
+  if (owner) path += '/owners/' + encodeURIComponent(owner)
+  path += '/channel'
+  if (publisher) path += '/' + encodeURIComponent(publisher)
   try {
-    result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + encodeURIComponent(publisher) +
-                                           endpoint,
-      {
-        headers: {
-          authorization: 'Bearer ' + runtime.config.publishers.access_token,
-          'content-type': 'application/json'
-        },
-        payload: JSON.stringify(payload),
-        useProxyP: true
-      })
+    result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
+      headers: {
+        authorization: 'Bearer ' + runtime.config.publishers.access_token,
+        'content-type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      useProxyP: true
+    })
     if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
-    debug('publish', { method: method, publisher: publisher, endpoint: endpoint, reason: result })
+    debug('publish', { method: method, owner: owner, publisher: publisher, endpoint: endpoint, reason: result })
   } catch (ex) {
-    debug('publish', { method: method, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
+    debug('publish', { method: method, owner: owner, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
   }
 
   return result
 }
 
-const notify = async (debug, runtime, publisher, payload) => {
-  let message = await publish(debug, runtime, 'post', publisher, '/notifications', payload)
+const notify = async (debug, runtime, owner, publisher, payload) => {
+  let message = await publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
 
   if (!message) return
 

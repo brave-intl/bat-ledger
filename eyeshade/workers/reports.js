@@ -32,13 +32,27 @@ const create = async (runtime, prefix, params) => {
   return runtime.database.file(params.reportId, 'w', options)
 }
 
-const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  const prefix = publisher ? encodeURIComponent(publisher) : ''
-  let result
+const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
+  let path, result
 
   if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
 
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
+  path = '/api'
+  if (owner) path += '/owners/' + encodeURIComponent(owner)
+  path += '/channel'
+  if (publisher) path += '/' + encodeURIComponent(publisher)
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
+    headers: {
+      authorization: 'Bearer ' + runtime.config.publishers.access_token,
+      'content-type': 'application/json'
+    },
+    payload: JSON.stringify(payload),
+    useProxyP: true
+  })
+  path = '/api/'
+  if (owner) path += 'owners/' + encodeURIComponent(owner) + '/'
+  path += 'publishers/' + encodeURIComponent(publisher)
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path, endpoint, {
     headers: {
       authorization: 'Bearer ' + runtime.config.publishers.access_token,
       'content-type': 'application/json'
