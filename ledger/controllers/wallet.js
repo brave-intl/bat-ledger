@@ -208,7 +208,7 @@ const write = function (runtime, apiVersion) {
     const surveyors = runtime.database.get('surveyors', debug)
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
+    let cohort, fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -226,7 +226,7 @@ const write = function (runtime, apiVersion) {
     surveyor = await surveyors.findOne({ surveyorId: surveyorId })
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
 
-    if (!surveyor.surveyors) surveyor.surveyors = []
+    if (!surveyor.cohorts) surveyor.cohorts = {}
 
     params = surveyor.payload.adFree
 
@@ -234,16 +234,22 @@ const write = function (runtime, apiVersion) {
 
     if (votes < 1) votes = 1
 
-    if (votes > surveyor.surveyors.length) {
-      state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
-      debug('wallet', state)
+    const possibleCohorts = ['control', 'grant']
 
-      const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + surveyor.surveyors.length + ' surveyors, but needed ' + votes
-      runtime.captureException(errMsg, { req: request })
+    for (let cohort of possibleCohorts) {
+      const cohortSurveyors = surveyor.cohorts[cohort]
 
-      const resp = boom.serverUnavailable(errMsg)
-      resp.output.headers['retry-after'] = '5'
-      return reply(resp)
+      if (votes > cohortSurveyors.length) {
+        state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
+        debug('wallet', state)
+
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + votes
+        runtime.captureException(errMsg, { req: request })
+
+        const resp = boom.serverUnavailable(errMsg)
+        resp.output.headers['retry-after'] = '5'
+        return reply(resp)
+      }
     }
 
     result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx)
@@ -253,7 +259,11 @@ const write = function (runtime, apiVersion) {
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
+    cohort = 'control'
+
     if (result.grantIds) {
+      cohort = 'grant'
+
       // oh mongo
       result.grantIds.forEach((grantId) => {
         wallets.update({ 'paymentId': paymentId, 'grants.grantId': grantId }, { $set: { 'grants.$.status': 'completed' } })
@@ -269,7 +279,8 @@ const write = function (runtime, apiVersion) {
 
     fee = result.fee
 
-    surveyorIds = underscore.shuffle(surveyor.surveyors).slice(0, votes)
+    surveyorIds = underscore.shuffle(surveyor.cohorts[cohort]).slice(0, votes)
+
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
       $set: {

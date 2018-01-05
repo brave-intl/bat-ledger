@@ -327,7 +327,8 @@ const mixer = async (debug, runtime, publisher, qid) => {
         counts: slice.counts,
         altcurrency: altcurrency,
         probi: probi,
-        fees: fees
+        fees: fees,
+        cohort: slice.cohort || 'control'
       })
       if (equals(slice.probi && new BigNumber(slice.probi.toString()), probi)) continue
 
@@ -338,7 +339,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
           fees: bson.Decimal128.fromString(fees.toString())
         }
       }
-      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher }, state, { upsert: true })
+      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' }, state, { upsert: true })
     }
   }
 
@@ -481,7 +482,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
     if (!summaryP) {
       underscore.sortBy(result.votes, 'timestamp').forEach((vote) => {
         data.push(underscore.extend({ publisher: result.publisher },
-                                    underscore.omit(vote, [ 'surveyorId', 'updated' ]),
+                                    underscore.omit(vote, [ 'surveyorId', 'updated', 'cohort' ]),
                                     { transactionId: vote.surveyorId, timestamp: dateformat(vote.timestamp, datefmt) }))
       })
     }
@@ -1286,7 +1287,8 @@ exports.workers = {
             publisher: slice.publisher,
             votes: slice.counts,
             created: new Date(parseInt(slice._id.toHexString().substring(0, 8), 16) * 1000).getTime(),
-            modified: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+            modified: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
+            cohort: slice.cohort || 'control'
           })
         })
       }
@@ -1307,7 +1309,7 @@ exports.workers = {
 
       fields = [ 'surveyorId', 'probi', 'fee', 'inputs', 'quantum' ]
       if (!summaryP) fields.push('publisher')
-      fields = fields.concat([ 'votes', 'created', 'modified' ])
+      fields = fields.concat([ 'votes', 'created', 'modified', 'cohort' ])
       try {
         await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, results), fields: fields })), true)
       } catch (ex) {
