@@ -138,12 +138,12 @@ const bulk = async (request, reply, runtime, owner, info, channels) => {
   props = batPublisher.getPublisherProps(owner)
   if (!props) return reply(boom.notFound('no such entry: ' + owner))
 
+  if (!info) info = {}
+  if (!channels) channels = []
+
   for (let channel of channels) {
     if (!batPublisher.getPublisherProps(channel.channelId)) return reply(boom.notFound('no such entry: ' + channel.channelId))
   }
-
-  if (!info) info = {}
-  if (!channels) channels = []
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
