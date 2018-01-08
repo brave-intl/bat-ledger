@@ -641,7 +641,7 @@ module.exports.initialize = async (debug, runtime) => {
       others: [ { type: 1 }, { version: 1 }, { timestamp: 1 } ]
     },
     {
-      category: runtime.database.get('publishers', debug),
+      category: runtime.database.get('publishersX', debug),
       name: 'publishersX',
       property: 'publisher',
       empty: { publisher: '', tld: '', verified: false, visible: false, timestamp: bson.Timestamp.ZERO },
