@@ -348,7 +348,7 @@ Wallet.providers.uphold = {
     }
   },
   status: async function (info) {
-    let card, cards, currency, currencies, result, uphold, user
+    let authorized, card, cards, currency, currencies, result, uphold, user
 
     try {
       uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
@@ -359,7 +359,8 @@ Wallet.providers.uphold = {
       uphold.storage.setItem('uphold.access_token', info.parameters.access_token)
 
       user = await uphold.api('/me')
-      cards = await uphold.api('/me/cards')
+      authorized = user.status !== 'pending'
+      if (authorized) cards = await uphold.api('/me/cards')
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
       throw ex
@@ -378,11 +379,11 @@ Wallet.providers.uphold = {
 
     result = {
       provider: info.provider,
-      authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
+      authorized: authorized,
       preferredCurrency: currency,
       availableCurrencies: currencies
     }
-    if (result.authorized) {
+    if (authorized) {
       card = underscore.findWhere(cards, { currency: result.preferredCurrency })
       result.address = card && card.id
     }
