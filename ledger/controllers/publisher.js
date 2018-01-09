@@ -640,6 +640,13 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { rulesetId: 1 } ],
       others: [ { type: 1 }, { version: 1 }, { timestamp: 1 } ]
     },
+/* verified publishers
+   - verified should always be "true"
+   - visible indicates whether the publisher opted-in to inclusion in marketing materials
+
+   originally this was the 'publishers' table, but was renamed to 'publishersX' to temporarily address a publisher privacy
+   issue. however, it was accidentally commented out, which resulted in vanilla servers not getting the indices...
+ */
     {
       category: runtime.database.get('publishersX', debug),
       name: 'publishersX',
