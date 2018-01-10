@@ -558,8 +558,8 @@ v1.getToken = {
 v1.putToken = {
   handler: (runtime) => {
     return async (request, reply) => {
-      return putToken(request, reply, runtime, null, request.params.owner, request.params.publisher,
-                      request.payload.verificationId, request.query.show_verification_status)
+      return putToken(request, reply, runtime, request.params.owner, request.params.publisher, request.payload.verificationId,
+                      request.query.show_verification_status)
     }
   },
 
