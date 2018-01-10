@@ -226,7 +226,19 @@ const write = function (runtime, apiVersion) {
     surveyor = await surveyors.findOne({ surveyorId: surveyorId })
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
 
-    if (!surveyor.cohorts) surveyor.cohorts = {}
+    if (!surveyor.cohorts) {
+      if (surveyor.surveyors) { // legacy surveyor, no cohort support
+        return reply(boom.badData('cannot perform a contribution using a legacy surveyor'))
+      } else {
+        // new contribution surveyor not yet populated with voting surveyors
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
+        runtime.captureException(errMsg, { req: request })
+
+        const resp = boom.serverUnavailable(errMsg)
+        resp.output.headers['retry-after'] = '5'
+        return reply(resp)
+      }
+    }
 
     params = surveyor.payload.adFree
 
