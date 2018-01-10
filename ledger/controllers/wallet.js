@@ -30,7 +30,7 @@ const read = function (runtime, apiVersion) {
     const altcurrency = request.query.altcurrency
 
     let currency = request.query.currency
-    let balances, result, state, wallet
+    let balances, info, result, state, wallet, wallet2
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -57,6 +57,7 @@ const read = function (runtime, apiVersion) {
         await wallets.update({ paymentId: paymentId }, state, { upsert: true })
 
         await runtime.queue.send(debug, 'wallet-report', underscore.extend({ paymentId: paymentId }, state.$set))
+        state = null
       }
     } else {
       balances = wallet.balances
@@ -110,9 +111,23 @@ const read = function (runtime, apiVersion) {
               $set: { unsignedTx: result.unsignedTx }
             }
           }
-          await wallets.update({ paymentId: paymentId }, state, { upsert: true })
         }
       }
+
+      info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
+      wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
+      if ((wallet2) && (!underscore.isEqual(wallet, wallet2))) {
+        if (!state) {
+          state = {
+            $currentDate: { timestamp: { $type: 'timestamp' } },
+            $set: {}
+          }
+        }
+        underscore.extend(state.$set, info.quotes)
+      }
+      underscore.extend(result, underscore.omit(info, [ 'extend' ]))
+
+      if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }
 
     if (apiVersion === 1) {
@@ -149,7 +164,7 @@ v1.read = { handler: (runtime) => { return read(runtime, 1) },
       rates: Joi.object().optional().description('current exchange rates from BTC to various currencies'),
       satoshis: Joi.number().integer().min(0).optional().description('the wallet balance in satoshis'),
       unsignedTx: Joi.object().optional().description('unsigned transaction')
-    })
+    }).unknown(true)
   }
 }
 
@@ -188,7 +203,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
         ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
       })
-    })
+    }).unknown(true)
   }
 }
 
