@@ -526,7 +526,7 @@ Wallet.providers.simplex = {
           'content-type': 'application/json'
         },
         payload: JSON.stringify({
-          end_user_id: info.paymentId,
+          end_user_id: quote ? quote.user_id : uuid.v4().toLowerCase(),
           digital_currency: params.currency,
           fiat_currency: currency,
           requested_currency: currency,
@@ -587,7 +587,7 @@ Wallet.providers.simplex = {
 // javascript:window.open('','_parent','').close();
 
     return ({
-      extend: { simplex: quote },
+      quotes: { simplex: quote },
       buyForm: {
         method: 'POST',
         action: this.runtime.config.simplex.url + '/payments/new',

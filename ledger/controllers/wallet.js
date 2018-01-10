@@ -123,7 +123,7 @@ const read = function (runtime, apiVersion) {
             $set: {}
           }
         }
-        underscore.extend(state.$set, info.extend)
+        underscore.extend(state.$set, info.quotes)
       }
       underscore.extend(result, underscore.omit(info, [ 'extend' ]))
 
