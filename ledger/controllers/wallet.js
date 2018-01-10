@@ -228,7 +228,7 @@ const write = function (runtime, apiVersion) {
 
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support
-        return boom.badData('cannot perform a contribution using a legacy surveyor')
+        return reply(boom.badData('cannot perform a contribution using a legacy surveyor'))
       } else {
         // new contribution surveyor not yet populated with voting surveyors
         const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
