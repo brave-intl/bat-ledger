@@ -581,11 +581,6 @@ Wallet.providers.simplex = {
     })
     if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
 
-// courtesy of https://stackoverflow.com/questions/2076299/how-to-close-current-tab-in-a-browser-window#18776480
-// javascript:window.open('','_self').close();
-// courtesy of http://www.yournewdesigner.com/css-experiments/javascript-window-close-firefox.html
-// javascript:window.open('','_parent','').close();
-
     return ({
       quotes: { simplex: quote },
       buyForm: {
