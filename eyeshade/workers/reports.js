@@ -720,13 +720,13 @@ exports.workers = {
       data = info.data
 
       if (notifyP) {
+        // at present, domains only
+        const notifySupportP = (publisher) => { return (publisher.indexOf(':') === -1) }
+
         for (let offset in data) {
           const datum = data[offset]
 
-          if (datum.verified) continue
-
-          // at present, domains only
-          if (datum.publisher.indexOf(':') !== -1) continue
+          if ((datum.verified) || (!notifySupportP(datum.publisher))) continue
 
           try {
             await publish(debug, runtime, 'post', '', 'notify_unverified', {
