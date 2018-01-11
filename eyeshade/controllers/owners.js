@@ -52,7 +52,7 @@ v1.bulk = {
         channels.push(underscore.extend({ channelId: provider.publisher, visible: provider.show_verification_status }, info))
       })
 
-      bulk(request, reply, runtime, authorizer.owner, request.payload.contactInfo, channels)
+      bulk(request, reply, runtime, authorizer.owner, request.payload.contactInfo, null, channels)
     }
   },
   auth: {
@@ -95,7 +95,17 @@ v1.bulk = {
 v2.bulk = {
   handler: (runtime) => {
     return async (request, reply) => {
-      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.channels)
+      const channels = request.payload.channels || []
+
+      for (let channel of channels) {
+        const props = batPublisher.getPublisherProps(channel.channelId)
+
+        if (!props) return reply(boom.badData('invalid channel-identifier ' + channel.channelId))
+
+        if (!props.publisherType) return reply(boom.badData('channel ' + channel.channelId + ' must .../verify/... first'))
+      }
+
+      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, channels)
     }
   },
   auth: {
@@ -115,9 +125,9 @@ v2.bulk = {
         phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('owner phone number'),
         email: Joi.string().email().required().description('owner verified email address')
       }).optional(),
+      visible: Joi.boolean().optional().default(true).description('promotional display authorized'),
       channels: Joi.array().min(1).items(Joi.object().keys({
         channelId: braveJoi.string().publisher().required().description('the publisher identity'),
-        visible: Joi.boolean().optional().default(true).description('promotional display authorized'),
         authorizerEmail: Joi.string().email().optional().description('authorizer email address'),
         authorizerName: Joi.string().optional().description('authorizer name')
       }).optional())
@@ -128,7 +138,7 @@ v2.bulk = {
     { schema: Joi.object().length(0) }
 }
 
-const bulk = async (request, reply, runtime, owner, info, channels) => {
+const bulk = async (request, reply, runtime, owner, info, visible, channels) => {
   const debug = braveHapi.debug(module, request)
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
@@ -148,6 +158,7 @@ const bulk = async (request, reply, runtime, owner, info, channels) => {
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
     $set: underscore.extend({
+      visible: visible,
       authorized: true,
       altcurrency: altcurrency,
       info: info
@@ -176,6 +187,7 @@ const bulk = async (request, reply, runtime, owner, info, channels) => {
       altcurrency: altcurrency,
       info: underscore.defaults({ name: channel.authorizerName, email: channel.authorizerEmail }, info)
     }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
+    if (visible !== 'null') state.$set.visible = visible
 
     await publishers.update({ publisher: channel.channelId }, state, { upsert: true })
 
@@ -610,6 +622,7 @@ module.exports.initialize = async (debug, runtime) => {
         providerName: '',
         providerSuffix: '',
         providerValue: '',
+        visible: false,
 
         authorized: false,
         authority: '',
@@ -622,7 +635,7 @@ module.exports.initialize = async (debug, runtime) => {
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { owner: 1 } ],
-      others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
+      others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 }, { visible: 1 },
                 { authorized: 1 }, { authority: 1 },
                 { provider: 1 }, { altcurrency: 1 },
                 { timestamp: 1 } ]
