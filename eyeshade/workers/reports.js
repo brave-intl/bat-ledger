@@ -719,8 +719,9 @@ exports.workers = {
 
       file = await create(runtime, 'publishers-', payload)
       if (format === 'json') {
+        entries = []
         for (let offset in data) {
-          let entry, wallet
+          let entry, wallet, who
           let datum = data[offset]
 
           delete datum.currency
@@ -731,8 +732,10 @@ exports.workers = {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
 
+            who = 'publisher ' + datum.publisher
             if (entry.provider) wallet = await runtime.wallet.status(entry)
             if ((!wallet) && (entry.owner)) {
+              who = 'owner ' + entry.owner
               entry = await owners.findOne({ owner: entry.owner })
               if (entry.provider) wallet = await runtime.wallet.status(entry)
             }
@@ -742,12 +745,17 @@ exports.workers = {
             } else {
               runtime.notify(debug, {
                 channel: '#publishers-bot',
-                text: 'publisher ' + datum.publisher + ' lacking settlement address and/or preferredCurrency'
+                text: who + ' lacking settlement address and/or preferredCurrency'
               })
+              continue
             }
+            entries.push(datum)
           } catch (ex) {}
         }
-        await file.write(utf8ify(data), true)
+        data = entries
+
+
+        await file.write(utf8ify(entries), true)
         return runtime.notify(debug, {
           channel: '#publishers-bot',
           text: authority + ' report-publishers-contributions completed'
