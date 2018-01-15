@@ -61,7 +61,7 @@ v1.bulk = {
   },
 
   description: 'Creates publisher entries in bulk',
-  tags: [ 'api', 'deprecated' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -114,7 +114,7 @@ v2.bulk = {
   },
 
   description: 'Creates publisher entries in bulk',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -245,7 +245,7 @@ v1.unlinkPublisher = {
   },
 
   description: 'Unlinks a publisher from an owner',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -377,7 +377,7 @@ v1.getWallet = {
   },
 
   description: 'Gets information for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -467,7 +467,7 @@ v1.putWallet = {
   },
 
   description: 'Sets information for a verified publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -513,7 +513,7 @@ v1.getStatement = {
   },
 
   description: 'Generates a statement for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -544,7 +544,7 @@ v1.getToken = {
   },
 
   description: 'Verifies a publisher claimed by an owner',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     params: {
@@ -581,7 +581,7 @@ v1.putToken = {
   },
 
   description: 'Gets a verification token for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),

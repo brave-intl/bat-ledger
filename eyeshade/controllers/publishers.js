@@ -217,7 +217,7 @@ v2.getBalance = {
   },
 
   description: 'Gets the balance for a verified publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -351,7 +351,7 @@ v2.getWallet = {
   },
 
   description: 'Gets information for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -435,7 +435,7 @@ v2.putWallet = {
   },
 
   description: 'Sets information for a verified publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -481,7 +481,7 @@ v1.identity =
 },
 
   description: 'Returns the publisher identity associated with a URL',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -631,7 +631,7 @@ v1.getStatement = {
   },
 
   description: 'Generates a statement for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -668,7 +668,7 @@ v1.putToken = {
   },
 
   description: 'Gets a verification token for a publisher',
-  tags: [ 'api', 'deprecated' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -816,7 +816,7 @@ v1.getToken = {
   },
 
   description: 'Verifies a publisher',
-  tags: [ 'api', 'deprecated' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
