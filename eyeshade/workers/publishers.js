@@ -51,7 +51,7 @@ exports.workers = {
       for (let entry of publishers) {
         visible = entry.show_verification_status
         try {
-          result = await publish(debug, runtime, 'post', '', '', {
+          result = await publish(debug, runtime, 'post', '', '', '', {
             publisher: underscore.extend({ brave_publisher_id: entry.publisher, verified: true },
                                          underscore.omit(entry, [ 'publisher' ]))
           })

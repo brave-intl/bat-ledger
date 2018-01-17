@@ -32,13 +32,27 @@ const create = async (runtime, prefix, params) => {
   return runtime.database.file(params.reportId, 'w', options)
 }
 
-const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  const prefix = publisher ? encodeURIComponent(publisher) : ''
-  let result
+const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
+  let path, result
 
   if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
 
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
+  path = '/api'
+  if (owner) path += '/owners/' + encodeURIComponent(owner)
+  path += '/channel'
+  if (publisher) path += '/' + encodeURIComponent(publisher)
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
+    headers: {
+      authorization: 'Bearer ' + runtime.config.publishers.access_token,
+      'content-type': 'application/json'
+    },
+    payload: JSON.stringify(payload),
+    useProxyP: true
+  })
+  path = '/api/'
+  if (owner) path += 'owners/' + encodeURIComponent(owner) + '/'
+  path += 'publishers/' + encodeURIComponent(publisher)
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path, endpoint, {
     headers: {
       authorization: 'Bearer ' + runtime.config.publishers.access_token,
       'content-type': 'application/json'
@@ -290,7 +304,7 @@ const quanta = async (debug, runtime, qid) => {
   }))
 }
 
-const mixer = async (debug, runtime, publisher, qid) => {
+const mixer = async (debug, runtime, filter, qid) => {
   const publishers = {}
   let results
 
@@ -309,7 +323,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
     for (let slice of slices) {
       probi = new BigNumber(quantum.quantum.toString()).times(slice.counts).times(0.95)
       fees = new BigNumber(quantum.quantum.toString()).times(slice.counts).minus(probi)
-      if ((publisher) && (slice.publisher !== publisher)) continue
+      if ((filter) && (filter.indexOf(slice.publisher) === -1)) continue
 
       if (!publishers[slice.publisher]) {
         publishers[slice.publisher] = {
@@ -662,7 +676,7 @@ exports.workers = {
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
 
-      publishers = await mixer(debug, runtime, publisher, undefined)
+      publishers = await mixer(debug, runtime, [ publisher ], undefined)
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false
@@ -882,22 +896,34 @@ exports.workers = {
       const starting = payload.starting
       const summaryP = payload.summary
       const publisher = payload.publisher
+      const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, data1, data2, file, entries, publishers, query, usd
+      let data, data1, data2, file, filter, entries, publishers, query, usd
       let ending = payload.ending
 
-      if (publisher) {
-        query = { publisher: publisher }
+      if (publisher || owner) {
+        if (owner) {
+          filter = []
+          query = { $or: [ { owner: owner } ] }
+          entries = await publishersC.find({ owner: owner })
+          entries.forEach((entry) => {
+            filter.push(entry.publisher)
+            query.$or.push({ publisher: entry.publisher })
+          })
+        } else {
+          filter = [ publisher ]
+          query = { publisher: publisher }
+        }
         if ((starting) || (ending)) {
           query._id = {}
           if (starting) query._id.$gte = date2objectId(starting, false)
           if (ending) query._id.$lte = date2objectId(ending, true)
         }
         entries = await settlements.find(query)
-        publishers = await mixer(debug, runtime, publisher, query._id)
+        publishers = await mixer(debug, runtime, filter, query._id)
       } else {
-        entries = await settlements.find(owner ? { owner: owner } : hash ? { hash: hash } : {})
+        entries = await settlements.find(hash ? { hash: hash } : {})
         if ((rollupP) && (entries.length > 0)) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })

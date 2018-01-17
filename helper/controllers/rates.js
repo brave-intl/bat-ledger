@@ -23,7 +23,7 @@ v1.read = { handler: (runtime) => {
   description: 'Report currency rates',
   tags: [ 'api' ],
 
-  validate: { query: { access_token: Joi.string().guid().optional() } },
+  validate: { headers: Joi.object({ authorization: Joi.string().required() }).unknown() },
 
   response: { schema: Joi.any().description('all the rates') }
 }

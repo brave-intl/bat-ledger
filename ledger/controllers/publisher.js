@@ -87,7 +87,7 @@ v1.read =
     const consequential = request.query.consequential
     const entry = consequential ? (await rulesetEntryV2(request, runtime)) : (await rulesetEntry(request, runtime))
 
-    return reply(entry.ruleset)
+    reply(entry.ruleset)
   }
 },
 
@@ -436,7 +436,7 @@ v2.identity =
 },
 
   description: 'Returns the publisher identity associated with a URL',
-  tags: [ 'api' ],
+  tags: [ 'api', 'deprecated' ],
 
   validate:
     { query: { url: Joi.string().uri({ scheme: /https?/ }).required().description('the URL to parse') } },
@@ -603,27 +603,27 @@ v2.verified =
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().get().path('/v1/publisher/ruleset').config(v1.read),
-  braveHapi.routes.async().get().path('/v1/publisher/ruleset/version').config(v1.version),
+  braveHapi.routes.async().path('/v1/publisher/ruleset').config(v1.read),
+  braveHapi.routes.async().path('/v1/publisher/ruleset/version').config(v1.version),
 /*
-  braveHapi.routes.async().get().path('/v1/publisher/identity').config(v1.identity),
+  braveHapi.routes.async().path('/v1/publisher/identity').config(v1.identity),
 */
 
-  braveHapi.routes.async().get().path('/v2/publisher/ruleset').config(v2.read),
+  braveHapi.routes.async().path('/v2/publisher/ruleset').config(v2.read),
   braveHapi.routes.async().post().path('/v2/publisher/ruleset').config(v2.create),
   braveHapi.routes.async().patch().path('/v2/publisher/rulesets').config(v2.update),
   braveHapi.routes.async().put().path('/v2/publisher/ruleset/{publisher}').config(v2.write),
   braveHapi.routes.async().delete().path('/v2/publisher/ruleset/{publisher}').config(v2.delete),
-  braveHapi.routes.async().get().path('/v2/publisher/identity').config(v2.identity),
+  braveHapi.routes.async().path('/v2/publisher/identity').config(v2.identity),
 
-  braveHapi.routes.async().get().path('/v3/publisher/identity').config(v3.identity),
-  braveHapi.routes.async().get().path('/v3/publisher/timestamp').config(v3.timestamp),
+  braveHapi.routes.async().path('/v3/publisher/identity').config(v3.identity),
+  braveHapi.routes.async().path('/v3/publisher/timestamp').config(v3.timestamp),
 
 /*
-  braveHapi.routes.async().get().path('/v1/publisher/identity/verified').config(v1.verified),
+  braveHapi.routes.async().path('/v1/publisher/identity/verified').config(v1.verified),
 */
 
-  braveHapi.routes.async().get().path('/v2/publisher/identity/verified').config(v2.verified)
+  braveHapi.routes.async().path('/v2/publisher/identity/verified').config(v2.verified)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
