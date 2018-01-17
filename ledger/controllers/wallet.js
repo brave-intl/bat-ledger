@@ -125,7 +125,7 @@ const read = function (runtime, apiVersion) {
         }
         underscore.extend(state.$set, info.quotes)
       }
-      underscore.extend(result, underscore.omit(info, [ 'extend' ]))
+      underscore.extend(result, underscore.omit(info, [ 'quotes' ]))
 
       if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }

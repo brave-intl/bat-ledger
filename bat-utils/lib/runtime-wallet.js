@@ -505,6 +505,7 @@ Wallet.providers.simplex = {
       partner: 'brave',
       version: '1'
     }
+    min = this.runtime.config.simplex && (this.runtime.config.simplex['MIN_' + fiat.toUpperCase()] || 5)
     let expires, quote, rate, result
 
     if (!this.runtime.config.simplex) return
@@ -514,8 +515,14 @@ Wallet.providers.simplex = {
       if (!rate) return
 
       amount = Math.ceil(this.currency.alt2fiat(currency, amount, fiat, true))
-      currency = fiat
+    } else if (currency !== fiat) {
+      rate = underscore.pick(this.currency.fxrates[currency])
+      if (!rate) return
+
+      amount = Math.ceil(amount / rate)
     }
+    currency = fiat
+    if (amount < min) amount = min
 
     quote = info.simplex
     if ((!quote) || (quote.expires <= now)) {
