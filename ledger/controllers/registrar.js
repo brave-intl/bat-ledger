@@ -14,6 +14,8 @@ const braveJoi = utils.extras.joi
 const v1 = {}
 const v2 = {}
 
+let altcurrency
+
 const server = (request, runtime) => {
   const registrarType = request.params.registrarType
 
@@ -65,15 +67,19 @@ v2.update =
     const debug = braveHapi.debug(module, request)
     const payload = request.payload || {}
     const registrars = runtime.database.get('registrars', debug)
-    let days, fee, schema, state, registrar, validity
+    let keys, schema, state, registrar, validity
 
     registrar = server(request, runtime)
     if (!registrar) return reply(boom.notFound('unknown registrar'))
 
-    days = Joi.number().integer().min(1).max(365).required()
-    fee = Joi.object().keys({ USD: Joi.number().min(1).required() }).unknown(true).required()
+    keys = {}
+    keys[altcurrency] = Joi.number().min(1).required()
     schema = {
-      persona: Joi.object().keys({ adFree: Joi.object().keys({ days: days, fee: fee }) }).required()
+      persona: Joi.object().keys({ adFree: Joi.object().keys({
+        currency: braveJoi.string().altcurrencyCode().optional(),
+        days: Joi.number().integer().min(1).max(365).required(),
+        fee: Joi.object().keys(keys).unknown(true).required()
+      }).unknown(true) }).required()
     }[registrar.registrarType] || Joi.object().max(0)
 
     validity = Joi.validate(payload, schema)
@@ -81,6 +87,8 @@ v2.update =
 
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
     await registrars.update({ registrarId: registrar.registrarId }, state, { upsert: false })
+
+    await updateBalance(runtime, payload)
 
     registrar.payload = payload
     reply(underscore.extend({ payload: payload }, registrar.publicInfo()))
@@ -375,6 +383,23 @@ v2.createPersona =
   }
 }
 
+const updateBalance = async (runtime, payload) => {
+  if (!runtime.config.balance) return
+
+  try {
+    await braveHapi.wreck.patch(runtime.config.balance.url + '/v2/registrar/persona', {
+      headers: {
+        authorization: 'Bearer ' + runtime.config.balance.access_token,
+        'content-type': 'application/json'
+      },
+      payload: payload,
+      useProxyP: true
+    })
+  } catch (ex) {
+    runtime.captureException(ex)
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/{apiV}/registrar/{registrarType}').config(v2.read),
   braveHapi.routes.async().patch().path('/{apiV}/registrar/{registrarType}').config(v2.update),
@@ -387,6 +412,8 @@ module.exports.initialize = async (debug, runtime) => {
   const configurations = process.env.REGISTRARS || 'persona:1,viewing:2'
   const registrars = runtime.database.get('registrars', debug)
   let entry, i, payload, registrar, registrarId, registrarType, service, services, state
+
+  altcurrency = runtime.config.altcurrency || 'BAT'
 
   runtime.database.checkIndices(debug, [
     {
@@ -439,5 +466,7 @@ module.exports.initialize = async (debug, runtime) => {
     registrar.registrarType = registrarType
     registrar.payload = payload
     runtime.registrars[registrarType] = registrar
+
+    if (registrarType === 'persona') await updateBalance(runtime, payload)
   }
 }
