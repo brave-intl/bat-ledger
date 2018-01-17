@@ -538,4 +538,5 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-publishers-settlements')
   await runtime.queue.create('report-publishers-status')
   await runtime.queue.create('report-surveyors-contributions')
+  await runtime.queue.create('report-grants-outstanding')
 }
