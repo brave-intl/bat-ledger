@@ -12,6 +12,7 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 let altcurrency
 
@@ -51,8 +52,8 @@ v1.getFile = {
 
 v1.publisher = {}
 v1.publishers = {}
-v2.publisher = {}
 v2.publishers = {}
+v3.publishers = {}
 
 /*
    GET /v1/reports/publisher/{publisher}/contributions
@@ -309,7 +310,7 @@ v1.publishers.statements = {
   }
 }
 
-v2.publisher.statements = {
+v3.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
@@ -523,8 +524,8 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/reports/publishers/settlements').config(v1.publishers.settlements),
   braveHapi.routes.async().path('/v1/reports/publisher/{publisher}/statements').config(v1.publisher.statements),
   braveHapi.routes.async().path('/v1/reports/publishers/statements/{hash}').config(v1.publishers.statements),
-  braveHapi.routes.async().path('/v2/reports/publishers/statements/{settlementId}').config(v2.publisher.statements),
   braveHapi.routes.async().path('/v2/reports/publishers/statements').config(v2.publishers.statements),
+  braveHapi.routes.async().path('/v3/reports/publishers/statements/{settlementId}').config(v3.publishers.statements),
   braveHapi.routes.async().path('/v1/reports/publishers/status').config(v1.publishers.status),
   braveHapi.routes.async().path('/v2/reports/publishers/status').config(v2.publishers.status),
   braveHapi.routes.async().path('/v1/reports/surveyors/contributions').config(v1.surveyors.contributions)
