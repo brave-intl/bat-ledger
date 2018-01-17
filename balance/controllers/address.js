@@ -14,7 +14,7 @@ BigNumber.config({ EXPONENTIAL_AT: 28 })
 const debug = new SDebug('balance')
 const v2 = {}
 
-let properties = {}
+let parameters = {}
 
 /*
    GET /v2/card/BAT/{cardId}/balance
@@ -53,7 +53,7 @@ v2.batBalance =
       unconfirmed: balanceProbi.minus(spendableProbi).dividedBy(runtime.currency.alt2scale(altcurrency)).toFixed(4),
       rates: runtime.currency.rates[altcurrency]
     }
-    if (underscore.keys(properties).length) underscore.extend(balances, { properties: properties })
+    if (underscore.keys(parameters).length) underscore.extend(balances, { parameters: parameters })
 
     reply(balances)
 
@@ -79,7 +79,7 @@ v2.batBalance =
       unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
       probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
-      properties: Joi.object().keys().unknown(true).optional()
+      parameters: Joi.object().keys().unknown(true).optional()
     })
   }
 }
@@ -115,7 +115,7 @@ v2.walletBalance =
     }
 
     const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates'])
-    if (underscore.keys(properties).length) underscore.extend(balances, { properties: properties })
+    if (underscore.keys(parameters).length) underscore.extend(balances, { parameters: parameters })
 
     reply(balances)
 
@@ -141,7 +141,7 @@ v2.walletBalance =
       unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
       probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
-      properties: Joi.object().keys().unknown(true).optional()
+      parameters: Joi.object().keys().unknown(true).optional()
     })
   }
 }
@@ -181,10 +181,10 @@ v2.invalidateWalletBalance =
    PATCH /v2/registrar/persona
  */
 
-v2.updateProperties =
+v2.updateParameters =
 { handler: (runtime) => {
   return async (request, reply) => {
-    properties = request.payload || {}
+    parameters = request.payload || {}
 
     reply({})
   }
@@ -194,7 +194,7 @@ v2.updateProperties =
     mode: 'required'
   },
 
-  description: 'Updates the global wallet properties',
+  description: 'Updates the global wallet parameters',
   tags: [ 'api' ],
 
   validate: {
@@ -208,7 +208,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/card/BAT/{cardId}/balance').config(v2.batBalance),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/balance').config(v2.walletBalance),
   braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance),
-  braveHapi.routes.async().patch().path('/v2/registrar/persona').config(v2.updateProperties)
+  braveHapi.routes.async().patch().path('/v2/registrar/persona').config(v2.updateParameters)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -221,5 +221,5 @@ module.exports.initialize = async (debug, runtime) => {
     runtime.captureException(ex)
     return debug('initialize', { reason: ex.toString(), stack: ex.stack })
   }
-  properties = result.payload || {}
+  parameters = result.payload || {}
 }
