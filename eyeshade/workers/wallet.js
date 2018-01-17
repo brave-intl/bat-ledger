@@ -331,7 +331,7 @@ exports.workers = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.omit(payload, [ 'grantIds' ])
       }
-      await grants.update({ grantIds: { $in: grantIds } }, state, { upsert: true })
+      await grants.update({ grantId: { $in: grantIds } }, state, { upsert: true })
     }
 }
 

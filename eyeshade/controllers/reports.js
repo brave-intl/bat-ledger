@@ -473,6 +473,49 @@ v1.surveyors.contributions = {
   }
 }
 
+/*
+   GET /v1/reports/grants/outstanding
+ */
+
+v1.grants = {}
+
+v1.grants.outstanding = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
+      const reportId = uuid.v4().toLowerCase()
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const debug = braveHapi.debug(module, request)
+
+      await runtime.queue.send(debug, 'report-grants-outstanding',
+                               underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
+                                                   request.query))
+      reply({ reportURL: reportURL })
+    }
+  },
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger', 'QA' ],
+    mode: 'required'
+  },
+
+  description: 'Returns information about grant activity',
+  tags: [ 'api' ],
+
+  validate: {
+    query: {
+      format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+    }).unknown(true)
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/reports/file/{reportId}').config(v1.getFile),
   braveHapi.routes.async().path('/v1/reports/publisher/{publisher}/contributions').config(v1.publisher.contributions),
@@ -484,7 +527,8 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/reports/publishers/statements').config(v2.publishers.statements),
   braveHapi.routes.async().path('/v1/reports/publishers/status').config(v1.publishers.status),
   braveHapi.routes.async().path('/v2/reports/publishers/status').config(v2.publishers.status),
-  braveHapi.routes.async().path('/v1/reports/surveyors/contributions').config(v1.surveyors.contributions)
+  braveHapi.routes.async().path('/v1/reports/surveyors/contributions').config(v1.surveyors.contributions),
+  braveHapi.routes.async().path('/v1/reports/grants/outstanding').config(v1.grants.outstanding)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -494,4 +538,5 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-publishers-settlements')
   await runtime.queue.create('report-publishers-status')
   await runtime.queue.create('report-surveyors-contributions')
+  await runtime.queue.create('report-grants-outstanding')
 }

@@ -1325,6 +1325,82 @@ exports.workers = {
         file.close()
       }
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-surveyors-contributions completed' })
+    },
+/* sent by GET /v1/reports/grants-outstanding
+
+    { queue            : 'report-grants-outstanding'
+    , message          :
+      { reportId       : '...'
+      , reportURL      : '...'
+      , authority      : '...:...'
+      , format         : 'json' | 'csv'
+      }
+    }
+ */
+  'report-grants-outstanding':
+    async (debug, runtime, payload) => {
+      const authority = payload.authority
+      const format = payload.format
+      const grants = runtime.database.get('grants', debug)
+      let results
+
+      const promotions = await grants.aggregate([
+        {
+          $match:
+          { probi: { $gt: 0 },
+            altcurrency: { $eq: altcurrency }
+          }
+        },
+        {
+          $group:
+          {
+            _id: '$promotionId',
+            probi: { $sum: '$probi' },
+            outstandingProbi: { $sum: { $cond: [ { $ne: [ '$redeemed', true ] }, '$probi', 0 ] } },
+            count: { $sum: 1 },
+            outstandingCount: { $sum: { $cond: [ { $ne: [ '$redeemed', true ] }, 1, 0 ] } }
+          }
+        }
+      ])
+      results = []
+      const total = { probi: new BigNumber(0), outstandingProbi: new BigNumber(0), count: 0, outstandingCount: 0 }
+      for (let promotion of promotions) {
+        results.push({
+          promotionId: promotion._id,
+          probi: promotion.probi.toString(),
+          outstandingProbi: promotion.outstandingProbi.toString(),
+          count: promotion.count.toString(),
+          outstandingCount: promotion.outstandingCount.toString()
+        })
+        total.probi.plus(promotion.probi.toString())
+        total.outstandingProbi.plus(promotion.outstandingProbi.toString())
+        total.count += promotion.count
+        total.outstandingCount += promotion.outstandingCount
+      }
+
+      total.probi = total.probi.toString()
+      total.outstandingProbi = total.outstandingProbi.toString()
+      total.count = total.count.toString()
+      total.outstandingCount = total.outstandingCount.toString()
+      results.unshift(total)
+
+      const file = await create(runtime, 'grants-outstanding-', payload)
+      if (format === 'json') {
+        await file.write(utf8ify(results), true)
+        return runtime.notify(debug, {
+          channel: '#publishers-bot',
+          text: authority + ' report-grants-outstanding completed'
+        })
+      }
+
+      const fields = [ 'promotionId', 'probi', 'outstandingProbi', 'count', 'outstandingCount' ]
+      try {
+        await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, results), fields: fields })), true)
+      } catch (ex) {
+        debug('reports', { report: 'report-grants-outstanding', reason: ex.toString() })
+        file.close()
+      }
+      runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-grants-outstanding completed' })
     }
 }
 
