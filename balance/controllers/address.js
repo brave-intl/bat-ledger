@@ -14,8 +14,6 @@ BigNumber.config({ EXPONENTIAL_AT: 28 })
 const debug = new SDebug('balance')
 const v2 = {}
 
-let parameters = {}
-
 /*
    GET /v2/card/BAT/{cardId}/balance
  */
@@ -53,6 +51,8 @@ v2.batBalance =
       unconfirmed: balanceProbi.minus(spendableProbi).dividedBy(runtime.currency.alt2scale(altcurrency)).toFixed(4),
       rates: runtime.currency.rates[altcurrency]
     }
+
+    const parameters = await runtime.cache.get('parameters', 'ledgerBalance:globals')
     if (underscore.keys(parameters).length) underscore.extend(balances, { parameters: parameters })
 
     reply(balances)
@@ -115,6 +115,8 @@ v2.walletBalance =
     }
 
     const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates'])
+
+    const parameters = await runtime.cache.get('parameters', 'ledgerBalance:globals')
     if (underscore.keys(parameters).length) underscore.extend(balances, { parameters: parameters })
 
     reply(balances)
@@ -178,13 +180,35 @@ v2.invalidateWalletBalance =
 }
 
 /*
+   GET /v2/registrar/persona
+ */
+
+v2.fetchParameters =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const parameters = await runtime.cache.get('parameters', 'ledgerBalance:globals')
+
+    reply(parameters || {})
+  }
+},
+
+  description: 'returns the global wallet parameters',
+  tags: [ 'api' ],
+
+  validate:
+    { query: {} },
+
+  response: { schema: Joi.object().keys().unknown(true).description('additional information') }
+}
+
+/*
    PATCH /v2/registrar/persona
  */
 
 v2.updateParameters =
 { handler: (runtime) => {
   return async (request, reply) => {
-    parameters = request.payload || {}
+    runtime.cache.set('parameters', JSON.stringify(request.payload || {}), {}, 'ledgerBalance:globals')
 
     reply({})
   }
@@ -208,6 +232,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/card/BAT/{cardId}/balance').config(v2.batBalance),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/balance').config(v2.walletBalance),
   braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance),
+  braveHapi.routes.async().path('/v2/registrar/persona').config(v2.fetchParameters),
   braveHapi.routes.async().patch().path('/v2/registrar/persona').config(v2.updateParameters)
 ]
 
@@ -221,5 +246,6 @@ module.exports.initialize = async (debug, runtime) => {
     runtime.captureException(ex)
     return debug('initialize', { reason: ex.toString(), stack: ex.stack })
   }
-  parameters = result.payload || {}
+
+  runtime.cache.set('parameters', JSON.stringify(result.payload || {}), {}, 'ledgerBalance:globals')
 }
