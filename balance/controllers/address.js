@@ -110,7 +110,7 @@ v2.walletBalance =
       fresh = true
     }
 
-    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates'])
+    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates', 'parameters'])
 
     reply(balances)
 
@@ -135,7 +135,8 @@ v2.walletBalance =
       balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
       unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
-      probi: braveJoi.string().numeric().required().description('the wallet balance in probi')
+      probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
+      parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters')
     })
   }
 }
