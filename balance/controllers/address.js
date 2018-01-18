@@ -52,9 +52,6 @@ v2.batBalance =
       rates: runtime.currency.rates[altcurrency]
     }
 
-    const parameters = await runtime.cache.get('parameters', 'ledgerBalance:globals')
-    if (underscore.keys(parameters).length) underscore.extend(balances, { parameters: parameters })
-
     reply(balances)
 
     if (fresh) {
@@ -78,8 +75,7 @@ v2.batBalance =
       balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
       unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
-      probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
-      parameters: Joi.object().keys().unknown(true).optional()
+      probi: braveJoi.string().numeric().required().description('the wallet balance in probi')
     })
   }
 }
@@ -114,10 +110,7 @@ v2.walletBalance =
       fresh = true
     }
 
-    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates'])
-
-    const parameters = await runtime.cache.get('parameters', 'ledgerBalance:globals')
-    if (underscore.keys(parameters).length) underscore.extend(balances, { parameters: parameters })
+    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates', 'parameters'])
 
     reply(balances)
 
@@ -143,7 +136,7 @@ v2.walletBalance =
       unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
       probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
-      parameters: Joi.object().keys().unknown(true).optional()
+      parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters')
     })
   }
 }
@@ -179,61 +172,10 @@ v2.invalidateWalletBalance =
   response: { schema: Joi.object().length(0) }
 }
 
-/*
-   GET /v2/registrar/persona
- */
-
-v2.fetchParameters =
-{ handler: (runtime) => {
-  return async (request, reply) => {
-    const parameters = await runtime.cache.get('parameters', 'ledgerBalance:globals')
-
-    reply(parameters || {})
-  }
-},
-
-  description: 'returns the global wallet parameters',
-  tags: [ 'api' ],
-
-  validate:
-    { query: {} },
-
-  response: { schema: Joi.object().keys().unknown(true).description('additional information') }
-}
-
-/*
-   PATCH /v2/registrar/persona
- */
-
-v2.updateParameters =
-{ handler: (runtime) => {
-  return async (request, reply) => {
-    runtime.cache.set('parameters', JSON.stringify(request.payload || {}), {}, 'ledgerBalance:globals')
-
-    reply({})
-  }
-},
-  auth: {
-    strategy: 'simple',
-    mode: 'required'
-  },
-
-  description: 'Updates the global wallet parameters',
-  tags: [ 'api' ],
-
-  validate: {
-    payload: Joi.object().optional().description('additional information')
-  },
-
-  response: { schema: Joi.object().length(0) }
-}
-
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/card/BAT/{cardId}/balance').config(v2.batBalance),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/balance').config(v2.walletBalance),
-  braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance),
-  braveHapi.routes.async().path('/v2/registrar/persona').config(v2.fetchParameters),
-  braveHapi.routes.async().patch().path('/v2/registrar/persona').config(v2.updateParameters)
+  braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -246,6 +188,4 @@ module.exports.initialize = async (debug, runtime) => {
     runtime.captureException(ex)
     return debug('initialize', { reason: ex.toString(), stack: ex.stack })
   }
-
-  runtime.cache.set('parameters', JSON.stringify(result.payload || {}), {}, 'ledgerBalance:globals')
 }
