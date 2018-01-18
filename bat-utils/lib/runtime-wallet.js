@@ -505,7 +505,7 @@ Wallet.providers.simplex = {
       partner: 'brave',
       version: '1'
     }
-    min = this.runtime.config.simplex && (this.runtime.config.simplex['MIN_' + fiat.toUpperCase()] || 5)
+    const min = this.runtime.config.simplex && (this.runtime.config.simplex['MIN_' + fiat.toUpperCase()] || 5)
     let expires, quote, rate, result
 
     if (!this.runtime.config.simplex) return

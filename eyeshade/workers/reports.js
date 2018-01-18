@@ -721,7 +721,7 @@ exports.workers = {
       if (format === 'json') {
         entries = []
         for (let offset in data) {
-          let entry, wallet, who
+          let entry, props, wallet, who
           let datum = data[offset]
 
           delete datum.currency
@@ -731,6 +731,10 @@ exports.workers = {
           try {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
+
+            props = batPublisher.getPublisherProps(datum.publisher)
+            datum.name = entry.info && entry.info.name
+            datum.URL = props && props.URL
 
             who = 'publisher ' + datum.publisher
             if (entry.provider) wallet = await runtime.wallet.status(entry)
@@ -753,7 +757,6 @@ exports.workers = {
           } catch (ex) {}
         }
         data = entries
-
 
         await file.write(utf8ify(entries), true)
         return runtime.notify(debug, {
