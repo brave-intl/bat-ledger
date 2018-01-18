@@ -200,7 +200,7 @@ v1.write = { handler: (runtime) => {
     if (!grant) return reply(boom.badData('promotion not available'))
 
     const grantInfo = underscore.extend(underscore.pick(grant, ['token', 'grantId', 'promotionId', 'status']),
-      {claimTimestamp: Date.now()}
+      { claimTimestamp: Date.now(), claimIP: whitelist.ipaddr(request) }
     )
 
     // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
@@ -220,7 +220,8 @@ v1.write = { handler: (runtime) => {
       result = await braveHapi.wreck.put(runtime.config.redeemer.url + '/v1/grants/' + grant.grantId, {
         headers: {
           authorization: 'Bearer ' + runtime.config.redeemer.access_token,
-          'content-type': 'application/json'
+          'content-type': 'application/json',
+          'X-Forwarded-For': whitelist.ipaddr(request)
         },
         payload: JSON.stringify(payload),
         useProxyP: true
