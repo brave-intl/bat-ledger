@@ -9,6 +9,7 @@ const { verify } = require('http-request-signature')
 
 const braveHapi = require('./extras-hapi')
 const braveUtils = require('./extras-utils')
+const whitelist = require('./hapi-auth-whitelist')
 
 const Currency = require('./runtime-currency')
 
@@ -148,7 +149,7 @@ Wallet.prototype.providers = function () {
   return underscore.keys(Wallet.providers)
 }
 
-Wallet.prototype.redeem = async function (info, txn, signature) {
+Wallet.prototype.redeem = async function (info, txn, signature, request) {
   let balance, desired, grants, grantIds, payload, result
 
   if (!this.runtime.config.redeemer) return
@@ -202,8 +203,11 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
   } else {
     result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
       headers: {
-        authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
-        'content-type': 'application/json'
+        'Authorization': 'Bearer ' + this.runtime.config.redeemer.access_token,
+        'Content-Type': 'application/json',
+        // Only pass "trusted" IP, not previous value of X-Forwarded-For
+        'X-Forwarded-For': whitelist.ipaddr(request),
+        'User-Agent': request.headers['user-agent']
       },
       payload: JSON.stringify(payload),
       useProxyP: true

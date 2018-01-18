@@ -25,6 +25,11 @@ const v1 = {}
 
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
 
+const claimRate = {
+  limit: 100,
+  window: 24 * 60 * 60
+}
+
 if (qalist.addresses) {
   qalist.authorizedAddrs = []
   qalist.authorizedBlocks = []
@@ -219,9 +224,11 @@ v1.write = { handler: (runtime) => {
     try {
       result = await braveHapi.wreck.put(runtime.config.redeemer.url + '/v1/grants/' + grant.grantId, {
         headers: {
-          authorization: 'Bearer ' + runtime.config.redeemer.access_token,
-          'content-type': 'application/json',
-          'X-Forwarded-For': whitelist.ipaddr(request)
+          'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+          'Content-Type': 'application/json',
+          // Only pass "trusted" IP, not previous value of X-Forwarded-For
+          'X-Forwarded-For': whitelist.ipaddr(request),
+          'User-Agent': request.headers['user-agent']
         },
         payload: JSON.stringify(payload),
         useProxyP: true
@@ -266,6 +273,13 @@ v1.write = { handler: (runtime) => {
 },
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: {
+      enabled: true,
+      rate: (request) => claimRate
+    }
+  },
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
