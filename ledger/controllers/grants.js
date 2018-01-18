@@ -209,7 +209,7 @@ v1.write = { handler: (runtime) => {
     )
     if (!wallet) {
       // reinsert grant, another request already added a grant for this promotion to the wallet
-      grants.insertOne(grant)
+      await grants.insert(grant)
       // promotion already applied to wallet
       return reply({})
     }
