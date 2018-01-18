@@ -12,6 +12,7 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 let altcurrency
 
@@ -52,6 +53,7 @@ v1.getFile = {
 v1.publisher = {}
 v1.publishers = {}
 v2.publishers = {}
+v3.publishers = {}
 
 /*
    GET /v1/reports/publisher/{publisher}/contributions
@@ -228,6 +230,7 @@ v1.publishers.settlements = {
 /*
    GET /v1/reports/publisher/{publisher}/statements
    GET /v1/reports/publishers/statements/{hash}
+   GET /v2/reports/publishers/statements/{settlementId}
    GET /v2/reports/publishers/statements
  */
 
@@ -294,6 +297,46 @@ v1.publishers.statements = {
 
   validate: {
     params: { hash: Joi.string().hex().required().description('transaction hash') },
+    query: {
+      rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
+      summary: Joi.boolean().optional().default(false).description('summarize report')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+    }).unknown(true)
+  }
+}
+
+v3.publishers.statements = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
+      const settlementId = request.params.settlementId
+      const reportId = uuid.v4().toLowerCase()
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const debug = braveHapi.debug(module, request)
+
+      await runtime.queue.send(debug, 'report-publishers-statements',
+                               underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
+                                                   { settlementId: settlementId }, request.query))
+      reply({ reportURL: reportURL })
+    }
+  },
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger', 'QA' ],
+    mode: 'required'
+  },
+
+  description: 'Returns statements for publishers',
+  tags: [ 'api' ],
+
+  validate: {
+    params: { settlementId: Joi.string().guid().required().description('transaction-identifier') },
     query: {
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
@@ -525,6 +568,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/reports/publisher/{publisher}/statements').config(v1.publisher.statements),
   braveHapi.routes.async().path('/v1/reports/publishers/statements/{hash}').config(v1.publishers.statements),
   braveHapi.routes.async().path('/v2/reports/publishers/statements').config(v2.publishers.statements),
+  braveHapi.routes.async().path('/v3/reports/publishers/statements/{settlementId}').config(v3.publishers.statements),
   braveHapi.routes.async().path('/v1/reports/publishers/status').config(v1.publishers.status),
   braveHapi.routes.async().path('/v2/reports/publishers/status').config(v2.publishers.status),
   braveHapi.routes.async().path('/v1/reports/surveyors/contributions').config(v1.surveyors.contributions),

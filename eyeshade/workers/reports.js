@@ -867,6 +867,7 @@ exports.workers = {
       , reportURL      : '...'
       , authority      : '...:...'
       , hash           : '...'
+      , settlementId   : '...'
       , owner          : '...'
       , publisher      : '...'
       , rollup         :  true  | false
@@ -879,8 +880,6 @@ exports.workers = {
   'report-publishers-statements':
     async (debug, runtime, payload) => {
       const authority = payload.authority
-      const hash = payload.hash
-      const owner = payload.owner
       const rollupP = payload.rollup
       const starting = payload.starting
       const summaryP = payload.summary
@@ -900,7 +899,7 @@ exports.workers = {
         entries = await settlements.find(query)
         publishers = await mixer(debug, runtime, publisher, query._id)
       } else {
-        entries = await settlements.find(owner ? { owner: owner } : hash ? { hash: hash } : {})
+        entries = await settlements.find(underscore.pick(payload, [ 'owner', 'hash', 'settlementId' ]))
         if ((rollupP) && (entries.length > 0)) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
