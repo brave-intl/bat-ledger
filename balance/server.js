@@ -27,11 +27,11 @@ const utils = require('bat-utils')
 const options = {
   parent: path.join(__dirname, 'controllers'),
   routes: utils.hapi.controllers.index,
+  controllers: utils.hapi.controllers,
   module: module
 }
 
 config.database = false
-config.login = false
 config.queue = false
 
 module.exports = utils.hapi.server(options, new utils.Runtime(config))

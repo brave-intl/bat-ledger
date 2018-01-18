@@ -191,7 +191,8 @@ v1.write = { handler: (runtime) => {
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
     if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
-      return reply(boom.badData('promotion already applied to wallet'))
+      // promotion already applied to wallet
+      return reply({})
     }
 
     // pop off one grant
@@ -209,7 +210,8 @@ v1.write = { handler: (runtime) => {
     if (!wallet) {
       // reinsert grant, another request already added a grant for this promotion to the wallet
       grants.insertOne(grant)
-      return reply(boom.badData('promotion already applied to wallet'))
+      // promotion already applied to wallet
+      return reply({})
     }
 
     // register the users claim to the grant with the redemption server
@@ -274,8 +276,8 @@ v1.write = { handler: (runtime) => {
 
   response: {
     schema: Joi.object().keys({
-      altcurrency: braveJoi.string().altcurrencyCode().required().default('BAT').description('the grant altcurrency'),
-      probi: braveJoi.string().numeric().required().description('the grant amount in probi')
+      altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+      probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
     }).unknown(true).description('grant properties')
   }
 }

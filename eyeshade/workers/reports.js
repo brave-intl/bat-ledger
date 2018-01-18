@@ -721,7 +721,7 @@ exports.workers = {
       if (format === 'json') {
         entries = []
         for (let offset in data) {
-          let entry, wallet, who
+          let entry, props, wallet, who
           let datum = data[offset]
 
           delete datum.currency
@@ -731,6 +731,10 @@ exports.workers = {
           try {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
+
+            props = batPublisher.getPublisherProps(datum.publisher)
+            datum.name = entry.info && entry.info.name
+            datum.URL = props && props.URL
 
             who = 'publisher ' + datum.publisher
             if (entry.provider) wallet = await runtime.wallet.status(entry)
@@ -753,7 +757,6 @@ exports.workers = {
           } catch (ex) {}
         }
         data = entries
-
 
         await file.write(utf8ify(entries), true)
         return runtime.notify(debug, {
@@ -864,6 +867,7 @@ exports.workers = {
       , reportURL      : '...'
       , authority      : '...:...'
       , hash           : '...'
+      , settlementId   : '...'
       , owner          : '...'
       , publisher      : '...'
       , rollup         :  true  | false
@@ -876,8 +880,6 @@ exports.workers = {
   'report-publishers-statements':
     async (debug, runtime, payload) => {
       const authority = payload.authority
-      const hash = payload.hash
-      const owner = payload.owner
       const rollupP = payload.rollup
       const starting = payload.starting
       const summaryP = payload.summary
@@ -897,7 +899,7 @@ exports.workers = {
         entries = await settlements.find(query)
         publishers = await mixer(debug, runtime, publisher, query._id)
       } else {
-        entries = await settlements.find(owner ? { owner: owner } : hash ? { hash: hash } : {})
+        entries = await settlements.find(underscore.pick(payload, [ 'owner', 'hash', 'settlementId' ]))
         if ((rollupP) && (entries.length > 0)) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })

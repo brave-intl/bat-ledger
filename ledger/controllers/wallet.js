@@ -47,6 +47,9 @@ const read = function (runtime, apiVersion) {
 
     if (apiVersion === 2) {
       result = underscore.extend(result, { addresses: wallet.addresses })
+      if (runtime.registrars.persona) {
+        result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
+      }
     }
 
     if ((refreshP) || (balanceP && !wallet.balances)) {
