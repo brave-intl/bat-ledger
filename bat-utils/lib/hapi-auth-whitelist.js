@@ -27,12 +27,25 @@ exports.authorizedP = (ipaddr) => {
          (underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) })))) return true
 }
 
+// NOTE This function trusts the final IP address in X-Forwarded-For
+//      This is reasonable only when running behind a load balancer that correctly sets this header
+//      and there is no way to directly access the web nodes
 exports.ipaddr = (request) => {
-  return (request.headers['x-forwarded-for'] || request.info.remoteAddress).split(',')[0].trim()
+  // https://en.wikipedia.org/wiki/X-Forwarded-For    X-Forwarded-For: client, proxy1, proxy2
+  // Since it is easy to forge an X-Forwarded-For field the given information should be used with care.
+  // The last IP address is always the IP address that connects to the last proxy, which means it is the most reliable source of information.
+
+  const forwardedFor = request.headers['x-forwarded-for']
+  if (forwardedFor) {
+    const forwardedIps = forwardedFor.split(',')
+    return forwardedIps[forwardedIps.length - 1]
+  } else {
+    return request.info.remoteAddress
+  }
 }
 
 exports.authenticate = (request, reply) => {
-  const ipaddr = (request.headers['x-forwarded-for'] || request.info.remoteAddress).split(',')[0].trim()
+  const ipaddr = exports.ipaddr(request)
   let result
 
   if ((authorizedAddrs) &&
