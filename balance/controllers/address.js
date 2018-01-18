@@ -177,15 +177,3 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/balance').config(v2.walletBalance),
   braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance)
 ]
-
-module.exports.initialize = async (debug, runtime) => {
-  let result
-
-  try {
-    result = await braveHapi.wreck.get(runtime.config.ledger.url + '/v2/registrar/persona')
-    if (Buffer.isBuffer(result)) result = JSON.parse(result)
-  } catch (ex) {
-    runtime.captureException(ex)
-    return debug('initialize', { reason: ex.toString(), stack: ex.stack })
-  }
-}
