@@ -38,7 +38,7 @@ exports.ipaddr = (request) => {
   const forwardedFor = request.headers['x-forwarded-for']
   if (forwardedFor) {
     const forwardedIps = forwardedFor.split(',')
-    return forwardedIps[forwardedIps.length - 1]
+    return forwardedIps[forwardedIps.length - 1].trim() || request.info.remoteAddress
   } else {
     return request.info.remoteAddress
   }
