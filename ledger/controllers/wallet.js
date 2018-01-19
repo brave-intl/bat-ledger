@@ -282,7 +282,7 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx)
+    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx, request)
     if (!result) {
       result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
     }

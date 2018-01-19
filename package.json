@@ -29,7 +29,8 @@
     "test-api": "ava test/*.api.test.js",
     "test-integration": "ava test/*.integration.test.js",
     "test-security": "nsp check",
-    "test-transition": "ava test/*.transition.test.js"
+    "test-transition": "ava test/*.transition.test.js",
+    "test-unit": "ava test/*.unit.test.js"
   },
   "repository": {
     "type": "git",

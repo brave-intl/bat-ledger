@@ -25,6 +25,11 @@ const v1 = {}
 
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
 
+const claimRate = {
+  limit: 100,
+  window: 24 * 60 * 60
+}
+
 if (qalist.addresses) {
   qalist.authorizedAddrs = []
   qalist.authorizedBlocks = []
@@ -200,7 +205,7 @@ v1.write = { handler: (runtime) => {
     if (!grant) return reply(boom.badData('promotion not available'))
 
     const grantInfo = underscore.extend(underscore.pick(grant, ['token', 'grantId', 'promotionId', 'status']),
-      {claimTimestamp: Date.now()}
+      { claimTimestamp: Date.now(), claimIP: whitelist.ipaddr(request) }
     )
 
     // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
@@ -219,8 +224,11 @@ v1.write = { handler: (runtime) => {
     try {
       result = await braveHapi.wreck.put(runtime.config.redeemer.url + '/v1/grants/' + grant.grantId, {
         headers: {
-          authorization: 'Bearer ' + runtime.config.redeemer.access_token,
-          'content-type': 'application/json'
+          'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+          'Content-Type': 'application/json',
+          // Only pass "trusted" IP, not previous value of X-Forwarded-For
+          'X-Forwarded-For': whitelist.ipaddr(request),
+          'User-Agent': request.headers['user-agent']
         },
         payload: JSON.stringify(payload),
         useProxyP: true
@@ -265,6 +273,13 @@ v1.write = { handler: (runtime) => {
 },
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: {
+      enabled: true,
+      rate: (request) => claimRate
+    }
+  },
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
