@@ -429,7 +429,8 @@ v2.putWallet = {
 
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'publisher ' + 'https:// ' + publisher + ' registered with ' + provider
+        text: 'publisher ' + 'https:// ' + publisher + ' ' +
+          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider
       })
 
       reply({})

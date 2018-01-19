@@ -307,8 +307,9 @@ v1.putWallet = {
       if (sites.length === 0) sites.push('none')
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'owner ' + entry.ownerName + ' <' + entry.ownerEmail + '> ' + owner + ' registered with ' + provider + ': ' +
-          sites.join(' ')
+        text: 'owner ' + entry.ownerName + ' <' + entry.ownerEmail + '> ' + owner + ' ' +
+          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
+          ': ' + sites.join(' ')
       })
 
       reply({})
