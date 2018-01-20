@@ -27,7 +27,7 @@ const v2 = {}
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
 
 const claimRate = {
-  limit: 100,
+  limit: 10,
   window: 24 * 60 * 60
 }
 
