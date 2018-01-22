@@ -300,16 +300,24 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   t.true(response.body.hasOwnProperty('promotionId'))
 
+  const promotionId = response.body.promotionId
+
   // request grant
   response = await request(srv.listener)
       .put(`/v1/grants/${paymentId}`)
-      .send({'promotionId': response.body.promotionId})
+      .send({'promotionId': promotionId})
       .expect(ok)
   console.log(response.body)
   t.true(response.body.hasOwnProperty('probi'))
 
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
   const desired = donateAmt.toString()
+
+  // try re-claiming grant, should return ok
+  response = await request(srv.listener)
+      .put(`/v1/grants/${paymentId}`)
+      .send({'promotionId': promotionId})
+      .expect(ok)
 
   do {
     response = await request(srv.listener)
@@ -382,8 +390,8 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   viewingCredential.finalize(response.body.verification)
 
-  // const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
-  const votes = ['basicattentiontoken.org']
+  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
+  // const votes = ['basicattentiontoken.org']
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
     response = await request(srv.listener)

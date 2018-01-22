@@ -30,6 +30,12 @@ const services = {
           , access_token        : process.env.BALANCE_TOKEN  || '00000000-0000-4000-0000-000000000000'
           }
       }
+      if (process.env.SIMPLEX_URL) {
+        module.exports.simplex =
+          { url                 : process.env.SIMPLEX_URL
+          , api_key             : process.env.SIMPLEX_API_KEY
+          }
+      }
 
       helper()
       uphold()

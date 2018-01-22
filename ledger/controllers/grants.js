@@ -22,8 +22,14 @@ const grantSchema = Joi.object().keys({
 })
 
 const v1 = {}
+const v2 = {}
 
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
+
+const claimRate = {
+  limit: 10,
+  window: 24 * 60 * 60
+}
 
 if (qalist.addresses) {
   qalist.authorizedAddrs = []
@@ -191,7 +197,8 @@ v1.write = { handler: (runtime) => {
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
     if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
-      return reply(boom.badData('promotion already applied to wallet'))
+      // promotion already applied to wallet
+      return reply({})
     }
 
     // pop off one grant
@@ -199,7 +206,7 @@ v1.write = { handler: (runtime) => {
     if (!grant) return reply(boom.badData('promotion not available'))
 
     const grantInfo = underscore.extend(underscore.pick(grant, ['token', 'grantId', 'promotionId', 'status']),
-      {claimTimestamp: Date.now()}
+      { claimTimestamp: Date.now(), claimIP: whitelist.ipaddr(request) }
     )
 
     // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
@@ -208,8 +215,9 @@ v1.write = { handler: (runtime) => {
     )
     if (!wallet) {
       // reinsert grant, another request already added a grant for this promotion to the wallet
-      grants.insertOne(grant)
-      return reply(boom.badData('promotion already applied to wallet'))
+      await grants.insert(grant)
+      // promotion already applied to wallet
+      return reply({})
     }
 
     // register the users claim to the grant with the redemption server
@@ -217,8 +225,11 @@ v1.write = { handler: (runtime) => {
     try {
       result = await braveHapi.wreck.put(runtime.config.redeemer.url + '/v1/grants/' + grant.grantId, {
         headers: {
-          authorization: 'Bearer ' + runtime.config.redeemer.access_token,
-          'content-type': 'application/json'
+          'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+          'Content-Type': 'application/json',
+          // Only pass "trusted" IP, not previous value of X-Forwarded-For
+          'X-Forwarded-For': whitelist.ipaddr(request),
+          'User-Agent': request.headers['user-agent']
         },
         payload: JSON.stringify(payload),
         useProxyP: true
@@ -252,14 +263,24 @@ v1.write = { handler: (runtime) => {
     const grantContent = braveUtils.extractJws(grant.token)
 
     result = underscore.extend(underscore.pick(grantContent, [ 'altcurrency', 'probi' ]))
-    await runtime.queue.send(debug, 'grant-report',
-                             underscore.extend({ paymentId: paymentId, promotionId: promotionId }, result))
+    await runtime.queue.send(debug, 'grant-report', underscore.extend({
+      grantId: grantContent.grantId,
+      paymentId: paymentId,
+      promotionId: promotionId
+    }, result))
 
     return reply(result)
   }
 },
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: {
+      enabled: true,
+      rate: (request) => claimRate
+    }
+  },
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
@@ -271,82 +292,78 @@ v1.write = { handler: (runtime) => {
 
   response: {
     schema: Joi.object().keys({
-      altcurrency: braveJoi.string().altcurrencyCode().required().default('BAT').description('the grant altcurrency'),
-      probi: braveJoi.string().numeric().required().description('the grant amount in probi')
+      altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+      probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
     }).unknown(true).description('grant properties')
   }
 }
 
+const grantsUploadSchema = {
+  grants: Joi.array().min(0).items(
+      Joi.string().required().description('the jws encoded grant')
+    ).description('grants for bulk upload'),
+  promotions: Joi.array().min(0).items(Joi.object().keys({
+    promotionId: Joi.string().required().description('the promotion-identifier'),
+    priority: Joi.number().integer().min(0).required().description('the promotion priority (lower is better)'),
+    active: Joi.boolean().optional().default(true).description('the promotion status')
+  }).unknown(true).description('promotions for bulk upload'))
+}
+
 /*
    POST /v1/grants
+   POST /v2/grants
 */
 
-v1.create =
-{ handler: (runtime) => {
+const uploadGrants = function (runtime) {
   return async (request, reply) => {
-    const payload = request.payload
     const batchId = uuid.v4().toLowerCase()
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
-    let count, state
+    let state
 
-    const oops = async (ex) => {
-      try {
-        await grants.remove({ batchId: batchId }, { justOne: false })
-      } catch (ex2) {
-        runtime.captureException(ex2, { req: request, extra: { collection: 'grants', batchId: 'batchId' } })
-      }
-      try {
-        await promotions.remove({ batchId: batchId }, { justOne: false })
-      } catch (ex2) {
-        runtime.captureException(ex2, { req: request, extra: { collection: 'promotions', batchId: 'batchId' } })
-      }
+    let payload = request.payload
 
-      return reply(boom.boomify(ex, { statusCode: 422 }))
+    if (payload.file) {
+      payload = payload.file
+      const validity = Joi.validate(payload, grantsUploadSchema)
+      if (validity.error) {
+        return reply(boom.badData(validity.error))
+      }
     }
 
+    const grantsToInsert = []
+    const promotionCounts = {}
     for (let entry of payload.grants) {
       const grantContent = braveUtils.extractJws(entry)
       const validity = Joi.validate(grantContent, grantSchema)
       if (validity.error) {
         return reply(boom.badData(validity.error))
       }
-
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: { token: entry, promotionId: grantContent.promotionId, status: 'active', batchId: batchId }
+      grantsToInsert.push({ grantId: grantContent.grantId, token: entry, promotionId: grantContent.promotionId, status: 'active', batchId: batchId })
+      if (!promotionCounts[grantContent.promotionId]) {
+        promotionCounts[grantContent.promotionId] = 0
       }
-      try {
-        await grants.update({ grantId: grantContent.grantId }, state, { upsert: true })
-      } catch (ex) { return oops(ex) }
+      promotionCounts[grantContent.promotionId]++
     }
 
+    await grants.insert(grantsToInsert)
+
     for (let entry of payload.promotions) {
-      try {
-        count = await grants.count({ promotionId: entry.promotionId, paymentId: { $exists: false } })
-      } catch (ex) { return oops(ex) }
-
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.omit(entry, [ 'promotionId' ]), { batchId: batchId, count: count })
+        $set: underscore.omit(entry, ['promotionId']),
+        $inc: { count: promotionCounts[entry.promotionId] }
       }
-      try {
-        await promotions.update({ promotionId: entry.promotionId }, state, { upsert: true })
-      } catch (ex) { return oops(ex) }
-
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.pick(entry, [ 'active', 'priority' ])
-      }
-      try {
-        await grants.update({ promotionId: entry.promotionId }, state, { upsert: false, multi: true })
-      } catch (ex) { return oops(ex) }
+      await promotions.update({ promotionId: entry.promotionId }, state, { upsert: true })
     }
 
     reply({})
   }
-},
+}
+
+v1.create =
+{ handler: uploadGrants,
 
   auth: {
     strategy: 'session',
@@ -357,18 +374,41 @@ v1.create =
   description: 'Create one or more grants',
   tags: [ 'api' ],
 
-  validate: {
-    payload: Joi.object().keys({
-      grants: Joi.array().min(0).items(
-        Joi.string().required().description('the jws encoded grant')
-      ).description('grants for bulk upload'),
-      promotions: Joi.array().min(0).items(Joi.object().keys({
-        promotionId: Joi.string().required().description('the promotion-identifier'),
-        priority: Joi.number().integer().min(0).required().description('the promotion priority (lower is better)'),
-        active: Joi.boolean().optional().default(true).description('the promotion status')
-      }).unknown(true).description('promotions for bulk upload'))
-    }).required().description('data for bulk upload')
+  validate: { payload: Joi.object().keys(grantsUploadSchema).required().description('data for bulk upload') },
+
+  payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
+
+  response:
+    { schema: Joi.object().length(0) }
+}
+
+v2.create =
+{ handler: uploadGrants,
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
   },
+
+  description: 'Create one or more grants via file upload',
+  tags: [ 'api' ],
+
+  plugins: {
+    'hapi-swagger': {
+      payloadType: 'form',
+      validate: {
+        payload: {
+          file: Joi.any()
+                      .meta({ swaggerType: 'file' })
+                      .description('json file')
+        }
+      }
+    }
+  },
+
+  validate: { headers: Joi.object({ authorization: Joi.string().optional() }).unknown() },
+  payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
 
   response:
     { schema: Joi.object().length(0) }
@@ -378,7 +418,8 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v1/grants').config(v1.read),
   braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.write),
-  braveHapi.routes.async().post().path('/v1/grants').config(v1.create)
+  braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
+  braveHapi.routes.async().post().path('/v2/grants').config(v2.create)
 ]
 
 module.exports.initialize = async (debug, runtime) => {

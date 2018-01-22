@@ -4,6 +4,13 @@ const underscore = require('underscore')
 var exports = {}
 
 exports.initialize = async (debug, runtime) => {
+  const voting = runtime.database.get('voting', debug)
+  let indices
+  try { indices = await voting.indexes() } catch (ex) { indices = [] }
+  if (underscore.keys(indices).indexOf('surveyorId_1_publisher_1') !== -1) {
+    await voting.dropIndex([ 'surveyorId', 'publisher' ])
+  }
+
   runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('wallets', debug),
@@ -82,10 +89,11 @@ exports.initialize = async (debug, runtime) => {
     {
       category: runtime.database.get('voting', debug),
       name: 'voting',
-      property: 'surveyorId_1_publisher',
+      property: 'surveyorId_1_publisher_1_cohort',
       empty: {
         surveyorId: '',
         publisher: '',
+        cohort: '',
         counts: 0,
         timestamp: bson.Timestamp.ZERO,
 
@@ -101,7 +109,7 @@ exports.initialize = async (debug, runtime) => {
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO
       },
-      unique: [ { surveyorId: 1, publisher: 1 } ],
+      unique: [ { surveyorId: 1, publisher: 1, cohort: 1 } ],
       others: [ { counts: 1 }, { timestamp: 1 },
                 { exclude: 1 }, { hash: 1 },
                 { altcurrency: 1, probi: 1 } ]
@@ -239,6 +247,7 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const publisher = payload.publisher
       const surveyorId = payload.surveyorId
+      const cohort = payload.cohort || 'control'
       const voting = runtime.database.get('voting', debug)
       let state
 
@@ -249,7 +258,7 @@ exports.workers = {
         $inc: { counts: 1 },
         $set: { exclude: false }
       }
-      await voting.update({ surveyorId: surveyorId, publisher: publisher }, state, { upsert: true })
+      await voting.update({ surveyorId: surveyorId, publisher: publisher, cohort: cohort }, state, { upsert: true })
     },
 
 /* sent when the wallet balance updates
@@ -322,7 +331,7 @@ exports.workers = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.omit(payload, [ 'grantIds' ])
       }
-      await grants.update({ grantIds: { $in: grantIds } }, state, { upsert: true })
+      await grants.update({ grantId: { $in: grantIds } }, state, { upsert: true })
     }
 }
 

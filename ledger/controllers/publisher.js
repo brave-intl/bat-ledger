@@ -480,7 +480,7 @@ v3.identity =
         if ((timestamp) && ((!result.properties.timestamp) || (timestamp > result.properties.timestamp))) {
           result.properties.timestamp = timestamp
         }
-        if (entry.visible) result.properties.verified = entry.verified
+        if (entry.verified) result.properties.verified = entry.verified
       }
 
       reply(result)
@@ -640,16 +640,21 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { rulesetId: 1 } ],
       others: [ { type: 1 }, { version: 1 }, { timestamp: 1 } ]
     },
-/* deprecated
+/* verified publishers
+   - verified should always be "true"
+   - visible indicates whether the publisher opted-in to inclusion in marketing materials
+
+   originally this was the 'publishers' table, but was renamed to 'publishersX' to temporarily address a publisher privacy
+   issue. however, it was accidentally commented out, which resulted in vanilla servers not getting the indices...
+ */
     {
-      category: runtime.database.get('publishers', debug),
-      name: 'publishers',
+      category: runtime.database.get('publishersX', debug),
+      name: 'publishersX',
       property: 'publisher',
       empty: { publisher: '', tld: '', verified: false, visible: false, timestamp: bson.Timestamp.ZERO },
       unique: [ { publisher: 1 } ],
       others: [ { tld: 1 }, { verified: 1 }, { visible: 1 }, { timestamp: 1 } ]
     },
- */
     {
       category: publishers,
       name: 'publishersV2',

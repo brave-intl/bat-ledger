@@ -420,7 +420,7 @@ v2.phase2 =
 
               if (validity.error) return reply(boom.badData(validity.error))
 
-              await runtime.queue.send(debug, 'voting-report', underscore.extend({ surveyorId: surveyor.parentId }, data))
+              await runtime.queue.send(debug, 'voting-report', underscore.extend({ surveyorId: surveyor.parentId, cohort: surveyor.payload.cohort || 'control' }, data))
             }
     }[surveyor.surveyorType]
     if ((!!f) && (await f())) return
@@ -493,61 +493,43 @@ module.exports.create = create
 
 const provision = async (debug, runtime, surveyorId, bump) => {
   const surveyors = runtime.database.get('surveyors', debug)
-  let entries, entry
+  let contributionSurveyors
 
   if (surveyorId) {
-    entries = []
-    entry = await surveyors.findOne({ surveyorId: surveyorId })
-    if (entry) entries.push(entry)
+    contributionSurveyors = []
+    const matchingSurveyor = await surveyors.findOne({ surveyorId: surveyorId })
+    if (matchingSurveyor) contributionSurveyors.push(matchingSurveyor)
   } else {
-    entries = await surveyors.find({ surveyorType: 'contribution', available: true }, { limit: 1000, sort: { timestamp: -1 } })
+    contributionSurveyors = await surveyors.find({ surveyorType: 'contribution', available: true }, { limit: 1000, sort: { timestamp: -1 } })
   }
   if (!bump) bump = 0
-  entries.forEach(async (entry) => {
-    const viewings = runtime.database.get('viewings', debug)
-    let count, fixupP, surveyor, viewers
 
-    if (!entry.surveyors) entry.surveyors = []
-    count = ((entry.payload.adFree.votes * 4) + bump + slop) - entry.surveyors.length
-    if (count < 1) return
+  contributionSurveyors.forEach(async (cSurveyor) => {
+    const cohorts = ['control', 'grant']
+    let count, vSurveyor
 
-    debug('surveyor', 'creating ' + count + ' voting surveyors for ' + entry.surveyorId)
-    if (entry.surveyors.length !== 0) fixupP = true
-    while (count > 0) {
-      surveyor = await create(debug, runtime, 'voting', {}, entry.surveyorId)
-      if (!surveyor) return debug('surveyor', 'unable to create ' + count + ' voting surveyors')
+    if (!cSurveyor.cohorts) cSurveyor.cohorts = {}
 
-      entry.surveyors.push(surveyor.surveyorId)
+    const desiredCount = ((cSurveyor.payload.adFree.votes * 4) + bump + slop)
 
-      count--
+    for (let cohort of cohorts) {
+      if (!cSurveyor.cohorts[cohort]) cSurveyor.cohorts[cohort] = []
+
+      count = desiredCount - cSurveyor.cohorts[cohort].length
+      while (count > 0) {
+        vSurveyor = await create(debug, runtime, 'voting', { cohort: cohort }, cSurveyor.surveyorId)
+        if (!vSurveyor) {
+          debug('surveyor', 'unable to create ' + count + ' voting surveyors')
+          return
+        }
+
+        cSurveyor.cohorts[cohort].push(vSurveyor.surveyorId)
+
+        count--
+      }
     }
 
-    await surveyors.update({ surveyorId: entry.surveyorId }, { $set: { surveyors: entry.surveyors } }, { upsert: true })
-
-    if (!fixupP) return
-
-    viewers = await viewings.find({ surveyorId: entry.surveyorId })
-    viewers.forEach(async (viewing) => {
-      let state
-
-      const params = {
-        surveyorId: entry.surveyorId,
-        avail: entry.surveyors.length,
-        viewingId: viewing.viewingId,
-        needed: viewing.count
-      }
-      if (viewing.surveyorIds.length >= params.needed) return debug('fixup not needed', params)
-
-      if (params.avail < params.needed) return debug('fixup not possible', params)
-
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: { surveyorIds: underscore.shuffle(entry.surveyors).slice(0, viewing.count) }
-      }
-      await viewings.update({ viewingId: viewing.viewingId }, state, { upsert: true })
-
-      return debug('fixup complete', params)
-    })
+    await surveyors.update({ surveyorId: cSurveyor.surveyorId }, { $set: { cohorts: cSurveyor.cohorts } }, { upsert: true })
   })
 }
 

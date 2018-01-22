@@ -348,7 +348,8 @@ const mixer = async (debug, runtime, filter, qid) => {
         counts: slice.counts,
         altcurrency: altcurrency,
         probi: probi,
-        fees: fees
+        fees: fees,
+        cohort: slice.cohort || 'control'
       })
       if (equals(slice.probi && new BigNumber(slice.probi.toString()), probi)) continue
 
@@ -359,7 +360,7 @@ const mixer = async (debug, runtime, filter, qid) => {
           fees: bson.Decimal128.fromString(fees.toString())
         }
       }
-      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher }, state, { upsert: true })
+      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' }, state, { upsert: true })
     }
   }
 
@@ -502,7 +503,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
     if (!summaryP) {
       underscore.sortBy(result.votes, 'timestamp').forEach((vote) => {
         data.push(underscore.extend({ publisher: result.publisher },
-                                    underscore.omit(vote, [ 'surveyorId', 'updated' ]),
+                                    underscore.omit(vote, [ 'surveyorId', 'updated', 'cohort' ]),
                                     { transactionId: vote.surveyorId, timestamp: dateformat(vote.timestamp, datefmt) }))
       })
     }
@@ -739,8 +740,9 @@ exports.workers = {
 
       file = await create(runtime, 'publishers-', payload)
       if (format === 'json') {
+        entries = []
         for (let offset in data) {
-          let entry, wallet
+          let entry, props, wallet
           let datum = data[offset]
 
           delete datum.currency
@@ -750,6 +752,10 @@ exports.workers = {
           try {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
+
+            props = batPublisher.getPublisherProps(datum.publisher)
+            datum.name = entry.info && entry.info.name
+            datum.URL = props && props.URL
 
             if (entry.provider) wallet = await runtime.wallet.status(entry)
             if ((!wallet) && (entry.owner)) {
@@ -762,9 +768,12 @@ exports.workers = {
             } else {
               await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
             }
+            entries.push(datum)
           } catch (ex) {}
         }
-        await file.write(utf8ify(data), true)
+        data = entries
+
+        await file.write(utf8ify(entries), true)
         return runtime.notify(debug, {
           channel: '#publishers-bot',
           text: authority + ' report-publishers-contributions completed'
@@ -873,6 +882,7 @@ exports.workers = {
       , reportURL      : '...'
       , authority      : '...:...'
       , hash           : '...'
+      , settlementId   : '...'
       , owner          : '...'
       , publisher      : '...'
       , rollup         :  true  | false
@@ -885,40 +895,26 @@ exports.workers = {
   'report-publishers-statements':
     async (debug, runtime, payload) => {
       const authority = payload.authority
-      const hash = payload.hash
-      const owner = payload.owner
       const rollupP = payload.rollup
       const starting = payload.starting
       const summaryP = payload.summary
       const publisher = payload.publisher
-      const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, data1, data2, file, filter, entries, publishers, query, usd
+      let data, data1, data2, file, entries, publishers, query, usd
       let ending = payload.ending
 
-      if (publisher || owner) {
-        if (owner) {
-          filter = []
-          query = { $or: [ { owner: owner } ] }
-          entries = await publishersC.find({ owner: owner })
-          entries.forEach((entry) => {
-            filter.push(entry.publisher)
-            query.$or.push({ publisher: entry.publisher })
-          })
-        } else {
-          filter = [ publisher ]
-          query = { publisher: publisher }
-        }
+      if (publisher) {
+        query = { publisher: publisher }
         if ((starting) || (ending)) {
           query._id = {}
           if (starting) query._id.$gte = date2objectId(starting, false)
           if (ending) query._id.$lte = date2objectId(ending, true)
         }
         entries = await settlements.find(query)
-        publishers = await mixer(debug, runtime, filter, query._id)
+        publishers = await mixer(debug, runtime, publisher, query._id)
       } else {
-        entries = await settlements.find(hash ? { hash: hash } : {})
+        entries = await settlements.find(underscore.pick(payload, [ 'owner', 'hash', 'settlementId' ]))
         if ((rollupP) && (entries.length > 0)) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
@@ -1316,7 +1312,8 @@ exports.workers = {
             publisher: slice.publisher,
             votes: slice.counts,
             created: new Date(parseInt(slice._id.toHexString().substring(0, 8), 16) * 1000).getTime(),
-            modified: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+            modified: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
+            cohort: slice.cohort || 'control'
           })
         })
       }
@@ -1337,7 +1334,7 @@ exports.workers = {
 
       fields = [ 'surveyorId', 'probi', 'fee', 'inputs', 'quantum' ]
       if (!summaryP) fields.push('publisher')
-      fields = fields.concat([ 'votes', 'created', 'modified' ])
+      fields = fields.concat([ 'votes', 'created', 'modified', 'cohort' ])
       try {
         await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, results), fields: fields })), true)
       } catch (ex) {
@@ -1345,6 +1342,82 @@ exports.workers = {
         file.close()
       }
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-surveyors-contributions completed' })
+    },
+/* sent by GET /v1/reports/grants-outstanding
+
+    { queue            : 'report-grants-outstanding'
+    , message          :
+      { reportId       : '...'
+      , reportURL      : '...'
+      , authority      : '...:...'
+      , format         : 'json' | 'csv'
+      }
+    }
+ */
+  'report-grants-outstanding':
+    async (debug, runtime, payload) => {
+      const authority = payload.authority
+      const format = payload.format
+      const grants = runtime.database.get('grants', debug)
+      let results
+
+      const promotions = await grants.aggregate([
+        {
+          $match:
+          { probi: { $gt: 0 },
+            altcurrency: { $eq: altcurrency }
+          }
+        },
+        {
+          $group:
+          {
+            _id: '$promotionId',
+            probi: { $sum: '$probi' },
+            outstandingProbi: { $sum: { $cond: [ { $ne: [ '$redeemed', true ] }, '$probi', 0 ] } },
+            count: { $sum: 1 },
+            outstandingCount: { $sum: { $cond: [ { $ne: [ '$redeemed', true ] }, 1, 0 ] } }
+          }
+        }
+      ])
+      results = []
+      const total = { probi: new BigNumber(0), outstandingProbi: new BigNumber(0), count: 0, outstandingCount: 0 }
+      for (let promotion of promotions) {
+        results.push({
+          promotionId: promotion._id,
+          probi: promotion.probi.toString(),
+          outstandingProbi: promotion.outstandingProbi.toString(),
+          count: promotion.count.toString(),
+          outstandingCount: promotion.outstandingCount.toString()
+        })
+        total.probi.plus(promotion.probi.toString())
+        total.outstandingProbi.plus(promotion.outstandingProbi.toString())
+        total.count += promotion.count
+        total.outstandingCount += promotion.outstandingCount
+      }
+
+      total.probi = total.probi.toString()
+      total.outstandingProbi = total.outstandingProbi.toString()
+      total.count = total.count.toString()
+      total.outstandingCount = total.outstandingCount.toString()
+      results.unshift(total)
+
+      const file = await create(runtime, 'grants-outstanding-', payload)
+      if (format === 'json') {
+        await file.write(utf8ify(results), true)
+        return runtime.notify(debug, {
+          channel: '#publishers-bot',
+          text: authority + ' report-grants-outstanding completed'
+        })
+      }
+
+      const fields = [ 'promotionId', 'probi', 'outstandingProbi', 'count', 'outstandingCount' ]
+      try {
+        await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, results), fields: fields })), true)
+      } catch (ex) {
+        debug('reports', { report: 'report-grants-outstanding', reason: ex.toString() })
+        file.close()
+      }
+      runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-grants-outstanding completed' })
     }
 }
 

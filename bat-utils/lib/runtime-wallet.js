@@ -4,10 +4,12 @@ const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const bitcoinjs = require('bitcoinjs-lib')
 const crypto = require('crypto')
 const underscore = require('underscore')
+const uuid = require('uuid')
 const { verify } = require('http-request-signature')
 
 const braveHapi = require('./extras-hapi')
 const braveUtils = require('./extras-utils')
+const whitelist = require('./hapi-auth-whitelist')
 
 const Currency = require('./runtime-currency')
 
@@ -147,7 +149,7 @@ Wallet.prototype.providers = function () {
   return underscore.keys(Wallet.providers)
 }
 
-Wallet.prototype.redeem = async function (info, txn, signature) {
+Wallet.prototype.redeem = async function (info, txn, signature, request) {
   let balance, desired, grants, grantIds, payload, result
 
   if (!this.runtime.config.redeemer) return
@@ -201,8 +203,11 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
   } else {
     result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
       headers: {
-        authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
-        'content-type': 'application/json'
+        'Authorization': 'Bearer ' + this.runtime.config.redeemer.access_token,
+        'Content-Type': 'application/json',
+        // Only pass "trusted" IP, not previous value of X-Forwarded-For
+        'X-Forwarded-For': whitelist.ipaddr(request),
+        'User-Agent': request.headers['user-agent']
       },
       payload: JSON.stringify(payload),
       useProxyP: true
@@ -210,6 +215,26 @@ Wallet.prototype.redeem = async function (info, txn, signature) {
     if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
   }
   return underscore.extend(result, { grantIds: grantIds })
+}
+
+Wallet.prototype.purchaseBAT = async function (info, amount, currency, language) {
+  // TBD: if there is more than one provider, use a "real" algorithm to determine which one
+  for (let provider in Wallet.providers) {
+    const f = Wallet.providers[provider].purchaseBAT
+    let result
+
+    if (!f) continue
+
+    try {
+      result = await f.bind(this)(info, amount, currency, language)
+      if (result) return result
+    } catch (ex) {
+      debug('error in ' + provider + '.purchaseBAT: ' + ex.toString())
+      console.log(ex.stack)
+    }
+  }
+
+  return {}
 }
 
 Wallet.providers = {}
@@ -359,7 +384,7 @@ Wallet.providers.uphold = {
       uphold.storage.setItem('uphold.access_token', info.parameters.access_token)
 
       user = await uphold.api('/me')
-      cards = await uphold.api('/me/cards')
+      if (user.status !== 'pending') cards = await uphold.api('/me/cards')
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
       throw ex
@@ -474,5 +499,121 @@ Wallet.providers.mock = {
   }
 }
 Wallet.providers.mockHttpSignature = Wallet.providers.mock
+
+Wallet.providers.simplex = {
+  purchaseBAT: async function (info, amount, currency, language) {
+    const fiat = 'USD'
+    const now = underscore.now()
+    const params = {
+      currency: 'XBT',
+      partner: 'brave',
+      version: '1'
+    }
+    const min = this.runtime.config.simplex && (this.runtime.config.simplex['MIN_' + fiat.toUpperCase()] || 5)
+    let expires, quote, rate, result
+
+    if (!this.runtime.config.simplex) return
+
+    if (!this.currency.fiatP(currency)) {
+      rate = underscore.pick(this.currency.rates[currency] || {}, fiat)
+      if (!rate) return
+
+      amount = Math.ceil(this.currency.alt2fiat(currency, amount, fiat, true))
+    } else if (currency !== fiat) {
+      rate = underscore.pick(this.currency.fxrates[currency])
+      if (!rate) return
+
+      amount = Math.ceil(amount / rate)
+    }
+    currency = fiat
+    if (amount < min) amount = min
+
+    quote = info.simplex
+    if ((!quote) || (quote.expires <= now)) {
+      result = await braveHapi.wreck.post(this.runtime.config.simplex.url + '/wallet/merchant/v2/quote', {
+        headers: {
+          accept: 'application/json',
+          authorization: 'ApiKey ' + this.runtime.config.simplex.api_key,
+          'content-type': 'application/json'
+        },
+        payload: JSON.stringify({
+          end_user_id: quote ? quote.user_id : uuid.v4().toLowerCase(),
+          digital_currency: params.currency,
+          fiat_currency: currency,
+          requested_currency: currency,
+          requested_amount: amount,
+          wallet_id: params.partner
+        })
+      })
+      if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+
+      expires = new Date(result.valid_until).getTime()
+      if ((isNaN(expires)) || (!result.quote_id)) return
+
+      quote = underscore.extend(result, { expires: expires })
+    }
+    quote.payment_id = uuid.v4().toLowerCase()
+
+    result = await braveHapi.wreck.post(this.runtime.config.simplex.url + '/wallet/merchant/v1/payments/partner/data', {
+      headers: {
+        accept: 'application/json',
+        authorization: 'ApiKey ' + this.runtime.config.simplex.api_key,
+        'content-type': 'application/json'
+      },
+      payload: JSON.stringify({
+        account_details: {
+          app_provider_id: params.partner,
+          app_version_id: params.version,
+          app_end_user_id: quote.user_id,
+          signup_login: {
+            ip: '213.162.55.5',
+            accept_language: language,
+            http_accept_language: language,
+            timestamp: new Date(now).toISOString()
+          }
+        },
+        transaction_details: {
+          payment_details: {
+            quote_id: quote.quote_id,
+            payment_id: quote.payment_id,
+            order_id: uuid.v4().toLowerCase(),
+            fiat_total_amount: {
+              currency: quote.fiat_money.currency,
+              amount: quote.fiat_money.total_amount
+            },
+            requested_digital_amount: quote.digital_money,
+            destination_wallet: {
+              currency: params.currency,
+              address: info.addresses.BTC
+            }
+          }
+        }
+      })
+    })
+    if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+
+    return ({
+      quotes: { simplex: quote },
+      buyForm: {
+        method: 'POST',
+        action: this.runtime.config.simplex.url + '/payments/new',
+        version: params.version,
+        partner: params.partner,
+        payment_flow_type: 'wallet',
+        return_url: 'about:preferences#payments',
+        quote_id: quote.quote_id,
+        payment_id: quote.payment_id,
+        user_id: quote.user_id,
+        'destination_wallet[address]': info.addresses.BTC,
+        'destination_wallet[currency]': params.currency,
+        'fiat_total_amount[amount]': quote.fiat_money.base_amount,
+        'fiat_total_amount[currency]': quote.fiat_money.currency,
+        explicit_fee: 'true',
+        'digital_total_amount[amount]': quote.digital_money.amount,
+        'digital_total_amount[currency]': quote.digital_money.currency
+      }
+    })
+  }
+}
 
 module.exports = Wallet

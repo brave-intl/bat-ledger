@@ -30,7 +30,7 @@ const read = function (runtime, apiVersion) {
     const altcurrency = request.query.altcurrency
 
     let currency = request.query.currency
-    let balances, result, state, wallet
+    let balances, info, result, state, wallet, wallet2
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -47,6 +47,9 @@ const read = function (runtime, apiVersion) {
 
     if (apiVersion === 2) {
       result = underscore.extend(result, { addresses: wallet.addresses })
+      if (runtime.registrars.persona) {
+        result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
+      }
     }
 
     if ((refreshP) || (balanceP && !wallet.balances)) {
@@ -57,6 +60,7 @@ const read = function (runtime, apiVersion) {
         await wallets.update({ paymentId: paymentId }, state, { upsert: true })
 
         await runtime.queue.send(debug, 'wallet-report', underscore.extend({ paymentId: paymentId }, state.$set))
+        state = null
       }
     } else {
       balances = wallet.balances
@@ -110,9 +114,23 @@ const read = function (runtime, apiVersion) {
               $set: { unsignedTx: result.unsignedTx }
             }
           }
-          await wallets.update({ paymentId: paymentId }, state, { upsert: true })
         }
       }
+
+      info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
+      wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
+      if ((wallet2) && (!underscore.isEqual(wallet, wallet2))) {
+        if (!state) {
+          state = {
+            $currentDate: { timestamp: { $type: 'timestamp' } },
+            $set: {}
+          }
+        }
+        underscore.extend(state.$set, info.quotes)
+      }
+      underscore.extend(result, underscore.omit(info, [ 'quotes' ]))
+
+      if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }
 
     if (apiVersion === 1) {
@@ -149,7 +167,7 @@ v1.read = { handler: (runtime) => { return read(runtime, 1) },
       rates: Joi.object().optional().description('current exchange rates from BTC to various currencies'),
       satoshis: Joi.number().integer().min(0).optional().description('the wallet balance in satoshis'),
       unsignedTx: Joi.object().optional().description('unsigned transaction')
-    })
+    }).unknown(true)
   }
 }
 
@@ -188,7 +206,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
         ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
       })
-    })
+    }).unknown(true)
   }
 }
 
@@ -208,7 +226,7 @@ const write = function (runtime, apiVersion) {
     const surveyors = runtime.database.get('surveyors', debug)
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
+    let cohort, fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -226,7 +244,19 @@ const write = function (runtime, apiVersion) {
     surveyor = await surveyors.findOne({ surveyorId: surveyorId })
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
 
-    if (!surveyor.surveyors) surveyor.surveyors = []
+    if (!surveyor.cohorts) {
+      if (surveyor.surveyors) { // legacy surveyor, no cohort support
+        return reply(boom.badData('cannot perform a contribution using a legacy surveyor'))
+      } else {
+        // new contribution surveyor not yet populated with voting surveyors
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
+        runtime.captureException(errMsg, { req: request })
+
+        const resp = boom.serverUnavailable(errMsg)
+        resp.output.headers['retry-after'] = '5'
+        return reply(resp)
+      }
+    }
 
     params = surveyor.payload.adFree
 
@@ -234,26 +264,36 @@ const write = function (runtime, apiVersion) {
 
     if (votes < 1) votes = 1
 
-    if (votes > surveyor.surveyors.length) {
-      state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
-      debug('wallet', state)
+    const possibleCohorts = ['control', 'grant']
 
-      const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + surveyor.surveyors.length + ' surveyors, but needed ' + votes
-      runtime.captureException(errMsg, { req: request })
+    for (let cohort of possibleCohorts) {
+      const cohortSurveyors = surveyor.cohorts[cohort]
 
-      const resp = boom.serverUnavailable(errMsg)
-      resp.output.headers['retry-after'] = '5'
-      return reply(resp)
+      if (votes > cohortSurveyors.length) {
+        state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
+        debug('wallet', state)
+
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + votes
+        runtime.captureException(errMsg, { req: request })
+
+        const resp = boom.serverUnavailable(errMsg)
+        resp.output.headers['retry-after'] = '5'
+        return reply(resp)
+      }
     }
 
-    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx)
+    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx, request)
     if (!result) {
       result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
     }
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
+    cohort = 'control'
+
     if (result.grantIds) {
+      cohort = 'grant'
+
       // oh mongo
       result.grantIds.forEach((grantId) => {
         wallets.update({ 'paymentId': paymentId, 'grants.grantId': grantId }, { $set: { 'grants.$.status': 'completed' } })
@@ -269,7 +309,8 @@ const write = function (runtime, apiVersion) {
 
     fee = result.fee
 
-    surveyorIds = underscore.shuffle(surveyor.surveyors).slice(0, votes)
+    surveyorIds = underscore.shuffle(surveyor.cohorts[cohort]).slice(0, votes)
+
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
       $set: {
