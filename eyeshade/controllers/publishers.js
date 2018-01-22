@@ -714,7 +714,6 @@ v2.patchPublisher = {
       const owner = request.params.owner
       const publisher = request.params.publisher
       const payload = request.payload
-      const authorized = payload.authorized
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
@@ -732,8 +731,6 @@ v2.patchPublisher = {
         $set: underscore.extend(payload, { authority: authority })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
-
-      if (authorized) await notify(debug, runtime, owner, publisher, { type: 'payments_activated' })
 
       reply({})
     }
@@ -959,7 +956,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
   const tokens = runtime.database.get('tokens', debug)
-  let info, message, method, payload, props, results, state, visible, visibleP
+  let info, message, method, payload, props, result, state, visible, visibleP
 
   message = underscore.extend(underscore.clone(indices), { verified: verified, reason: reason })
   debug('verified', message)
@@ -1008,27 +1005,25 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   if (entry.info) return
 
-  results = await publish(debug, runtime, 'get', entry.owner, entry.publisher)
-  for (let result of results) {
-    if (result.id !== entry.verificationId) continue
+  result = await publish(debug, runtime, 'get', entry.owner, entry.publisher)
+  if (result.id !== entry.verificationId) return
 
-    visible = result.show_verification_status
-    visibleP = (typeof visible !== 'undefined')
-    method = result.verification_method
-    info = underscore.pick(result, [ 'name', 'email' ])
-    if (result.phone_normalized) info.phone = result.phone_normalized
-    if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
+  visible = result.show_verification_status
+  visibleP = (typeof visible !== 'undefined')
+  method = result.verification_method
+  info = underscore.pick(result, [ 'name', 'email' ])
+  if (result.phone_normalized) info.phone = result.phone_normalized
+  if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
 
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: { info: info }
-    }
-    if (visibleP) state.$set.visible = visible
-    if (method) state.$set.method = method
-    await tokens.update(indices, state, { upsert: true })
-
-    await publishers.update(indices, state, { upsert: true })
+  state = {
+    $currentDate: { timestamp: { $type: 'timestamp' } },
+    $set: { info: info }
   }
+  if (visibleP) state.$set.visible = visible
+  if (method) state.$set.method = method
+  await tokens.update(indices, state, { upsert: true })
+
+  await publishers.update(indices, state, { upsert: true })
 }
 
 const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
@@ -1054,16 +1049,6 @@ const publish = async (debug, runtime, method, owner, publisher, endpoint, paylo
   }
 
   return result
-}
-
-const notify = async (debug, runtime, owner, publisher, payload) => {
-  let message = await publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
-
-  if (!message) return
-
-  message = underscore.extend({ publisher: publisher }, payload)
-  debug('notify', message)
-  runtime.notify(debug, { channel: '#publishers-bot', text: 'publishers notified: ' + JSON.stringify(message) })
 }
 
 module.exports.getToken = getToken

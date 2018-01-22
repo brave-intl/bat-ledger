@@ -65,6 +65,16 @@ const publish = async (debug, runtime, method, owner, publisher, endpoint, paylo
   return result
 }
 
+const notification = async (debug, runtime, owner, publisher, payload) => {
+  let message = await publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
+
+  if (!message) return
+
+  message = underscore.extend({ owner: owner, publisher: publisher }, payload)
+  debug('notify', message)
+  runtime.notify(debug, { channel: '#publishers-bot', text: 'publishers notified: ' + JSON.stringify(message) })
+}
+
 const daily = async (debug, runtime) => {
   let midnight, now, tomorrow
 
@@ -133,44 +143,40 @@ const hourly2 = async (debug, runtime) => {
 
     for (let publisher of underscore.keys(history)) {
       const records = history[publisher]
-      let info, params, results, state, visible
+      let info, method, params, record, result, state, visible, visibleP
 
       try {
-        results = await publish(debug, runtime, 'get', publisher)
-        for (let result of results) {
-          const record = underscore.findWhere(records, { verificationId: result.id })
-          let method, visibleP
+        result = await publish(debug, runtime, 'get', publisher)
+        record = underscore.findWhere(records, { verificationId: result.id })
+        if (!record) continue
 
-          if (!record) continue
-
-          visible = result.show_verification_status
-          visibleP = (typeof visible !== 'undefined')
-          method = result.verification_method
-          info = underscore.pick(result, [ 'name', 'email' ])
-          if (result.phone_normalized) info.phone = result.phone_normalized
-          if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
-          state = {
-            $currentDate: { timestamp: { $type: 'timestamp' } },
-            $set: { info: info }
-          }
-          if (visibleP) state.$set.visible = visible
-          params = underscore.pick(record, [ 'info', 'visible' ])
-          if (method) {
-            state.$set.method = method
-            params.method = record.method
-          }
-
-          if (underscore.isEqual(params, state.$set)) continue
-
-          await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
-
-          if (!record.verified) continue
-
-          state.$set = underscore.pick(state.$set, [ 'info', 'visible' ])
-          await publishers.update({ publisher: publisher }, state, { upsert: true })
-
-          await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, verified: true, visible: visible })
+        visible = result.show_verification_status
+        visibleP = (typeof visible !== 'undefined')
+        method = result.verification_method
+        info = underscore.pick(result, [ 'name', 'email' ])
+        if (result.phone_normalized) info.phone = result.phone_normalized
+        if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
+        state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $set: { info: info }
         }
+        if (visibleP) state.$set.visible = visible
+        params = underscore.pick(record, [ 'info', 'visible' ])
+        if (method) {
+          state.$set.method = method
+          params.method = record.method
+        }
+
+        if (underscore.isEqual(params, state.$set)) continue
+
+        await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
+
+        if (!record.verified) continue
+
+        state.$set = underscore.pick(state.$set, [ 'info', 'visible' ])
+        await publishers.update({ publisher: publisher }, state, { upsert: true })
+
+        await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, verified: true, visible: visible })
       } catch (ex) {
         runtime.captureException(ex)
         if (ex.data) {
@@ -753,10 +759,7 @@ exports.workers = {
               datum.address = wallet.address
               datum.currency = wallet.preferredCurrency
             } else {
-              runtime.notify(debug, {
-                channel: '#publishers-bot',
-                text: 'publisher ' + datum.publisher + ' lacking settlement address and/or preferredCurrency'
-              })
+              await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
             }
           } catch (ex) {}
         }
