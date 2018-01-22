@@ -1032,6 +1032,7 @@ const publish = async (debug, runtime, method, owner, publisher, endpoint, paylo
   path = '/api'
   if (owner) path += '/owners/' + encodeURIComponent(owner)
   path += '/channel'
+  if (owner) path += 's'
   if (publisher) path += '/' + encodeURIComponent(publisher)
   try {
     result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
