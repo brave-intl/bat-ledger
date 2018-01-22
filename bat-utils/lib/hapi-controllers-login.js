@@ -28,11 +28,17 @@ v1.login = {
           if (team.organization.login === runtime.login.github.organization) credentials.scope.push(team.name)
         })
         if (credentials.scope.length === 0) {
-          debug('failed ' + credentials.provider + ' ' + credentials.profile.email)
+          runtime.notify(debug, {
+            channel: '#devops-bot',
+            text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email
+          })
           return reply(boom.forbidden())
         }
 
-        debug('login  ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope))
+        runtime.notify(debug, {
+          channel: '#devops-bot',
+          text: 'login ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope)
+        })
 
         request.cookieAuth.set(credentials)
         reply.redirect(runtime.login.github.world)
@@ -65,7 +71,15 @@ v1.logout = {
       const credentials = request.auth.credentials
 
       if (credentials) {
-        debug('logout ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope))
+        runtime.notify(debug, {
+          channel: '#devops-bot',
+          text: 'logout ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope)
+        })
+      } else {
+        runtime.notify(debug, {
+          channel: '#devops-bot',
+          text: 'bogus logout'
+        })
       }
 
       request.cookieAuth.clear()
