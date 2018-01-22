@@ -92,6 +92,8 @@
     "node-cache": "4.1.1",
     "node-slack": "0.0.7",
     "oxr": "1.0.2",
+    "pluralize": "^7.0.0",
+    "prom-client": "10.2.2",
     "proxy-agent": "^2.1.0",
     "raven": "^2.1.2",
     "redis": "2.8.0",

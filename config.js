@@ -52,6 +52,7 @@ const services = {
           , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
           }
       }
+      module.exports.prometheus = { publishers: true }
 
       helper()
       uphold()

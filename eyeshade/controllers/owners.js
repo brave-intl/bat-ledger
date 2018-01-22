@@ -1,4 +1,3 @@
-const querystring = require('querystring')
 const url = require('url')
 
 const BigNumber = require('bignumber.js')
@@ -8,10 +7,11 @@ const Joi = require('joi')
 const underscore = require('underscore')
 const uuid = require('uuid')
 
-const batPublisher = require('bat-publisher')
+const getPublisherProps = require('bat-publisher').getPublisherProps
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const incrPrometheus = require('./publishers').incrPrometheus
 
 const verifier = require('./publishers.js')
 const getToken = verifier.getToken
@@ -98,7 +98,7 @@ v2.bulk = {
       const channels = request.payload.channels || []
 
       for (let channel of channels) {
-        const props = batPublisher.getPublisherProps(channel.channelId)
+        const props = getPublisherProps(channel.channelId)
 
         if (!props) return reply(boom.badData('invalid channel-identifier ' + channel.channelId))
 
@@ -145,14 +145,14 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
   const tokens = runtime.database.get('tokens', debug)
   let props, state
 
-  props = batPublisher.getPublisherProps(owner)
+  props = getPublisherProps(owner)
   if (!props) return reply(boom.notFound('no such entry: ' + owner))
 
   if (!info) info = {}
   if (!channels) channels = []
 
   for (let channel of channels) {
-    if (!batPublisher.getPublisherProps(channel.channelId)) return reply(boom.notFound('no such entry: ' + channel.channelId))
+    if (!getPublisherProps(channel.channelId)) return reply(boom.notFound('no such entry: ' + channel.channelId))
   }
 
   state = {
@@ -177,7 +177,7 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
       })
     }
 
-    props = batPublisher.getPublisherProps(channel.channelId)
+    props = getPublisherProps(channel.channelId)
 
     state.$set = underscore.extend(underscore.omit(channel, [ 'channelId' ]), {
       verified: true,
@@ -190,6 +190,8 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
     if (visible !== 'null') state.$set.visible = visible
 
     await publishers.update({ publisher: channel.channelId }, state, { upsert: true })
+
+    incrPrometheus(debug, runtime, getPublisherProps(channel.channelId), state.$set)
 
     channel.verificationId = uuid.v4().toLowerCase()
     state.$set = underscore.extend(underscore.pick(state.$set, [ 'verified', 'visible' ]), {
@@ -446,15 +448,16 @@ v1.putWallet = {
 
       entries = await publishers.find({ owner: owner })
       entries.forEach((entry) => {
-        const props = batPublisher.getPublisherProps(entry.publisher)
+        const props = getPublisherProps(entry.publisher)
 
         if (props && props.URL) sites.push(props.URL)
       })
       if (sites.length === 0) sites.push('none')
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'owner ' + ownerString(querystring.unescape(owner), entry) + ' ' + ' registered with ' +
-          provider + ': ' + sites.join(' ')
+        text: 'owner ' + entry.ownerName + ' <' + entry.ownerEmail + '> ' + owner + ' ' +
+          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
+          ': ' + sites.join(' ')
       })
 
       reply({})
