@@ -1,3 +1,5 @@
+const os = require('os')
+
 const boom = require('boom')
 const GitHub = require('github')
 const Joi = require('joi')
@@ -37,7 +39,9 @@ v1.login = {
 
         runtime.notify(debug, {
           channel: '#devops-bot',
-          text: 'login ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope)
+          text: 'login ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope) +
+            ' on ' + os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version +
+            (process.env.DYNO ? ' at ' + process.env.DYNO : '')
         })
 
         request.cookieAuth.set(credentials)
@@ -69,16 +73,19 @@ v1.logout = {
     return async (request, reply) => {
       const debug = braveHapi.debug(module, request)
       const credentials = request.auth.credentials
+      const suffix = ' off ' + os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version +
+            (process.env.DYNO ? ' at ' + process.env.DYNO : '')
 
       if (credentials) {
         runtime.notify(debug, {
           channel: '#devops-bot',
-          text: 'logout ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope)
+          text: 'logout ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope) +
+            suffix
         })
       } else {
         runtime.notify(debug, {
           channel: '#devops-bot',
-          text: 'bogus logout'
+          text: 'bogus logout' + suffix
         })
       }
 
