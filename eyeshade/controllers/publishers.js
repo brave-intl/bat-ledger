@@ -427,7 +427,7 @@ v2.putWallet = {
 
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'publisher ' + 'https:// ' + publisher + ' ' +
+        text: 'publisher ' + 'https://' + publisher + ' ' +
           (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider
       })
 
@@ -984,11 +984,11 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
     $set: { verified: entry.verified, reason: reason.substr(0, 64) }
   }
   await tokens.update(indices, state, { upsert: true })
+  if (!verified) return
 
   reason = reason || (verified ? 'ok' : 'unknown')
   payload = underscore.extend(underscore.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
   await publish(debug, runtime, 'patch', entry.owner, entry.publisher, '/verifications', payload)
-  if (!verified) return
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
