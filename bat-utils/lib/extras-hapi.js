@@ -156,6 +156,10 @@ const WreckProxy = (server, opts) => {
   if (!opts.headers) opts.headers = {}
   if (!opts.headers['user-agent'] && !opts.headers['User-Agent']) opts.headers['user-agent'] = wreckUA
 
+  underscore.keys(opts.headers).forEach((header) => {
+    if (typeof opt.headers[header] !== 'string') delete opt.headers[header]
+  })
+
   if (typeof opts.useProxyP === 'undefined') return { server: server, opts: opts }
 
   useProxyP = opts.useProxyP
