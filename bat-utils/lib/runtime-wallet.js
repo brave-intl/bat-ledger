@@ -201,14 +201,17 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
     }
     result = await this.submitTx(info, txn, signature)
   } else {
+    const headers = {
+      'Authorization': 'Bearer ' + this.runtime.config.redeemer.access_token,
+      'Content-Type': 'application/json',
+      // Only pass "trusted" IP, not previous value of X-Forwarded-For
+      'X-Forwarded-For': whitelist.ipaddr(request)
+    }
+    if (request.headers['user-agent']) {
+      headers['User-Agent'] = request.headers['user-agent']
+    }
     result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
-      headers: {
-        'Authorization': 'Bearer ' + this.runtime.config.redeemer.access_token,
-        'Content-Type': 'application/json',
-        // Only pass "trusted" IP, not previous value of X-Forwarded-For
-        'X-Forwarded-For': whitelist.ipaddr(request),
-        'User-Agent': request.headers['user-agent']
-      },
+      headers: headers,
       payload: JSON.stringify(payload),
       useProxyP: true
     })
