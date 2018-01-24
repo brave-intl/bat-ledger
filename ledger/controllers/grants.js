@@ -223,17 +223,14 @@ v1.write = { handler: (runtime) => {
     // register the users claim to the grant with the redemption server
     const payload = { wallet: underscore.pick(wallet, ['altcurrency', 'provider', 'providerId']) }
     try {
-      const headers = {
-        'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-        'Content-Type': 'application/json',
-        // Only pass "trusted" IP, not previous value of X-Forwarded-For
-        'X-Forwarded-For': whitelist.ipaddr(request)
-      }
-      if (request.headers['user-agent']) {
-        headers['User-Agent'] = request.headers['user-agent']
-      }
       result = await braveHapi.wreck.put(runtime.config.redeemer.url + '/v1/grants/' + grant.grantId, {
-        headers: headers,
+        headers: {
+          'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+          'Content-Type': 'application/json',
+          // Only pass "trusted" IP, not previous value of X-Forwarded-For
+          'X-Forwarded-For': whitelist.ipaddr(request),
+          'User-Agent': request.headers['user-agent']
+        },
         payload: JSON.stringify(payload),
         useProxyP: true
       })
