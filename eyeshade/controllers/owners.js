@@ -19,6 +19,7 @@ const putToken = verifier.putToken
 
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 let altcurrency
 
@@ -138,6 +139,116 @@ v2.bulk = {
     { schema: Joi.object().length(0) }
 }
 
+/*
+   POST /v3/owners
+       [ used by publishers ]
+*/
+
+v3.bulk = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const debug = braveHapi.debug(module, request)
+      const owners = request.payload
+      const ownersC = runtime.database.get('owners', debug)
+      const publishers = runtime.database.get('publishers', debug)
+      const tokens = runtime.database.get('tokens', debug)
+      let entry
+
+      for (let owner of owners) {
+        let props = getPublisherProps(owner.owner_identifier)
+
+        if (!props) return reply(boom.badData('invalid owner-identifier ' + owner.owner_identifier))
+
+        if (owner.phone_normalized) owner.phone = owner.phone_normalized
+
+        if (!owner.channel_identifiers) owner.channel_identifiers = []
+        for (let channelId of owner.channel_identifiers) {
+          let publisher
+
+          props = getPublisherProps(channelId)
+          if (!props) return reply(boom.badData('invalid channel-identifier ' + channelId))
+
+          publisher = await publishers.findOne({ publisher: channelId })
+          if (!publisher) return reply(boom.notFound('no such entry: ' + channelId))
+
+          if (!publisher.owner) continue
+
+          entry = await ownersC.findOne({ owner: publisher.owner })
+          if (!entry) return reply(boom.notFound('no such owner (' + publisher.owner + ') for entry: ' + channelId))
+        }
+      }
+
+      for (let owner of owners) {
+        let state = await ownersC.findOne({ owner: owner.owner_identifier })
+
+        for (let channelId of owner.channel_identifiers) {
+          const verificationId = uuid.v4().toLowerCase()
+          let pullup
+
+          entry = await publishers.findOne({ publisher: channelId })
+          if (!entry) continue
+
+          await publishers.update({ publisher: channelId }, { $set: { owner: owner.owner_identifier } },
+                                  { upsert: true })
+
+          await tokens.update({ publisher: channelId, verificationId: verificationId }, {
+            $set: { token: verificationId, reason: 'bulk loaded', authority: owner.owner_identifier, info: entry.owner }
+          }, { upsert: true })
+          await tokens.remove({ $and: [ { publisher: channelId }, { verificationId: { $ne: verificationId } } ] },
+                              { justOne: false })
+
+          if (state) continue
+
+          pullup = underscore.pick(entry, [
+            'altcurrency', 'authority', 'authorized', 'info', 'parameters', 'provider', 'verified', 'visibl'
+          ])
+          entry = await ownersC.findOne({ owner: entry.owner })
+          if (!entry) continue
+
+          state = {
+            $currentDate: { timestamp: { $type: 'timestamp' } },
+            $set: underscore.defaults(underscore.omit(entry, [
+              '_id', 'owner', 'timestamp', 'providerName', 'providerSuffix', 'providerValue'
+            ]), pullup)
+          }
+
+          await ownersC.update({ owner: owner.owner_identifier }, state, { upsert: true })
+        }
+
+        bulk(request, () => {}, runtime, owner.owner_identifier, underscore.pick(owner, [ 'name', 'phone', 'email' ]),
+             owner.show_verification_status)
+      }
+
+      reply({})
+    }
+  },
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
+  },
+
+  description: 'Creates publisher entries in bulk',
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    payload: Joi.array().min(1).items(Joi.object().keys({
+      owner_identifier: braveJoi.string().owner().required().description('the owner identity'),
+      email: Joi.string().email().required().description('owner verified email address'),
+      name: Joi.string().optional().description('owner name'),
+      phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('owner phone number'),
+      phone_normalized: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('owner phone number'),
+      show_verification_status: Joi.boolean().optional().default(true).description('public display authorized'),
+      channel_identifiers: Joi.array().min(0).items(
+        braveJoi.string().publisher().optional().description('the publisher identity')
+      ).optional().description('associated channels')
+    })).required().description('publisher bulk entries for owners')
+  },
+
+  response:
+    { schema: Joi.object().length(0) }
+}
+
 const bulk = async (request, reply, runtime, owner, info, visible, channels) => {
   const debug = braveHapi.debug(module, request)
   const owners = runtime.database.get('owners', debug)
@@ -146,13 +257,13 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
   let props, state
 
   props = getPublisherProps(owner)
-  if (!props) return reply(boom.notFound('no such entry: ' + owner))
+  if (!props) return reply(boom.notFound('invalid owner-identifier ' + owner))
 
   if (!info) info = {}
   if (!channels) channels = []
 
   for (let channel of channels) {
-    if (!getPublisherProps(channel.channelId)) return reply(boom.notFound('no such entry: ' + channel.channelId))
+    if (!getPublisherProps(channel.channelId)) return reply(boom.notFound('invalid channel-identifier ' + channel.channelId))
   }
 
   state = {
@@ -603,6 +714,7 @@ v1.putToken = {
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/owners').whitelist().config(v1.bulk),
   braveHapi.routes.async().post().path('/v2/owners').whitelist().config(v2.bulk),
+  braveHapi.routes.async().post().path('/v3/owners').whitelist().config(v3.bulk),
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
   braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement),
