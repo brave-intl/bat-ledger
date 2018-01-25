@@ -200,7 +200,7 @@ v3.bulk = {
           if (state) continue
 
           pullup = underscore.pick(entry, [
-            'altcurrency', 'authority', 'authorized', 'info', 'parameters', 'provider', 'verified', 'visibl'
+            'altcurrency', 'authority', 'authorized', 'info', 'parameters', 'provider', 'verified', 'visible'
           ])
           entry = await ownersC.findOne({ owner: entry.owner })
           if (!entry) continue
