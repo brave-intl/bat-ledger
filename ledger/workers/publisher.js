@@ -12,7 +12,8 @@ exports.workers = {
 
     { queue            : 'publisher-report'
     , message          :
-      { publisher      : '...'
+      { owner          : '...'
+      , publisher      : '...'
       , verified       : true | false
       , visible        : true | false
       }

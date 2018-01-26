@@ -457,11 +457,11 @@ v2.publishers.status = {
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     query: {
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the response'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
-      verified: Joi.boolean().optional().description('filter on verification status'),
-      access_token: Joi.string().guid().optional()
+      verified: Joi.boolean().optional().description('filter on verification status')
     }
   },
 

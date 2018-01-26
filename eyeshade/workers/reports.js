@@ -32,13 +32,28 @@ const create = async (runtime, prefix, params) => {
   return runtime.database.file(params.reportId, 'w', options)
 }
 
-const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  const prefix = publisher ? encodeURIComponent(publisher) : ''
-  let result
+const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
+  let path, result
 
   if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
 
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + prefix + (endpoint || ''), {
+  path = '/api'
+  if (owner) path += '/owners/' + encodeURIComponent(owner)
+  path += '/channel'
+  if (owner) path += 's'
+  if (publisher) path += '/' + encodeURIComponent(publisher)
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
+    headers: {
+      authorization: 'Bearer ' + runtime.config.publishers.access_token,
+      'content-type': 'application/json'
+    },
+    payload: JSON.stringify(payload),
+    useProxyP: true
+  })
+  path = '/api/'
+  if (owner) path += 'owners/' + encodeURIComponent(owner) + '/'
+  path += 'publishers/' + encodeURIComponent(publisher)
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path, endpoint, {
     headers: {
       authorization: 'Bearer ' + runtime.config.publishers.access_token,
       'content-type': 'application/json'
@@ -49,6 +64,16 @@ const publish = async (debug, runtime, method, publisher, endpoint, payload) => 
   if (Buffer.isBuffer(result)) result = JSON.parse(result)
 
   return result
+}
+
+const notification = async (debug, runtime, owner, publisher, payload) => {
+  let message = await publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
+
+  if (!message) return
+
+  message = underscore.extend({ owner: owner, publisher: publisher }, payload)
+  debug('notify', message)
+  runtime.notify(debug, { channel: '#publishers-bot', text: 'publishers notified: ' + JSON.stringify(message) })
 }
 
 const daily = async (debug, runtime) => {
@@ -119,44 +144,40 @@ const hourly2 = async (debug, runtime) => {
 
     for (let publisher of underscore.keys(history)) {
       const records = history[publisher]
-      let info, params, results, state, visible
+      let info, method, params, record, result, state, visible, visibleP
 
       try {
-        results = await publish(debug, runtime, 'get', publisher)
-        for (let result of results) {
-          const record = underscore.findWhere(records, { verificationId: result.id })
-          let method, visibleP
+        result = await publish(debug, runtime, 'get', publisher)
+        record = underscore.findWhere(records, { verificationId: result.id })
+        if (!record) continue
 
-          if (!record) continue
-
-          visible = result.show_verification_status
-          visibleP = (typeof visible !== 'undefined')
-          method = result.verification_method
-          info = underscore.pick(result, [ 'name', 'email' ])
-          if (result.phone_normalized) info.phone = result.phone_normalized
-          if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
-          state = {
-            $currentDate: { timestamp: { $type: 'timestamp' } },
-            $set: { info: info }
-          }
-          if (visibleP) state.$set.visible = visible
-          params = underscore.pick(record, [ 'info', 'visible' ])
-          if (method) {
-            state.$set.method = method
-            params.method = record.method
-          }
-
-          if (underscore.isEqual(params, state.$set)) continue
-
-          await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
-
-          if (!record.verified) continue
-
-          state.$set = underscore.pick(state.$set, [ 'info', 'visible' ])
-          await publishers.update({ publisher: publisher }, state, { upsert: true })
-
-          await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, verified: true, visible: visible })
+        visible = result.show_verification_status
+        visibleP = (typeof visible !== 'undefined')
+        method = result.verification_method
+        info = underscore.pick(result, [ 'name', 'email' ])
+        if (result.phone_normalized) info.phone = result.phone_normalized
+        if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
+        state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $set: { info: info }
         }
+        if (visibleP) state.$set.visible = visible
+        params = underscore.pick(record, [ 'info', 'visible' ])
+        if (method) {
+          state.$set.method = method
+          params.method = record.method
+        }
+
+        if (underscore.isEqual(params, state.$set)) continue
+
+        await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
+
+        if (!record.verified) continue
+
+        state.$set = underscore.pick(state.$set, [ 'info', 'visible' ])
+        await publishers.update({ publisher: publisher }, state, { upsert: true })
+
+        await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, verified: true, visible: visible })
       } catch (ex) {
         runtime.captureException(ex)
         if (ex.data) {
@@ -290,7 +311,7 @@ const quanta = async (debug, runtime, qid) => {
   }))
 }
 
-const mixer = async (debug, runtime, publisher, qid) => {
+const mixer = async (debug, runtime, filter, qid) => {
   const publishers = {}
   let results
 
@@ -309,7 +330,7 @@ const mixer = async (debug, runtime, publisher, qid) => {
     for (let slice of slices) {
       probi = new BigNumber(quantum.quantum.toString()).times(slice.counts).times(0.95)
       fees = new BigNumber(quantum.quantum.toString()).times(slice.counts).minus(probi)
-      if ((publisher) && (slice.publisher !== publisher)) continue
+      if ((filter) && (filter.indexOf(slice.publisher) === -1)) continue
 
       if (!publishers[slice.publisher]) {
         publishers[slice.publisher] = {
@@ -662,7 +683,7 @@ exports.workers = {
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
 
-      publishers = await mixer(debug, runtime, publisher, undefined)
+      publishers = await mixer(debug, runtime, [ publisher ], undefined)
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false
@@ -721,7 +742,7 @@ exports.workers = {
       if (format === 'json') {
         entries = []
         for (let offset in data) {
-          let entry, props, wallet, who
+          let entry, props, wallet
           let datum = data[offset]
 
           delete datum.currency
@@ -736,10 +757,8 @@ exports.workers = {
             datum.name = entry.info && entry.info.name
             datum.URL = props && props.URL
 
-            who = 'publisher ' + datum.publisher
             if (entry.provider) wallet = await runtime.wallet.status(entry)
             if ((!wallet) && (entry.owner)) {
-              who = 'owner ' + entry.owner
               entry = await owners.findOne({ owner: entry.owner })
               if (entry.provider) wallet = await runtime.wallet.status(entry)
             }
@@ -747,11 +766,7 @@ exports.workers = {
               datum.address = wallet.address
               datum.currency = wallet.preferredCurrency
             } else {
-              runtime.notify(debug, {
-                channel: '#publishers-bot',
-                text: who + ' lacking settlement address and/or preferredCurrency'
-              })
-              continue
+              await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
             }
             entries.push(datum)
           } catch (ex) {}

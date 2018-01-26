@@ -10,7 +10,9 @@ const pluralize = require('pluralize')
 const underscore = require('underscore')
 const uuid = require('uuid')
 
-const getPublisherProps = require('bat-publisher').getPublisherProps
+const batPublisher = require('bat-publisher')
+const getPublisher = batPublisher.getPublisher
+const getPublisherProps = batPublisher.getPublisherProps
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
@@ -67,7 +69,7 @@ v1.bulk = {
   },
 
   description: 'Creates publisher entries in bulk',
-  tags: [ 'api' ],
+  tags: [ 'api', 'deprecated' ],
 
   validate: {
     query: { format: Joi.string().valid('json', 'csv').optional().default('json').description('the format of the report') },
@@ -218,14 +220,12 @@ v2.getBalance = {
   },
 
   description: 'Gets the balance for a verified publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
-    query: {
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
-      access_token: Joi.string().guid().optional()
-    }
+    query: { currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency') }
   },
 
   response: {
@@ -354,14 +354,12 @@ v2.getWallet = {
   },
 
   description: 'Gets information for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
-    query: {
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
-      access_token: Joi.string().guid().optional()
-    }
+    query: { currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency') }
   },
 
   response: {
@@ -443,11 +441,11 @@ v2.putWallet = {
   },
 
   description: 'Sets information for a verified publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
-    query: { access_token: Joi.string().guid().optional() },
     payload: {
       verificationId: Joi.string().guid().required().description('identity of the requestor'),
       provider: Joi.string().required().description('wallet provider'),
@@ -458,6 +456,116 @@ v2.putWallet = {
 
   response:
     { schema: Joi.object().length(0) }
+}
+
+/*
+   GET /v1/publishers/identity?url=...
+       [ used by publishers ]
+ */
+
+v1.identity =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const url = request.query.url
+    const debug = braveHapi.debug(module, request)
+    let result
+
+    try {
+      result = getPublisherProps(url)
+      if (!result) return reply(boom.notFound())
+
+      if (!result.publisherType) {
+        result.publisher = getPublisher(url, ruleset)
+        if (result.publisher) underscore.extend(result, await identity(debug, runtime, result))
+      }
+
+      reply(result)
+    } catch (ex) {
+      reply(boom.badData(ex.toString()))
+    }
+  }
+},
+
+  description: 'Returns the publisher identity associated with a URL',
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    query: { url: Joi.string().uri({ scheme: /https?/ }).required().description('the URL to parse') }
+  },
+
+  response:
+    { schema: Joi.object().optional().description('the publisher identity') }
+}
+
+const ruleset = [
+  {
+    'condition': "SLD === 'youtube.com' && pathname.indexOf('/channel/') === 0",
+    'consequent': "'youtube#channel:' + pathname.split('/')[2]",
+    'description': 'youtube channels'
+  },
+  {
+    'condition': '/^[a-z][a-z].gov$/.test(SLD)',
+    'consequent': 'QLD + "." + SLD',
+    'description': 'governmental sites'
+  },
+  {
+    'condition': "TLD === 'gov' || /^go.[a-z][a-z]$/.test(TLD) || /^gov.[a-z][a-z]$/.test(TLD)",
+    'consequent': 'SLD',
+    'description': 'governmental sites'
+  },
+  {
+    'condition': "SLD === 'keybase.pub'",
+    'consequent': "QLD + '.' + SLD",
+    'description': 'keybase users'
+  },
+  {
+    'condition': "SLD === 'youtube.com' && pathname.indexOf('/channel/') === 0",
+    'consequent': "'youtube#channel:' + pathname.split('/')[2]",
+    'description': 'youtube channels'
+  },
+  {
+    'condition': true,
+    'consequent': 'SLD',
+    'description': 'the default rule'
+  }
+]
+
+const identity = async (debug, runtime, result) => {
+  const publishersV2 = runtime.database.get('publishersV2', debug)
+  let entry
+
+  const re = (value, entries) => {
+    entries.forEach((reEntry) => {
+      let regexp
+
+      if ((entry) ||
+          (underscore.intersection(reEntry.publisher.split(''),
+                                [ '^', '$', '*', '+', '?', '[', '(', '{', '|' ]).length === 0)) return
+
+      try {
+        regexp = new RegExp(reEntry.publisher)
+        if (regexp.test(value)) entry = reEntry
+      } catch (ex) {
+        debug('invalid regexp ' + reEntry.publisher + ': ' + ex.toString())
+      }
+    })
+  }
+
+  entry = await publishersV2.findOne({ publisher: result.publisher, facet: 'domain' })
+
+  if (!entry) entry = await publishersV2.findOne({ publisher: result.SLD.split('.')[0], facet: 'SLD' })
+  if (!entry) re(result.SLD, await publishersV2.find({ facet: 'SLD' }))
+
+  if (!entry) entry = await publishersV2.findOne({ publisher: result.TLD, facet: 'TLD' })
+  if (!entry) re(result.TLD, await publishersV2.find({ facet: 'TLD' }))
+
+  if (!entry) return {}
+
+  return {
+    properties: underscore.omit(entry, [ '_id', 'publisher', 'timestamp' ]),
+    timestamp: entry.timestamp.toString()
+  }
 }
 
 /*
@@ -487,9 +595,7 @@ v1.getStatements = {
   tags: [ 'api' ],
 
   validate: {
-    query: {
-      access_token: Joi.string().guid().optional()
-    }
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown()
   },
 
   response: {
@@ -531,14 +637,14 @@ v1.getStatement = {
   },
 
   description: 'Generates a statement for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
       starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format'),
-      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format'),
-      access_token: Joi.string().guid().optional()
+      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format')
     }
   },
 
@@ -554,27 +660,11 @@ v1.getStatement = {
        [ used by publishers ]
  */
 
-v1.getToken = {
+v1.putToken = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const publisher = request.params.publisher
-      const verificationId = request.params.verificationId
-      const visible = request.query.show_verification_status
-      const debug = braveHapi.debug(module, request)
-      const tokens = runtime.database.get('tokens', debug)
-      let entry, state, token
-
-      entry = await tokens.findOne({ verificationId: verificationId, publisher: publisher })
-      if (entry) return reply({ token: entry.token })
-
-      token = crypto.randomBytes(32).toString('hex')
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: { token: token, visible: visible }
-      }
-      await tokens.update({ verificationId: verificationId, publisher: publisher }, state, { upsert: true })
-
-      reply({ token: token })
+      putToken(request, reply, runtime, null, request.params.publisher, request.params.verificationId,
+               request.query.show_verification_status)
     }
   },
 
@@ -584,21 +674,40 @@ v1.getToken = {
   },
 
   description: 'Gets a verification token for a publisher',
-  tags: [ 'api' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: {
       publisher: braveJoi.string().publisher().required().description('the publisher identity'),
       verificationId: Joi.string().guid().required().description('identity of the requestor')
     },
     query: {
-      access_token: Joi.string().guid().optional(),
       show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
     }
   },
 
   response:
     { schema: Joi.object().keys({ token: Joi.string().hex().length(64).required().description('verification token') }) }
+}
+
+const putToken = async (request, reply, runtime, owner, publisher, verificationId, visible) => {
+  const debug = braveHapi.debug(module, request)
+  const tokens = runtime.database.get('tokens', debug)
+  let entry, state, token
+
+  entry = await tokens.findOne({ verificationId: verificationId, publisher: publisher })
+  if (entry) return reply({ token: entry.token })
+
+  token = crypto.randomBytes(32).toString('hex')
+  state = {
+    $currentDate: { timestamp: { $type: 'timestamp' } },
+    $set: { token: token, visible: visible }
+  }
+  if (owner) state.$set.owner = owner
+  await tokens.update({ verificationId: verificationId, publisher: publisher }, state, { upsert: true })
+
+  reply({ token: token })
 }
 
 /*
@@ -608,15 +717,19 @@ v1.getToken = {
 v2.patchPublisher = {
   handler: (runtime) => {
     return async (request, reply) => {
+      const owner = request.params.owner
       const publisher = request.params.publisher
       const payload = request.payload
-      const authorized = payload.authorized
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       const debug = braveHapi.debug(module, request)
+      const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
       let entry, state
 
-      entry = await publishers.findOne({ publisher: publisher })
+      entry = await owners.findOne({ owner: owner })
+      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
+
+      entry = await publishers.findOne({ owner: owner, publisher: publisher })
       if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
 
       state = {
@@ -626,8 +739,6 @@ v2.patchPublisher = {
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
       incrPrometheus(debug, runtime, getPublisherProps(publisher), state.$set)
-
-      if (authorized) await notify(debug, runtime, publisher, { type: 'payments_activated' })
 
       reply({})
     }
@@ -643,7 +754,10 @@ v2.patchPublisher = {
   tags: [ 'api' ],
 
   validate: {
-    params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
+    params: {
+      owner: braveJoi.string().owner().required().description('the owner identity'),
+      publisher: braveJoi.string().publisher().required().description('the publisher identity')
+    },
     payload: {
       authorized: Joi.boolean().optional().default(false).description('authorize the publisher')
     }
@@ -699,6 +813,114 @@ v1.deletePublisher = {
        [ used by publishers ]
  */
 
+v1.getToken = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      getToken(request, reply, runtime, null, request.params.publisher, request.query.backgroundP)
+    }
+  },
+
+  description: 'Verifies a publisher',
+  tags: [ 'api', 'publishers', 'deprecated' ],
+
+  validate: {
+    params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
+    query: { backgroundP: Joi.boolean().optional().default(false).description('running in the background') }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      status: Joi.string().valid('success', 'failure').required().description('victory is mine!'),
+      verificationId: Joi.string().guid().optional().description('identity of the verified requestor')
+    })
+  }
+}
+
+const getToken = async (request, reply, runtime, owner, publisher, backgroundP) => {
+  const debug = braveHapi.debug(module, request)
+  const tokens = runtime.database.get('tokens', debug)
+  let data, entries, hint, i, info, j, matchP, pattern, reason, rr, rrset
+
+  entries = await tokens.find({ publisher: publisher })
+  if (entries.length === 0) return reply(boom.notFound('no such publisher: ' + publisher))
+
+  for (let entry of entries) {
+    if (entry.verified) {
+      await runtime.queue.send(debug, 'publisher-report',
+                               underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
+      return reply({ status: 'success', verificationId: entry.verificationId })
+    }
+  }
+
+  try { rrset = await dnsTxtResolver(publisher) } catch (ex) {
+    reason = ex.toString()
+    if (reason.indexOf('ENODATA') === -1) {
+      debug('dnsTxtResolver', underscore.extend({ publisher: publisher, reason: reason }))
+    }
+    rrset = []
+  }
+  for (i = 0; i < rrset.length; i++) { rrset[i] = rrset[i].join('') }
+
+  const loser = async (entry, reason) => {
+    debug('verify', underscore.extend(info, { reason: reason }))
+    await verified(request, reply, runtime, entry, false, backgroundP, reason)
+  }
+
+  info = { publisher: publisher }
+  data = {}
+  for (let entry of entries) {
+    info.verificationId = entry.verificationId
+
+    for (j = 0; j < rrset.length; j++) {
+      rr = rrset[j]
+      if (rr.indexOf(prefix2) !== 0) continue
+
+      matchP = true
+      if (rr.substring(prefix2.length) !== entry.token) {
+        await loser(entry, 'TXT RR suffix mismatch ' + prefix2 + entry.token)
+        continue
+      }
+
+      return verified(request, reply, runtime, entry, true, backgroundP, 'TXT RR matches')
+    }
+    if (!matchP) {
+      if (typeof matchP === 'undefined') await loser(entry, 'no TXT RRs starting with ' + prefix2)
+      matchP = false
+    }
+
+    for (j = 0; j < hintsK.length; j++) {
+      hint = hintsK[j]
+      if (typeof data[hint] === 'undefined') {
+        try { data[hint] = (await webResolver(debug, runtime, publisher, hints[hint])).toString() } catch (ex) {
+          data[hint] = ''
+          await loser(entry, ex.toString())
+          continue
+        }
+        debug('verify', 'fetched data for ' + hint)
+      }
+
+      if (data[hint].indexOf(entry.token) !== -1) {
+        switch (hint) {
+          case root:
+            pattern = '<meta[^>]*?name=["\']+' + prefix1 + '["\']+content=["\']+' + entry.token + '["\']+.*?>|' +
+                    '<meta[^>]*?content=["\']+' + entry.token + '["\']+name=["\']+' + prefix1 + '["\']+.*?>'
+            if (!data[hint].match(pattern)) continue
+            break
+
+          default:
+            break
+        }
+        return verified(request, reply, runtime, entry, true, backgroundP, hint + ' web file matches')
+      }
+      debug('verify', 'no match for ' + hint)
+
+      if (i === 0) break
+    }
+  }
+
+  reply({ status: 'failure' })
+}
+
 const hints = {
   standard: '/.well-known/brave-payments-verification.txt',
   root: '/'
@@ -709,6 +931,7 @@ const dnsTxtResolver = async (domain) => {
   return new Promise((resolve, reject) => {
     dns.resolveTxt(domain, (err, rrset) => {
       if (err) return reject(err)
+
       resolve(rrset)
     })
   })
@@ -738,9 +961,10 @@ const webResolver = async (debug, runtime, publisher, path) => {
 const verified = async (request, reply, runtime, entry, verified, backgroundP, reason) => {
   const indices = underscore.pick(entry, [ 'verificationId', 'publisher' ])
   const debug = braveHapi.debug(module, request)
+  const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
   const tokens = runtime.database.get('tokens', debug)
-  let info, message, method, payload, results, state, visible, visibleP
+  let info, message, method, payload, props, result, state, visible, visibleP
 
   message = underscore.extend(underscore.clone(indices), { verified: verified, reason: reason })
   debug('verified', message)
@@ -760,15 +984,15 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
     $set: { verified: entry.verified, reason: reason.substr(0, 64) }
   }
   await tokens.update(indices, state, { upsert: true })
+  if (!verified) return
 
   reason = reason || (verified ? 'ok' : 'unknown')
   payload = underscore.extend(underscore.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
-  await publish(debug, runtime, 'patch', entry.publisher, '/verifications', payload)
-  if (!verified) return
+  await publish(debug, runtime, 'patch', entry.owner, entry.publisher, '/verifications', payload)
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
-    $set: underscore.pick(entry, [ 'verified', 'visible', 'info' ])
+    $set: underscore.pick(entry, [ 'owner', 'verified', 'visible', 'info' ])
   }
   await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
 
@@ -776,171 +1000,70 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   await tokens.remove({ publisher: entry.publisher, verified: false }, { justOne: false })
 
-  await runtime.queue.send(debug, 'publisher-report', underscore.pick(entry, [ 'publisher', 'verified', 'visible' ]))
+  if (entry.owner) {
+    props = getPublisherProps(entry.owner)
+
+    state = {
+      $currentDate: { timestamp: { $type: 'timestamp' } },
+      $set: underscore.pick(props || {}, [ 'providerName', 'providerSuffix', 'providerValue' ])
+    }
+    await owners.update({ owner: entry.owner }, state, { upsert: true })
+  }
+
+  await runtime.queue.send(debug, 'publisher-report', underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
   reply({ status: 'success', verificationId: entry.verificationId })
 
   if (entry.info) return
 
-  results = await publish(debug, runtime, 'get', entry.publisher)
-  for (let result of results) {
-    if (result.id !== entry.verificationId) continue
+  result = await publish(debug, runtime, 'get', entry.owner, entry.publisher)
+  if (result.id !== entry.verificationId) return
 
-    visible = result.show_verification_status
-    visibleP = (typeof visible !== 'undefined')
-    method = result.verification_method
-    info = underscore.pick(result, [ 'name', 'email' ])
-    if (result.phone_normalized) info.phone = result.phone_normalized
-    if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
+  visible = result.show_verification_status
+  visibleP = (typeof visible !== 'undefined')
+  method = result.verification_method
+  info = underscore.pick(result, [ 'name', 'email' ])
+  if (result.phone_normalized) info.phone = result.phone_normalized
+  if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
 
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: { info: info }
-    }
-    if (visibleP) state.$set.visible = visible
-    if (method) state.$set.method = method
-    await tokens.update(indices, state, { upsert: true })
-
-    await publishers.update(indices, state, { upsert: true })
+  state = {
+    $currentDate: { timestamp: { $type: 'timestamp' } },
+    $set: { info: info }
   }
+  if (visibleP) state.$set.visible = visible
+  if (method) state.$set.method = method
+  await tokens.update(indices, state, { upsert: true })
+
+  await publishers.update(indices, state, { upsert: true })
 }
 
-v1.verifyToken = {
-  handler: (runtime) => {
-    return async (request, reply) => {
-      const publisher = request.params.publisher
-      const backgroundP = request.query.backgroundP
-      const debug = braveHapi.debug(module, request)
-      const tokens = runtime.database.get('tokens', debug)
-      let data, entries, hint, i, info, j, matchP, pattern, reason, rr, rrset
+const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
+  let path, result
 
-      entries = await tokens.find({ publisher: publisher })
-      if (entries.length === 0) return reply(boom.notFound('no such publisher: ' + publisher))
-
-      for (let entry of entries) {
-        if (entry.verified) {
-          await runtime.queue.send(debug, 'publisher-report', underscore.pick(entry, [ 'publisher', 'verified', 'visible' ]))
-          return reply({ status: 'success', verificationId: entry.verificationId })
-        }
-      }
-
-      try { rrset = await dnsTxtResolver(publisher) } catch (ex) {
-        reason = ex.toString()
-        if (reason.indexOf('ENODATA') === -1) {
-          debug('dnsTxtResolver', underscore.extend({ publisher: publisher, reason: reason }))
-        }
-        rrset = []
-      }
-      for (i = 0; i < rrset.length; i++) { rrset[i] = rrset[i].join('') }
-
-      const loser = async (entry, reason) => {
-        debug('verify', underscore.extend(info, { reason: reason }))
-        await verified(request, reply, runtime, entry, false, backgroundP, reason)
-      }
-
-      info = { publisher: publisher }
-      data = {}
-      for (let entry of entries) {
-        info.verificationId = entry.verificationId
-
-        for (j = 0; j < rrset.length; j++) {
-          rr = rrset[j]
-          if (rr.indexOf(prefix2) !== 0) continue
-
-          matchP = true
-          if (rr.substring(prefix2.length) !== entry.token) {
-            await loser(entry, 'TXT RR suffix mismatch ' + prefix2 + entry.token)
-            continue
-          }
-
-          return verified(request, reply, runtime, entry, true, backgroundP, 'TXT RR matches')
-        }
-        if (!matchP) {
-          if (typeof matchP === 'undefined') await loser(entry, 'no TXT RRs starting with ' + prefix2)
-          matchP = false
-        }
-
-        for (j = 0; j < hintsK.length; j++) {
-          hint = hintsK[j]
-          if (typeof data[hint] === 'undefined') {
-            try { data[hint] = (await webResolver(debug, runtime, publisher, hints[hint])).toString() } catch (ex) {
-              data[hint] = ''
-              await loser(entry, ex.toString())
-              continue
-            }
-            debug('verify', 'fetched data for ' + hint)
-          }
-
-          if (data[hint].indexOf(entry.token) !== -1) {
-            switch (hint) {
-              case root:
-                pattern = '<meta[^>]*?name=["\']+' + prefix1 + '["\']+content=["\']+' + entry.token + '["\']+.*?>|' +
-                        '<meta[^>]*?content=["\']+' + entry.token + '["\']+name=["\']+' + prefix1 + '["\']+.*?>'
-                if (!data[hint].match(pattern)) continue
-                break
-
-              default:
-                break
-            }
-            return verified(request, reply, runtime, entry, true, backgroundP, hint + ' web file matches')
-          }
-          debug('verify', 'no match for ' + hint)
-
-          if (i === 0) break
-        }
-      }
-
-      return reply({ status: 'failure' })
-    }
-  },
-
-  description: 'Verifies a publisher',
-  tags: [ 'api' ],
-
-  validate: {
-    params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
-    query: { backgroundP: Joi.boolean().optional().default(false).description('running in the background') }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      status: Joi.string().valid('success', 'failure').required().description('victory is mine!'),
-      verificationId: Joi.string().guid().optional().description('identity of the verified requestor')
-    })
-  }
-}
-
-const publish = async (debug, runtime, method, publisher, endpoint, payload) => {
-  let result
-
+  path = '/api'
+  if (owner) path += '/owners/' + encodeURIComponent(owner)
+  path += '/channel'
+  if (owner) path += 's'
+  if (publisher) path += '/' + encodeURIComponent(publisher)
   try {
-    result = await braveHapi.wreck[method](runtime.config.publishers.url + '/api/publishers/' + encodeURIComponent(publisher) +
-                                           endpoint,
-      {
-        headers: {
-          authorization: 'Bearer ' + runtime.config.publishers.access_token,
-          'content-type': 'application/json'
-        },
-        payload: JSON.stringify(payload),
-        useProxyP: true
-      })
+    result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
+      headers: {
+        authorization: 'Bearer ' + runtime.config.publishers.access_token,
+        'content-type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      useProxyP: true
+    })
     if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
-    debug('publish', { method: method, publisher: publisher, endpoint: endpoint, reason: result })
+    debug('publish', { method: method, owner: owner, publisher: publisher, endpoint: endpoint, reason: result })
   } catch (ex) {
-    debug('publish', { method: method, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
+    debug('publish', { method: method, owner: owner, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
   }
 
   return result
 }
 
-const notify = async (debug, runtime, publisher, payload) => {
-  let message = await publish(debug, runtime, 'post', publisher, '/notifications', payload)
-
-  if (!message) return
-
-  message = underscore.extend({ publisher: publisher }, payload)
-  debug('notify', message)
-  runtime.notify(debug, { channel: '#publishers-bot', text: 'publishers notified: ' + JSON.stringify(message) })
-}
+module.exports.getToken = getToken
+module.exports.putToken = putToken
 
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/publishers').config(v1.bulk),
@@ -948,12 +1071,13 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/publishers/{publisher}/balance').whitelist().config(v2.getBalance),
   braveHapi.routes.async().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.getWallet),
   braveHapi.routes.async().put().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.putWallet),
+  braveHapi.routes.async().path('/v1/publishers/identity').whitelist().config(v1.identity),
   braveHapi.routes.async().path('/v1/publishers/statement').whitelist().config(v1.getStatements),
   braveHapi.routes.async().path('/v1/publishers/{publisher}/statement').whitelist().config(v1.getStatement),
-  braveHapi.routes.async().path('/v1/publishers/{publisher}/verifications/{verificationId}').whitelist().config(v1.getToken),
+  braveHapi.routes.async().path('/v1/publishers/{publisher}/verifications/{verificationId}').whitelist().config(v1.putToken),
   braveHapi.routes.async().patch().path('/v2/publishers/{publisher}').whitelist().config(v2.patchPublisher),
   braveHapi.routes.async().delete().path('/v1/publishers/{publisher}').whitelist().config(v1.deletePublisher),
-  braveHapi.routes.async().path('/v1/publishers/{publisher}/verify').config(v1.verifyToken)
+  braveHapi.routes.async().path('/v1/publishers/{publisher}/verify').config(v1.getToken)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -965,7 +1089,7 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'publishers',
       property: 'publisher',
       empty: {
-        publisher: '',
+        publisher: '',    // domain OR 'oauth#' + provider + ':' + (profile.id || profile._id)
         verified: false,
         authorized: false,
         authority: '',
@@ -976,23 +1100,29 @@ module.exports.initialize = async (debug, runtime) => {
 
      // v2 and later
         owner: '',
-        visible: false,
 
         providerType: '',
         providerName: '',
         providerSuffix: '',
         providerValue: '',
+        authorizerEmail: '',
+        authorizerName: '',
+
+        visible: false,
 
         provider: '',
         altcurrency: '',
         parameters: {},
+
         info: {},
 
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { publisher: 1 } ],
       others: [ { verified: 1 }, { authorized: 1 }, { authority: 1 },
-                { providerType: 1 }, { providerName: 1 }, { providerSuffix: 1 },
+                { owner: 1 },
+                { providerType: 1 }, { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
+                { authorizerEmail: 1 }, { authorizerName: 1 },
                 { owner: 1 }, { visible: 1 }, { provider: 1 }, { altcurrency: 1 },
                 { timestamp: 1 } ]
     },
@@ -1037,16 +1167,28 @@ module.exports.initialize = async (debug, runtime) => {
         authority: '',
 
      // v2 and later
+        owner: '',
+        ownerEmail: '',
+        ownerName: '',
         visible: false,
         info: {},
         method: '',
 
         reason: '',
-        timestamp: bson.Timestamp.ZERO },
+        timestamp: bson.Timestamp.ZERO
+      },
       unique: [ { verificationId: 1, publisher: 1 } ],
       others: [ { token: 1 }, { verified: 1 }, { authority: 1 },
-                { visible: 1, method: 1 },
+                { owner: 1 }, { visible: 1 }, { method: 1 },
                 { reason: 1 }, { timestamp: 1 } ]
+    },
+    {
+      category: runtime.database.get('publishersV2', debug),
+      name: 'publishersV2',
+      property: 'publisher',
+      empty: { publisher: '', facet: '', exclude: false, tags: [], timestamp: bson.Timestamp.ZERO },
+      unique: [ { publisher: 1 } ],
+      others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
     }
   ])
 
