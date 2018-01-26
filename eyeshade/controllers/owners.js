@@ -39,6 +39,7 @@ v1.bulk = {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(underscore.omit(authorizer, [ 'owner' ]), {
+          visible: authorizer.visible,
           authorized: true,
           altcurrency: altcurrency,
           info: info
@@ -52,7 +53,7 @@ v1.bulk = {
           authorized: true,
           authority: authorizer.owner,
           owner: authorizer.owner,
-          visible: entry.show_verification_status || false,
+          visible: entry.show_verification_status || authorizer.visible,
           altcurrency: altcurrency,
           info: info
         })
@@ -93,7 +94,8 @@ v1.bulk = {
       authorizer: Joi.object().keys({
         owner: braveJoi.string().owner().required().description('the owner identity'),
         ownerEmail: Joi.string().email().optional().description('authorizer email address'),
-        ownerName: Joi.string().optional().description('authorizer name')
+        ownerName: Joi.string().optional().description('authorizer name'),
+        ownerVisible: Joi.boolean().optional().default(true).description('public display authorized')
       }),
       contactInfo: Joi.object().keys({
         name: Joi.string().required().description('authorizer name'),
@@ -412,6 +414,7 @@ module.exports.initialize = async (debug, runtime) => {
         providerName: '',
         providerSuffix: '',
         providerValue: '',
+        visible: false,
 
         authorized: false,
         authority: '',
@@ -425,7 +428,7 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { owner: 1 } ],
       others: [ { ownerEmail: 1 }, { ownerName: 1 }, { verifiedEmail: 1 },
-                { providerName: 1 }, { providerSuffix: 1 },
+                { providerName: 1 }, { providerSuffix: 1 }, { visible: 1 },
                 { authorized: 1 }, { authority: 1 },
                 { provider: 1 }, { altcurrency: 1 },
                 { timestamp: 1 } ]
