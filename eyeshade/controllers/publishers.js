@@ -6,7 +6,6 @@ const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
-const pluralize = require('pluralize')
 const underscore = require('underscore')
 const uuid = require('uuid')
 
@@ -423,8 +422,6 @@ v2.putWallet = {
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
-      incrPrometheus(debug, runtime, getPublisherProps(publisher), state.$set)
-
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'publisher ' + 'https://' + publisher + ' ' +
@@ -738,8 +735,6 @@ v2.patchPublisher = {
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
-      incrPrometheus(debug, runtime, getPublisherProps(publisher), state.$set)
-
       reply({})
     }
   },
@@ -996,8 +991,6 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   }
   await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
 
-  incrPrometheus(debug, runtime, getPublisherProps(entry.publisher), state.$set)
-
   await tokens.remove({ publisher: entry.publisher, verified: false }, { justOne: false })
 
   if (entry.owner) {
@@ -1195,73 +1188,4 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('publishers-bulk-create')
   await runtime.queue.create('publisher-report')
   await runtime.queue.create('report-publishers-statements')
-
-  initPrometheus(debug, runtime)
 }
-
-const initPrometheus = async (debug, runtime) => {
-  const publishers = runtime.database.get('publishers', debug)
-  let entries, publisherTypes
-
-  if (!runtime.prometheus) return
-
-  underscore.mixin({ capitalize: (string) => { return string.charAt(0).toUpperCase() + string.substring(1).toLowerCase() } })
-
-  const setPrometheus = async (prefix, props) => {
-    const text = underscore(prefix.split('_').join(' ')).capitalize()
-
-    runtime.prometheus.setCounter(prefix + '_verified', text + ' verified',
-                                  await publishers.count(underscore.extend({ verified: true }, props)))
-  }
-
-  await setPrometheus('publishers', {})
-
-  entries = await publishers.find({ publisherType: { $exists: false } })
-  for (let entry of entries) {
-    const props = getPublisherProps(entry.publisher)
-    let state
-
-    state = { $set: {} }
-    if ((!props) || (!props.publisherType)) state.$set = { publisherType: '' }
-    else state.$set = underscore.pick(props, [ 'publisherType', 'providerName', 'providerSuffix', 'providerValue' ])
-
-    await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
-  }
-
-  await setPrometheus('sites', { publisherType: '' })
-
-  // a map-reduce would be better...
-  publisherTypes = await publishers.distinct('publisherType')
-  for (let publisherType of publisherTypes) {
-    let providerNames
-
-    if (!publisherType) continue
-
-    providerNames = await publishers.distinct('providerName', { publisherType: publisherType })
-    for (let providerName of providerNames) {
-      let providerSuffixes
-
-      if (!providerName) continue
-
-      providerSuffixes = await publishers.distinct('providerSuffix',
-                                                   { publisherType: publisherType, providerName: providerName })
-      for (let providerSuffix of providerSuffixes) {
-        await setPrometheus(pluralize(providerName + '_' + providerSuffix),
-                            { publisherType: publisherType, providerName: providerName, providerSuffix: providerSuffix })
-      }
-    }
-  }
-}
-
-const incrPrometheus = async (debug, runtime, props, state) => {
-  let prefix, text
-
-  if ((!runtime.prometheus) || (!props) || (!state.verified)) return
-
-  prefix = pluralize(props.publisherType ? props.providerName + '_' + props.providerSuffix : 'site')
-  text = underscore(prefix.split('_').join(' ')).capitalize()
-
-  runtime.prometheus.incrCounter(prefix + '_verified', text + ' verified', 1)
-}
-
-module.exports.incrPrometheus = incrPrometheus
