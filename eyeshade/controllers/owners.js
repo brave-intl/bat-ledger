@@ -11,7 +11,6 @@ const getPublisherProps = require('bat-publisher').getPublisherProps
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
-const incrPrometheus = require('./publishers').incrPrometheus
 
 const verifier = require('./publishers.js')
 const getToken = verifier.getToken
@@ -301,8 +300,6 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
     if (visible !== 'null') state.$set.visible = visible
 
     await publishers.update({ publisher: channel.channelId }, state, { upsert: true })
-
-    incrPrometheus(debug, runtime, getPublisherProps(channel.channelId), state.$set)
 
     channel.verificationId = uuid.v4().toLowerCase()
     state.$set = underscore.extend(underscore.pick(state.$set, [ 'verified', 'visible' ]), {
