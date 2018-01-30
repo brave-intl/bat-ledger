@@ -151,7 +151,7 @@ v3.bulk = {
       const ownersC = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
       const tokens = runtime.database.get('tokens', debug)
-      let entry
+      let entry, cleanup
 
       for (let owner of owners) {
         let props = getPublisherProps(owner.owner_identifier)
@@ -177,6 +177,7 @@ v3.bulk = {
         }
       }
 
+      cleanup = []
       for (let owner of owners) {
         let state = await ownersC.findOne({ owner: owner.owner_identifier })
 
@@ -187,8 +188,10 @@ v3.bulk = {
           entry = await publishers.findOne({ publisher: channelId })
           if (!entry) continue
 
-          await publishers.update({ publisher: channelId }, { $set: { owner: owner.owner_identifier } },
-                                  { upsert: true })
+          if ((entry.owner) && (cleanup.indexOf(entry.owner) == -1)) cleanup.push(entry.owner)
+          await publishers.update({ publisher: channelId }, {
+            $set: { owner: owner.owner_identifier, authority: owner.owner_identifier }
+          }, { upsert: true })
 
           await tokens.update({ publisher: channelId, verificationId: verificationId }, {
             $set: { token: verificationId, reason: 'bulk loaded', authority: owner.owner_identifier, info: entry.owner }
@@ -199,7 +202,7 @@ v3.bulk = {
           if (state) continue
 
           pullup = underscore.pick(entry, [
-            'altcurrency', 'authority', 'authorized', 'info', 'parameters', 'provider', 'verified', 'visible'
+            'altcurrency', 'authorized', 'info', 'parameters', 'provider', 'verified', 'visible'
           ])
           entry = await ownersC.findOne({ owner: entry.owner })
           if (!entry) continue
@@ -207,8 +210,8 @@ v3.bulk = {
           state = {
             $currentDate: { timestamp: { $type: 'timestamp' } },
             $set: underscore.defaults(underscore.omit(entry, [
-              '_id', 'owner', 'timestamp', 'providerName', 'providerSuffix', 'providerValue'
-            ]), pullup)
+              '_id', 'owner', 'timestamp', 'providerName', 'providerSuffix', 'providerValue', 'authority'
+            ]), pullup, { authority: owner.owner_identifier })
           }
 
           await ownersC.update({ owner: owner.owner_identifier }, state, { upsert: true })
@@ -216,6 +219,10 @@ v3.bulk = {
 
         bulk(request, () => {}, runtime, owner.owner_identifier, underscore.pick(owner, [ 'name', 'phone', 'email' ]),
              owner.show_verification_status)
+      }
+
+      for (let owner of cleanup) {
+        await ownersC.remove({ owner: owner })
       }
 
       reply({})
@@ -235,7 +242,7 @@ v3.bulk = {
       owner_identifier: braveJoi.string().owner().required().description('the owner identity'),
       email: Joi.string().email().required().description('owner verified email address'),
       name: Joi.string().optional().description('owner name'),
-      phone: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('owner phone number'),
+      phone: Joi.string().optional().description('owner phone number'),
       phone_normalized: Joi.string().regex(/^\+(?:[0-9][ -]?){6,14}[0-9]$/).optional().description('owner phone number'),
       show_verification_status: Joi.boolean().optional().default(true).description('public display authorized'),
       channel_identifiers: Joi.array().min(0).items(
