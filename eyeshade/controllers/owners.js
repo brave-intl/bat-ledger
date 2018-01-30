@@ -188,7 +188,7 @@ v3.bulk = {
           entry = await publishers.findOne({ publisher: channelId })
           if (!entry) continue
 
-          if ((entry.owner) && (cleanup.indexOf(entry.owner))) cleanup.push(entry.owner)
+          if ((entry.owner) && (cleanup.indexOf(entry.owner) == -1)) cleanup.push(entry.owner)
           await publishers.update({ publisher: channelId }, {
             $set: { owner: owner.owner_identifier, authority: owner.owner_identifier }
           }, { upsert: true })
@@ -210,7 +210,7 @@ v3.bulk = {
           state = {
             $currentDate: { timestamp: { $type: 'timestamp' } },
             $set: underscore.defaults(underscore.omit(entry, [
-              '_id', 'owner', 'timestamp', 'providerName', 'providerSuffix', 'providerValue'
+              '_id', 'owner', 'timestamp', 'providerName', 'providerSuffix', 'providerValue', 'authority'
             ]), pullup, { authority: owner.owner_identifier })
           }
 
