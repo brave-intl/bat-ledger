@@ -685,7 +685,7 @@ exports.workers = {
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
 
-      publishers = await mixer(debug, runtime, publisher ? [ publisher ] : undefined, undefined)
+      publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false
