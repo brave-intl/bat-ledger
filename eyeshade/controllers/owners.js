@@ -388,27 +388,30 @@ v1.getWallet = {
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
+      const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
-      let amount, entries, entry, provider, rates, result, summary
+      let amount, entries, entry, provider, query, rates, result, summary
       let probi = new BigNumber(0)
 
       entry = await owners.findOne({ owner: owner })
       if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
+      query = {
+        probi: { $gt: 0 },
+        $or: [ { owner: owner } ],
+        altcurrency: { $eq: altcurrency },
+        exclude: false
+      }
+      entries = await publishers.find({ owner: owner }, { publisher: true })
+      entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
+
       summary = await voting.aggregate([
         {
-          $match:
-          {
-            probi: { $gt: 0 },
-            owner: { $eq: owner },
-            altcurrency: { $eq: altcurrency },
-            exclude: false
-          }
+          $match: query
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$owner',
             probi: { $sum: '$probi' }
           }
@@ -418,15 +421,10 @@ v1.getWallet = {
 
       summary = await settlements.aggregate([
         {
-          $match:
-          {
-            probi: { $gt: 0 },
-            owner: { $eq: owner }
-          }
+          $match: underscore.pick(query, [ '$or', 'probi' ])
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$owner',
             probi: { $sum: '$probi' }
           }

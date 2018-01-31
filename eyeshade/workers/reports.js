@@ -257,8 +257,7 @@ const quanta = async (debug, runtime, qid) => {
       $match: query
     },
     {
-      $group:
-      {
+      $group: {
         _id: '$surveyorId',
         probi: { $sum: '$probi' },
         fee: { $sum: '$fee' },
@@ -267,8 +266,7 @@ const quanta = async (debug, runtime, qid) => {
       }
     },
     {
-      $project:
-      {
+      $project: {
         _id: 1,
         probi: 1,
         fee: 1,
@@ -289,15 +287,13 @@ const quanta = async (debug, runtime, qid) => {
       $match: query
     },
     {
-      $group:
-      {
+      $group: {
         _id: '$surveyorId',
         counts: { $sum: '$counts' }
       }
     },
     {
-      $project:
-      {
+      $project: {
         _id: 1,
         counts: 1
       }
@@ -705,14 +701,13 @@ exports.workers = {
       if (balanceP) {
         previous = await settlements.aggregate([
           {
-            $match:
-            { probi: { $gt: 0 },
+            $match: {
+              probi: { $gt: 0 },
               altcurrency: { $eq: altcurrency }
             }
           },
           {
-            $group:
-            {
+            $group: {
               _id: '$publisher',
               probi: { $sum: '$probi' },
               fees: { $sum: '$fees' }
@@ -1078,16 +1073,14 @@ exports.workers = {
 
       summary = await voting.aggregate([
         {
-          $match:
-          {
+          $match: {
             probi: { $gt: 0 },
             altcurrency: { $eq: altcurrency },
             exclude: false
           }
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$publisher',
             probi: { $sum: '$probi' }
           }
@@ -1097,15 +1090,13 @@ exports.workers = {
       summary.forEach((entry) => { probi[entry._id] = new BigNumber(entry.probi.toString()) })
       summary = await settlements.aggregate([
         {
-          $match:
-          {
+          $match: {
             probi: { $gt: 0 },
             altcurrency: { $eq: altcurrency }
           }
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$publisher',
             probi: { $sum: '$probi' }
           }
@@ -1241,14 +1232,13 @@ exports.workers = {
       if (!summaryP) {
         previous = await settlements.aggregate([
           {
-            $match:
-            { probi: { $gt: 0 },
+            $match: {
+              probi: { $gt: 0 },
               altcurrency: { $eq: altcurrency }
             }
           },
           {
-            $group:
-            {
+            $group: {
               _id: '$publisher',
               probi: { $sum: '$probi' },
               fees: { $sum: '$fees' }
@@ -1365,14 +1355,13 @@ exports.workers = {
 
       const promotions = await grants.aggregate([
         {
-          $match:
-          { probi: { $gt: 0 },
+          $match: {
+            probi: { $gt: 0 },
             altcurrency: { $eq: altcurrency }
           }
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$promotionId',
             probi: { $sum: '$probi' },
             outstandingProbi: { $sum: { $cond: [ { $ne: [ '$redeemed', true ] }, '$probi', 0 ] } },
