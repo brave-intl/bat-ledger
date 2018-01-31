@@ -662,6 +662,8 @@ exports.workers = {
       , summary        :  true  | false
       , threshold      : probi
       , verified       :  true  | false | undefined
+      , amount         : '...'    // ignored (converted to threshold probi)
+      , currency       : '...'    //   ..
       }
     }
  */
@@ -683,7 +685,7 @@ exports.workers = {
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
 
-      publishers = await mixer(debug, runtime, [ publisher ], undefined)
+      publishers = await mixer(debug, runtime, publisher ? [ publisher ] : undefined, undefined)
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false

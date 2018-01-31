@@ -188,7 +188,7 @@ v3.bulk = {
           entry = await publishers.findOne({ publisher: channelId })
           if (!entry) continue
 
-          if ((entry.owner) && (cleanup.indexOf(entry.owner) == -1)) cleanup.push(entry.owner)
+          if ((entry.owner) && (cleanup.indexOf(entry.owner) === -1)) cleanup.push(entry.owner)
           await publishers.update({ publisher: channelId }, {
             $set: { owner: owner.owner_identifier, authority: owner.owner_identifier }
           }, { upsert: true })
@@ -570,7 +570,7 @@ v1.putWallet = {
       if (sites.length === 0) sites.push('none')
       runtime.notify(debug, {
         channel: '#publishers-bot',
-        text: 'owner ' + entry.ownerName + ' <' + entry.ownerEmail + '> ' + owner + ' ' +
+        text: 'owner ' + ownerString(owner, entry.info) + ' ' +
           (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
           ': ' + sites.join(' ')
       })
@@ -718,7 +718,9 @@ v1.putToken = {
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/owners').whitelist().config(v1.bulk),
   braveHapi.routes.async().post().path('/v2/owners').whitelist().config(v2.bulk),
+/*
   braveHapi.routes.async().post().path('/v3/owners').whitelist().config(v3.bulk),
+ */
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
   braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement),
