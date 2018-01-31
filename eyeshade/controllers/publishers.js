@@ -165,8 +165,7 @@ v2.getBalance = {
 
       summary = await voting.aggregate([
         {
-          $match:
-          {
+          $match: {
             probi: { $gt: 0 },
             publisher: { $eq: publisher },
             altcurrency: { $eq: altcurrency },
@@ -174,8 +173,7 @@ v2.getBalance = {
           }
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$publisher',
             probi: { $sum: '$probi' }
           }
@@ -185,15 +183,13 @@ v2.getBalance = {
 
       summary = await settlements.aggregate([
         {
-          $match:
-          {
+          $match: {
             probi: { $gt: 0 },
             publisher: { $eq: publisher }
           }
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$publisher',
             probi: { $sum: '$probi' }
           }
@@ -257,8 +253,7 @@ v2.getWallet = {
 
       summary = await voting.aggregate([
         {
-          $match:
-          {
+          $match: {
             probi: { $gt: 0 },
             publisher: { $eq: publisher },
             altcurrency: { $eq: altcurrency },
@@ -266,8 +261,7 @@ v2.getWallet = {
           }
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$publisher',
             probi: { $sum: '$probi' }
           }
@@ -277,15 +271,13 @@ v2.getWallet = {
 
       summary = await settlements.aggregate([
         {
-          $match:
-          {
+          $match: {
             probi: { $gt: 0 },
             publisher: { $eq: publisher }
           }
         },
         {
-          $group:
-          {
+          $group: {
             _id: '$publisher',
             probi: { $sum: '$probi' }
           }
