@@ -37,19 +37,6 @@ const publish = async (debug, runtime, method, owner, publisher, endpoint, paylo
 
   if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
 
-  path = '/api'
-  if (owner) path += '/owners/' + encodeURIComponent(owner)
-  path += '/channel'
-  if (owner) path += 's'
-  if (publisher) path += '/' + encodeURIComponent(publisher)
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
-    headers: {
-      authorization: 'Bearer ' + runtime.config.publishers.access_token,
-      'content-type': 'application/json'
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
   path = '/api/'
   if (owner) path += 'owners/' + encodeURIComponent(owner) + '/'
   path += 'publishers/' + encodeURIComponent(publisher)
@@ -389,8 +376,7 @@ const labelize = async (debug, runtime, data) => {
   const owners = runtime.database.get('owners', debug)
   const publishersC = runtime.database.get('publishers', debug)
 
-  for (let offset in data) {
-    const datum = data[offset]
+  for (let datum of data) {
     const publisher = datum.publisher
     let entry, owner, props
 
@@ -738,9 +724,8 @@ exports.workers = {
       file = await create(runtime, 'publishers-', payload)
       if (format === 'json') {
         entries = []
-        for (let offset in data) {
+        for (let datum of data) {
           let entry, props, wallet
-          let datum = data[offset]
 
           delete datum.currency
           delete datum.amount

@@ -34,14 +34,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/brave-intl/ledger.git"
+    "url": "https://github.com/brave-intl/bat-ledger.git"
   },
   "author": "Brave Developers <support@brave.com>",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/brave-intl/ledger/issues"
+    "url": "https://github.com/brave-intl/bat-ledger/issues"
   },
-  "homepage": "https://github.com/brave-intl/ledger",
+  "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
     "@uphold/uphold-sdk-javascript": "^2.0.3",
     "accept-language-parser": "1.4.1",
