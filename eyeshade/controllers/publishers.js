@@ -489,6 +489,11 @@ v1.identity =
 
 const ruleset = [
   {
+    'condition': "SLD === 'twitch.tv'",
+    'consequent': "'twitch#channel:' + pathname.split('/')[1]",
+    'description': 'twitch channels'
+  },
+  {
     'condition': "SLD === 'youtube.com' && pathname.indexOf('/channel/') === 0",
     'consequent': "'youtube#channel:' + pathname.split('/')[2]",
     'description': 'youtube channels'
@@ -507,11 +512,6 @@ const ruleset = [
     'condition': "SLD === 'keybase.pub'",
     'consequent': "QLD + '.' + SLD",
     'description': 'keybase users'
-  },
-  {
-    'condition': "SLD === 'youtube.com' && pathname.indexOf('/channel/') === 0",
-    'consequent': "'youtube#channel:' + pathname.split('/')[2]",
-    'description': 'youtube channels'
   },
   {
     'condition': true,
