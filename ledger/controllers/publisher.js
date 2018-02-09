@@ -42,14 +42,6 @@ const rulesetEntryV2 = async (request, runtime) => {
 
   entryV2.ruleset.forEach(rule => { if (rule.consequent) ruleset.push(rule) })
   ruleset = [
-    { condition: 'SLD === \'twitch.com\'',
-      consequent: '\'twitch#channel:\' + pathname.split(\'/\')[1]',
-      description: 'twitch channels'
-    },
-    { condition: 'SLD === \'youtube.com\' && pathname.indexOf(\'/channel/\') === 0',
-      consequent: '\'youtube#channel:\' + pathname.split(\'/\')[2]',
-      description: 'youtube channels'
-    },
     { condition: '/^[a-z][a-z].gov$/.test(SLD)',
       consequent: 'QLD + "." + SLD',
       description: 'governmental sites'

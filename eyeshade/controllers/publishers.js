@@ -489,16 +489,6 @@ v1.identity =
 
 const ruleset = [
   {
-    'condition': "SLD === 'twitch.tv'",
-    'consequent': "'twitch#channel:' + pathname.split('/')[1]",
-    'description': 'twitch channels'
-  },
-  {
-    'condition': "SLD === 'youtube.com' && pathname.indexOf('/channel/') === 0",
-    'consequent': "'youtube#channel:' + pathname.split('/')[2]",
-    'description': 'youtube channels'
-  },
-  {
     'condition': '/^[a-z][a-z].gov$/.test(SLD)',
     'consequent': 'QLD + "." + SLD',
     'description': 'governmental sites'
