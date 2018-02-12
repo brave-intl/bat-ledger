@@ -489,11 +489,6 @@ v1.identity =
 
 const ruleset = [
   {
-    'condition': "SLD === 'youtube.com' && pathname.indexOf('/channel/') === 0",
-    'consequent': "'youtube#channel:' + pathname.split('/')[2]",
-    'description': 'youtube channels'
-  },
-  {
     'condition': '/^[a-z][a-z].gov$/.test(SLD)',
     'consequent': 'QLD + "." + SLD',
     'description': 'governmental sites'
@@ -507,11 +502,6 @@ const ruleset = [
     'condition': "SLD === 'keybase.pub'",
     'consequent': "QLD + '.' + SLD",
     'description': 'keybase users'
-  },
-  {
-    'condition': "SLD === 'youtube.com' && pathname.indexOf('/channel/') === 0",
-    'consequent': "'youtube#channel:' + pathname.split('/')[2]",
-    'description': 'youtube channels'
   },
   {
     'condition': true,
