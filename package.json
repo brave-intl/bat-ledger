@@ -5,12 +5,15 @@
   "main": "index.js",
   "scripts": {
     "balance-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/balance/server.js",
-    "build": "npm run build-utils && npm run build-ledger && npm run build-eyeshade && npm run build-balance && npm run build-helper && cp config.js dist/config.js",
+    "build": "npm run build-utils && npm run build-balance  npm run build-collector  npm run build-deyeshadecollector  npm run build-helper  npm run build-ledger && cp config.js dist/config.js",
     "build-balance": "babel balance -d dist/balance",
+    "build-collector": "babel collector -d dist/collector",
     "build-eyeshade": "babel eyeshade -d dist/eyeshade",
     "build-helper": "babel helper -d dist/helper",
     "build-ledger": "babel ledger -d dist/ledger",
     "build-utils": "babel bat-utils -d dist/bat-utils && cp bat-utils/package.json dist/bat-utils/package.json",
+    "collector-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/collector/server.js",
+    "collector-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/collector/worker.js",
     "eyeshade-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/eyeshade/server.js",
     "eyeshade-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/eyeshade/worker.js",
     "helper-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/helper/server.js",
@@ -18,8 +21,10 @@
     "ledger-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/server.js",
     "ledger-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/worker.js",
     "lint": "standard",
-    "start": "echo use 'npm run start-[ledger|eyeshade|balance|helper]' or 'npm run start-[ledger|eyeshade]-worker'",
+    "start": "echo use 'npm run start-[ledger|eyeshade|collector|balance|helper]' or 'npm run start-[ledger|eyeshade|collector]-worker'",
     "start-balance": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=balance ./node_modules/.bin/babel-node balance/server.js",
+    "start-collector": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=collector ./node_modules/.bin/babel-node collector/server.js",
+    "start-collector-worker": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=collector ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 collector/worker.js",
     "start-eyeshade": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node eyeshade/server.js",
     "start-eyeshade-worker": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "start-helper": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=helper ./node_modules/.bin/babel-node helper/server.js",
@@ -34,14 +39,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/brave-intl/ledger.git"
+    "url": "https://github.com/brave-intl/bat-ledger.git"
   },
   "author": "Brave Developers <support@brave.com>",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/brave-intl/ledger/issues"
+    "url": "https://github.com/brave-intl/bat-ledger/issues"
   },
-  "homepage": "https://github.com/brave-intl/ledger",
+  "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
     "@uphold/uphold-sdk-javascript": "^2.0.3",
     "accept-language-parser": "1.4.1",
@@ -80,6 +85,7 @@
     "inert": "^4.2.1",
     "joi": "^11.0.3",
     "json2csv": "^3.11.2",
+    "metascraper": "^3.6.2",
     "minimatch": "^3.0.4",
     "moment": "^2.18.1",
     "mongodb": "^2.2.31",
@@ -103,6 +109,7 @@
     "tldjs": "2.2.0",
     "tweetnacl": "^1.0.0",
     "underscore": "1.8.3",
+    "unfluff": "^3.0.0",
     "uuid": "3.1.0",
     "validate-ip-node": "1.0.6",
     "vision": "^4.1.1",

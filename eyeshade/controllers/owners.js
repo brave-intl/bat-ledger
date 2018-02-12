@@ -433,7 +433,7 @@ v1.getWallet = {
       if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
       if (probi.lessThan(0)) {
         runtime.captureException(new Error('negative probi'), { extra: { owner: owner, probi: probi.toString() } })
-        probi = 0
+        probi = new BigNumber(0)
       }
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
@@ -729,37 +729,4 @@ module.exports.routes = [
 
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
-
-  runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('owners', debug),
-      name: 'owners',
-      property: 'owner',
-      empty: {
-        owner: '',              // 'oauth#' + provider + ':' + (profile.id || profile._id)
-
-        providerName: '',
-        providerSuffix: '',
-        providerValue: '',
-        visible: false,
-
-        authorized: false,
-        authority: '',
-        provider: '',
-        altcurrency: '',
-        parameters: {},
-
-        info: {},
-
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { owner: 1 } ],
-      others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 }, { visible: 1 },
-                { authorized: 1 }, { authority: 1 },
-                { provider: 1 }, { altcurrency: 1 },
-                { timestamp: 1 } ]
-    }
-  ])
-
-  await runtime.queue.create('publisher-report')
 }

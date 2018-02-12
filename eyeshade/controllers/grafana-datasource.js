@@ -183,14 +183,9 @@ const updateTSDB = async (debug, runtime) => {
   let entries
 
   entries = await publishers.find(tsdb._id ? { _id: { $gt: tsdb._id } } : { }, { _id: true, publisher: true })
-  for (let offset in entries) {
-    const entry = entries[offset]
+  for (let entry of entries) { entry.timestamp = id2dt(entry._id) }
 
-    entry.timestamp = id2dt(entry._id)
-  }
-
-  for (let offset in entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
-    const entry = entries[offset]
+  for (let entry of entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
     let key, props, series
 
     tsdb._id = entry._id

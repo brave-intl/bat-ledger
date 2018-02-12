@@ -27,7 +27,7 @@ v1.getFile = {
       const reportId = request.params.reportId
       let reader, writer
 
-      const file = await runtime.database.file(reportId, 'r')
+      const file = await runtime.database.openFile(reportId)
       if (!file) return reply(boom.notFound('no such report: ' + reportId))
 
       reader = runtime.database.source({ filename: reportId })
@@ -577,10 +577,4 @@ module.exports.routes = [
 
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
-
-  await runtime.queue.create('report-publishers-contributions')
-  await runtime.queue.create('report-publishers-settlements')
-  await runtime.queue.create('report-publishers-status')
-  await runtime.queue.create('report-surveyors-contributions')
-  await runtime.queue.create('report-grants-outstanding')
 }

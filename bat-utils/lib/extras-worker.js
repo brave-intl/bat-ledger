@@ -70,13 +70,21 @@ const Worker = async (options, runtime) => {
     for (let queue of underscore.keys(working)) { await register(queue) }
   }
 
+  names = []
   try {
-    names = fs.readdirSync(parent)
+    fs.statSync(path.join(parent, '..', 'common.js'))
+    names.push(path.join('..', 'common.js'))
+  } catch (ex) {
+    if (ex.code !== 'ENOENT') throw ex
+
+    debug('no commoners to load')
+  }
+  try {
+    names = names.concat(fs.readdirSync(parent))
   } catch (ex) {
     if (ex.code !== 'ENOENT') throw ex
 
     debug('no workers directory to scan')
-    names = []
   }
   for (let name of names) {
     if ((name === 'index.js') || (path.extname(name) !== '.js')) continue

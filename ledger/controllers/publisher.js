@@ -627,43 +627,8 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  const publishers = runtime.database.get('publishersV2', debug)
   const rulesets = runtime.database.get('rulesets', debug)
   let entry, validity
-
-  runtime.database.checkIndices(debug, [
-    {
-      category: rulesets,
-      name: 'rulesets',
-      property: 'rulesetId',
-      empty: { rulesetId: 0, type: '', version: '', timestamp: bson.Timestamp.ZERO },
-      unique: [ { rulesetId: 1 } ],
-      others: [ { type: 1 }, { version: 1 }, { timestamp: 1 } ]
-    },
-/* verified publishers
-   - verified should always be "true"
-   - visible indicates whether the publisher opted-in to inclusion in marketing materials
-
-   originally this was the 'publishers' table, but was renamed to 'publishersX' to temporarily address a publisher privacy
-   issue. however, it was accidentally commented out, which resulted in vanilla servers not getting the indices...
- */
-    {
-      category: runtime.database.get('publishersX', debug),
-      name: 'publishersX',
-      property: 'publisher',
-      empty: { publisher: '', tld: '', verified: false, visible: false, timestamp: bson.Timestamp.ZERO },
-      unique: [ { publisher: 1 } ],
-      others: [ { tld: 1 }, { verified: 1 }, { visible: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: publishers,
-      name: 'publishersV2',
-      property: 'publisher',
-      empty: { publisher: '', facet: '', exclude: false, tags: [], timestamp: bson.Timestamp.ZERO },
-      unique: [ { publisher: 1 } ],
-      others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
-    }
-  ])
 
   entry = await rulesets.findOne({ rulesetId: rulesetId })
   validity = Joi.validate(entry ? entry.ruleset
@@ -691,6 +656,4 @@ module.exports.initialize = async (debug, runtime) => {
 
     batPublisher.ruleset = rules
   })
-
-  await runtime.queue.create('patch-publisher-rulesets')
 }

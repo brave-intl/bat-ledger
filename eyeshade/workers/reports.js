@@ -15,59 +15,9 @@ BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 let altcurrency
 
 const datefmt = 'yyyymmdd-HHMMss'
-const datefmt2 = 'yyyymmdd-HHMMss-l'
-
-const create = async (runtime, prefix, params) => {
-  let extension, filename, options
-
-  if (params.format === 'json') {
-    options = { content_type: 'application/json' }
-    extension = '.json'
-  } else {
-    options = { content_type: 'text/csv' }
-    extension = '.csv'
-  }
-  filename = prefix + dateformat(underscore.now(), datefmt2) + extension
-  options.metadata = { 'content-disposition': 'attachment; filename="' + filename + '"' }
-  return runtime.database.file(params.reportId, 'w', options)
-}
-
-const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
-  let path, result
-
-  if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
-
-  path = '/api'
-  if (owner) path += '/owners/' + encodeURIComponent(owner)
-  path += '/channel'
-  if (owner) path += 's'
-  if (publisher) path += '/' + encodeURIComponent(publisher)
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
-    headers: {
-      authorization: 'Bearer ' + runtime.config.publishers.access_token,
-      'content-type': 'application/json'
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
-  path = '/api/'
-  if (owner) path += 'owners/' + encodeURIComponent(owner) + '/'
-  path += 'publishers/' + encodeURIComponent(publisher)
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + path, endpoint, {
-    headers: {
-      authorization: 'Bearer ' + runtime.config.publishers.access_token,
-      'content-type': 'application/json'
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
-  if (Buffer.isBuffer(result)) result = JSON.parse(result)
-
-  return result
-}
 
 const notification = async (debug, runtime, owner, publisher, payload) => {
-  let message = await publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
+  let message = await runtime.common.publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
 
   if (!message) return
 
@@ -147,7 +97,7 @@ const hourly2 = async (debug, runtime) => {
       let info, method, params, record, result, state, visible, visibleP
 
       try {
-        result = await publish(debug, runtime, 'get', publisher)
+        result = await runtime.common.publish(debug, runtime, 'get', publisher)
         record = underscore.findWhere(records, { verificationId: result.id })
         if (!record) continue
 
@@ -215,6 +165,7 @@ const quanta = async (debug, runtime, qid) => {
 
     vote = underscore.find(votes, (entry) => { return (quantum._id === entry._id) })
     underscore.extend(quantum, { counts: vote ? vote.counts : 0 })
+    if (runtime.database.properties.readOnly) return
 
     params = underscore.pick(quantum, [ 'counts', 'inputs', 'fee', 'quantum' ])
     updateP = false
@@ -347,7 +298,9 @@ const mixer = async (debug, runtime, filter, qid) => {
         fees: fees,
         cohort: slice.cohort || 'control'
       })
-      if (equals(slice.probi && new BigNumber(slice.probi.toString()), probi)) continue
+      if ((runtime.database.properties.readOnly) || (equals(slice.probi && new BigNumber(slice.probi.toString()), probi))) {
+        continue
+      }
 
       state = {
         $set: {
@@ -356,7 +309,8 @@ const mixer = async (debug, runtime, filter, qid) => {
           fees: bson.Decimal128.fromString(fees.toString())
         }
       }
-      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' }, state, { upsert: true })
+      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' },
+                          state, { upsert: true })
     }
   }
 
@@ -389,8 +343,7 @@ const labelize = async (debug, runtime, data) => {
   const owners = runtime.database.get('owners', debug)
   const publishersC = runtime.database.get('publishers', debug)
 
-  for (let offset in data) {
-    const datum = data[offset]
+  for (let datum of data) {
     const publisher = datum.publisher
     let entry, owner, props
 
@@ -639,9 +592,6 @@ exports.initialize = async (debug, runtime) => {
   }
 }
 
-exports.create = create
-exports.publish = publish
-
 exports.workers = {
 /* sent by GET /v1/reports/publisher/{publisher}/contributions
            GET /v1/reports/publishers/contributions
@@ -735,12 +685,11 @@ exports.workers = {
                                     threshold, usd)
       data = info.data
 
-      file = await create(runtime, 'publishers-', payload)
+      file = await runtime.database.createFile(runtime, 'publishers-', payload)
       if (format === 'json') {
         entries = []
-        for (let offset in data) {
+        for (let datum of data) {
           let entry, props, wallet
-          let datum = data[offset]
 
           delete datum.currency
           delete datum.amount
@@ -832,7 +781,7 @@ exports.workers = {
       info = publisherSettlements(runtime, entries, format, summaryP)
       data = info.data
 
-      file = await create(runtime, 'publishers-settlements-', payload)
+      file = await runtime.database.createFile(runtime, 'publishers-settlements-', payload)
       if (format === 'json') {
         await file.write(utf8ify(data), true)
         return runtime.notify(debug, {
@@ -978,7 +927,7 @@ exports.workers = {
         if (typeof datum.fees !== 'undefined') datum.fees = probi2alt(datum.fees)
       })
 
-      file = await create(runtime, 'publishers-statements-', payload)
+      file = await runtime.database.createFile(runtime, 'publishers-statements-', payload)
       try {
         let fields = []
         let fieldNames = []
@@ -1156,7 +1105,7 @@ exports.workers = {
       for (let key of keys) await f(key)
       results = data.sort(publisherCompare)
 
-      file = await create(runtime, 'publishers-status-', payload)
+      file = await runtime.database.createFile(runtime, 'publishers-status-', payload)
       if (format === 'json') {
         await file.write(utf8ify(data), true)
         return runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-status completed' })
@@ -1310,7 +1259,7 @@ exports.workers = {
         })
       }
 
-      file = await create(runtime, 'surveyors-contributions-', payload)
+      file = await runtime.database.createFile(runtime, 'surveyors-contributions-', payload)
       if (format === 'json') {
         await file.write(utf8ify(results), true)
         return runtime.notify(debug, {
@@ -1392,7 +1341,7 @@ exports.workers = {
       total.outstandingCount = total.outstandingCount.toString()
       results.unshift(total)
 
-      const file = await create(runtime, 'grants-outstanding-', payload)
+      const file = await runtime.database.createFile(runtime, 'grants-outstanding-', payload)
       if (format === 'json') {
         await file.write(utf8ify(results), true)
         return runtime.notify(debug, {

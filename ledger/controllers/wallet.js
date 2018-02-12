@@ -2,7 +2,6 @@ const BigNumber = require('bignumber.js')
 const Joi = require('joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
-const bson = require('bson')
 const timestamp = require('monotonic-timestamp')
 const underscore = require('underscore')
 
@@ -433,56 +432,4 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('wallets', debug),
-      name: 'wallets',
-      property: 'paymentId',
-      empty: {
-        paymentId: '',
-        // v1
-        // address: '',
-        provider: '',
-        balances: {},
-        // v1
-        // keychains: {},
-        paymentStamp: 0,
-
-     // v2 and later
-        altcurrency: '',
-        addresses: {},
-        httpSigningPubKey: '',
-        providerId: '',
-
-        timestamp: bson.Timestamp.ZERO,
-        grants: []
-      },
-      unique: [ { paymentId: 1 } ],
-      others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 } ]
-    },
-    {
-      category: runtime.database.get('viewings', debug),
-      name: 'viewings',
-      property: 'viewingId',
-      empty: {
-        viewingId: '',
-        uId: '',
-     // v1 only
-     // satoshis: 0,
-
-     // v2 and later
-        altcurrency: '',
-        probi: '0',
-
-        count: 0,
-        surveyorIds: [],
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { viewingId: 1 }, { uId: 1 } ],
-      others: [ { altcurrency: 1 }, { probi: 1 }, { count: 1 }, { timestamp: 1 } ]
-    }
-  ])
-
-  await runtime.queue.create('contribution-report')
-  await runtime.queue.create('wallet-report')
 }
