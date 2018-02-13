@@ -341,6 +341,8 @@ const maintenance = async (config, runtime) => {
     debug('maintenance', { message: 'no trades reported' })
     runtime.captureException(new Error('maintenance reports flatline'))
     if (process.env.NODE_ENV !== 'production') process.exit(0)
+
+    await dial911(config, runtime)
   }
   flatlineP = true
 
@@ -400,6 +402,36 @@ const schemaCMC =
         price_btc: Joi.number().positive().required(),
         price_usd: Joi.number().positive().required()
       }).unknown(true).required()
+
+const dial911 = async (config, runtime) => {
+  const fiat = 'USD'
+  let entries
+
+  try {
+    entries = await retrieve(runtime, 'https://api.coinmarketcap.com/v1/ticker/?convert=' + fiat)
+  } catch (ex) {
+    return runtime.captureException('dial911 ticker error: ' + fiat + ': ' + ex.message)
+  }
+  entries.forEach((entry) => {
+    const src = entry.symbol
+    const validity = Joi.validate(entry, schemaCMC)
+
+    if ((config.allcoins.indexOf(src) === -1) || (!altcoins[src]) || (altcoins[src].id !== entry.id) || (validity.error)) return
+
+    console.log('processing ' + JSON.stringify(entry, null, 2))
+    underscore.keys(entry).forEach((key) => {
+      const dst = key.substr(6).toUpperCase()
+
+      if ((src === dst) || (key.indexOf('price_') !== 0)) return
+
+      if (!singleton.altrates[src]) singleton.altrates[src] = {}
+      singleton.altrates[src][dst] = entry[key]
+
+      if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
+      singleton.altrates[dst][src] = 1.0 / entry[key]
+    })
+  })
+}
 
 const inkblot = async (config, runtime) => {
   const unavailable = []
