@@ -3,8 +3,10 @@ const os = require('os')
 const boom = require('boom')
 const GitHub = require('github')
 const Joi = require('joi')
+const underscore = require('underscore')
 
 const braveHapi = require('./extras-hapi')
+const whitelist = require('./hapi-auth-whitelist')
 
 const v1 = {}
 
@@ -39,9 +41,10 @@ v1.login = {
 
         runtime.notify(debug, {
           channel: '#devops-bot',
-          text: 'login ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope) +
-            ' on ' + os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version +
-            (process.env.DYNO ? ' at ' + process.env.DYNO : '')
+          text: 'login ' + credentials.provider + ' ' +
+            JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
+            ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + process.npminfo.name + '@' +
+            process.npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
         })
 
         request.cookieAuth.set(credentials)
@@ -73,19 +76,20 @@ v1.logout = {
     return async (request, reply) => {
       const debug = braveHapi.debug(module, request)
       const credentials = request.auth.credentials
-      const suffix = ' off ' + os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version +
-            (process.env.DYNO ? ' at ' + process.env.DYNO : '')
+      const suffix = ' at ' + os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version +
+            (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
 
       if (credentials) {
         runtime.notify(debug, {
           channel: '#devops-bot',
-          text: 'logout ' + credentials.provider + ' ' + credentials.profile.email + ': ' + JSON.stringify(credentials.scope) +
-            suffix
+          text: 'logout ' + credentials.provider + ' ' +
+            JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
+': ' + JSON.stringify(credentials.scope) + suffix
         })
       } else {
         runtime.notify(debug, {
           channel: '#devops-bot',
-          text: 'bogus logout' + suffix
+          text: 'logout' + suffix
         })
       }
 
