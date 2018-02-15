@@ -1079,12 +1079,11 @@ module.exports.initialize = async (debug, runtime) => {
 
      // v1 only
      // authorized: false,
-     // verified: false,
      // address: '',
      // legalFormURL: '',
 
-     // OBE
-     // visible: false,
+        verified: false,
+        visible: false,
 
      // v2 and later
         owner: '',
