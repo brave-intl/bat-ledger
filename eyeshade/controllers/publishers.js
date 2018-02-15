@@ -196,7 +196,7 @@ v2.getBalance = {
         }
       ])
       if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
-      if (probi.lessThan(0)) probi = 0
+      if (probi.lessThan(0)) probi = new BigNumber(0)
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
       reply({
@@ -1065,40 +1065,37 @@ module.exports.initialize = async (debug, runtime) => {
       property: 'publisher',
       empty: {
         publisher: '',    // domain OR 'oauth#' + provider + ':' + (profile.id || profile._id)
-        verified: false,
-        authorized: false,
         authority: '',
 
      // v1 only
+     // authorized: false,
      // address: '',
      // legalFormURL: '',
+
+        verified: false,
+        visible: false,
 
      // v2 and later
         owner: '',
 
-        providerType: '',
         providerName: '',
         providerSuffix: '',
         providerValue: '',
         authorizerEmail: '',
         authorizerName: '',
 
-        visible: false,
-
-        provider: '',
         altcurrency: '',
-        parameters: {},
 
         info: {},
 
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { publisher: 1 } ],
-      others: [ { verified: 1 }, { authorized: 1 }, { authority: 1 },
+      others: [ { authority: 1 },
                 { owner: 1 },
-                { providerType: 1 }, { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
+                { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
                 { authorizerEmail: 1 }, { authorizerName: 1 },
-                { owner: 1 }, { visible: 1 }, { provider: 1 }, { altcurrency: 1 },
+                { altcurrency: 1 },
                 { timestamp: 1 } ]
     },
     {
