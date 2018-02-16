@@ -1,5 +1,4 @@
 const BigNumber = require('bignumber.js')
-const batPublisher = require('bat-publisher')
 const bson = require('bson')
 const dateformat = require('dateformat')
 const json2csv = require('json2csv')
@@ -8,6 +7,7 @@ const underscore = require('underscore')
 
 const braveExtras = require('bat-utils').extras
 const braveHapi = braveExtras.hapi
+const getPublisherProps = require('bat-publisher').getPublisherProps
 const utf8ify = braveExtras.utils.utf8ify
 
 BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
@@ -67,85 +67,167 @@ const hourly = async (debug, runtime) => {
   debug('hourly', 'running again ' + moment(next).fromNow())
 }
 
-const hourly2 = async (debug, runtime) => {
-  const history = {}
+const sanity = async (debug, runtime) => {
+  const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
-  const tokens = runtime.database.get('tokens', debug)
-  let entries, next, now
+  const scratchpad = runtime.database.get('scratchpad', debug)
+  let collections, entries, info, next, now, page, results
 
-  debug('hourly2', 'running')
+  debug('sanity', 'running')
 
   try {
     if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
 
-    entries = await publishers.find({ visible: { $exists: false } })
-    for (let entry of entries) {
-      await publishers.update({ publisher: entry.publisher }, { $set: { visible: false } }, { upsert: true })
-    }
+    await scratchpad.remove({}, { justOne: false })
 
-    entries = await tokens.find()
-    entries.forEach((entry) => {
-      if (entry.publisher === '') return
+    page = 0
+    while (true) {
+      entries = await await runtime.common.publish(debug, runtime, 'get', null, null,
+                                                   '/owners/?page=' + page + '&per_page=1024')
+      if (entries.length === 0) break
 
-      if (!history[entry.publisher]) history[entry.publisher] = []
-      if (typeof entry.visible === 'undefined') entry.visible = false
-      history[entry.publisher].push(entry)
-    })
+      page++
+      for (let entry of entries) {
+        const ownerId = entry.owner_identifier
+        let owner, params, props, state
 
-    for (let publisher of underscore.keys(history)) {
-      const records = history[publisher]
-      let info, method, params, record, result, state, visible, visibleP
+        props = getPublisherProps(ownerId)
+        if (!props) {
+          debug('sanity', { message: 'invalid owner', owner: ownerId })
+          continue
+        }
 
-      try {
-        result = await runtime.common.publish(debug, runtime, 'get', publisher)
-        record = underscore.findWhere(records, { verificationId: result.id })
-        if (!record) continue
+        await scratchpad.update({ owner: ownerId }, { $set: { seen: true } }, { upsert: true })
 
-        visible = result.show_verification_status
-        visibleP = (typeof visible !== 'undefined')
-        method = result.verification_method
-        info = underscore.pick(result, [ 'name', 'email' ])
-        if (result.phone_normalized) info.phone = result.phone_normalized
-        if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
         state = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
-          $set: { info: info }
-        }
-        if (visibleP) state.$set.visible = visible
-        params = underscore.pick(record, [ 'info', 'visible' ])
-        if (method) {
-          state.$set.method = method
-          params.method = record.method
+          $set: {}
         }
 
-        if (underscore.isEqual(params, state.$set)) continue
+        owner = await owners.findOne({ owner: ownerId })
+        if (!owner) {
+          owner = {}
 
-        await tokens.update({ verificationId: record.verificationId, publisher: publisher }, state, { upsert: true })
-
-        if (!record.verified) continue
-
-        state.$set = underscore.pick(state.$set, [ 'info', 'visible' ])
-        await publishers.update({ publisher: publisher }, state, { upsert: true })
-
-        await runtime.queue.send(debug, 'publisher-report', { publisher: publisher, verified: true, visible: visible })
-      } catch (ex) {
-        runtime.captureException(ex)
-        if (ex.data) {
-          delete ex.data.res
-          try { ex.data.payload = ex.data.payload.toString() } catch (ex2) {}
+          underscore.extend(state.$set, {
+            visible: entry.show_verification_status || false,
+            altcurrency: altcurrency
+          }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
         }
-        debug('hourly2', { reason: ex.toString(), stack: ex.stack })
+        params = underscore.pick(owner, [ 'info', 'visible', 'provider' ])
+
+        info = underscore.pick(entry, [ 'name', 'email' ])
+        if (entry.phone_normalized) info.phone = entry.phone_normalized
+        underscore.extend(state.$set, { info: info, visible: entry.show_verification_status || false })
+        if (entry.uphold_verified) {
+          state.$set.provider = 'uphold'
+        } else {
+          state.$unset = { provider: '' }
+        }
+        if (!underscore.isEqual(params, state.$set)) {
+          params = state.$set
+          await owners.update({ owner: ownerId }, state, { upsert: true })
+        }
+
+        if (!entry.channel_identifiers) entry.channel_identifiers = []
+        results = await publishers.find({ owner: ownerId })
+        for (let result of results) {
+          if (entry.channel_identifiers.indexOf(result.publisher) !== -1) continue
+
+          debug('sanity', { message: 'unlink', owner: ownerId, publisher: result.publisher })
+          state = {
+            $currentDate: { timestamp: { $type: 'timestamp' } },
+            $set: { verified: false, visible: false },
+            $unset: { authority: '', owner: '' }
+          }
+          await publishers.update({ publisher: result.publisher }, state, { upsert: true })
+        }
+
+        for (let channelId of entry.channel_identifiers) {
+          let publisher
+
+          props = getPublisherProps(channelId)
+          if (!props) {
+            debug('sanity', { message: 'invalid publisher', owner: ownerId, publisher: channelId })
+            continue
+          }
+
+          await scratchpad.update({ publisher: channelId }, { $set: { seen: true } }, { upsert: true })
+
+          publisher = await publishers.findOne({ publisher: channelId })
+          if (publisher) {
+            if (publisher.owner === ownerId) continue
+
+            debug('sanity', { message: 'reassign', previous: publisher.owner, owner: ownerId, publisher: channelId })
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: { verified: false, visible: false },
+              $unset: { authority: '', owner: '' }
+            }
+          } else {
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: {
+                authority: ownerId,
+                verified: true,
+                visible: params.visible,
+                owner: ownerId,
+                altcurrency: altcurrency
+              }
+            }
+            if (info.name) state.$set.authorizerName = info.name
+            if (info.email) state.$set.authorizerEmail = info.email
+            if (info.email) state.$set.authorizerPhone = info.phone
+            underscore.extend(state.$set, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]),
+                              underscore.pick(params, [ 'visible' ]))
+          }
+
+          await publishers.update({ publisher: channelId }, state, { upsert: true })
+        }
+      }
+    }
+
+    collections = [ 'owners', 'publishers', 'tokens' ]
+    for (let collection of collections) {
+      let empties = []
+      let misses = []
+
+      entries = await runtime.database.get(collection, debug).find()
+      for (let entry of entries) {
+        let match
+
+        if (!entry.owner) {
+          empties.push(collection === 'owners' ? entry._id
+                       : collection === 'publisher' ? entry.publisher
+                       : underscore.pick(entry, [ 'verificationId', 'publisher' ]))
+          continue
+        }
+
+        match = await scratchpad.findOne({ owner: entry.owner })
+        if (!match) misses.push(entry.owner)
+      }
+      empties = underscore.uniq(empties)
+      misses = underscore.uniq(misses)
+      if ((empties.length) || (misses.length)) {
+        debug('sanity',
+              { message: 'collection issues', collection: collection, empties: empties.length, misses: misses.length })
       }
     }
   } catch (ex) {
     runtime.captureException(ex)
-    debug('hourly2', { reason: ex.toString(), stack: ex.stack })
+    debug('sanity', { reason: ex.toString(), stack: ex.stack })
+  }
+
+  try {
+    await scratchpad.remove({}, { justOne: false })
+  } catch (ex) {
+    runtime.captureException(ex)
+    debug('sanity', { reason: ex.toString(), stack: ex.stack })
   }
 
   now = underscore.now()
-  next = now + 60 * 60 * 1000
-  setTimeout(() => { hourly2(debug, runtime) }, next - now)
-  debug('hourly2', 'running again ' + moment(next).fromNow())
+  next = now + 6 * 60 * 60 * 1000
+  setTimeout(() => { sanity(debug, runtime) }, next - now)
+  debug('sanity', 'running again ' + moment(next).fromNow())
 }
 
 const quanta = async (debug, runtime, qid) => {
@@ -320,8 +402,8 @@ const mixer = async (debug, runtime, filter, qid) => {
 }
 
 const publisherCompare = (a, b) => {
-  const aProps = batPublisher.getPublisherProps(a.publisher)
-  const bProps = batPublisher.getPublisherProps(b.publisher)
+  const aProps = getPublisherProps(a.publisher)
+  const bProps = getPublisherProps(b.publisher)
 
 // cf., https://en.wikipedia.org/wiki/Robustness_principle
   if (!aProps) { return (bProps ? (-1) : 0) } else if (!bProps) { return 1 }
@@ -354,7 +436,7 @@ const labelize = async (debug, runtime, data) => {
       continue
     }
 
-    props = batPublisher.getPublisherProps(publisher)
+    props = getPublisherProps(publisher)
     labels[publisher] = publisher
 
     if (props && props.publisherType) entry = await publishersC.findOne({ publisher: publisher })
@@ -588,7 +670,7 @@ exports.initialize = async (debug, runtime) => {
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
     setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
-    setTimeout(() => { hourly2(debug, runtime) }, 5 * 60 * 1000)
+    setTimeout(() => { sanity(debug, runtime) }, 5 * 60 * 1000)
   }
 }
 
@@ -699,7 +781,7 @@ exports.workers = {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
 
-            props = batPublisher.getPublisherProps(datum.publisher)
+            props = getPublisherProps(datum.publisher)
             datum.name = entry.info && entry.info.name
             datum.URL = props && props.URL
 
@@ -1113,7 +1195,7 @@ exports.workers = {
 
       data = []
       results.forEach((result) => {
-        const props = batPublisher.getPublisherProps(result.publisher)
+        const props = getPublisherProps(result.publisher)
         const publisher = result.publisher
 
         if ((props) && (props.URL)) result.publisher = props.URL

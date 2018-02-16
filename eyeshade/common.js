@@ -7,10 +7,12 @@ const publish = async (debug, runtime, method, owner, publisher, endpoint, paylo
 
   if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
 
-  path = '/api/'
-  if (owner) path += 'owners/' + encodeURIComponent(owner) + '/'
-  path += 'publishers/' + encodeURIComponent(publisher)
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + path, endpoint, {
+  path = '/api'
+  if (owner) {
+    path += '/owners/' + encodeURIComponent(owner)
+    if (publisher) path += '/channels/' + encodeURIComponent(publisher)
+  }
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
     headers: {
       authorization: 'Bearer ' + runtime.config.publishers.access_token,
       'content-type': 'application/json'
@@ -66,12 +68,11 @@ exports.initialize = async (debug, runtime) => {
 
      // v1 only
      // authorized: false,
-     // verified: false,
      // address: '',
      // legalFormURL: '',
 
-     // OBE
-     // visible: false,
+        verified: false,
+        visible: false,
 
      // v2 and later
         owner: '',
