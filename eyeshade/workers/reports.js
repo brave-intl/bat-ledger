@@ -157,7 +157,7 @@ const sanity = async (debug, runtime) => {
           if (publisher) {
             if (publisher.owner === ownerId) continue
 
-            debug('sanity', { message: 'reassign', previous: publisher.owner, owner: ownerId, publisher: channelId })
+            debug('sanity', { message: 'reassign', previous: publisher.owner || 'none', owner: ownerId, publisher: channelId })
             state = {
               $currentDate: { timestamp: { $type: 'timestamp' } },
               $set: { verified: false, visible: false },
