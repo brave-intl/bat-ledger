@@ -4,6 +4,7 @@ const dateformat = require('dateformat')
 const json2csv = require('json2csv')
 const moment = require('moment')
 const underscore = require('underscore')
+const uuid = require('uuid')
 
 const braveExtras = require('bat-utils').extras
 const braveHapi = braveExtras.hapi
@@ -15,9 +16,48 @@ BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 let altcurrency
 
 const datefmt = 'yyyymmdd-HHMMss'
+const datefmt2 = 'yyyymmdd-HHMMss-l'
+
+const create = async (runtime, prefix, params) => {
+  let extension, filename, options
+
+  if (params.format === 'json') {
+    options = { content_type: 'application/json' }
+    extension = '.json'
+  } else {
+    options = { content_type: 'text/csv' }
+    extension = '.csv'
+  }
+  filename = prefix + dateformat(underscore.now(), datefmt2) + extension
+  options.metadata = { 'content-disposition': 'attachment; filename="' + filename + '"' }
+  return runtime.database.file(params.reportId, 'w', options)
+}
+
+const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
+  let path, result
+
+  if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
+
+  path = '/api'
+  if (owner) path += '/owners/' + encodeURIComponent(owner)
+  if ((owner) || (publisher)) path += '/channel'
+  if (owner) path += 's'
+  if (publisher) path += '/' + encodeURIComponent(publisher)
+  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
+    headers: {
+      authorization: 'Bearer ' + runtime.config.publishers.access_token,
+      'content-type': 'application/json'
+    },
+    payload: JSON.stringify(payload),
+    useProxyP: true
+  })
+  if (Buffer.isBuffer(result)) result = JSON.parse(result)
+
+  return result
+}
 
 const notification = async (debug, runtime, owner, publisher, payload) => {
-  let message = await runtime.common.publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
+  let message = await publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
 
   if (!message) return
 
@@ -71,6 +111,7 @@ const sanity = async (debug, runtime) => {
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
   const scratchpad = runtime.database.get('scratchpad', debug)
+  const tokens = runtime.database.get('tokens', debug)
   let collections, entries, info, next, now, page, results
 
   debug('sanity', 'running')
@@ -82,11 +123,10 @@ const sanity = async (debug, runtime) => {
 
     page = 0
     while (true) {
-      entries = await await runtime.common.publish(debug, runtime, 'get', null, null,
-                                                   '/owners/?page=' + page + '&per_page=1024')
+      entries = await publish(debug, runtime, 'get', null, null, '/owners/?page=' + page + '&per_page=1024')
+      page++
       if (entries.length === 0) break
 
-      page++
       for (let entry of entries) {
         const ownerId = entry.owner_identifier
         let owner, params, props, state
@@ -124,6 +164,7 @@ const sanity = async (debug, runtime) => {
           state.$unset = { provider: '' }
         }
         if (!underscore.isEqual(params, state.$set)) {
+          debug('sanity', { message: 'update', owner: ownerId })
           params = state.$set
           await owners.update({ owner: ownerId }, state, { upsert: true })
         }
@@ -154,36 +195,106 @@ const sanity = async (debug, runtime) => {
           await scratchpad.update({ publisher: channelId }, { $set: { seen: true } }, { upsert: true })
 
           publisher = await publishers.findOne({ publisher: channelId })
-          if (publisher) {
-            if (publisher.owner === ownerId) continue
-
+          if ((publisher) && (publisher.owner !== ownerId)) {
             debug('sanity', { message: 'reassign', previous: publisher.owner || 'none', owner: ownerId, publisher: channelId })
+
             state = {
               $currentDate: { timestamp: { $type: 'timestamp' } },
-              $set: { verified: false, visible: false },
-              $unset: { authority: '', owner: '' }
+              $set: { authority: ownerId, verified: true, owner: ownerId }
+            }
+          } else if (publisher) {
+            if ((publisher.authority === ownerId) && (publisher.verified === true)) continue
+
+            debug('sanity', { message: 'update', publisher: channelId })
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: { authority: ownerId, verified: true }
             }
           } else {
+            debug('sanity', { message: 'create', publisher: channelId })
             state = {
               $currentDate: { timestamp: { $type: 'timestamp' } },
-              $set: {
-                authority: ownerId,
-                verified: true,
-                visible: params.visible,
-                owner: ownerId,
-                altcurrency: altcurrency
-              }
+              $set: { authority: ownerId, verified: true, visible: params.visible, owner: ownerId, altcurrency: altcurrency }
             }
-            if (info.name) state.$set.authorizerName = info.name
-            if (info.email) state.$set.authorizerEmail = info.email
-            if (info.email) state.$set.authorizerPhone = info.phone
-            underscore.extend(state.$set, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]),
-                              underscore.pick(params, [ 'visible' ]))
+            underscore.extend(state.$set, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
           }
+          if (info.name) state.$set.authorizerName = info.name
+          if (info.email) state.$set.authorizerEmail = info.email
+          if (info.email) state.$set.authorizerPhone = info.phone
 
           await publishers.update({ publisher: channelId }, state, { upsert: true })
         }
       }
+    }
+
+    entries = await tokens.find({})
+    for (let entry of entries) {
+      const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
+      let owner, publisher
+
+      owner = await owners.findOne({ owner: entry.owner })
+      if (!owner) {
+        debug('sanity', { message: 'remove', token: id, owner: entry.owner })
+        await tokens.remove(id)
+        continue
+      }
+
+      publisher = await publishers.findOne({ publisher: entry.publisher })
+      if (!publisher) {
+        debug('sanity', { message: 'remove', token: id, publisher: entry.publisher })
+        await tokens.remove(id)
+        continue
+      }
+
+      if (publisher.verified === entry.verified) continue
+
+      if (entry.verified) {
+        debug('sanity', { message: 'update', token: id, verified: publisher.verified })
+        await tokens.update(id, { $set: { verified: false } })
+      }
+
+      debug('sanity', { message: 'remove', token: id, verified: publisher.verified })
+      await tokens.remove(id)
+    }
+
+    entries = await publishers.find({ verified: true })
+    for (let entry of entries) {
+      let foundP, records, state
+
+      records = await tokens.find({ publisher: entry.publisher })
+      for (let record of records) {
+        const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
+
+        if ((record.owner !== entry.owner) || (!record.verified) || (foundP)) {
+          debug('sanity', {
+            message: 'remove',
+            token: id,
+            owner: entry.owner,
+            publisher: entry.publisher,
+            verified: record.verified,
+            foundP: foundP
+          })
+          await tokens.remove(id)
+          continue
+        }
+
+        foundP = true
+      }
+      if (foundP) continue
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: {
+          token: uuid.v4().toLowerCase(),
+          verified: true,
+          authority: entry.owner,
+          owner: entry.owner,
+          visible: entry.visible,
+          info: entry.info,
+          method: 'sanity'
+        }
+      }
+      await tokens.update({ publisher: entry.publisher, verificationId: state.$set.token }, state, { upsert: true })
     }
 
     collections = [ 'owners', 'publishers', 'tokens' ]
@@ -247,7 +358,6 @@ const quanta = async (debug, runtime, qid) => {
 
     vote = underscore.find(votes, (entry) => { return (quantum._id === entry._id) })
     underscore.extend(quantum, { counts: vote ? vote.counts : 0 })
-    if (runtime.database.properties.readOnly) return
 
     params = underscore.pick(quantum, [ 'counts', 'inputs', 'fee', 'quantum' ])
     updateP = false
@@ -380,9 +490,7 @@ const mixer = async (debug, runtime, filter, qid) => {
         fees: fees,
         cohort: slice.cohort || 'control'
       })
-      if ((runtime.database.properties.readOnly) || (equals(slice.probi && new BigNumber(slice.probi.toString()), probi))) {
-        continue
-      }
+      if (equals(slice.probi && new BigNumber(slice.probi.toString()), probi)) continue
 
       state = {
         $set: {
@@ -391,8 +499,7 @@ const mixer = async (debug, runtime, filter, qid) => {
           fees: bson.Decimal128.fromString(fees.toString())
         }
       }
-      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' },
-                          state, { upsert: true })
+      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' }, state, { upsert: true })
     }
   }
 
@@ -674,6 +781,9 @@ exports.initialize = async (debug, runtime) => {
   }
 }
 
+exports.create = create
+exports.publish = publish
+
 exports.workers = {
 /* sent by GET /v1/reports/publisher/{publisher}/contributions
            GET /v1/reports/publishers/contributions
@@ -767,7 +877,7 @@ exports.workers = {
                                     threshold, usd)
       data = info.data
 
-      file = await runtime.database.createFile(runtime, 'publishers-', payload)
+      file = await create(runtime, 'publishers-', payload)
       if (format === 'json') {
         entries = []
         for (let datum of data) {
@@ -863,7 +973,7 @@ exports.workers = {
       info = publisherSettlements(runtime, entries, format, summaryP)
       data = info.data
 
-      file = await runtime.database.createFile(runtime, 'publishers-settlements-', payload)
+      file = await create(runtime, 'publishers-settlements-', payload)
       if (format === 'json') {
         await file.write(utf8ify(data), true)
         return runtime.notify(debug, {
@@ -1009,7 +1119,7 @@ exports.workers = {
         if (typeof datum.fees !== 'undefined') datum.fees = probi2alt(datum.fees)
       })
 
-      file = await runtime.database.createFile(runtime, 'publishers-statements-', payload)
+      file = await create(runtime, 'publishers-statements-', payload)
       try {
         let fields = []
         let fieldNames = []
@@ -1187,7 +1297,7 @@ exports.workers = {
       for (let key of keys) await f(key)
       results = data.sort(publisherCompare)
 
-      file = await runtime.database.createFile(runtime, 'publishers-status-', payload)
+      file = await create(runtime, 'publishers-status-', payload)
       if (format === 'json') {
         await file.write(utf8ify(data), true)
         return runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-status completed' })
@@ -1341,7 +1451,7 @@ exports.workers = {
         })
       }
 
-      file = await runtime.database.createFile(runtime, 'surveyors-contributions-', payload)
+      file = await create(runtime, 'surveyors-contributions-', payload)
       if (format === 'json') {
         await file.write(utf8ify(results), true)
         return runtime.notify(debug, {
@@ -1423,7 +1533,7 @@ exports.workers = {
       total.outstandingCount = total.outstandingCount.toString()
       results.unshift(total)
 
-      const file = await runtime.database.createFile(runtime, 'grants-outstanding-', payload)
+      const file = await create(runtime, 'grants-outstanding-', payload)
       if (format === 'json') {
         await file.write(utf8ify(results), true)
         return runtime.notify(debug, {
