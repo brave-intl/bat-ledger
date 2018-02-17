@@ -4,6 +4,7 @@ const dateformat = require('dateformat')
 const json2csv = require('json2csv')
 const moment = require('moment')
 const underscore = require('underscore')
+const uuid = require('uuid')
 
 const braveExtras = require('bat-utils').extras
 const braveHapi = braveExtras.hapi
@@ -110,6 +111,7 @@ const sanity = async (debug, runtime) => {
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
   const scratchpad = runtime.database.get('scratchpad', debug)
+  const tokens = runtime.database.get('tokens', debug)
   let collections, entries, info, next, now, page, results
 
   debug('sanity', 'running')
@@ -162,6 +164,7 @@ const sanity = async (debug, runtime) => {
           state.$unset = { provider: '' }
         }
         if (!underscore.isEqual(params, state.$set)) {
+          debug('sanity', { message: 'update', owner: ownerId })
           params = state.$set
           await owners.update({ owner: ownerId }, state, { upsert: true })
         }
@@ -192,36 +195,106 @@ const sanity = async (debug, runtime) => {
           await scratchpad.update({ publisher: channelId }, { $set: { seen: true } }, { upsert: true })
 
           publisher = await publishers.findOne({ publisher: channelId })
-          if (publisher) {
-            if (publisher.owner === ownerId) continue
+          if ((publisher) && (publisher.owner !== ownerId)) {
+            debug('sanity', { message: 'reassign', previous: publisher.owner || 'none', owner: ownerId, publisher: channelId })
 
-            debug('sanity', { message: 'reassign', previous: publisher.owner, owner: ownerId, publisher: channelId })
             state = {
               $currentDate: { timestamp: { $type: 'timestamp' } },
-              $set: { verified: false, visible: false },
-              $unset: { authority: '', owner: '' }
+              $set: { authority: ownerId, verified: true, owner: ownerId }
+            }
+          } else if (publisher) {
+            if ((publisher.authority === ownerId) && (publisher.verified === true)) continue
+
+            debug('sanity', { message: 'update', publisher: channelId })
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: { authority: ownerId, verified: true }
             }
           } else {
+            debug('sanity', { message: 'create', publisher: channelId })
             state = {
               $currentDate: { timestamp: { $type: 'timestamp' } },
-              $set: {
-                authority: ownerId,
-                verified: true,
-                visible: params.visible,
-                owner: ownerId,
-                altcurrency: altcurrency
-              }
+              $set: { authority: ownerId, verified: true, visible: params.visible, owner: ownerId, altcurrency: altcurrency }
             }
-            if (info.name) state.$set.authorizerName = info.name
-            if (info.email) state.$set.authorizerEmail = info.email
-            if (info.email) state.$set.authorizerPhone = info.phone
-            underscore.extend(state.$set, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]),
-                              underscore.pick(params, [ 'visible' ]))
+            underscore.extend(state.$set, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
           }
+          if (info.name) state.$set.authorizerName = info.name
+          if (info.email) state.$set.authorizerEmail = info.email
+          if (info.email) state.$set.authorizerPhone = info.phone
 
           await publishers.update({ publisher: channelId }, state, { upsert: true })
         }
       }
+    }
+
+    entries = await tokens.find({})
+    for (let entry of entries) {
+      const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
+      let owner, publisher
+
+      owner = await owners.findOne({ owner: entry.owner })
+      if (!owner) {
+        debug('sanity', { message: 'remove', token: id, owner: entry.owner })
+        await tokens.remove(id)
+        continue
+      }
+
+      publisher = await publishers.findOne({ publisher: entry.publisher })
+      if (!publisher) {
+        debug('sanity', { message: 'remove', token: id, publisher: entry.publisher })
+        await tokens.remove(id)
+        continue
+      }
+
+      if (publisher.verified === entry.verified) continue
+
+      if (entry.verified) {
+        debug('sanity', { message: 'update', token: id, verified: publisher.verified })
+        await tokens.update(id, { $set: { verified: false } })
+      }
+
+      debug('sanity', { message: 'remove', token: id, verified: publisher.verified })
+      await tokens.remove(id)
+    }
+
+    entries = await publishers.find({ verified: true })
+    for (let entry of entries) {
+      let foundP, records, state
+
+      records = await tokens.find({ publisher: entry.publisher })
+      for (let record of records) {
+        const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
+
+        if ((record.owner !== entry.owner) || (!record.verified) || (foundP)) {
+          debug('sanity', {
+            message: 'remove',
+            token: id,
+            owner: entry.owner,
+            publisher: entry.publisher,
+            verified: record.verified,
+            foundP: foundP
+          })
+          await tokens.remove(id)
+          continue
+        }
+
+        foundP = true
+      }
+      if (foundP) continue
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: {
+          token: uuid.v4().toLowerCase(),
+          verified: true,
+          authority: entry.owner,
+          owner: entry.owner,
+          visible: entry.visible,
+          info: entry.info,
+          method: 'sanity'
+        }
+      }
+      await tokens.update({ publisher: entry.publisher, verificationId: state.$set.token }, state, { upsert: true })
     }
 
     collections = [ 'owners', 'publishers', 'tokens' ]
