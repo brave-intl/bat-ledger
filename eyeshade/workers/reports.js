@@ -774,14 +774,11 @@ var exports = {}
 exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
 
-/*
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
     setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
     setTimeout(() => { sanity(debug, runtime) }, 5 * 60 * 1000)
   }
- */
-  setTimeout(() => { sanity(debug, runtime) }, 3 * 1000)
 }
 
 exports.create = create
