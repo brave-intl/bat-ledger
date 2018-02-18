@@ -22,7 +22,7 @@ exports.workers = {
   'publisher-report':
     async (debug, runtime, payload) => {
       const publisher = payload.publisher
-      const publishers = runtime.database.get('publishersY', debug)
+      const publishers = runtime.database.get('publishersX', debug)
       const tld = tldjs.getPublicSuffix(publisher)
       let state
 
