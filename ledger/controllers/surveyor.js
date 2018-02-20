@@ -504,7 +504,7 @@ const provision = async (debug, runtime, surveyorId, bump) => {
   if (!bump) bump = 0
 
   contributionSurveyors.forEach(async (cSurveyor) => {
-    const cohorts = ['control', 'grant']
+    const cohorts = process.env.VOTING_COHORTS ? process.env.VOTING_COHORTS.split(',') : ['control', 'grant']
     let count, vSurveyor
 
     if (!cSurveyor.cohorts) cSurveyor.cohorts = {}

@@ -291,7 +291,7 @@ const write = function (runtime, apiVersion) {
     cohort = 'control'
 
     if (result.grantIds) {
-      cohort = 'grant'
+      cohort = wallet.cohort || 'grant'
 
       // oh mongo
       result.grantIds.forEach((grantId) => {
@@ -341,7 +341,8 @@ const write = function (runtime, apiVersion) {
       surveyorId: surveyorId,
       viewingId: viewingId,
       fee: fee,
-      votes: votes
+      votes: votes,
+      cohort: cohort
     }, result))
   }
 }

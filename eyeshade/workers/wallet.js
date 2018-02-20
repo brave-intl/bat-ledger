@@ -211,18 +211,24 @@ exports.workers = {
       , fee              : ...
       , votes            : ...
       , hash             : '...'
+      , cohort           : '...'
       }
     }
  */
   'contribution-report':
     async (debug, runtime, payload) => {
+      const cohort = payload.cohort
       const paymentId = payload.paymentId
       const viewingId = payload.viewingId
       const contributions = runtime.database.get('contributions', debug)
       const wallets = runtime.database.get('wallets', debug)
       let state
 
-      payload.probi = bson.Decimal128.fromString(payload.probi.toString())
+      if (cohort && runtime.config.testingCohorts.includes(cohort)) {
+        payload.probi = bson.Decimal128.fromString('0')
+      } else {
+        payload.probi = bson.Decimal128.fromString(payload.probi.toString())
+      }
       payload.fee = bson.Decimal128.fromString(payload.fee.toString())
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -256,7 +262,7 @@ exports.workers = {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $inc: { counts: 1 },
-        $set: { exclude: false }
+        $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
       }
       await voting.update({ surveyorId: surveyorId, publisher: publisher, cohort: cohort }, state, { upsert: true })
     },
