@@ -123,6 +123,8 @@ module.exports =
 , newrelic              : { key: process.env.NEW_RELIC_LICENSE_KEY
                                                                 || false }
 , wallet                : { }
+
+, testingCohorts        : process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : []
 }
 if (service.f) service.f()
 

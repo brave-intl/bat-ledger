@@ -414,12 +414,71 @@ v2.create =
     { schema: Joi.object().length(0) }
 }
 
+const cohortsAssignmentSchema = Joi.array().min(0).items(Joi.object().keys({
+  paymentId: Joi.string().guid().required().description('identity of the wallet'),
+  cohort: Joi.string().required().description('cohort to assign')
+}).unknown(true).description('grant cohorts'))
+
+/*
+   PUT /v2/grants/cohorts
+ */
+
+v2.cohorts = { handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const wallets = runtime.database.get('wallets', debug)
+
+    let payload = request.payload
+
+    if (payload.file) {
+      payload = payload.file
+      const validity = Joi.validate(payload, cohortsAssignmentSchema)
+      if (validity.error) {
+        return reply(boom.badData(validity.error))
+      }
+    }
+
+    for (let entry of payload) {
+      await wallets.update({ 'paymentId': entry.paymentId }, { $set: { 'cohort': entry.cohort } })
+    }
+
+    return reply({})
+  }
+},
+  description: 'Set cohort associated with grants on a wallet for testing',
+  tags: [ 'api' ],
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
+  },
+
+  plugins: {
+    'hapi-swagger': {
+      payloadType: 'form',
+      validate: {
+        payload: {
+          file: Joi.any()
+                      .meta({ swaggerType: 'file' })
+                      .description('json file')
+        }
+      }
+    }
+  },
+
+  validate: { headers: Joi.object({ authorization: Joi.string().optional() }).unknown() },
+  payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
+
+  response: { schema: Joi.object().length(0) }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v1/grants').config(v1.read),
   braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.write),
   braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
-  braveHapi.routes.async().post().path('/v2/grants').config(v2.create)
+  braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
+  braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
