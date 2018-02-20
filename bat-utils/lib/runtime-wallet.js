@@ -186,34 +186,30 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
     if (balance.greaterThanOrEqualTo(desired)) break
   }
 
-  if (this.runtime.config.redeemer.cardId) { // temporary local redemption for integration with browser
-    try {
-      await this.uphold.createCardTransaction(this.runtime.config.redeemer.cardId,
-        { amount: grantTotal.dividedBy(this.currency.alt2scale(info.altcurrency)).toString(),
-          currency: info.altcurrency,
-          destination: info.providerId
-        },
-        true        // commit tx in one swoop
-      )
-    } catch (ex) {
-      debug('redeem', { provider: 'uphold', reason: ex.toString(), operation: 'fulfillGrant' })
-      throw ex
+  if (info.cohort && this.runtime.config.testingCohorts.includes(info.cohort)) {
+    return {
+      probi: desired.toString(),
+      altcurrency: info.altcurrency,
+      address: txn.destination,
+      fee: 0,
+      status: 'accepted',
+      grantIds: grantIds
     }
-    result = await this.submitTx(info, txn, signature)
-  } else {
-    result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
-      headers: {
-        'Authorization': 'Bearer ' + this.runtime.config.redeemer.access_token,
-        'Content-Type': 'application/json',
-        // Only pass "trusted" IP, not previous value of X-Forwarded-For
-        'X-Forwarded-For': whitelist.ipaddr(request),
-        'User-Agent': request.headers['user-agent']
-      },
-      payload: JSON.stringify(payload),
-      useProxyP: true
-    })
-    if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
   }
+
+  result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
+    headers: {
+      'Authorization': 'Bearer ' + this.runtime.config.redeemer.access_token,
+      'Content-Type': 'application/json',
+      // Only pass "trusted" IP, not previous value of X-Forwarded-For
+      'X-Forwarded-For': whitelist.ipaddr(request),
+      'User-Agent': request.headers['user-agent']
+    },
+    payload: JSON.stringify(payload),
+    useProxyP: true
+  })
+  if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
+
   return underscore.extend(result, { grantIds: grantIds })
 }
 
