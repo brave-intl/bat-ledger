@@ -235,7 +235,7 @@ v3.bulk = {
   },
 
   description: 'Creates publisher entries in bulk',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     payload: Joi.array().min(1).items(Joi.object().keys({
@@ -338,6 +338,7 @@ v1.unlinkPublisher = {
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
+      const tokens = runtime.database.get('tokens', debug)
       let entry, state
 
       entry = await owners.findOne({ owner: owner })
@@ -348,9 +349,12 @@ v1.unlinkPublisher = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $unset: { owner: '' }
+        $set: { verified: false, visible: false },
+        $unset: { authority: '', owner: '' }
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
+
+      await tokens.remove({ publisher: publisher, verified: true }, { justOne: false })
 
       reply({})
     }

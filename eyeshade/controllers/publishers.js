@@ -215,7 +215,7 @@ v2.getBalance = {
   },
 
   description: 'Gets the balance for a verified publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -345,7 +345,7 @@ v2.getWallet = {
   },
 
   description: 'Gets information for a publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -430,7 +430,7 @@ v2.putWallet = {
   },
 
   description: 'Sets information for a verified publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -616,7 +616,7 @@ v1.getStatement = {
   },
 
   description: 'Generates a statement for a publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -1057,110 +1057,4 @@ module.exports.routes = [
 
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
-
-  runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('publishers', debug),
-      name: 'publishers',
-      property: 'publisher',
-      empty: {
-        publisher: '',    // domain OR 'oauth#' + provider + ':' + (profile.id || profile._id)
-        authority: '',
-
-     // v1 only
-     // authorized: false,
-     // address: '',
-     // legalFormURL: '',
-
-        verified: false,
-        visible: false,
-
-     // v2 and later
-        owner: '',
-
-        providerName: '',
-        providerSuffix: '',
-        providerValue: '',
-        authorizerEmail: '',
-        authorizerName: '',
-
-        altcurrency: '',
-
-        info: {},
-
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { publisher: 1 } ],
-      others: [ { authority: 1 },
-                { owner: 1 },
-                { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
-                { authorizerEmail: 1 }, { authorizerName: 1 },
-                { altcurrency: 1 },
-                { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('settlements', debug),
-      name: 'settlements',
-      property: 'settlementId_1_publisher',
-      empty: {
-        settlementId: '',
-        publisher: '',
-        hash: '',
-        address: '',
-
-     // v1 only
-     // satoshis: 1
-
-     // v2 and later
-        owner: '',
-        altcurrency: '',
-        probi: bson.Decimal128.POSITIVE_ZERO,
-        currency: '',
-        amount: bson.Decimal128.POSITIVE_ZERO,
-        commission: bson.Decimal128.POSITIVE_ZERO,    // conversion + network fees (i.e., for settlement)
-
-        fees: bson.Decimal128.POSITIVE_ZERO,          // network fees (i.e., for contribution)
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
-      others: [ { address: 1 },
-                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-                { fees: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('tokens', debug),
-      name: 'tokens',
-      property: 'verificationId_1_publisher',
-      empty: {
-        verificationId: '',
-        publisher: '',
-        token: '',
-        verified: false,
-        authority: '',
-
-     // v2 and later
-        owner: '',
-        ownerEmail: '',
-        ownerName: '',
-        visible: false,
-        info: {},
-        method: '',
-
-        reason: '',
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { verificationId: 1, publisher: 1 } ],
-      others: [ { token: 1 }, { verified: 1 }, { authority: 1 },
-                { owner: 1 }, { visible: 1 }, { method: 1 },
-                { reason: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('publishersV2', debug),
-      name: 'publishersV2',
-      property: 'publisher',
-      empty: { publisher: '', facet: '', exclude: false, tags: [], timestamp: bson.Timestamp.ZERO },
-      unique: [ { publisher: 1 } ],
-      others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
-    }
-  ])
 }
