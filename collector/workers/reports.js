@@ -18,12 +18,14 @@ let altcurrency
 const datefmt = 'yyyymmdd-HHMMss'
 
 const quanta = async (debug, runtime, qid) => {
-  const contributions = runtime.database.get('contributions', debug)
-  const voting = runtime.database.get('voting', debug)
+  const database = runtime.database
+  const database2 = runtime.database2 || database
+  const contributions = database2.get('contributions', debug)
+  const voting = database2.get('voting', debug)
   let query, results, votes
 
   const dicer = async (quantum, counts) => {
-    const surveyors = runtime.database.get('surveyors', debug)
+    const surveyors = database2.get('surveyors', debug)
     let params, state, updateP, vote
     let surveyor = await surveyors.findOne({ surveyorId: quantum._id })
 
@@ -34,7 +36,7 @@ const quanta = async (debug, runtime, qid) => {
 
     vote = underscore.find(votes, (entry) => { return (quantum._id === entry._id) })
     underscore.extend(quantum, { counts: vote ? vote.counts : 0 })
-    if (runtime.database.properties.readOnly) return
+    if (database2.properties.readOnly) return
 
     params = underscore.pick(quantum, [ 'counts', 'inputs', 'fee', 'quantum' ])
     updateP = false
@@ -128,11 +130,13 @@ const quanta = async (debug, runtime, qid) => {
 }
 
 const mixer = async (debug, runtime, filter, qid) => {
+  const database = runtime.database
+  const database2 = runtime.database2 || database
   const publishers = {}
   let results
 
   const slicer = async (quantum) => {
-    const voting = runtime.database.get('voting', debug)
+    const voting = database2.get('voting', debug)
     let fees, probi, query, slices, state
 
     // current is always defined
@@ -167,7 +171,7 @@ const mixer = async (debug, runtime, filter, qid) => {
         fees: fees,
         cohort: slice.cohort || 'control'
       })
-      if ((runtime.database.properties.readOnly) || (equals(slice.probi && new BigNumber(slice.probi.toString()), probi))) {
+      if ((database2.properties.readOnly) || (equals(slice.probi && new BigNumber(slice.probi.toString()), probi))) {
         continue
       }
 
@@ -208,9 +212,11 @@ const publisherCompare = (a, b) => {
 }
 
 const labelize = async (debug, runtime, data) => {
+  const database = runtime.database
+  const database2 = runtime.database2 || database
   const labels = {}
-  const owners = runtime.database.get('owners', debug)
-  const publishersC = runtime.database.get('publishers', debug)
+  const owners = database2.get('owners', debug)
+  const publishersC = database2.get('publishers', debug)
 
   for (let datum of data) {
     const publisher = datum.publisher
@@ -356,8 +362,9 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const authority = payload.authority
       const format = payload.format || 'csv'
-      const database = runtime.database2 || runtime.database
-      const voting = runtime.database.get('voting', debug)
+      const database = runtime.database
+      const database2 = runtime.database2 || database
+      const voting = database2.get('voting', debug)
       let data, file, summary
 
       data = []
@@ -436,13 +443,14 @@ exports.workers = {
       const summaryP = payload.summary || analysisP
       const threshold = payload.threshold || 0
       const verified = payload.verified
-      const owners = runtime.database.get('owners', debug)
-      const database = runtime.database2 || runtime.database
+      const database = runtime.database
+      const database2 = runtime.database2 || database
+      const owners = database2.get('owners', debug)
       const pseries = database.get('pseries', debug)
-      const publishersC = runtime.database.get('publishers', debug)
-      const settlements = runtime.database.get('settlements', debug)
-      const tokens = runtime.database.get('tokens', debug)
-      const voting = runtime.database.get('voting', debug)
+      const publishersC = database2.get('publishers', debug)
+      const settlements = database2.get('settlements', debug)
+      const tokens = database2.get('tokens', debug)
+      const voting = database2.get('voting', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let cohorts, data, entries, fields, file, info, previous, publishers, query, results, usd
 

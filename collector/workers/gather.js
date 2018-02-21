@@ -12,7 +12,7 @@ const braveHapi = braveExtras.hapi
 BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 
 const daily = async (debug, runtime) => {
-  const database = runtime.database2 || runtime.database
+  const database = runtime.database
   let midnight, now, tomorrow
 
   debug('daily', 'running')
@@ -62,10 +62,11 @@ exports.initialize = async (debug, runtime) => {
 }
 
 const gather = async (debug, runtime) => {
-  const database = runtime.database2 || runtime.database
+  const database = runtime.database
+  const database2 = runtime.database2 || database
   const pseries = database.get('pseries', debug)
-  const publishers = runtime.database.get('publishers', debug)
-  const voting = runtime.database.get('voting', debug)
+  const publishers = database2.get('publishers', debug)
+  const voting = database2.get('voting', debug)
   const failed = []
   const handled = [ '' ]
   const warned = []
@@ -134,7 +135,7 @@ const handlers = {
   site: async (debug, runtime, tsId, entry) => {
     const publisher = entry.publisher
     const sites = [ 'https://' + publisher, 'https://www.' + publisher, 'http://' + publisher, 'http://www.' + publisher ]
-    const database = runtime.database2 || runtime.database
+    const database = runtime.database
     const pseries = database.get('pseries', debug)
     let result, state
 
@@ -153,7 +154,7 @@ const handlers = {
         state.$set.site = underscore.pick(props, [ 'title', 'softTitle', 'description', 'text' ])
         underscore.extend(state.$set.site, { url: site, modified: timestamp(debug, publisher, props.date) })
 
-        props = await metascraper({ url: site, html: result })
+        props = await metascraper.scrapeHtml(result)
         underscore.extend(state.$set.site, underscore.pick(props, [ 'title', 'publisher', 'description' ]))
         if (!state.$set.site.modified) state.$set.site.modified = timestamp(debug, publisher, props.date)
 
@@ -175,7 +176,7 @@ const handlers = {
     const config = runtime.config.gather.youtube
     const publisher = entry.publisher
     const keys = [ 'view', 'comment', 'subscriber', 'video' ]
-    const database = runtime.database2 || runtime.database
+    const database = runtime.database
     const pseries = database.get('pseries', debug)
     const url = config.url + '?part=snippet,statistics&key=' + config.api_key + '&id=' + entry.providerValue
     let result, snippet, state, statistics

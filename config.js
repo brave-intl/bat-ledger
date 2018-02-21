@@ -82,16 +82,15 @@ const services = {
 
     f: () => {
       if (process.env.MONGODB2_URI) {
-        const parts = url.parse(module.exports.database.mongo, true)
+        module.exports.database.mongo2 = process.env.MONGODB2_URI
+        const parts = url.parse(module.exports.database.mongo2, true)
 
         if (!parts.query) parts.query = {}
         if (!parts.query.readOnly) {
           parts.query.readOnly = true
           parts.query.readPreference = 'secondary'
-          module.exports.database.mongo = url.format(parts)
+          module.exports.database.mongo2 = url.format(parts)
         }
-
-        module.exports.database.mongo2 = process.env.MONGODB2_URI
       }
 
       module.exports.gather = { site: {} }

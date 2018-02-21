@@ -21,7 +21,7 @@ let altcurrency
 v1.getFile = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const database = runtime.database2 || runtime.database
+      const database = runtime.database
       const debug = braveHapi.debug(module, request)
       const reportId = request.params.reportId
       let reader, writer
