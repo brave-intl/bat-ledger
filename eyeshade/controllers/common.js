@@ -59,7 +59,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
     try {
-      return runtime.common.publish(debug, runtime, 'patch', entry.owner, entry.publisher, '/verifications', payload)
+      return runtime.common.publish(debug, runtime, method, owner, publisher, endpoint, payload)
     } catch (ex) {
       debug('publish', { method: method, owner: owner, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
     }
