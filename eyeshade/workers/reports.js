@@ -1332,6 +1332,7 @@ exports.workers = {
       , authority      : '...:...'
       , format         : 'json' | 'csv'
       , summary        :  true  | false
+      , excluded       :  true  | false
       }
     }
  */
@@ -1340,6 +1341,7 @@ exports.workers = {
       const authority = payload.authority
       const format = payload.format || 'csv'
       const summaryP = payload.summary
+      const excluded = payload.excluded
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let data, fields, file, mixerP, previous, results, slices, publishers
@@ -1394,7 +1396,7 @@ exports.workers = {
         results.push(quantum)
         if (summaryP) continue
 
-        slices = await voting.find({ surveyorId: quantum.surveyorId, exclude: false })
+        slices = await voting.find({ surveyorId: quantum.surveyorId, exclude: excluded })
         slices.forEach((slice) => {
           let probi
 
@@ -1406,7 +1408,7 @@ exports.workers = {
             else {
               probi = probi.minus(slice.probi)
               if (probi.greaterThan(0)) publishers[slice.publisher].probi = probi
-              else delete publishers[slice.publisher]
+              else if (!excluded) delete publishers[slice.publisher]
 
               return
             }
