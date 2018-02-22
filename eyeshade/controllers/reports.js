@@ -505,7 +505,8 @@ v1.surveyors.contributions = {
   validate: {
     query: {
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
-      summary: Joi.boolean().optional().default(true).description('summarize report')
+      summary: Joi.boolean().optional().default(true).description('summarize report'),
+      excluded: Joi.boolean().optional().default(false).description('only include excluded in report')
     }
   },
 
