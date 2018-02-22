@@ -57,7 +57,9 @@ const Server = async (options, runtime) => {
     })
   }
 
-  epimetheus.instrument(server)
+  if (runtime.config.prometheus) server.register(runtime.prometheus.plugin())
+  else epimetheus.instrument(server)
+
   server.register(
     [ bell,
       blipp,
@@ -107,7 +109,7 @@ const Server = async (options, runtime) => {
           methods: [ 'get', 'post', 'delete', 'put', 'patch' ],
           overLimitError: (rate) => boom.tooManyRequests(`try again in ${rate.window} seconds`),
           rateLimitKey: (request) => whitelist.ipaddr(request) + ':' + runtime.config.server.host,
-          redisClient: runtime.cache ? runtime.cache.cache : runtime.config.queue.client
+          redisClient: (runtime.cache && runtime.cache.cache) || runtime.queue.config.client
         }
       },
       {

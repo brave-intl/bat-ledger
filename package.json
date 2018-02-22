@@ -65,6 +65,7 @@
     "dotenv": "^4.0.0",
     "epimetheus": "1.0.55",
     "ethereum-address": "0.0.4",
+    "exposition": "^1.2.0",
     "faye-websocket": "0.11.1",
     "github": "11.0.0",
     "glob": "^7.1.2",
