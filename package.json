@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "balance-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/balance/server.js",
-    "build": "npm run build-utils && npm run build-balance  npm run build-collector  npm run build-deyeshadecollector  npm run build-helper  npm run build-ledger && cp config.js dist/config.js",
+    "build": "npm run build-utils && npm run build-balance && npm run build-collector && npm run build-eyeshade && npm run build-helper && npm run build-ledger && cp config.js dist/config.js",
     "build-balance": "babel balance -d dist/balance",
     "build-collector": "babel collector -d dist/collector",
     "build-eyeshade": "babel eyeshade -d dist/eyeshade",
@@ -21,7 +21,7 @@
     "ledger-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/server.js",
     "ledger-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/worker.js",
     "lint": "standard",
-    "start": "echo use 'npm run start-[ledger|eyeshade|collector|balance|helper]' or 'npm run start-[ledger|eyeshade|collector]-worker'",
+    "start": "echo use 'npm run start-[balance|collector|eyeshade|helper|ledger]' or 'npm run start-[collector|eyeshade]-worker'",
     "start-balance": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=balance ./node_modules/.bin/babel-node balance/server.js",
     "start-collector": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=collector ./node_modules/.bin/babel-node collector/server.js",
     "start-collector-worker": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=collector ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 collector/worker.js",
