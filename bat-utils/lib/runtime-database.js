@@ -51,7 +51,7 @@ const Database = function (config, runtime) {
   this.db.addMiddleware(this.middleware)
 }
 
-Database.prototype.middleware = (context) => {
+Database.prototype.middleware = function (context) {
   const collection = context.collection
 
   return (next) => {
@@ -87,7 +87,7 @@ Database.prototype.middleware = (context) => {
   }
 }
 
-Database.prototype.createFile = async (runtime, prefix, params) => {
+Database.prototype.createFile = async function (runtime, prefix, params) {
   let extension, filename, options
 
   if (params.format === 'json') {
@@ -100,10 +100,6 @@ Database.prototype.createFile = async (runtime, prefix, params) => {
   filename = prefix + dateformat(underscore.now(), 'yyyymmdd-HHMMss-l') + extension
   options.metadata = { 'content-disposition': 'attachment; filename="' + filename + '"' }
   return this.file(params.reportId, 'w', options)
-}
-
-Database.prototype.file = async function (filename, mode, options) {
-  return this.file(filename, 'r')
 }
 
 Database.prototype.file = async function (filename, mode, options) {
