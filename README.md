@@ -15,7 +15,7 @@ Authorization is achieved by verifying that the user is a member of a GitHub org
 6. Install the dependencies `npm install`
 7. Start Redis `brew services start redis`
 8. Start MongoDB `brew services start mongodb`
-9. Start with `npm run start-[ledger|eyeshade|balance|helper]`
+9. Start with `npm run start-[balance|collector|extractor|eyeshade|helper|ledger]`
 
 If you get an error when starting a service, try clearing the Redis database:
 ```

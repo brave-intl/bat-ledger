@@ -3,8 +3,10 @@
    https://github.com/grafana/simple-json-datasource
  */
 
+// const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const Joi = require('joi')
+// const papertrail = require('papertrail-stream')
 const pluralize = require('pluralize')
 const underscore = require('underscore')
 
@@ -15,7 +17,7 @@ const v1 = {}
 
 const intervalRE = new RegExp('^([1-9][0-9]*)([smhdwMy])$')
 
-const tsdb = { _id: '', series: {} }
+const tsdb = { _ids: {}, series: {} }
 
 v1.search = {
   handler: (runtime) => {
@@ -23,11 +25,15 @@ v1.search = {
       const debug = braveHapi.debug(module, request)
 
       await updateTSDB(debug, runtime)
-      reply(underscore.keys(tsdb.series))
+      reply(underscore.keys(tsdb.series).sort())
     }
   },
 
-  description: 'Find Used by the find metric options on query tab in panels',
+/* ONLY FOR DEBUGGING
+  cors: { origin: [ '*' ] },
+ */
+
+  description: 'Used by the find metric options on query tab in panels',
   tags: [ 'api', 'grafana' ],
 
   validate:
@@ -70,6 +76,7 @@ v1.query = {
       msecs *= parseInt(interval, '10') * 1000
 
       await updateTSDB(debug, runtime)
+
       targets.forEach((entry) => {
         const target = entry.target
         const series = tsdb.series[target]
@@ -125,6 +132,10 @@ v1.query = {
     }
   },
 
+/* ONLY FOR DEBUGGING
+  cors: { origin: [ '*' ] },
+ */
+
   description: 'Returns metrics based on input',
   tags: [ 'api', 'grafana' ],
 
@@ -174,34 +185,146 @@ v1.annotations = {
     { schema: Joi.array().length(0) }
 }
 
-const id2dt = (id) => {
-  return new Date(parseInt(id.toHexString().substring(0, 8), 16) * 1000).getTime()
+const sources = {
+  publishers: {
+    init: async (debug, runtime, source, seqno) => {
+      tsdb._ids.publishers = seqno || ''
+    },
+
+    poll: async (debug, runtime, source, update) => {
+      const database = runtime.database2 || runtime.database
+      const publishers = database.get('publishers', debug)
+      let entries
+
+      entries = await publishers.find(tsdb._ids.publishers ? { _id: { $gt: tsdb._ids.publishers } } : {},
+                                      { _id: true, publisher: true })
+      for (let entry of entries) {
+        entry.timestamp = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
+        entry.seqno = entry._id
+      }
+
+      for (let entry of entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
+        let key, props
+
+        tsdb._ids.publishers = entry._id
+        props = getPublisherProps(entry.publisher)
+        if (!props) continue
+
+        key = (props.publisherType ? (props.providerName + '_' + pluralize(props.providerSuffix)) : 'sites') + '_verified'
+        await update(source, key, entry)
+      }
+
+      debug('publishers', { message: 'done', lastId: tsdb._ids.publishers })
+    }
+  },
+
+  downloads: {
+    init: async (debug, runtime, source, seqno) => {
+      tsdb._ids.downloads = seqno || '0'
+    },
+
+    poll: async (debug, runtime, source, update) => {
+      while (true) {
+        let entries
+
+        entries = await runtime.sql.pool.query('SELECT id, ts, referral_code, platform FROM download WHERE id > $1 ' +
+                                               'ORDER BY id ASC LIMIT 1000', [ tsdb._ids.downloads ])
+        if ((!entries.rows) || (!entries.rows.length)) {
+          return debug('downloads', { message: 'done', lastId: tsdb._ids.downloads })
+        }
+
+        for (let entry of entries.rows) {
+          tsdb._ids.downloads = entry.id
+
+          entry.timestamp = new Date(entry.ts).getTime()
+          entry.seqno = entry.id
+          await update(source, entry.referral_code.toLowerCase() + '_downloads', entry)
+          await update(source, entry.referral_code.toLowerCase() + '_downloads' + '_' + entry.platform, entry)
+        }
+      }
+    }
+  },
+
+  referrals: {
+/*
+    init: async (debug, runtime, source, seqno, update) => {
+      const query = { q: 'referral filepath: ' }
+      const entries = []
+      let busyP
+
+      if ((!runtime.config.papertrail) || (!runtime.config.papertrail.accessToken)) {
+        throw new Error('papertrail API token not set')
+      }
+
+      query.focus = new BigNumber(seqno || '902212759663038471').plus(1).toString()
+      tsdb._ids.referrals = query.focus
+
+      papertrail(runtime.config.papertrail.accessToken, query, false).on('data', async (data) => {
+        entries.push(data)
+        if (busyP) return
+
+        busyP = true
+        for (let entry of entries) {
+          const referrer = entry.message.substr(query.q.length).trim().split('/')[1].toLowerCase()
+
+          entry.timestamp = new Date(entry.generated_at).getTime()
+          entry.seqno = entry.id
+          await update(source, referrer + '_referrals', entry)
+        }
+        busyP = false
+      }).on('error', (err) => {
+        debug('papertrail', { diagnostic: err.toString() })
+      })
+    }
+ */
+  }
 }
 
 const updateTSDB = async (debug, runtime) => {
-  const publishers = runtime.database.get('publishers', debug)
-  let entries
+  const series = runtime.database.get('series', debug)
 
-  entries = await publishers.find(tsdb._id ? { _id: { $gt: tsdb._id } } : { }, { _id: true, publisher: true })
-  for (let entry of entries) { entry.timestamp = id2dt(entry._id) }
+  const refresh = (key, entry) => {
+    let table
 
-  for (let entry of entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
-    let key, props, series
-
-    tsdb._id = entry._id
-    props = getPublisherProps(entry.publisher)
-    if (!props) continue
-
-    key = props.publisherType ? (props.providerName + '_' + pluralize(props.providerSuffix)) : 'sites'
-    key += '_verified'
     if (!tsdb.series[key]) tsdb.series[key] = { count: 0, timestamp: 0, datapoints: [] }
-    series = tsdb.series[key]
-    series.count++
-    if (series.timestamp === entry.timestamp) underscore.last(series.datapoints)[0]++
+    table = tsdb.series[key]
+    table.count++
+    if (table.timestamp === entry.timestamp) underscore.last(table.datapoints)[0]++
     else {
-      series.timestamp = entry.timestamp
-      series.datapoints.push([ series.count, series.timestamp ])
+      table.timestamp = entry.timestamp
+      table.datapoints.push([ table.count, table.timestamp ])
     }
+
+    return table
+  }
+
+  const update = async (source, key, entry) => {
+    const table = refresh(key, entry)
+
+    await series.update({ key: key, time: table.timestamp.toString() },
+                        { $set: { count: table.count, source: source, seqno: entry.seqno } },
+                        { upsert: true })
+  }
+
+  for (let key in sources) {
+    const source = sources[key]
+    let entries, last
+
+    if (typeof tsdb._ids[source] === 'undefined') {
+      entries = await series.find({ source: key }, { sort: { $natural: 1 } })
+      for (let entry of entries) {
+        entry.timestamp = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
+      }
+
+      for (let entry of entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
+        refresh(entry.key, entry)
+        last = entry
+      }
+
+      if (source.init) await sources[key].init(debug, runtime, key, last && last.seqno, update)
+    }
+
+    if (source.poll) await source.poll(debug, runtime, key, update)
   }
 }
 

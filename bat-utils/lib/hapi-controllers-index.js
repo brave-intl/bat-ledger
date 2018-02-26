@@ -11,7 +11,12 @@ exports.routes = async (debug, runtime, options) => {
   const routes = [
     { method: 'GET',
       path: '/',
-      config: { handler: (request, reply) => { reply('ack.') } }
+      config: {
+/* ONLY FOR DEBUGGING
+        cors: { origin: [ '*' ] },
+ */
+        handler: (request, reply) => { reply('ack.') }
+      }
     }
   ]
   let errP, names

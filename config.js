@@ -81,18 +81,6 @@ const services = {
     portno: 3005,
 
     f: () => {
-      if (process.env.MONGODB2_URI) {
-        module.exports.database.mongo2 = process.env.MONGODB2_URI
-        const parts = url.parse(module.exports.database.mongo2, true)
-
-        if (!parts.query) parts.query = {}
-        if (!parts.query.readOnly) {
-          parts.query.readOnly = true
-          parts.query.readPreference = 'secondary'
-          module.exports.database.mongo2 = url.format(parts)
-        }
-      }
-
       module.exports.gather = { site: {} }
       if (process.env.YOUTUBE_API_KEY) {
         module.exports.gather.youtube =
@@ -102,6 +90,37 @@ const services = {
       }
 
       helper()
+      mongo2()
+    }
+  },
+
+  extractor: {
+    portno: 3006,
+
+    f: () => {
+      if (!process.env.POSTGRES_URI) {
+        parts = {
+          protocol: 'postgresql:',
+          slashes: true,
+          auth: process.env.PGUSER                              || process.env.USER,
+          port: process.env.PGPORT                              ||'5432',
+          hostname: process.env.PGHOST                          || '127.0.0.1',
+          pathname: process.env.PGDATABASE                      || '/test_extractor',
+          query: {
+            sslmode: process.env.PGSSLMODE                      || 'require',
+            ssl: true
+          }
+        }
+        if (parts.auth && process.env.PGPASSWORD) parts.auth += ':' + process.env.PGPASSWORD
+        parts.host = parts.hostname + ':' + parts.port
+        parts.path = parts.pathname
+        process.env.POSTGRES_URI = url.format(parts)
+      }
+      module.exports.sql = { postgres: { connectionString: process.env.POSTGRES_URI } }
+
+      if (process.env.PAPERTRAIL_API_TOKEN) module.exports.papertrail = { accessToken: process.env.PAPERTRAIL_API_TOKEN }
+      helper()
+      mongo2()
     }
   }
 }
@@ -112,6 +131,20 @@ const helper = () => {
   module.exports.currency.helper =
   { url               : process.env.HELPER_URL
   , access_token      : process.env.HELPER_TOKEN                || '00000000-0000-4000-0000-000000000000'
+  }
+}
+
+const mongo2 = () => {
+  if (process.env.MONGODB2_URI) {
+    module.exports.database.mongo2 = process.env.MONGODB2_URI
+    const parts = url.parse(module.exports.database.mongo2, true)
+
+    if (!parts.query) parts.query = {}
+    if (!parts.query.readOnly) {
+      parts.query.readOnly = true
+      parts.query.readPreference = 'secondary'
+      module.exports.database.mongo2 = url.format(parts)
+    }
   }
 }
 
@@ -133,10 +166,13 @@ if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.SERVI
 process.env.PORT = process.env.PORT  || service.portno
 
 const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('MONGODB_URI', 'MONGODB2_URI',
+new Array('MONGODB_URI', 'MONGODB2_URI', 'POSTGRES_URI',
           'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET',
+          'PAPERTRAIL_API_TOKEN',
           'SLACK_CHANNEL', 'SLACK_ICON_URL', 'SLACK_WEBOOK').forEach((v) => {
-  process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
+  const value = process.env[v]  || process.env[SERVICE + '_' + v]
+
+  if (typeof value !== 'undefined') process.env[v] = value
 })
 
 module.exports =

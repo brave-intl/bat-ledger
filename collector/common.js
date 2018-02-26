@@ -5,9 +5,7 @@ exports.initialize = async (debug, runtime) => {
     runtime.database2 = new runtime.database.constructor({ database: runtime.config.database.mongo2 }, runtime)
   }
 
-  const database = runtime.database2 || runtime.database
-
-  database.checkIndices(debug, [
+  runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('pseries', debug),
       name: 'pseries',
