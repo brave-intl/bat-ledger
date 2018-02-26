@@ -190,7 +190,7 @@ v1.annotations = {
 const sources = {
   publishers: {
     init: async (debug, runtime, source, seqno) => {
-      tsdb._ids.publishers = seqno || ''
+      if (!tsdb._ids.publishers) tsdb._ids.publishers = seqno || ''
     },
 
     poll: async (debug, runtime, source, update) => {
@@ -222,7 +222,7 @@ const sources = {
 
   downloads: {
     init: async (debug, runtime, source, seqno) => {
-      tsdb._ids.downloads = seqno || '0'
+      if (!tsdb._ids.downloads) tsdb._ids.downloads = seqno || '0'
     },
 
     poll: async (debug, runtime, source, update) => {
@@ -232,7 +232,8 @@ const sources = {
         entries = await runtime.sql.pool.query('SELECT id, ts, referral_code, platform FROM download WHERE id > $1 ' +
                                                'ORDER BY id ASC LIMIT 1000', [ tsdb._ids.downloads ])
         if ((!entries.rows) || (!entries.rows.length)) {
-          return debug('downloads', { message: 'done', lastId: tsdb._ids.downloads })
+          debug('downloads', { message: 'done', lastId: tsdb._ids.downloads })
+          break
         }
 
         for (let entry of entries.rows) {
@@ -305,7 +306,7 @@ const updateTSDB = async (debug, runtime) => {
   }
 
   const update = async (source, key, entry) => {
-/*
+/* force complete refresh
     const table = refresh(key, entry)
 
     await series.update({ key: key, time: table.timestamp.toString() },
@@ -326,8 +327,8 @@ const updateTSDB = async (debug, runtime) => {
  */
     let last
 
-    if (typeof tsdb._ids[source] === 'undefined') {
-/* temporarily disable caching
+    if (typeof tsdb._ids[key] === 'undefined') {
+/* force complete refresh
       entries = await series.find({ source: key }, { sort: { $natural: 1 } })
       for (let entry of entries) {
         entry.timestamp = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
