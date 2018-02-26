@@ -283,7 +283,9 @@ const sources = {
 }
 
 const updateTSDB = async (debug, runtime) => {
+/*
   const series = runtime.database.get('series', debug)
+ */
 
   const refresh = (key, entry) => {
     let table
@@ -301,18 +303,26 @@ const updateTSDB = async (debug, runtime) => {
   }
 
   const update = async (source, key, entry) => {
+/*
     const table = refresh(key, entry)
 
     await series.update({ key: key, time: table.timestamp.toString() },
                         { $set: { count: table.count, source: source, seqno: entry.seqno } },
                         { upsert: true })
+ */
+
+    refresh(key, entry)
   }
 
   for (let key in sources) {
     const source = sources[key]
+/*
     let entries, last
+ */
+    let last
 
     if (typeof tsdb._ids[source] === 'undefined') {
+/* temporarily disable caching
       entries = await series.find({ source: key }, { sort: { $natural: 1 } })
       for (let entry of entries) {
         entry.timestamp = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
@@ -322,6 +332,7 @@ const updateTSDB = async (debug, runtime) => {
         refresh(entry.key, entry)
         last = entry
       }
+ */
 
       if (source.init) await sources[key].init(debug, runtime, key, last && last.seqno, update)
     }
