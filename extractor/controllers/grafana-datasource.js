@@ -10,7 +10,9 @@ const Joi = require('joi')
 const pluralize = require('pluralize')
 const underscore = require('underscore')
 
-const braveHapi = require('bat-utils').extras.hapi
+const braveExtras = require('bat-utils').extras
+const braveHapi = braveExtras.hapi
+const timeout = braveExtras.utils.timeout
 const getPublisherProps = require('bat-publisher').getPublisherProps
 
 const v1 = {}
@@ -334,4 +336,7 @@ module.exports.routes = [
   braveHapi.routes.async().post().path('/annotations').config(v1.annotations)
 ]
 
-module.exports.initialize = updateTSDB
+module.exports.initialize = async (debug, runtime) => {
+  await timeout(5 * 1000)
+  updateTSDB(debug, runtime)
+}
