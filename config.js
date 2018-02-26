@@ -1,5 +1,7 @@
 /* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
 
+const url = require('url')
+
 const services = {
   ledger: {
     portno: 3001,
@@ -73,6 +75,34 @@ const services = {
 
   helper: {
     portno: 3004
+  },
+
+  collector: {
+    portno: 3005,
+
+    f: () => {
+      if (process.env.MONGODB2_URI) {
+        module.exports.database.mongo2 = process.env.MONGODB2_URI
+        const parts = url.parse(module.exports.database.mongo2, true)
+
+        if (!parts.query) parts.query = {}
+        if (!parts.query.readOnly) {
+          parts.query.readOnly = true
+          parts.query.readPreference = 'secondary'
+          module.exports.database.mongo2 = url.format(parts)
+        }
+      }
+
+      module.exports.gather = { site: {} }
+      if (process.env.YOUTUBE_API_KEY) {
+        module.exports.gather.youtube =
+          { url                 : process.env.YOUTUBE_URL       || 'https://www.googleapis.com/youtube/v3/channels'
+          , api_key             : process.env.YOUTUBE_API_KEY
+          }
+      }
+
+      helper()
+    }
   }
 }
 
@@ -98,12 +128,14 @@ const uphold = () => {
 
 
 const service = services[process.env.SERVICE]
-if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.service)
+if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.SERVICE)
 
 process.env.PORT = process.env.PORT  || service.portno
 
 const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
+new Array('MONGODB_URI', 'MONGODB2_URI',
+          'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET',
+          'SLACK_CHANNEL', 'SLACK_ICON_URL', 'SLACK_WEBOOK').forEach((v) => {
   process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
 })
 
@@ -129,9 +161,9 @@ module.exports =
 if (service.f) service.f()
 
 if (process.env.NODE_ENV === 'production') {
-  module.exports.server = require('url').parse('https://' + process.env.HOST)
+  module.exports.server = url.parse('https://' + process.env.HOST)
 } else {
-  module.exports.server = require('url').parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
+  module.exports.server = url.parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
 }
 
 if (process.env.OXR_APP_ID) {

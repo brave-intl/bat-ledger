@@ -1,4 +1,7 @@
+const url = require('url')
+
 const bson = require('bson')
+const dateformat = require('dateformat')
 const mongodb = require('mongodb')
 const GridStore = mongodb.GridStore
 const GridStream = require('gridfs-stream')
@@ -14,13 +17,32 @@ const Database = function (config, runtime) {
 
   if (!config.database) return
 
-  if (config.database.mongo) config.database = config.database.mongo
-  this.config = config.database
+  this.config = config.database.mongo || config.database
+  this.properties = url.parse(this.config, true).query
   this.db = monk(this.config, (err, db) => {
-    if (!err) return
+    const props = {}
 
-    debug('database', { message: err.message })
-    throw err
+    if (err) {
+      debug('database', { database: this.config, message: err.message })
+      throw err
+    }
+
+    const accrue = (key, parts) => {
+      if (!props[key]) props[key] = parts[key]
+      else if (typeof props[key] === 'string') props[key] = [ props[key], parts[key] ]
+      else props[key].push(parts[key])
+    }
+
+    this.config.split(',').forEach((entry) => {
+      let parts
+
+      if (entry.indexOf('mongodb://') !== 0) entry = 'mongodb://' + entry
+      parts = url.parse(entry)
+      accrue('host', parts)
+      accrue('pathname', parts)
+    })
+    props.properties = this.properties
+    debug('database', props)
   })
 
   Logger.setCurrentLogger((msg, context) => {
@@ -29,7 +51,7 @@ const Database = function (config, runtime) {
   this.db.addMiddleware(this.middleware)
 }
 
-Database.prototype.middleware = (context) => {
+Database.prototype.middleware = function (context) {
   const collection = context.collection
 
   return (next) => {
@@ -63,6 +85,21 @@ Database.prototype.middleware = (context) => {
       })
     }
   }
+}
+
+Database.prototype.createFile = async function (runtime, prefix, params) {
+  let extension, filename, options
+
+  if (params.format === 'json') {
+    options = { content_type: 'application/json' }
+    extension = '.json'
+  } else {
+    options = { content_type: 'text/csv' }
+    extension = '.csv'
+  }
+  filename = prefix + dateformat(underscore.now(), 'yyyymmdd-HHMMss-l') + extension
+  options.metadata = { 'content-disposition': 'attachment; filename="' + filename + '"' }
+  return this.file(params.reportId, 'w', options)
 }
 
 Database.prototype.file = async function (filename, mode, options) {

@@ -46,13 +46,21 @@ exports.routes = async (debug, runtime, options) => {
     }
   }
 
+  names = []
   try {
-    names = fs.readdirSync(parent)
+    fs.statSync(path.join(parent, '..', 'common.js'))
+    names.push(path.join('..', 'common.js'))
+  } catch (ex) {
+    if (ex.code !== 'ENOENT') throw ex
+
+    debug('no commoners to load')
+  }
+  try {
+    names = names.concat(fs.readdirSync(parent))
   } catch (ex) {
     if (ex.code !== 'ENOENT') throw ex
 
     debug('no controllers directory to scan')
-    names = []
   }
   for (let name of names) {
     if ((name === 'index.js') || (path.extname(name) !== '.js')) continue

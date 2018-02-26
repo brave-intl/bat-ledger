@@ -33,31 +33,8 @@ const create = async (runtime, prefix, params) => {
   return runtime.database.file(params.reportId, 'w', options)
 }
 
-const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
-  let path, result
-
-  if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
-
-  path = '/api'
-  if (owner) path += '/owners/' + encodeURIComponent(owner)
-  if ((owner) || (publisher)) path += '/channel'
-  if (owner) path += 's'
-  if (publisher) path += '/' + encodeURIComponent(publisher)
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
-    headers: {
-      authorization: 'Bearer ' + runtime.config.publishers.access_token,
-      'content-type': 'application/json'
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
-  if (Buffer.isBuffer(result)) result = JSON.parse(result)
-
-  return result
-}
-
 const notification = async (debug, runtime, owner, publisher, payload) => {
-  let message = await publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
+  let message = await runtime.common.publish(debug, runtime, 'post', owner, publisher, '/notifications', payload)
 
   if (!message) return
 
@@ -123,7 +100,7 @@ const sanity = async (debug, runtime) => {
 
     page = 0
     while (true) {
-      entries = await publish(debug, runtime, 'get', null, null, '/owners/?page=' + page + '&per_page=1024')
+      entries = await runtime.common.publish(debug, runtime, 'get', null, null, '/owners/?page=' + page + '&per_page=1024')
       page++
       if (entries.length === 0) break
 
@@ -780,9 +757,6 @@ exports.initialize = async (debug, runtime) => {
     setTimeout(() => { sanity(debug, runtime) }, 5 * 60 * 1000)
   }
 }
-
-exports.create = create
-exports.publish = publish
 
 exports.workers = {
 /* sent by GET /v1/reports/publisher/{publisher}/contributions

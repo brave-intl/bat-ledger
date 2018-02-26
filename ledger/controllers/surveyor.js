@@ -1,7 +1,6 @@
 const Joi = require('joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
-const bson = require('bson')
 const underscore = require('underscore')
 
 const utils = require('bat-utils')
@@ -545,28 +544,6 @@ module.exports.initialize = async (debug, runtime) => {
   const configurations = process.env.SURVEYORS || 'contribution,voting'
   const surveyors = runtime.database.get('surveyors', debug)
   let entry, i, service, services, surveyor, surveyorType
-
-  runtime.database.checkIndices(debug, [
-    {
-      category: surveyors,
-      name: 'surveyors',
-      property: 'surveyorId',
-      empty: { surveyorId: '', surveyorType: '', active: false, available: false, payload: {}, timestamp: bson.Timestamp.ZERO },
-      unique: [ { surveyorId: 1 } ],
-      others: [ { surveyorType: 1 }, { active: 1 }, { available: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('submissions', debug),
-      name: 'submissions',
-      property: 'submissionId',
-      empty: { submissionId: '', surveyorId: '', timestamp: bson.Timestamp.ZERO },
-      unique: [ { submissionId: 1 } ],
-      others: [ { surveyorId: 1 }, { timestamp: 1 } ]
-    }
-  ])
-
-  await runtime.queue.create('surveyor-report')
-  await runtime.queue.create('voting-report')
 
   services = configurations.split(',')
   for (i = services.length - 1; i >= 0; i--) {

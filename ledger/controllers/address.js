@@ -124,8 +124,4 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/address/{altcurrency}/{address}/balance').config(v2.balance)
 ]
 
-module.exports.initialize = async (debug, runtime) => {
-  await runtime.queue.create('wallet-report')
-}
-
 /* END: EXPERIMENTAL/DEPRECATED */
