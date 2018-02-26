@@ -17,7 +17,7 @@ exports.initialize = async (debug, runtime) => {
         seqno: ''
       },
       unique: [ { key: 1, time: 1 } ],
-      others: [ { source: 1, seqno: 1 } ]
+      others: [ { source: 1 }, { seqno: 1 } ]
     }
   ])
 }

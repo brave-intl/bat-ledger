@@ -282,6 +282,8 @@ const sources = {
   }
 }
 
+let updateP
+
 const updateTSDB = async (debug, runtime) => {
 /*
   const series = runtime.database.get('series', debug)
@@ -314,6 +316,9 @@ const updateTSDB = async (debug, runtime) => {
     refresh(key, entry)
   }
 
+  if (updateP) return debug('updateTSDB', { message: 'already updating' })
+
+  updateP = true
   for (let key in sources) {
     const source = sources[key]
 /*
@@ -339,6 +344,7 @@ const updateTSDB = async (debug, runtime) => {
 
     if (source.poll) await source.poll(debug, runtime, key, update)
   }
+  updateP = false
 }
 
 module.exports.routes = [
