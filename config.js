@@ -160,3 +160,10 @@ if (process.env.GITHUB_ORG) {
   , isSecure            : process.env.GITHUB_FORCE_HTTPS        || false
   }
 }
+
+if (process.env.DYNO) {
+  module.exports.prometheus =
+    { label              : process.env.SERVICE + '.' + process.env.DYNO
+    , redis              : process.env.REDIS2_URL               || false
+    }
+}

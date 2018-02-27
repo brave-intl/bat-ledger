@@ -14,12 +14,12 @@ const Queue = function (config, runtime) {
 
   if (!config.queue) return
 
-  if (config.queue.rsmq) config.queue = config.queue.rsmq
-  if (typeof config.queue === 'string') {
-    if (config.queue.indexOf('redis://') === -1) config.queue = 'redis://' + config.queue
-    config.queue = { client: redis.createClient(config.queue) }
+  this.config = config.queue.rsmq || config.queue
+  if (typeof this.config === 'string') {
+    if (this.config.indexOf('redis://') === -1) this.config = 'redis://' + this.config
+    this.config = { client: redis.createClient(this.config) }
   }
-  this.rsmq = new Rsmq(config.queue)
+  this.rsmq = new Rsmq(this.config)
   this.runtime = runtime
 
   this.rsmq.on('connect', () => { debug('redis connect') })
