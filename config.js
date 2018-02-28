@@ -135,17 +135,12 @@ const helper = () => {
 }
 
 const mongo2 = () => {
-  if (process.env.MONGODB2_URI) {
-    module.exports.database.mongo2 = process.env.MONGODB2_URI
-    const parts = url.parse(module.exports.database.mongo2, true)
+  let uri = process.env.MONGODB2_URI
 
-    if (!parts.query) parts.query = {}
-    if (!parts.query.readOnly) {
-      parts.query.readOnly = true
-      parts.query.readPreference = 'secondary'
-      module.exports.database.mongo2 = url.format(parts)
-    }
-  }
+  if (!uri) return
+
+  uri += ((uri.indexOf('?') === -1) ? '?' : '&') + 'readOnly=true&readPreference=secondary'
+  module.exports.database.mongo2 = uri
 }
 
 const uphold = () => {

@@ -17,18 +17,16 @@ const SQL = function (config, runtime) {
     throw err
   })
   this.pool.connect((err, client, done) => {
-    let x, parts
+    let parts
 
     if (err) {
       debug('sql', { database: this.config, message: err.message })
       throw err
     }
 
-    parts = url.parse(this.config.connectionString)
-    x = parts.auth.indexOf(':')
-    if (x !== -1) parts.auth = parts.auth.substr(0, x + 1) + '...'
+    parts = url.parse(this.config.connectionString, true)
 
-    debug('sql', { database: url.format(parts) })
+    debug('sql', { host: parts.host, pathname: parts.pathname, properties: parts.query })
   })
 
   pg.Client.prototype.query = function (config, values, callback) {

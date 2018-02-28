@@ -1,3 +1,5 @@
+const bson = require('bson')
+
 exports.initialize = async (debug, runtime) => {
   if (runtime.config.database.mongo2) {
     runtime.database2 = new runtime.database.constructor({ database: runtime.config.database.mongo2 }, runtime)
@@ -5,19 +7,19 @@ exports.initialize = async (debug, runtime) => {
 
   runtime.database.checkIndices(debug, [
     {
-      category: runtime.database.get('series', debug),
-      name: 'series',
-      property: 'key_1_time',
+      category: runtime.database.get('tseries', debug),
+      name: 'tseries',
+      property: 'series_1_timestamp',
       empty: {
-        key: '',
-        time: '',
+        series: '',
+        timestamp: '',
 
-        count: 0,
+        count: bson.Decimal128.POSITIVE_ZERO,
         source: '',
         seqno: ''
       },
-      unique: [ { key: 1, time: 1 } ],
-      others: [ { source: 1 }, { seqno: 1 } ]
+      unique: [ { series: 1, timestamp: 1 }, { series: 1, seqno: 1 } ],
+      others: [ { series: 1 }, { timestamp: 1 }, { count: 1 }, { source: 1 }, { seqno: 1 } ]
     }
   ])
 }
