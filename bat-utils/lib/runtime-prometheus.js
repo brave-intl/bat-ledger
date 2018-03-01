@@ -104,21 +104,17 @@ Prometheus.prototype.maintenance = function () {
   const entries = exposition.parse(client.register.metrics())
   let updates
 
-  const merge = (source, destination) => {
-    if (typeof source.forEach !== 'function') {
-      console.log('source: ' + JSON.stringify(source, null, 2))
-      console.log('destination: ' + JSON.stringify(destination, null, 2))
-      return
-    }
+  const merge = (source) => {
+    if (typeof source.forEach !== 'function') return console.log('source: ' + JSON.stringify(source, null, 2))
     source.forEach((update) => {
       const name = update.name
       let entry
 
       if (!(update.metrics && update.metrics.length)) return
 
-      entry = destination[name]
+      entry = self.global[name]
       if (!entry) {
-        destination[name] = update
+        self.global[name] = update
         return
       }
 
@@ -162,7 +158,7 @@ Prometheus.prototype.maintenance = function () {
   })
   if (!updates.length) return
 
-  merge(updates, self.global)
+  merge(updates)
 
   if (!self.publisher) {
     self.publisher = (self.runtime.cache && self.runtime.cache.cache) || self.runtime.queue.config.client
@@ -188,10 +184,14 @@ Prometheus.prototype.maintenance = function () {
     if (packet.label === self.label) return
 
     if (packet.msgno === 0) {
-      self.publisher.publish('prometheus', JSON.stringify({ label: self.label, msgno: self.msgno++, updates: self.global }))
+      self.publisher.publish('prometheus', JSON.stringify({
+        label: self.label,
+        msgno: self.msgno++,
+        updates: underscore.values(self.global)
+      }))
     }
 
-    if (packet.updates) merge(packet.updates, packet.label)
+    merge(packet.updates)
   })
 
   self.subscriber.subscribe('prometheus')
