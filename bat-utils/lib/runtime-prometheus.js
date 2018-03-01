@@ -3,7 +3,6 @@
 const SDebug = require('sdebug')
 const client = require('prom-client')
 const debug = new SDebug('prometheus')
-const epimetheus = require('epimetheus')
 const exposition = require('exposition')
 const redis = require('redis')
 const underscore = require('underscore')
@@ -27,19 +26,65 @@ const Prometheus = function (config, runtime) {
 }
 
 Prometheus.prototype.plugin = function () {
-  let self = this
+  const self = this
 
-  let plugin = {
+  const registry = client.register
+
+  const plugin = {
     register: (server, o, done) => {
       server.route({
         method: 'GET',
         path: '/metrics',
-        handler: (req, reply) => {
-          reply(exposition.stringify(underscore.values(self.global))).type('text/plain')
-        }
+        handler: (req, reply) => { reply(exposition.stringify(underscore.values(self.global))).type('text/plain') }
       })
 
-      epimetheus.instrument(server, { url: '/metrics-internal' })
+      server.route({
+        method: 'GET',
+        path: '/metrics-internal',
+        handler: (req, reply) => { reply(client.register.metrics()).type('text/plain') }
+      })
+
+      server.ext('onRequest', (request, reply) => {
+        request.prometheus = { start: process.hrtime() }
+        reply.continue()
+      })
+
+      server.on('response', (response) => {
+        const analysis = response._route._analysis
+        const statusCode = response.response.statusCode
+        let cardinality, diff, duration, method, metric, params, path
+
+        diff = process.hrtime(response.prometheus.start)
+        duration = Math.round((diff[0] * 1e9 + diff[1]) / 1000000)
+
+        method = response.method.toLowerCase()
+        params = underscore.clone(analysis.params)
+        cardinality = params.length ? 'many' : 'one'
+        path = analysis.fingerprint.split('/')
+        for (let i = 0; i < path.length; i++) { if (path[i] === '?') path[i] = '{' + (params.shift() || '?') + '}' }
+        path = path.join('/')
+
+        metric = registry._metrics['http_request_buckets_milliseconds']
+        if (!metric) {
+          metric = new client.Summary({
+            name: 'http_request_duration_milliseconds',
+            help: 'request duration in milliseconds',
+            labelNames: ['method', 'path', 'cardinality', 'status']
+          })
+        }
+        metric.labels(method, path, cardinality, statusCode).observe(duration)
+
+        metric = registry._metrics['http_request_buckets_milliseconds']
+        if (!metric) {
+          metric = new client.Histogram({
+            name: 'http_request_buckets_milliseconds',
+            help: 'request duration buckets for 500 and 2000 milliseconds',
+            labelNames: ['method', 'path', 'cardinality', 'status'],
+            buckets: [ 500, 2000 ]
+          })
+        }
+        metric.labels(method, path, cardinality, statusCode).observe(duration)
+      })
 
       return done()
     }
@@ -54,7 +99,7 @@ Prometheus.prototype.plugin = function () {
 }
 
 Prometheus.prototype.maintenance = function () {
-  let self = this
+  const self = this
 
   const entries = exposition.parse(client.register.metrics())
   let updates
@@ -91,14 +136,23 @@ Prometheus.prototype.maintenance = function () {
     if ((!entry.metrics) || (underscore.isEqual(self.local[name] || {}, entry))) return
 
     self.local[name] = entry
-    entry = underscore.clone(entry)
     entry.metrics.forEach((metric) => {
-      metric.labels = underscore.clone(metric.labels) || {}
-      underscore.extend(metric.labels, { dyno: self.label })
+      const buckets = {}
+
+      if (metric.buckets) {
+        for (let bucket in metric.buckets) {
+          const kvs = bucket.split(',')
+
+          kvs.splice(1, 0, 'dyno="' + self.label + '"')
+          buckets[kvs.join(',')] = metric.buckets[bucket]
+        }
+        metric.buckets = buckets
+      } else {
+        metric.labels = underscore.extend(metric.labels || {}, { dyno: self.label })
+      }
       metrics.push(metric)
     })
     entry.metrics = metrics
-
     updates.push(entry)
   })
   if (!updates.length) return
@@ -132,7 +186,7 @@ Prometheus.prototype.maintenance = function () {
       self.publisher.publish('prometheus', JSON.stringify({ label: self.label, msgno: self.msgno++, updates: self.global }))
     }
 
-    merge(packet.updates, self.global)
+    if (packet.updates) merge(packet.updates, self.global)
   })
 
   self.subscriber.subscribe('prometheus')
