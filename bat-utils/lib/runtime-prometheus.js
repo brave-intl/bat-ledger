@@ -105,6 +105,11 @@ Prometheus.prototype.maintenance = function () {
   let updates
 
   const merge = (source, destination) => {
+    if (typeof source.forEach !== 'function') {
+      console.log('source: ' + JSON.stringify(source, null, 2))
+      console.log('destination: ' + JSON.stringify(destination, null, 2))
+      return
+    }
     source.forEach((update) => {
       const name = update.name
       let entry
@@ -186,7 +191,7 @@ Prometheus.prototype.maintenance = function () {
       self.publisher.publish('prometheus', JSON.stringify({ label: self.label, msgno: self.msgno++, updates: self.global }))
     }
 
-    if (packet.updates) merge(packet.updates, self.global)
+    if (packet.updates) merge(packet.updates, packet.label)
   })
 
   self.subscriber.subscribe('prometheus')
