@@ -241,6 +241,8 @@ const sanity = async (debug, runtime) => {
 
       publisher = await publishers.findOne({ publisher: entry.publisher })
       if (!publisher) {
+        if (!entry.verified) continue
+
         debug('sanity', { message: 'remove', token: id, publisher: entry.publisher })
         await tokens.remove(id)
         continue
