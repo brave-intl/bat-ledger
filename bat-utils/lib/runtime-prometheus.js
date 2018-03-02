@@ -105,7 +105,6 @@ Prometheus.prototype.maintenance = function () {
   let updates
 
   const merge = (source) => {
-    if (typeof source.forEach !== 'function') return console.log('source: ' + JSON.stringify(source, null, 2))
     source.forEach((update) => {
       const name = update.name
       let entry
@@ -119,9 +118,20 @@ Prometheus.prototype.maintenance = function () {
       }
 
       update.metrics.forEach((metric) => {
-        const offset = underscore.findIndex(entry.metrics, (value) => {
-          return underscore.isEqual(metric.labels, value.labels)
-        })
+        let offset, tag
+
+        if (metric.buckets) {
+          tag = underscore.first(underscore.keys(metric.buckets))
+
+          offset = underscore.findIndex(entry.metrics, (value) => {
+            return (underscore.keys(value.buckets || {}).indexOf(tag) !== -1)
+          })
+        } else {
+          offset = underscore.findIndex(entry.metrics, (value) => {
+            return underscore.isEqual(metric.labels, value.labels)
+          })
+        }
+
         if (offset < 0) entry.metrics.push(metric)
         else entry.metrics.splice(offset, 1, metric)
       })
@@ -187,7 +197,7 @@ Prometheus.prototype.maintenance = function () {
       self.publisher.publish('prometheus', JSON.stringify({
         label: self.label,
         msgno: self.msgno++,
-        updates: underscore.values(self.global)
+        updates: underscore.values(self.global || [])
       }))
     }
 
