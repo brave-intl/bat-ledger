@@ -352,6 +352,8 @@ v1.unlinkPublisher = {
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
+      await tokens.remove({ publisher: publisher }, { justOne: false })
+
       reply({})
     }
   },
