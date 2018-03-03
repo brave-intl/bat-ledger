@@ -338,6 +338,7 @@ v1.unlinkPublisher = {
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
+      const tokens = runtime.database.get('tokens', debug)
       let entry, state
 
       entry = await owners.findOne({ owner: owner })
@@ -351,6 +352,8 @@ v1.unlinkPublisher = {
         $unset: { owner: '' }
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
+
+      await tokens.remove({ publisher: publisher }, { justOne: false })
 
       reply({})
     }
