@@ -20,11 +20,19 @@ exports.workers = {
       const publisher = payload.publisher
       const publishers = runtime.database.get('publishersX', debug)
       const tld = tldjs.getPublicSuffix(publisher)
-      let state
+      let entry, previous, props, state
+
+      props = underscore.extend({ tld: tld }, underscore.omit(payload, [ 'publisher' ]))
+
+      entry = await publishers.findOne({ publisher: publisher })
+      if (entry) {
+        previous = underscore.pick(entry, [ 'tld', 'owner', 'verified', 'visible' ])
+        if (underscore.isEqual(previous, props)) return
+      }
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend({ tld: tld }, underscore.omit(payload, [ 'publisher' ]))
+        $set: props
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
     }

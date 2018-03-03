@@ -55,7 +55,7 @@ exports.workers = {
 
           if (entry.message === 'success') {
             await runtime.queue.send(debug, 'publisher-report',
-                                     { publisher: entry.publisher, verified: true, visible: visible })
+                                     { owner: entry.owner, publisher: entry.publisher, verified: true, visible: visible })
           }
         } catch (ex) {
           entry.message = ex.toString()

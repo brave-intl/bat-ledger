@@ -104,23 +104,34 @@ Prometheus.prototype.maintenance = function () {
   const entries = exposition.parse(client.register.metrics())
   let updates
 
-  const merge = (source, destination) => {
+  const merge = (source) => {
     source.forEach((update) => {
       const name = update.name
       let entry
 
       if (!(update.metrics && update.metrics.length)) return
 
-      entry = destination[name]
+      entry = self.global[name]
       if (!entry) {
-        destination[name] = update
+        self.global[name] = update
         return
       }
 
       update.metrics.forEach((metric) => {
-        const offset = underscore.findIndex(entry.metrics, (value) => {
-          return underscore.isEqual(metric.labels, value.labels)
-        })
+        let offset, tag
+
+        if (metric.buckets) {
+          tag = underscore.first(underscore.keys(metric.buckets))
+
+          offset = underscore.findIndex(entry.metrics, (value) => {
+            return (underscore.keys(value.buckets || {}).indexOf(tag) !== -1)
+          })
+        } else {
+          offset = underscore.findIndex(entry.metrics, (value) => {
+            return underscore.isEqual(metric.labels, value.labels)
+          })
+        }
+
         if (offset < 0) entry.metrics.push(metric)
         else entry.metrics.splice(offset, 1, metric)
       })
@@ -157,7 +168,7 @@ Prometheus.prototype.maintenance = function () {
   })
   if (!updates.length) return
 
-  merge(updates, self.global)
+  merge(updates)
 
   if (!self.publisher) {
     self.publisher = (self.runtime.cache && self.runtime.cache.cache) || self.runtime.queue.config.client
@@ -183,10 +194,14 @@ Prometheus.prototype.maintenance = function () {
     if (packet.label === self.label) return
 
     if (packet.msgno === 0) {
-      self.publisher.publish('prometheus', JSON.stringify({ label: self.label, msgno: self.msgno++, updates: self.global }))
+      self.publisher.publish('prometheus', JSON.stringify({
+        label: self.label,
+        msgno: self.msgno++,
+        updates: underscore.values(self.global || {})
+      }))
     }
 
-    if (packet.updates) merge(packet.updates, self.global)
+    merge(packet.updates)
   })
 
   self.subscriber.subscribe('prometheus')
