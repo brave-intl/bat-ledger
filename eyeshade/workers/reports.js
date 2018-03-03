@@ -67,7 +67,8 @@ const notification = async (debug, runtime, owner, publisher, payload) => {
 }
 
 const daily = async (debug, runtime) => {
-  let midnight, now, tomorrow
+  const publishers = runtime.database.get('publishers', debug)
+  let entries, midnight, now, tomorrow
 
   debug('daily', 'running')
 
@@ -78,6 +79,12 @@ const daily = async (debug, runtime) => {
 
   try {
     await runtime.database.purgeSince(debug, runtime, midnight * 1000)
+
+    entries = await publishers.find({})
+    for (let entry of entries) {
+      await runtime.queue.send(debug, 'publisher-report',
+                               underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
+    }
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
