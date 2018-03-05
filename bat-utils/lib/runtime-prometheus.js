@@ -86,6 +86,8 @@ Prometheus.prototype.plugin = function () {
         metric.labels(method, path, cardinality, statusCode).observe(duration)
       })
 
+      self.subscribeP = true
+
       return done()
     }
   }
@@ -103,6 +105,8 @@ Prometheus.prototype.maintenance = function () {
 
   const entries = exposition.parse(client.register.metrics())
   let updates
+
+  if (!self.subscribeP) client.collectDefaultMetrics()
 
   const merge = (source) => {
     source.forEach((update) => {
@@ -182,7 +186,7 @@ Prometheus.prototype.maintenance = function () {
   }))
   if (self.label.indexOf('.worker.') !== -1) return
 
-  if (self.subscriber) return
+  if ((self.subscriber) || (!self.subscribeP)) return
 
   self.subscriber = self.publisher.duplicate().on('subscribe', (channel, count) => {
     debug('subscribe', { channel: channel, count: count })
