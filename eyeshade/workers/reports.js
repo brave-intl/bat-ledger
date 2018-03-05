@@ -238,10 +238,15 @@ const sanity = async (debug, runtime) => {
     for (let entry of entries) {
       const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
       let owner, publisher
-
-      owner = await owners.findOne({ owner: entry.owner })
+      owner = entry.owner && await owners.findOne({ owner: entry.owner })
       if (!owner) {
         debug('sanity', { message: 'remove', token: id, owner: entry.owner })
+        await tokens.remove(id)
+        continue
+      }
+
+      if (!entry.publisher) {
+        debug('sanity', { message: 'remove', token: id, publisher: entry.publisher })
         await tokens.remove(id)
         continue
       }
