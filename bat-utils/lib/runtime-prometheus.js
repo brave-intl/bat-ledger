@@ -175,7 +175,11 @@ Prometheus.prototype.maintenance = function () {
     if (!self.publisher) return
   }
 
-  self.publisher.publish('prometheus', JSON.stringify({ label: self.label, msgno: self.msgno++, updates: updates }))
+  self.publisher.publish('prometheus:' + process.env.SERVICE, JSON.stringify({
+    label: self.label,
+    msgno: self.msgno++,
+    updates: updates
+  }))
   if (self.label.indexOf('.worker.') !== -1) return
 
   if (self.subscriber) return
@@ -194,17 +198,17 @@ Prometheus.prototype.maintenance = function () {
     if (packet.label === self.label) return
 
     if (packet.msgno === 0) {
-      self.publisher.publish('prometheus', JSON.stringify({
+      self.publisher.publish('prometheus:' + process.env.SERVICE, JSON.stringify({
         label: self.label,
         msgno: self.msgno++,
-        updates: underscore.values(self.global || {})
+        updates: underscore.values(self.global || [])
       }))
     }
 
     merge(packet.updates)
   })
 
-  self.subscriber.subscribe('prometheus')
+  self.subscriber.subscribe('prometheus:' + process.env.SERVICE)
 }
 
 Prometheus.prototype.setCounter = async function (name, help, value) {
