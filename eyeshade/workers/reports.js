@@ -82,6 +82,8 @@ const daily = async (debug, runtime) => {
 
     entries = await publishers.find({})
     for (let entry of entries) {
+      if ((!entry.owner) || (!entry.publisher)) continue
+
       await runtime.queue.send(debug, 'publisher-report',
                                underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
     }
