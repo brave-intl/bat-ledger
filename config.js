@@ -118,9 +118,9 @@ const services = {
       }
       module.exports.sql = { postgres: { connectionString: process.env.POSTGRES_URI } }
 
-      if (process.env.PAPERTRAIL_API_TOKEN) module.exports.papertrail = { accessToken: process.env.PAPERTRAIL_API_TOKEN }
       helper()
       mongo2()
+      mongo3()
     }
   }
 }
@@ -143,6 +143,15 @@ const mongo2 = () => {
   module.exports.database.mongo2 = uri
 }
 
+const mongo3 = () => {
+  let uri = process.env.MONGODB3_URI
+
+  if (!uri) return
+
+  uri += ((uri.indexOf('?') === -1) ? '?' : '&') + 'readOnly=true&readPreference=secondary'
+  module.exports.database.mongo3 = uri
+}
+
 const uphold = () => {
   if ((!process.env.UPHOLD_ACCESS_TOKEN) && (!process.env.UPHOLD_CLIENT_ID)) return
   
@@ -161,9 +170,8 @@ if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.SERVI
 process.env.PORT = process.env.PORT  || service.portno
 
 const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('MONGODB_URI', 'MONGODB2_URI', 'POSTGRES_URI',
+new Array('MONGODB_URI', 'MONGODB2_URI', 'MONGODB3_URI', 'POSTGRES_URI',
           'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET',
-          'PAPERTRAIL_API_TOKEN',
           'SLACK_CHANNEL', 'SLACK_ICON_URL', 'SLACK_WEBOOK').forEach((v) => {
   const value = process.env[v]  || process.env[SERVICE + '_' + v]
 

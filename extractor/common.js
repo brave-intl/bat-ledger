@@ -5,6 +5,10 @@ exports.initialize = async (debug, runtime) => {
     runtime.database2 = new runtime.database.constructor({ database: runtime.config.database.mongo2 }, runtime)
   }
 
+  if (runtime.config.database.mongo3) {
+    runtime.database3 = new runtime.database.constructor({ database: runtime.config.database.mongo3 }, runtime)
+  }
+
   runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('tseries', debug),

@@ -7,7 +7,6 @@ const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
-const papertrail = require('papertrail-stream')
 const pluralize = require('pluralize')
 const underscore = require('underscore')
 
@@ -268,41 +267,28 @@ const sources = {
 
   referrals: {
     init: async (debug, runtime, source, seqno) => {
-      const query = { q: 'referral filepath: ' }
-      const entries = []
-      let busyP
+      if (!tsdb._ids.referrals) tsdb._ids.referrals = seqno || ''
+    },
 
-      if (!runtime.config.papertrail) return
+    poll: async (debug, runtime, source) => {
+      const database = runtime.database3 || runtime.database
+      const referrals = database.get('referrals', debug)
+      const query = tsdb._ids.referrals ? { _id: { $gt: tsdb._ids.referrals } } : {}
+      let entries
 
-      if (!runtime.config.papertrail.accessToken) throw new Error('papertrail API token not set')
+      entries = await referrals.find(query)
+      for (let entry of entries) {
+        entry.timestamp = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
+        entry.seqno = entry._id
+      }
 
-      query.focus = new BigNumber(seqno || '904931034465452068').plus(1).toString()
-      tsdb._ids.referrals = query.focus
+      for (let entry of entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
+        tsdb._ids.referrals = entry._id
 
-      papertrail(runtime.config.papertrail.accessToken, query, false).on('data', async (data) => {
-        entries.push(data)
-        if (busyP) return
+        await update(debug, runtime, source, entry.referrer.toLowerCase() + '_referrals', entry)
+      }
 
-        busyP = true
-        while (true) {
-          const entry = entries.shift()
-          let series
-
-          if (!entry) break
-
-          tsdb._ids.referrals = entry.id
-
-          series = entry.message.substr(query.q.length).trim().split('/')[1].toLowerCase() + '_referrals'
-          entry.timestamp = new Date(entry.generated_at).getTime()
-          entry.seqno = entry.id
-          await update(debug, runtime, source, series, entry)
-        }
-        busyP = false
-
-        debug('referrals', { message: 'done', lastId: tsdb._ids.referrals })
-      }).on('error', (err) => {
-        debug('papertrail', { diagnostic: err.toString() })
-      })
+      debug('referrals', { message: 'done', lastId: tsdb._ids.referrals })
     }
   }
 }
