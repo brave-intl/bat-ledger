@@ -99,7 +99,9 @@ v1.query = {
                   { timestamp: { $lte: range.to.getTime().toString() } } ]
         }, { sort: { timestamp: 1 } })
         datapoints = []
-        entries.forEach((entry) => { datapoints.push([ entry.count, parseInt(entry.timestamp, 10) ]) })
+        entries.forEach((entry) => {
+          datapoints.push([ parseInt(entry.count.toString(), 10), parseInt(entry.timestamp, 10) ])
+        })
         if (datapoints.count === 0) continue
 
         // zero or 1 datapoint
