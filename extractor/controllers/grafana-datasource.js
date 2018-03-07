@@ -3,14 +3,11 @@
    https://github.com/grafana/simple-json-datasource
  */
 
-const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const Joi = require('joi')
 const underscore = require('underscore')
 
 const braveHapi = require('bat-utils').extras.hapi
-
-BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 
 const v1 = {}
 
