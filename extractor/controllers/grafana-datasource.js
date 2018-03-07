@@ -88,12 +88,10 @@ v1.query = {
 
       for (let entry of targets) {
         const target = entry.target
-        const series = tsdb.series[target]
         const result = { target: target, datapoints: [] }
         let datapoints, entries, p
-        let min, max
+
         results.push(result)
-        if ((!series) || (series.timestamp < range.from)) continue
 
         entries = await tseries.find({
           $and: [ { series: target },
@@ -102,15 +100,7 @@ v1.query = {
         }, { sort: { timestamp: 1 } })
         datapoints = []
         entries.forEach((entry) => { datapoints.push([ entry.count, parseInt(entry.timestamp, 10) ]) })
-
-        min = underscore.findIndex(series.datapoints, (entry) => { return (entry[1] >= range.from) })
-        if (min === -1) continue
-
-        max = underscore.findLastIndex(series.datapoints, (entry) => { return (entry[1] <= range.to) })
-        if (max === -1) continue
-
-        // all datapoints within time range
-        datapoints = series.datapoints.slice(min, max)
+        if (datapoints.count === 0) continue
 
         // zero or 1 datapoint
         if (datapoints.length < 2) {
@@ -329,11 +319,7 @@ const refresh = (series, timestamp, count) => {
   if (!tsdb.series[series]) tsdb.series[series] = { count: 0, timestamp: 0, datapoints: [] }
   table = tsdb.series[series]
   table.count = (count < 1) ? -count : (table.count + 1)
-  if (table.timestamp === timestamp) underscore.last(table.datapoints)[0] = table.count
-  else {
-    table.timestamp = timestamp
-    table.datapoints.push([ table.count, table.timestamp ])
-  }
+  table.timestamp = timestamp
 
   return table.count
 }
