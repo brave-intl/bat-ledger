@@ -30,6 +30,54 @@ exports.initialize = async (debug, runtime) => {
 
   runtime.database.checkIndices(debug, [
     {
+      category: runtime.database.get('contributions', debug),
+      name: 'contributions',
+      property: 'viewingId',
+      empty: {
+        viewingId: '',
+        paymentId: '',
+        address: '',
+        paymentStamp: 0,
+        surveyorId: '',
+     // v1 only
+     // satoshis: 0,
+
+     // v2 and later
+        altcurrency: '',
+        probi: bson.Decimal128.POSITIVE_ZERO,
+
+        fee: bson.Decimal128.POSITIVE_ZERO,
+        votes: 0,
+        hash: '',
+        timestamp: bson.Timestamp.ZERO
+      },
+      unique: [ { viewingId: 1 } ],
+      others: [ { paymentId: 1 }, { address: 1 }, { paymentStamp: 1 }, { surveyorId: 1 }, { altcurrency: 1 }, { probi: 1 },
+                { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 } ]
+    },
+
+    {
+      category: runtime.database.get('grants', debug),
+      name: 'grants',
+      property: 'grantId',
+      empty: {
+        grantId: '',
+
+        promotionId: '',
+        altcurrency: '',
+        probi: '0',
+
+        paymentId: '',
+
+        timestamp: bson.Timestamp.ZERO
+      },
+      unique: [ { grantId: 1 } ],
+      others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
+                { paymentId: '' },
+                { timestamp: 1 } ]
+    },
+
+    {
       category: runtime.database.get('owners', debug),
       name: 'owners',
       property: 'owner',
@@ -108,6 +156,16 @@ exports.initialize = async (debug, runtime) => {
     },
 
     {
+      category: runtime.database.get('scratchpad', debug),
+      name: 'scratchpad',
+      property: 'owner',
+      empty: {
+        owner: ''
+      },
+      others: [ { owner: 1 } ]
+    },
+
+    {
       category: runtime.database.get('settlements', debug),
       name: 'settlements',
       property: 'settlementId_1_publisher',
@@ -138,6 +196,35 @@ exports.initialize = async (debug, runtime) => {
     },
 
     {
+      category: runtime.database.get('surveyors', debug),
+      name: 'surveyors',
+      property: 'surveyorId',
+      empty: {
+        surveyorId: '',
+        surveyorType: '',
+        votes: 0,
+        counts: 0,
+
+     // v1 only
+     // satoshis: 0,
+
+     // v2 and later
+        altcurrency: '',
+        probi: bson.Decimal128.POSITIVE_ZERO,
+
+        timestamp: bson.Timestamp.ZERO,
+
+     // added during report runs...
+        inputs: bson.Decimal128.POSITIVE_ZERO,
+        fee: bson.Decimal128.POSITIVE_ZERO,
+        quantum: 0
+      },
+      unique: [ { surveyorId: 1 } ],
+      others: [ { surveyorType: 1 }, { votes: 1 }, { counts: 1 }, { altcurrency: 1 }, { probi: 1 }, { timestamp: 1 },
+                { inputs: 1 }, { fee: 1 }, { quantum: 1 } ]
+    },
+
+    {
       category: runtime.database.get('tokens', debug),
       name: 'tokens',
       property: 'verificationId_1_publisher',
@@ -160,9 +247,63 @@ exports.initialize = async (debug, runtime) => {
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { verificationId: 1, publisher: 1 } ],
-      others: [ { token: 1 }, { verified: 1 }, { authority: 1 },
+      others: [ { verificationId: 1 }, { publisher: 1 }, { token: 1 }, { verified: 1 }, { authority: 1 },
                 { owner: 1 }, { visible: 1 }, { method: 1 },
                 { reason: 1 }, { timestamp: 1 } ]
+    },
+
+    {
+      category: runtime.database.get('voting', debug),
+      name: 'voting',
+      property: 'surveyorId_1_publisher_1_cohort',
+      empty: {
+        surveyorId: '',
+        publisher: '',
+        cohort: '',
+        counts: 0,
+        timestamp: bson.Timestamp.ZERO,
+
+     // added by administrator
+        exclude: false,
+        hash: '',
+
+     // added during report runs...
+     // v1 only
+        satoshis: 0,
+
+     // v2 and later
+        altcurrency: '',
+        probi: bson.Decimal128.POSITIVE_ZERO
+      },
+      unique: [ { surveyorId: 1, publisher: 1, cohort: 1 } ],
+      others: [ { counts: 1 }, { timestamp: 1 },
+                { exclude: 1 }, { hash: 1 },
+                { exclude: 1 }, { counts: 1 },
+                { altcurrency: 1, probi: 1 },
+                { altcurrency: 1, exclude: 1, probi: 1 },
+                { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
+                { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+    },
+
+    {
+      category: runtime.database.get('wallets', debug),
+      name: 'wallets',
+      property: 'paymentId',
+      empty: {
+        paymentId: '',
+        address: '',
+        provider: '',
+        balances: {},
+        keychains: {},
+        paymentStamp: 0,
+
+     // v2 and later
+        altcurrency: '',
+
+        timestamp: bson.Timestamp.ZERO
+      },
+      unique: [ { paymentId: 1 } ],
+      others: [ { provider: 1 }, { address: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 } ]
     }
   ])
 
