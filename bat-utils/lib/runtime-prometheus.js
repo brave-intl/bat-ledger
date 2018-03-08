@@ -205,7 +205,7 @@ Prometheus.prototype.maintenance = function () {
       self.publisher.publish('prometheus:' + process.env.SERVICE, JSON.stringify({
         label: self.label,
         msgno: self.msgno++,
-        updates: underscore.values(self.global || [])
+        updates: underscore.values(self.global || {})
       }))
     }
 
