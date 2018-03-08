@@ -158,12 +158,12 @@ Prometheus.prototype.maintenance = function () {
         for (let bucket in metric.buckets) {
           const kvs = bucket.split(',')
 
-          kvs.splice(1, 0, 'dyno="' + self.label + '"')
+          kvs.splice(1, 0, 'instance="' + self.label + '"')
           buckets[kvs.join(',')] = metric.buckets[bucket]
         }
         metric.buckets = buckets
       } else {
-        metric.labels = underscore.extend(metric.labels || {}, { dyno: self.label })
+        metric.labels = underscore.extend(metric.labels || {}, { instance: self.label })
       }
       metrics.push(metric)
     })
