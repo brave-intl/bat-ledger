@@ -154,7 +154,7 @@ const handlers = {
         state.$set.site = underscore.pick(props, [ 'title', 'softTitle', 'description', 'text' ])
         underscore.extend(state.$set.site, { url: site, modified: timestamp(debug, publisher, props.date) })
 
-        props = await metascraper.scrapeHtml(result)
+        props = await metascraper(result)
         underscore.extend(state.$set.site, underscore.pick(props, [ 'title', 'publisher', 'description' ]))
         if (!state.$set.site.modified) state.$set.site.modified = timestamp(debug, publisher, props.date)
 
