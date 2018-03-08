@@ -86,6 +86,8 @@ Prometheus.prototype.plugin = function () {
         metric.labels(method, path, cardinality, statusCode).observe(duration)
       })
 
+      self.subscribeP = true
+
       return done()
     }
   }
@@ -103,6 +105,8 @@ Prometheus.prototype.maintenance = function () {
 
   const entries = exposition.parse(client.register.metrics())
   let updates
+
+  if (!self.subscribeP) client.collectDefaultMetrics()
 
   const merge = (source) => {
     source.forEach((update) => {
@@ -154,12 +158,12 @@ Prometheus.prototype.maintenance = function () {
         for (let bucket in metric.buckets) {
           const kvs = bucket.split(',')
 
-          kvs.splice(1, 0, 'dyno="' + self.label + '"')
+          kvs.splice(1, 0, 'instance="' + self.label + '"')
           buckets[kvs.join(',')] = metric.buckets[bucket]
         }
         metric.buckets = buckets
       } else {
-        metric.labels = underscore.extend(metric.labels || {}, { dyno: self.label })
+        metric.labels = underscore.extend(metric.labels || {}, { instance: self.label })
       }
       metrics.push(metric)
     })
@@ -175,10 +179,14 @@ Prometheus.prototype.maintenance = function () {
     if (!self.publisher) return
   }
 
-  self.publisher.publish('prometheus', JSON.stringify({ label: self.label, msgno: self.msgno++, updates: updates }))
+  self.publisher.publish('prometheus:' + process.env.SERVICE, JSON.stringify({
+    label: self.label,
+    msgno: self.msgno++,
+    updates: updates
+  }))
   if (self.label.indexOf('.worker.') !== -1) return
 
-  if (self.subscriber) return
+  if ((self.subscriber) || (!self.subscribeP)) return
 
   self.subscriber = self.publisher.duplicate().on('subscribe', (channel, count) => {
     debug('subscribe', { channel: channel, count: count })
@@ -194,17 +202,17 @@ Prometheus.prototype.maintenance = function () {
     if (packet.label === self.label) return
 
     if (packet.msgno === 0) {
-      self.publisher.publish('prometheus', JSON.stringify({
+      self.publisher.publish('prometheus:' + process.env.SERVICE, JSON.stringify({
         label: self.label,
         msgno: self.msgno++,
-        updates: underscore.values(self.global || {})
+        updates: underscore.values(self.global || [])
       }))
     }
 
     merge(packet.updates)
   })
 
-  self.subscriber.subscribe('prometheus')
+  self.subscriber.subscribe('prometheus:' + process.env.SERVICE)
 }
 
 Prometheus.prototype.setCounter = async function (name, help, value) {

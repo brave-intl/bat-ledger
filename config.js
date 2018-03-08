@@ -235,6 +235,6 @@ if (process.env.GITHUB_ORG) {
 if (process.env.DYNO) {
   module.exports.prometheus =
     { label              : process.env.SERVICE + '.' + process.env.DYNO
-    , redis              : process.env.REDIS2_URL               || false
+    , redis              : process.env.REDIS2_URL               || process.env.REDIS_URL               ||  false
     }
 }
