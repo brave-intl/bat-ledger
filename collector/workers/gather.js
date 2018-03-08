@@ -137,7 +137,7 @@ const handlers = {
     const sites = [ 'https://' + publisher, 'https://www.' + publisher, 'http://' + publisher, 'http://www.' + publisher ]
     const database = runtime.database
     const pseries = database.get('pseries', debug)
-    let result, state
+    let html, state
 
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -148,13 +148,13 @@ const handlers = {
       let props
 
       try {
-        result = await braveHapi.wreck.get(site, { redirects: 3, rejectUnauthorized: true, timeout: (5 * 1000) })
+        html = await braveHapi.wreck.get(site, { redirects: 3, rejectUnauthorized: true, timeout: (5 * 1000) })
 
-        props = unfluff(result)
+        props = unfluff(html)
         state.$set.site = underscore.pick(props, [ 'title', 'softTitle', 'description', 'text' ])
         underscore.extend(state.$set.site, { url: site, modified: timestamp(debug, publisher, props.date) })
 
-        props = await metascraper(result)
+        props = await metascraper({ url: site, html: html })
         underscore.extend(state.$set.site, underscore.pick(props, [ 'title', 'publisher', 'description' ]))
         if (!state.$set.site.modified) state.$set.site.modified = timestamp(debug, publisher, props.date)
 
