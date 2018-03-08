@@ -56,6 +56,9 @@ v1.query = {
       const interval = payload.interval
       const points = payload.maxDataPoints
       const range = payload.range
+      const start = range.from.getTime()
+      const gte = start.toString()
+      const lte = range.to.getTime().toString()
       const targets = payload.targets
       const tseries = runtime.database.get('tseries', debug)
       const results = []
@@ -82,9 +85,7 @@ v1.query = {
         results.push(result)
 
         entries = await tseries.find({
-          $and: [ { series: target },
-                  { timestamp: { $gte: range.from.getTime().toString() } },
-                  { timestamp: { $lte: range.to.getTime().toString() } } ]
+          $and: [ { series: target }, { timestamp: { $gte: gte } }, { timestamp: { $lte: lte } } ]
         }, { sort: { timestamp: 1 } })
         datapoints = []
         entries.forEach((entry) => {
@@ -123,6 +124,12 @@ v1.query = {
         })
 
         result.datapoints = result.datapoints.concat(datapoints, [ p ])
+      }
+
+      for (let result of results) {
+        let first = underscore.first(await tseries.find({ series: result.target }, { sort: { $natural: 1 }, limit: 1 }))
+
+        if ((first) && (parseInt(first.timestamp, 10) > start)) { result.datapoints.splice(0, 0, [ 0, start ]) }
       }
 
       reply(results)
