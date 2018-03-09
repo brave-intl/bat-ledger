@@ -59,14 +59,18 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   let info, message, method, payload, props, restrictedP, result, state, visible, visibleP
 
   const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
+    let result
+
     try {
-      return runtime.common.publish(debug, runtime, method, owner, publisher, endpoint, payload)
+      result = await runtime.common.publish(debug, runtime, method, owner, publisher, endpoint, payload)
     } catch (ex) {
       debug('publish', { method: method, owner: owner, publisher: publisher, endpoint: endpoint, reason: ex.toString() })
     }
+
+    return result
   }
 
-  result = await restricted.findOne({ publisher: entry.publisher })
+  result = verified && (await restricted.findOne({ publisher: entry.publisher }))
   if (result) {
     restrictedP = true
     verified = false
