@@ -112,7 +112,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
   if (entry.info) return
 
-  result = await publish(debug, runtime, 'get', entry.owner, entry.publisher)
+  result = (await publish(debug, runtime, 'get', entry.owner, entry.publisher)) || {}
   if (result.id !== entry.verificationId) return
 
   visible = result.show_verification_status
