@@ -156,6 +156,15 @@ exports.initialize = async (debug, runtime) => {
     },
 
     {
+      category: runtime.database.get('restricted', debug),
+      name: 'restricted',
+      property: 'publisher',
+      empty: { publisher: '', tags: [], timestamp: bson.Timestamp.ZERO },
+      unique: [ { publisher: 1 } ],
+      others: [ { timestamp: 1 } ]
+    },
+
+    {
       category: runtime.database.get('scratchpad', debug),
       name: 'scratchpad',
       property: 'owner',
