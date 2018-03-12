@@ -1150,7 +1150,7 @@ module.exports.initialize = async (debug, runtime) => {
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { verificationId: 1, publisher: 1 } ],
-      others: [ { token: 1 }, { verified: 1 }, { authority: 1 },
+      others: [ { verificationId: 1 }, { publisher: 1 }, { token: 1 }, { verified: 1 }, { authority: 1 },
                 { owner: 1 }, { visible: 1 }, { method: 1 },
                 { reason: 1 }, { timestamp: 1 } ]
     },

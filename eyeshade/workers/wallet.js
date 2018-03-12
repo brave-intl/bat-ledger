@@ -6,6 +6,7 @@ var exports = {}
 exports.initialize = async (debug, runtime) => {
   const voting = runtime.database.get('voting', debug)
   let indices
+
   try { indices = await voting.indexes() } catch (ex) { indices = [] }
   if (underscore.keys(indices).indexOf('surveyorId_1_publisher_1') !== -1) {
     await voting.dropIndex([ 'surveyorId', 'publisher' ])
@@ -84,10 +85,10 @@ exports.initialize = async (debug, runtime) => {
       },
       unique: [ { viewingId: 1 } ],
       others: [ { paymentId: 1 }, { address: 1 }, { paymentStamp: 1 }, { surveyorId: 1 }, { altcurrency: 1 }, { probi: 1 },
-                { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 } ]
+                { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 } ]
     },
     {
-      category: runtime.database.get('voting', debug),
+      category: voting,
       name: 'voting',
       property: 'surveyorId_1_publisher_1_cohort',
       empty: {
@@ -112,7 +113,11 @@ exports.initialize = async (debug, runtime) => {
       unique: [ { surveyorId: 1, publisher: 1, cohort: 1 } ],
       others: [ { counts: 1 }, { timestamp: 1 },
                 { exclude: 1 }, { hash: 1 },
-                { altcurrency: 1, probi: 1 } ]
+                { exclude: 1 }, { counts: 1 },
+                { altcurrency: 1, probi: 1 },
+                { altcurrency: 1, exclude: 1, probi: 1 },
+                { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
+                { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
     },
     {
       category: runtime.database.get('grants', debug),
