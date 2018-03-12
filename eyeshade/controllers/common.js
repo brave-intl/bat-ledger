@@ -182,6 +182,8 @@ module.exports.getToken = async (request, reply, runtime, owner, publisher, back
   info = { publisher: publisher }
   data = {}
   for (let entry of entries) {
+    if (!entry.token) continue
+
     info.verificationId = entry.verificationId
 
     for (j = 0; j < rrset.length; j++) {
