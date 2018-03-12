@@ -846,6 +846,8 @@ const getToken = async (request, reply, runtime, owner, publisher, backgroundP) 
   info = { publisher: publisher }
   data = {}
   for (let entry of entries) {
+    if (!entry.token) continue
+
     info.verificationId = entry.verificationId
 
     for (j = 0; j < rrset.length; j++) {
@@ -940,12 +942,21 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   const debug = braveHapi.debug(module, request)
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
+  const restricted = runtime.database.get('restricted', debug)
   const tokens = runtime.database.get('tokens', debug)
-  let info, message, method, payload, props, result, state, visible, visibleP
+  let info, message, method, payload, props, restrictedP, result, state, visible, visibleP
+
+  result = verified && (await restricted.findOne({ publisher: entry.publisher }))
+  if (result) {
+    restrictedP = true
+    verified = false
+    reason = 'restricted'
+  }
 
   message = underscore.extend(underscore.clone(indices), { verified: verified, reason: reason })
   debug('verified', message)
-  if (/* (!backgroundP) || */ (verified)) {
+  if ((verified) || (restrictedP)) {
+    if (result) message.tags = result.tags
     runtime.notify(debug, {
       channel: '#publishers-bot',
       text: (verified ? '' : 'not ') + 'verified: ' + JSON.stringify(message)
@@ -961,6 +972,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
     $set: { verified: entry.verified, reason: reason.substr(0, 64) }
   }
   await tokens.update(indices, state, { upsert: true })
+  if (restrictedP) return
 
   reason = reason || (verified ? 'ok' : 'unknown')
   payload = underscore.extend(underscore.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
@@ -1097,6 +1109,14 @@ module.exports.initialize = async (debug, runtime) => {
                 { authorizerEmail: 1 }, { authorizerName: 1 },
                 { altcurrency: 1 },
                 { timestamp: 1 } ]
+    },
+    {
+      category: runtime.database.get('restricted', debug),
+      name: 'restricted',
+      property: 'publisher',
+      empty: { publisher: '', tags: [], timestamp: bson.Timestamp.ZERO },
+      unique: [ { publisher: 1 } ],
+      others: [ { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('settlements', debug),
