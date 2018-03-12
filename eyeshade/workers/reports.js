@@ -217,6 +217,13 @@ const sanity = async (debug, runtime) => {
     for (let entry of entries) {
       const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
       let owner, publisher
+
+      if (!entry.token) {
+        debug('sanity', { message: 'remove', token: id })
+        await tokens.remove(id)
+        continue
+      }
+
       owner = entry.owner && await owners.findOne({ owner: entry.owner })
       if (!owner) {
         debug('sanity', { message: 'remove', token: id, owner: entry.owner })
@@ -766,6 +773,18 @@ var exports = {}
 
 exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
+
+  runtime.database.checkIndices(debug, [
+    {
+      category: runtime.database.get('scratchpad', debug),
+      name: 'scratchpad',
+      property: 'owner',
+      empty: {
+        owner: ''
+      },
+      others: [ { owner: 1 } ]
+    }
+  ])
 
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
