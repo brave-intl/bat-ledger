@@ -154,7 +154,7 @@ v1.query = {
         refId: Joi.string(),
         target: Joi.string()
       }).unknown(true)).required(),
-      format: Joi.string().valid('json').required(),
+      format: Joi.string().valid('json').optional().default('json')(),
       maxDataPoints: Joi.number().integer().positive().required()
     }).unknown(true).required()
   },
