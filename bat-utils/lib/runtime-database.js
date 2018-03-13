@@ -126,26 +126,24 @@ Database.prototype.get = function (collection, debug) {
 }
 
 Database.prototype.checkIndices = async function (debug, entries) {
+  const form = (index) => {
+    let result = ''
+
+    underscore.keys(index).forEach((key) => { result += '_' + key + '_' + index[key] })
+    return result.substr(1)
+  }
+
+  const gather = (list) => {
+    const result = []
+
+    if (list) list.forEach((index) => { result.push(form(index)) })
+
+    return result
+  }
+
   entries.forEach(async (entry) => {
     const category = entry.category
     let doneP, indices, status
-
-    const form = (index) => {
-      let result = ''
-
-      underscore.keys(index).forEach((key) => { result += '_' + key + '_' + index[key] })
-      return result.substr(1)
-    }
-
-    const gather = (list) => {
-      const result = []
-
-      if (!list) return result
-
-      list.forEach((index) => { result.push(form(index)) })
-
-      return result
-    }
 
     try { indices = underscore.keys(await category.indexes() || {}) } catch (ex) { indices = [] }
     if (indices.indexOf(entry.property + '_1') === -1) status = 'being created'
