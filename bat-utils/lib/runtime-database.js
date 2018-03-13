@@ -184,8 +184,6 @@ Database.prototype.checkIndices = async function (debug, entries) {
       debug('unable to create ' + entry.name + ' ' + entry.property + ' index', ex)
     }
   })
-  // return entries for testing
-  return entries
 }
 
 module.exports = Database
