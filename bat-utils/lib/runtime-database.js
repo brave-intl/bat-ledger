@@ -125,14 +125,16 @@ Database.prototype.get = function (collection, debug) {
   return result
 }
 
-Database.prototype.checkIndices = async function (debug, entries) {
-  const form = (index) => {
-    let result = ''
+// TODO: annotate this function and give it a more descriptive name
+Database.prototype.form = (index) => {
+  let result = ''
+  underscore.keys(index).forEach((key) => { result += '_' + key + '_' + index[key] })
+  return result.substr(1)
+}
 
-    underscore.keys(index).forEach((key) => { result += '_' + key + '_' + index[key] })
-    return result.substr(1)
-  }
-
+// TODO: annotate this function and give it a more descriptive name
+Database.prototype.gather = (entry) => {
+  const form = this.form
   const gather = (list) => {
     const result = []
 
@@ -140,6 +142,12 @@ Database.prototype.checkIndices = async function (debug, entries) {
 
     return result
   }
+  return gather(entry.unique).concat(gather(entry.others), gather(entry.raw))
+}
+
+Database.prototype.checkIndices = async function (debug, entries) {
+  const gather = this.gather
+  const form = this.form
 
   entries.forEach(async (entry) => {
     const category = entry.category
@@ -149,7 +157,7 @@ Database.prototype.checkIndices = async function (debug, entries) {
     if (indices.indexOf(entry.property + '_1') === -1) status = 'being created'
     else {
       doneP = true
-      gather(entry.unique).concat(gather(entry.others), gather(entry.raw)).forEach((index) => {
+      gather(entry).forEach((index) => {
         if (indices.indexOf(index) === -1) doneP = false
       })
       status = doneP ? 'already created' : 'being updated'
@@ -176,6 +184,8 @@ Database.prototype.checkIndices = async function (debug, entries) {
       debug('unable to create ' + entry.name + ' ' + entry.property + ' index', ex)
     }
   })
+  // return entries for testing
+  return entries
 }
 
 module.exports = Database
