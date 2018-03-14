@@ -46,7 +46,7 @@ test('bat-utils : database.gather', async t => {
               { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
   }
 
-  t.is(JSON.stringify(db.gather(entry)), JSON.stringify([
+  t.deepEqual(db.gather(entry), [
     'surveyorId_1_publisher_1_cohort_1',
     'counts_1',
     'timestamp_1',
@@ -57,7 +57,7 @@ test('bat-utils : database.gather', async t => {
     'altcurrency_1_exclude_1_probi_1',
     'owner_1_altcurrency_1_exclude_1_probi_1',
     'publisher_1_altcurrency_1_exclude_1_probi_1'
-  ]))
+  ])
 })
 
 test('bat-utils : ipaddr', async t => {
