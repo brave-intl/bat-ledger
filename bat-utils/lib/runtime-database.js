@@ -128,20 +128,21 @@ Database.prototype.get = function (collection, debug) {
 // TODO: annotate this function and give it a more descriptive name
 Database.prototype.form = (index) => {
   let result = ''
+
   underscore.keys(index).forEach((key) => { result += '_' + key + '_' + index[key] })
   return result.substr(1)
 }
 
 // TODO: annotate this function and give it a more descriptive name
 Database.prototype.gather = (entry) => {
-  const form = this.form
   const gather = (list) => {
     const result = []
 
-    if (list) list.forEach((index) => { result.push(form(index)) })
+    if (list) list.forEach((index) => { result.push(Database.prototype.form(index)) })
 
     return result
   }
+
   return gather(entry.unique).concat(gather(entry.others), gather(entry.raw))
 }
 
