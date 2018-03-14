@@ -716,6 +716,51 @@ v1.putToken = {
     { schema: Joi.object().keys({ token: Joi.string().hex().length(64).required().description('verification token') }) }
 }
 
+/*
+   DELETE /v1/owners/{owner}/verify/{publisher}
+       [ used by publishers ]
+ */
+
+v1.deleteToken = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const owner = request.params.owner
+      const publisher = request.params.publisher
+      const query = { owner: owner, publisher: publisher, verified: false }
+      const debug = braveHapi.debug(module, request)
+      const tokens = runtime.database.get('tokens', debug)
+      let entries
+
+      entries = await tokens.find(query)
+      if (entries.length === 0) return reply(boom.notFound('no such entries: ' + owner + ' ' + publisher))
+
+      tokens.remove(query, { justOne: false })
+      reply({})
+    }
+  },
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Deletes one (or more) verification token(s) for a publisher',
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    params: {
+      owner: braveJoi.string().owner().required().description('the owner identity'),
+      publisher: braveJoi.string().publisher().required().description('the publisher identity')
+    },
+    query: { show_verification_status: Joi.boolean().optional().default(true).description('authorizes display') },
+    payload: { verificationId: Joi.string().guid().required().description('identity of the requestor') }
+  },
+
+  response:
+    { schema: Joi.object().keys({ token: Joi.string().hex().length(64).required().description('verification token') }) }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/owners').whitelist().config(v1.bulk),
   braveHapi.routes.async().post().path('/v2/owners').whitelist().config(v2.bulk),
@@ -727,6 +772,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement),
   braveHapi.routes.async().path('/v1/owners/{owner}/verify/{publisher}').config(v1.getToken),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/verify/{publisher}').whitelist().config(v1.putToken),
+  braveHapi.routes.async().delete().path('/v1/owners/{owner}/verify/{publisher}').whitelist().config(v1.deleteToken),
   braveHapi.routes.async().delete().path('/v1/owners/{owner}/{publisher}').whitelist().config(v1.unlinkPublisher)
 ]
 
