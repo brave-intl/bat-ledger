@@ -32,11 +32,33 @@ test('bat-utils : database.form', async t => {
   t.is(db.form({}), '')
 })
 
-/*
 test('bat-utils : database.gather', async t => {
-  // TODO: add some tests here too
+  const db = Database.prototype
+  const entry = {
+    name: 'voting',
+    property: 'surveyorId_1_publisher_1_cohort',
+    unique: [ { surveyorId: 1, publisher: 1, cohort: 1 } ],
+    others: [ { counts: 1 }, { timestamp: 1 },
+              { exclude: 1 }, { hash: 1 }, { counts: 1 },
+              { altcurrency: 1, probi: 1 },
+              { altcurrency: 1, exclude: 1, probi: 1 },
+              { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
+              { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+  }
+
+  t.is(JSON.stringify(db.gather(entry)), JSON.stringify([
+    'surveyorId_1_publisher_1_cohort_1',
+    'counts_1',
+    'timestamp_1',
+    'exclude_1',
+    'hash_1',
+    'counts_1',
+    'altcurrency_1_probi_1',
+    'altcurrency_1_exclude_1_probi_1',
+    'owner_1_altcurrency_1_exclude_1_probi_1',
+    'publisher_1_altcurrency_1_exclude_1_probi_1'
+  ]))
 })
- */
 
 test('bat-utils : ipaddr', async t => {
   let request = {
