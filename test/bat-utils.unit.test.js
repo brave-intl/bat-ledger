@@ -32,9 +32,11 @@ test('bat-utils : database.form', async t => {
   t.is(db.form({}), '')
 })
 
+/*
 test('bat-utils : database.gather', async t => {
   // TODO: add some tests here too
 })
+ */
 
 test('bat-utils : ipaddr', async t => {
   let request = {
