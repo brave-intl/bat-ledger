@@ -162,30 +162,59 @@ Database.prototype.get = function (collection, debug) {
   return result
 }
 
+// TODO: annotate this function and give it a more descriptive name
+Database.prototype.form = function (index) {
+  let result = ''
+
+  underscore.keys(index).forEach(function (key) { result += '_' + key + '_' + index[key] })
+  return result.substr(1)
+}
+
+// TODO: annotate this function and give it a more descriptive name
+Database.prototype.gather = function (entry) {
+  const gather = (list) => {
+    const result = []
+
+    if (list) list.forEach(function (index) { result.push(this.form(index)) }.bind(this))
+
+    return result
+  }
+
+  return gather(entry.unique).concat(gather(entry.others), gather(entry.raw))
+}
+
 Database.prototype.checkIndices = async function (debug, entries) {
+  const gather = this.gather.bind(this)
+  const form = this.form.bind(this)
+
   entries.forEach(async (entry) => {
     const category = entry.category
-    let doneP, indices
+    let doneP, indices, status
 
-    try { indices = await category.indexes() } catch (ex) { indices = [] }
-    doneP = underscore.keys(indices).indexOf(entry.property + '_1') !== -1
+    try { indices = underscore.keys(await category.indexes() || {}) } catch (ex) { indices = [] }
+    if (indices.indexOf(entry.property + '_1') === -1) status = 'being created'
+    else {
+      doneP = true
+      gather(entry).forEach((index) => { if (indices.indexOf(index) === -1) doneP = false })
+      status = doneP ? 'already created' : 'being updated'
+    }
 
-    debug(entry.name + ' indices ' + (doneP ? 'already' : 'being') + ' created')
+    debug(entry.name + ' indices ' + status)
     if (doneP) return
 
     try {
       if (indices.length === 0) { await category.insert(entry.empty) }
 
       (entry.unique || []).forEach(async (index) => {
-        await category.createIndex(index, { unique: true })
+        if (indices.indexOf(form(index)) === -1) await category.createIndex(index, { unique: true })
       });
 
       (entry.others || []).forEach(async (index) => {
-        await category.createIndex(index, { unique: false })
+        if (indices.indexOf(form(index)) === -1) await category.createIndex(index, { unique: false })
       });
 
       (entry.raw || []).forEach(async (index) => {
-        await category.createIndex(index)
+        if (indices.indexOf(form(index)) === -1) await category.createIndex(index)
       })
     } catch (ex) {
       debug('unable to create ' + entry.name + ' ' + entry.property + ' index', ex)
