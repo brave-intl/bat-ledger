@@ -133,6 +133,7 @@ v1.publishers.contributions = {
       balance: Joi.boolean().optional().default(true).description('show balance due'),
       authorized: Joi.boolean().optional().description('filter on authorization status'),
       verified: Joi.boolean().optional().description('filter on verification status'),
+      cohorts: Joi.array().min(0).items(Joi.string().alphanum()).optional().description('applicable cohorts'),
       amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
       currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
     }
