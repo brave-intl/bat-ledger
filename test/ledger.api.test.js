@@ -86,6 +86,7 @@ test('api : v2 contribution workflow with BAT', async t => {
     .expect(ok)
   t.true(response.body.paymentId === paymentId)
 
+  const token = process.env.TOKEN_LIST;
   response = await request(srv.listener)
     .post('/v2/surveyor/contribution')
     .send({ 'adFree': {
@@ -94,7 +95,7 @@ test('api : v2 contribution workflow with BAT', async t => {
       'altcurrency': 'BAT',
       'votes': 5
     }})
-    .set('Authorization', 'Bearer mytoken123')
+    .set('Authorization', `Bearer ${token}`)
     .expect(ok)
 
   response = await request(srv.listener)
