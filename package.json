@@ -36,7 +36,7 @@
     "start-ledger": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node ledger/server.js",
     "start-ledger-worker": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
     "test": "npm run test-security",
-    "test-api": "ava test/*.api.test.js",
+    "test-api": "SERVICE=ledger ava test/*.api.test.js",
     "test-integration": "ava test/*.integration.test.js",
     "test-security": "nsp check",
     "test-transition": "ava test/*.transition.test.js",
