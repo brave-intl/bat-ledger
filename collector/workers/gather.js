@@ -6,7 +6,7 @@ const pluralize = require('pluralize')
 const underscore = require('underscore')
 const unfluff = require('unfluff')
 
-const braveExtras = require('bat-utils').extras
+const braveExtras = require('../../bat-utils').extras
 const braveHapi = braveExtras.hapi
 
 BigNumber.config({ EXPONENTIAL_AT: 1e+9 })

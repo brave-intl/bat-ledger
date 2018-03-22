@@ -43,7 +43,7 @@ const services = {
       uphold()
     }
   },
-  
+
   eyeshade: {
     portno: 3002,
 
@@ -127,7 +127,7 @@ const services = {
 
 const helper = () => {
   if (!process.env.HELPER_URL) return
-  
+
   module.exports.currency.helper =
   { url               : process.env.HELPER_URL
   , access_token      : process.env.HELPER_TOKEN                || '00000000-0000-4000-0000-000000000000'
@@ -154,7 +154,7 @@ const mongo3 = () => {
 
 const uphold = () => {
   if ((!process.env.UPHOLD_ACCESS_TOKEN) && (!process.env.UPHOLD_CLIENT_ID)) return
-  
+
   module.exports.wallet.uphold =
   { accessToken       : process.env.UPHOLD_ACCESS_TOKEN         || 'none'
   , clientId          : process.env.UPHOLD_CLIENT_ID            || 'none'

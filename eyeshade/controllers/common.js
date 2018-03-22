@@ -6,7 +6,7 @@ const underscore = require('underscore')
 
 const batPublisher = require('bat-publisher')
 const getPublisherProps = batPublisher.getPublisherProps
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 
 const prefix1 = 'brave-ledger-verification'

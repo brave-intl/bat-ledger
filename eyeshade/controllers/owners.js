@@ -8,7 +8,7 @@ const underscore = require('underscore')
 const uuid = require('uuid')
 
 const getPublisherProps = require('bat-publisher').getPublisherProps
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 

@@ -3,7 +3,7 @@ const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const underscore = require('underscore')
 
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 

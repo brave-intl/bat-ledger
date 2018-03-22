@@ -1,7 +1,7 @@
 const json2csv = require('json2csv')
 const underscore = require('underscore')
 
-const utils = require('bat-utils').extras.utils
+const utils = require('../../bat-utils').extras.utils
 const utf8ify = utils.utf8ify
 const timeout = utils.timeout
 

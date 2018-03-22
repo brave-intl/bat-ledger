@@ -7,7 +7,7 @@ const dateformat = require('dateformat')
 const json2csv = require('json2csv')
 const underscore = require('underscore')
 
-const braveExtras = require('bat-utils').extras
+const braveExtras = require('../../bat-utils').extras
 const braveHapi = braveExtras.hapi
 const utf8ify = braveExtras.utils.utf8ify
 

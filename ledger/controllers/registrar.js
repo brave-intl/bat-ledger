@@ -6,7 +6,7 @@ const underscore = require('underscore')
 const uuid = require('uuid')
 const { verify } = require('http-request-signature')
 
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 

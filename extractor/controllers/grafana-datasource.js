@@ -7,7 +7,7 @@ const boom = require('boom')
 const Joi = require('joi')
 const underscore = require('underscore')
 
-const braveHapi = require('bat-utils').extras.hapi
+const braveHapi = require('../../bat-utils').extras.hapi
 
 const v1 = {}
 

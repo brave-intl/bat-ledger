@@ -6,7 +6,7 @@ const Readable = require('stream').Readable
 const underscore = require('underscore')
 const uuid = require('uuid')
 
-const braveHapi = require('bat-utils').extras.hapi
+const braveHapi = require('../../bat-utils').extras.hapi
 
 const v1 = {}
 const v2 = {}

@@ -6,7 +6,7 @@ const moment = require('moment')
 const underscore = require('underscore')
 const uuid = require('uuid')
 
-const braveExtras = require('bat-utils').extras
+const braveExtras = require('../../bat-utils').extras
 const braveHapi = braveExtras.hapi
 const getPublisherProps = require('bat-publisher').getPublisherProps
 const utf8ify = braveExtras.utils.utf8ify

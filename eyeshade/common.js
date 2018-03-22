@@ -1,6 +1,6 @@
 const bson = require('bson')
 
-const braveHapi = require('bat-utils').extras.hapi
+const braveHapi = require('../bat-utils').extras.hapi
 
 const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
   let path, result
