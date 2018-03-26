@@ -104,7 +104,7 @@ Database.prototype.createFile = async function (runtime, prefix, params) {
 
 Database.prototype.file = async function (filename, mode, options) {
   options = underscore.extend(options || {}, { safe: true })
-
+  console.log(filename)
   if (mode !== 'r') return (new GridStore(this.db._db, filename, mode, options).open())
 
   return new Promise((resolve, reject) => {

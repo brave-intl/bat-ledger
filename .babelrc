@@ -1,0 +1,10 @@
+{
+  "presets": [
+    "es2017",
+    "@ava/stage-4",
+    "stage-3"
+  ],
+  "plugins": [
+    "transform-runtime"
+  ]
+}
