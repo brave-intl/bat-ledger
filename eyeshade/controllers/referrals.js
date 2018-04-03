@@ -11,6 +11,7 @@ const v1 = {}
 const schema = Joi.array().min(1).items(Joi.object().keys({
   channelId: braveJoi.string().publisher().required().description('the publisher identity'),
   downloadId: Joi.string().guid().required().description('the download identity'),
+  platform: Joi.string().token().required().description('the download platform'),
   finalized: Joi.date().iso().required().description('timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
 }).unknown(true)).required().description('list of finalized referrals')
 
@@ -133,6 +134,7 @@ module.exports.initialize = async (debug, runtime) => {
 
         transactionId: '',
         publisher: '',
+        platform: '',
         finalized: bson.Timestamp.ZERO,
 
         timestamp: bson.Timestamp.ZERO
