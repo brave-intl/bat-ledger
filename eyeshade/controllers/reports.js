@@ -63,14 +63,17 @@ v3.publishers = {}
 v1.publisher.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
+      const amount = request.query.amount
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
+      const currency = request.query.currency.toUpperCase()
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
+      const threshold = runtime.currency.fiat2alt(currency, amount, altcurrency)
 
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
-                                                   request.params, request.query))
+                                                   { threshold: threshold }, request.params, request.query))
       reply({ reportURL: reportURL })
     }
   },
@@ -88,7 +91,10 @@ v1.publisher.contributions = {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
-      summary: Joi.boolean().optional().default(true).description('summarize report')
+      summary: Joi.boolean().optional().default(true).description('summarize report'),
+      notify: Joi.boolean().optional().default(false).description('notify unverified publisher'),
+      amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
     }
   },
 
@@ -133,6 +139,7 @@ v1.publishers.contributions = {
       balance: Joi.boolean().optional().default(true).description('show balance due'),
       authorized: Joi.boolean().optional().description('filter on authorization status'),
       verified: Joi.boolean().optional().description('filter on verification status'),
+      notify: Joi.boolean().optional().default(false).description('notify unverified publishers'),
       amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
       currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
     }

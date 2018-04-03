@@ -834,6 +834,7 @@ exports.workers = {
       , balance        :  true  | false
       , summary        :  true  | false
       , threshold      : probi
+      , notify         :  true  | false
       , verified       :  true  | false | undefined
       , amount         : '...'    // ignored (converted to threshold probi)
       , currency       : '...'    //   ..
@@ -846,6 +847,7 @@ exports.workers = {
       const authorized = payload.authorized
       const format = payload.format || 'csv'
       const balanceP = payload.balance
+      const notifyP = payload.notify
       const publisher = payload.publisher
       const reportId = payload.reportId
       const summaryP = payload.summary
@@ -911,6 +913,31 @@ exports.workers = {
       info = publisherContributions(runtime, publishers, authority, authorized, verified, format, reportId, summaryP,
                                     threshold, usd)
       data = info.data
+
+      if (notifyP) {
+        // at present, domains only
+        const notifySupportP = (publisher) => { return (publisher.indexOf(':') === -1) }
+
+        for (let offset in data) {
+          const datum = data[offset]
+
+          if ((datum.verified) || (!notifySupportP(datum.publisher))) continue
+
+          try {
+            await publish(debug, runtime, 'post', '', 'notify_unverified', {
+              publisher_type: 'domain',
+              params: { domain: datum.publisher }
+            })
+          } catch (ex) {
+            runtime.captureException(ex)
+            if (ex.data) {
+              delete ex.data.res
+              try { ex.data.payload = ex.data.payload.toString() } catch (ex2) {}
+            }
+            debug('report-publishers-contributions', { reason: ex.toString(), stack: ex.stack })
+          }
+        }
+      }
 
       file = await create(runtime, 'publishers-', payload)
       if (format === 'json') {
