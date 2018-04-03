@@ -1070,7 +1070,7 @@ module.exports.routes = [
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
 
-  runtime.database.checkIndices(debug, [
+  await runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('publishers', debug),
       name: 'publishers',
@@ -1183,6 +1183,28 @@ module.exports.initialize = async (debug, runtime) => {
       others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
     }
   ])
+
+  runtime.database.setSchema('restricted', {
+    // the identifier for a publisher whose verification is restricted
+    publisher: { $type: 'string', $exists: true },
+    // optional human readable tags, e.g. describing why verification is restricted',
+    tags: { $exists: true },
+    $or: [
+      { tags: { $size: 0 } },
+      { $and: [
+        { 'tags.0': { $exists: true } },
+        {
+          tags: {
+            $not: {
+              $elemMatch: {
+                $not: { $type: 'string' }
+              }
+            }
+          }
+        }
+      ]}
+    ]
+  })
 
   await runtime.queue.create('publishers-bulk-create')
   await runtime.queue.create('publisher-report')
