@@ -544,6 +544,7 @@ v1.putWallet = {
       const owner = request.params.owner
       const payload = request.payload
       const provider = payload.provider
+      const preferredCurrency = payload.default_currency
       const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
@@ -557,7 +558,12 @@ v1.putWallet = {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(payload, {
-          visible: visible, verified: true, altcurrency: altcurrency, authorized: true, authority: provider
+          visible: visible,
+          verified: true,
+          altcurrency: altcurrency,
+          authorized: true,
+          authority: provider,
+          preferredCurrency: preferredCurrency || entry.preferredCurrency
         })
       }
       await owners.update({ owner: owner }, state, { upsert: true })
@@ -572,8 +578,8 @@ v1.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'owner ' + ownerString(owner, entry.info) + ' ' +
-          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
-          ': ' + sites.join(' ')
+          (payload.parameters && (payload.parameters.access_token || payload.default_currency) ? 'registered with'
+           : 'unregistered from') + ' ' + provider + ': ' + sites.join(' ')
       })
 
       reply({})
@@ -592,7 +598,9 @@ v1.putWallet = {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     payload: {
       provider: Joi.string().required().description('wallet provider'),
-      parameters: Joi.object().required().description('wallet parameters')
+      parameters: Joi.object().optional().description('wallet parameters'),
+      default_currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
+      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
     }
   },
 
@@ -751,6 +759,7 @@ module.exports.initialize = async (debug, runtime) => {
         provider: '',
         altcurrency: '',
         parameters: {},
+        preferredCurrency: '',
 
         info: {},
 
@@ -759,7 +768,7 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { owner: 1 } ],
       others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 }, { visible: 1 },
                 { authorized: 1 }, { authority: 1 },
-                { provider: 1 }, { altcurrency: 1 },
+                { provider: 1 }, { altcurrency: 1 }, { preferredCurrency: 1 },
                 { timestamp: 1 } ]
     }
   ])

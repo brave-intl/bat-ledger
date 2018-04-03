@@ -97,20 +97,34 @@ v2.settlement = {
     return async (request, reply) => {
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
+      const owners = runtime.database.get('owners', debug)
+      const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const fields = [ 'probi', 'amount', 'fees', 'commission' ]
-      let state
+      let owner, publisher, state
+
+      for (let entry of payload) {
+        if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
+
+        publisher = await publishers.findOne({ publisher: entry.publisher })
+        if (!publisher) return reply(boom.badData('no such entry: ' + entry.publisher))
+
+        if (!publisher.owner) return reply(boom.badData('no owner for publisher: ' + entry.publisher))
+
+        owner = await owners.findOne({ owner: publisher.owner })
+        if (!owner) return reply(boom.badData('no such owner ' + publisher.owner + ' for entry: ' + entry.publisher))
+
+        entry.owner = publisher.owner
+      }
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: {}
       }
       for (let entry of payload) {
-        if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
-
         entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
         fields.forEach((field) => { state.$set[field] = bson.Decimal128.fromString(entry[field].toString()) })
-        underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash' ]))
+        underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'owner' ]))
 
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
@@ -394,6 +408,7 @@ v2.putWallet = {
       const publisher = request.params.publisher
       const payload = request.payload
       const provider = payload.provider
+      const preferredCurrency = payload.default_currency
       const verificationId = request.payload.verificationId
       const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
@@ -406,10 +421,18 @@ v2.putWallet = {
 
       if (!entry.verified) return reply(boom.badData('not verified: ' + publisher + ' using ' + verificationId))
 
+      entry = await publishers.findOne({ publisher: publisher })
+      if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
+
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(underscore.omit(payload, [ 'verificationId', 'show_verification_status' ]), {
-          visible: visible, verified: true, altcurrency: altcurrency, authorized: true, authority: provider
+          visible: visible,
+          verified: true,
+          altcurrency: altcurrency,
+          authorized: true,
+          authority: provider,
+          preferredCurrency: preferredCurrency || entry.preferredCurrency
         })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
@@ -417,7 +440,8 @@ v2.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'publisher ' + 'https://' + publisher + ' ' +
-          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider
+          (payload.parameters && (payload.parameters.access_token || payload.default_currency) ? 'registered with'
+           : 'unregistered from') + ' ' + provider
       })
 
       reply({})
@@ -439,6 +463,7 @@ v2.putWallet = {
       verificationId: Joi.string().guid().required().description('identity of the requestor'),
       provider: Joi.string().required().description('wallet provider'),
       parameters: Joi.object().required().description('wallet parameters'),
+      default_currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
       show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
     }
   },

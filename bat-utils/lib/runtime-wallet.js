@@ -400,7 +400,7 @@ Wallet.providers.uphold = {
     result = {
       provider: info.provider,
       authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
-      preferredCurrency: currency,
+      preferredCurrency: info.preferredCurrency || currency,
       availableCurrencies: currencies
     }
     if (result.authorized) {
