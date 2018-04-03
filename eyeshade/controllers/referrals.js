@@ -68,15 +68,15 @@ v1.createReferrals = {
       const transactionId = request.params.transactionId
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
-      const transactions = runtime.database.get('referrals', debug)
+      const referrals = runtime.database.get('referrals', debug)
       let entries, matches, query
 
-      entries = await transactions.find({ transactionId: transactionId })
+      entries = await referrals.find({ transactionId: transactionId })
       if (entries.length > 0) return reply(boom.badData('existing transaction-identifier: ' + transactionId))
 
       query = { $or: [] }
       for (let referral of payload) query.$or.push({ downloadId: referral.downloadId })
-      entries = await transactions.find(query)
+      entries = await referrals.find(query)
       if (entries.length > 0) {
         matches = []
         entries.forEach((referral) => { matches.push(referral.downloadId) })
@@ -91,7 +91,7 @@ v1.createReferrals = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
           $set: { transactionId: transactionId, publisher: referral.channelId, finalized: new Date(referral.finalized) }
         }
-        await transactions.update({ downloadId: referral.downloadId }, state, { upsert: true })
+        await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
       }
 
       reply({})
