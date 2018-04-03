@@ -349,7 +349,7 @@ v1.unlinkPublisher = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $unset: { owner: '' }
+        $unset: { owner: '', parameters: {} }
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
@@ -466,10 +466,10 @@ v1.getWallet = {
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
-          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'preferredCurrency', 'availableCurrencies' ])
+          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
           rates = result.rates
 
-          underscore.union([ result.wallet.preferredCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
+          underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
             const fxrates = runtime.currency.fxrates
 
             if ((rates[currency]) || (!rates[fxrates.base]) || (!fxrates.rates[currency])) return
@@ -522,7 +522,7 @@ v1.getWallet = {
       wallet: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
-        preferredCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
+        defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
         availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('available currencies')
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
@@ -544,7 +544,7 @@ v1.putWallet = {
       const owner = request.params.owner
       const payload = request.payload
       const provider = payload.provider
-      const preferredCurrency = payload.default_currency
+      const defaultCurrency = payload.defaultCurrency
       const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
@@ -563,7 +563,7 @@ v1.putWallet = {
           altcurrency: altcurrency,
           authorized: true,
           authority: provider,
-          preferredCurrency: preferredCurrency || entry.preferredCurrency
+          defaultCurrency: defaultCurrency || entry.defaultCurrency
         })
       }
       await owners.update({ owner: owner }, state, { upsert: true })
@@ -578,7 +578,7 @@ v1.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'owner ' + ownerString(owner, entry.info) + ' ' +
-          (payload.parameters && (payload.parameters.access_token || payload.default_currency) ? 'registered with'
+          (payload.parameters && (payload.parameters.access_token || payload.defaultCurrency) ? 'registered with'
            : 'unregistered from') + ' ' + provider + ': ' + sites.join(' ')
       })
 
@@ -599,7 +599,7 @@ v1.putWallet = {
     payload: {
       provider: Joi.string().required().description('wallet provider'),
       parameters: Joi.object().optional().description('wallet parameters'),
-      default_currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
+      defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
       show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
     }
   },
@@ -759,7 +759,7 @@ module.exports.initialize = async (debug, runtime) => {
         provider: '',
         altcurrency: '',
         parameters: {},
-        preferredCurrency: '',
+        defaultCurrency: '',
 
         info: {},
 
@@ -768,7 +768,7 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { owner: 1 } ],
       others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 }, { visible: 1 },
                 { authorized: 1 }, { authority: 1 },
-                { provider: 1 }, { altcurrency: 1 }, { preferredCurrency: 1 },
+                { provider: 1 }, { altcurrency: 1 }, { defaultCurrency: 1 },
                 { timestamp: 1 } ]
     }
   ])

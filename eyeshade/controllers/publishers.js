@@ -330,10 +330,10 @@ v2.getWallet = {
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
-          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'preferredCurrency', 'availableCurrencies' ])
+          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
           rates = result.rates
 
-          underscore.union([ result.wallet.preferredCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
+          underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
             const fxrates = runtime.currency.fxrates
 
             if ((rates[currency]) || (!rates[fxrates.base]) || (!fxrates.rates[currency])) return
@@ -386,7 +386,7 @@ v2.getWallet = {
       wallet: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
-        preferredCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
+        defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
         availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('available currencies')
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
@@ -399,7 +399,7 @@ v2.getWallet = {
 
 /*
    PUT /v2/publishers/{publisher}/wallet
-       [ used by publishers ]
+       [ not currently used by publishers ]
  */
 
 v2.putWallet = {
@@ -408,7 +408,7 @@ v2.putWallet = {
       const publisher = request.params.publisher
       const payload = request.payload
       const provider = payload.provider
-      const preferredCurrency = payload.default_currency
+      const defaultCurrency = payload.defaultCurrency
       const verificationId = request.payload.verificationId
       const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
@@ -432,7 +432,7 @@ v2.putWallet = {
           altcurrency: altcurrency,
           authorized: true,
           authority: provider,
-          preferredCurrency: preferredCurrency || entry.preferredCurrency
+          defaultCurrency: defaultCurrency || entry.defaultCurrency
         })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
@@ -440,7 +440,7 @@ v2.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'publisher ' + 'https://' + publisher + ' ' +
-          (payload.parameters && (payload.parameters.access_token || payload.default_currency) ? 'registered with'
+          (payload.parameters && (payload.parameters.access_token || payload.defaultCurrency) ? 'registered with'
            : 'unregistered from') + ' ' + provider
       })
 
@@ -454,7 +454,7 @@ v2.putWallet = {
   },
 
   description: 'Sets information for a verified publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'unused' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -463,7 +463,7 @@ v2.putWallet = {
       verificationId: Joi.string().guid().required().description('identity of the requestor'),
       provider: Joi.string().required().description('wallet provider'),
       parameters: Joi.object().required().description('wallet parameters'),
-      default_currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the preferred currency'),
+      defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
       show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
     }
   },
@@ -1035,7 +1035,6 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   method = result.verification_method
   info = underscore.pick(result, [ 'name', 'email' ])
   if (result.phone_normalized) info.phone = result.phone_normalized
-  if (result.preferredCurrency) info.preferredCurrency = result.preferredCurrency
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
