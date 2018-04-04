@@ -1,6 +1,7 @@
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
+const underscore = require('underscore')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -32,7 +33,7 @@ v1.findReferrals = {
 
       results = []
       entries.forEach((entry) => {
-        results.push({ channelId: entry.publisher, downloadId: entry.downloadId, finalized: entry.finalized })
+        results.push(underscore.extend({ channelId: entry.publisher }, underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
       })
       reply(results)
     }
@@ -89,7 +90,12 @@ v1.createReferrals = {
 
         state = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
-          $set: { transactionId: transactionId, publisher: referral.channelId, finalized: new Date(referral.finalized) }
+          $set: {
+            transactionId: transactionId,
+            publisher: referral.channelId,
+            platform: referral.platform,
+            finalized: new Date(referral.finalized)
+          }
         }
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
       }
