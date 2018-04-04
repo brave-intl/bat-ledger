@@ -1,13 +1,12 @@
 const Joi = require('joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
-const bson = require('bson')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const uuid = require('uuid')
 const { verify } = require('http-request-signature')
 
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
@@ -395,27 +394,6 @@ module.exports.initialize = async (debug, runtime) => {
   let entry, i, payload, registrar, registrarId, registrarType, service, services, state
 
   altcurrency = runtime.config.altcurrency || 'BAT'
-
-  runtime.database.checkIndices(debug, [
-    {
-      category: registrars,
-      name: 'registrars',
-      property: 'registrarId',
-      empty: { registrarId: '', registrarType: '', payload: {}, timestamp: bson.Timestamp.ZERO },
-      unique: [ { registrarId: 1 } ],
-      others: [ { registrarType: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('credentials', debug),
-      name: 'credentials',
-      property: 'registrarId_1_uId',
-      empty: { uId: '', registrarId: 0, timestamp: bson.Timestamp.ZERO },
-      unique: [ { registrarId: 1, uId: 1 } ],
-      others: [ { timestamp: 1 } ]
-    }
-  ])
-
-  await runtime.queue.create('persona-report')
 
   runtime.registrars = []
 

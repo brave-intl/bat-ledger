@@ -1,17 +1,19 @@
-'use strict'
-
-import BigNumber from 'bignumber.js'
-import UpholdSDK from '@uphold/uphold-sdk-javascript'
-import anonize from 'node-anonize2-relic'
-import crypto from 'crypto'
-import request from 'supertest'
-import test from 'ava'
-import tweetnacl from 'tweetnacl'
-import uuid from 'uuid'
-import { sign } from 'http-request-signature'
+'use strict';
+import dotenv from 'dotenv';
+import BigNumber from 'bignumber.js';
+import UpholdSDK from '@uphold/uphold-sdk-javascript';
+import anonize from 'node-anonize2-relic';
+import crypto from 'crypto';
+import request from 'supertest';
+import test from 'ava';
+import tweetnacl from 'tweetnacl';
+import uuid from 'uuid';
+import { sign } from 'http-request-signature';
+dotenv.config();
 
 function ok (res) {
   if (res.status !== 200) {
+    (res.url);
     return new Error(JSON.stringify(res.body, null, 2).replace(/\\n/g, '\n'))
   }
 }
@@ -185,7 +187,6 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   t.false(response.body.hasOwnProperty('satoshis'))
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
-
   response = await request(srv.listener)
     .get('/v2/registrar/viewing')
     .expect(ok)

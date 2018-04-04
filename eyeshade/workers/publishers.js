@@ -1,19 +1,11 @@
 const json2csv = require('json2csv')
 const underscore = require('underscore')
 
-const reports = require('./reports.js')
-const create = reports.create
-const publish = reports.publish
-const utils = require('bat-utils').extras.utils
+const utils = require('../../bat-utils').extras.utils
 const utf8ify = utils.utf8ify
 const timeout = utils.timeout
 
 var exports = {}
-
-exports.initialize = async (debug, runtime) => {
-  await runtime.queue.create('publisher-report')
-  await runtime.queue.create('publishers-bulk-create')
-}
 
 exports.workers = {
 /* sent by POST /v1/publishers
@@ -51,7 +43,7 @@ exports.workers = {
       for (let entry of publishers) {
         visible = entry.show_verification_status
         try {
-          result = await publish(debug, runtime, 'post', '', '', '', {
+          result = await runtime.common.publish(debug, runtime, 'post', '', '', '', {
             publisher: underscore.extend({ brave_publisher_id: entry.publisher, verified: true },
                                          underscore.omit(entry, [ 'publisher' ]))
           })
@@ -71,7 +63,7 @@ exports.workers = {
         await timeout(250)
       }
 
-      file = await create(runtime, 'publishers-', payload)
+      file = await runtime.database.createFile(runtime, 'publishers-', payload)
       if (format === 'json') {
         await file.write(utf8ify(publishers), true)
       } else {

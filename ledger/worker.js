@@ -22,7 +22,7 @@ if (config.newrelic) {
   require(path.join('..', 'bat-utils', 'lib', 'runtime-newrelic'))(config)
 }
 
-const utils = require('bat-utils')
+const utils = require('../bat-utils')
 
 const options = {
   parent: path.join(__dirname, 'workers'),

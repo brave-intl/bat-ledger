@@ -6,7 +6,7 @@ const Readable = require('stream').Readable
 const underscore = require('underscore')
 const uuid = require('uuid')
 
-const braveHapi = require('bat-utils').extras.hapi
+const braveHapi = require('../../bat-utils').extras.hapi
 
 const v1 = {}
 const v2 = {}
@@ -22,7 +22,7 @@ v1.getFile =
     const reportId = request.params.reportId
     let file, reader, writer
 
-    file = await runtime.database.file(reportId, 'r')
+    file = await runtime.database.openFile(reportId)
     if (!file) return reply(boom.notFound('no such report: ' + reportId))
 
     reader = runtime.database.source({ filename: reportId })
@@ -103,7 +103,3 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/reports/file/{reportId}').config(v1.getFile),
   braveHapi.routes.async().path('/v2/reports/publisher/rulesets').config(v2.publisher.rulesets)
 ]
-
-module.exports.initialize = async (debug, runtime) => {
-  await runtime.queue.create('report-publisher-rulesets')
-}

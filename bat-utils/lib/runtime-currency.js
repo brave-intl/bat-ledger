@@ -74,7 +74,7 @@ Currency.prototype.schemas = {
 }
 
 Currency.prototype.altrates = {}
-Currency.prototype.fxrates = {}
+Currency.prototype.fxrates = { rates: {} }
 Currency.prototype.rates = {}
 
 Currency.prototype.init = function () {

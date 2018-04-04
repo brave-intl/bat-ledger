@@ -3,10 +3,6 @@ const underscore = require('underscore')
 
 var exports = {}
 
-exports.initialize = async (debug, runtime) => {
-  await runtime.queue.create('publisher-report')
-}
-
 exports.workers = {
 /* send by eyeshade GET /v1/publishers/{publisher}/verify
 

@@ -5,29 +5,33 @@
 
 const boom = require('boom')
 const Joi = require('joi')
-const pluralize = require('pluralize')
 const underscore = require('underscore')
 
-const braveHapi = require('bat-utils').extras.hapi
-const getPublisherProps = require('bat-publisher').getPublisherProps
+const braveHapi = require('../../bat-utils').extras.hapi
 
 const v1 = {}
 
 const intervalRE = new RegExp('^([1-9][0-9]*)([smhdwMy])$')
 
-const tsdb = { _id: '', series: {} }
-
 v1.search = {
   handler: (runtime) => {
     return async (request, reply) => {
       const debug = braveHapi.debug(module, request)
+      const tseries = runtime.database.get('tseries', debug)
+      let results, x
 
-      await updateTSDB(debug, runtime)
-      reply(underscore.keys(tsdb.series))
+      results = await tseries.distinct('series')
+      x = results.indexOf('')
+      if (x !== -1) results.splice(x, 1)
+      reply(results.sort())
     }
   },
 
-  description: 'Find Used by the find metric options on query tab in panels',
+/* ONLY FOR DEBUGGING
+  cors: { origin: [ '*' ] },
+ */
+
+  description: 'Used by the find metric options on query tab in panels',
   tags: [ 'api', 'grafana' ],
 
   validate:
@@ -52,7 +56,11 @@ v1.query = {
       const interval = payload.interval
       const points = payload.maxDataPoints
       const range = payload.range
+      const start = range.from.getTime()
+      const gte = start.toString()
+      const lte = range.to.getTime().toString()
       const targets = payload.targets
+      const tseries = runtime.database.get('tseries', debug)
       const results = []
       let matches, msecs
 
@@ -69,29 +77,26 @@ v1.query = {
       }[matches[2]] || 1
       msecs *= parseInt(interval, '10') * 1000
 
-      await updateTSDB(debug, runtime)
-      targets.forEach((entry) => {
+      for (let entry of targets) {
         const target = entry.target
-        const series = tsdb.series[target]
         const result = { target: target, datapoints: [] }
-        let datapoints, min, max, p
+        let datapoints, entries, p
 
         results.push(result)
-        if ((!series) || (series.timestamp < range.from)) return
 
-        min = underscore.findIndex(series.datapoints, (entry) => { return (entry[1] >= range.from) })
-        if (min === -1) return
-
-        max = underscore.findLastIndex(series.datapoints, (entry) => { return (entry[1] <= range.to) })
-        if (max === -1) return
-
-        // all datapoints within time range
-        datapoints = series.datapoints.slice(min, max)
+        entries = await tseries.find({
+          $and: [ { series: target }, { timestamp: { $gte: gte } }, { timestamp: { $lte: lte } } ]
+        }, { sort: { timestamp: 1 } })
+        datapoints = []
+        entries.forEach((entry) => {
+          datapoints.push([ parseInt(entry.count.toString(), 10), parseInt(entry.timestamp, 10) ])
+        })
+        if (datapoints.count === 0) continue
 
         // zero or 1 datapoint
         if (datapoints.length < 2) {
           result.datapoints = datapoints
-          return
+          continue
         }
 
         // always start with the first datapoint
@@ -103,13 +108,13 @@ v1.query = {
         })
 
         // no need to truncate
-        if (result.datapoints.length <= points) return
+        if (result.datapoints.length <= points) continue
 
         // always start with the first datapoint
         result.datapoints = [ underscore.first(datapoints) ]
         if (points < 3) {
           if ((points === 2) && (datapoints.length > 1)) result.datapoints.push(underscore.last(datapoints))
-          return
+          continue
         }
 
         // at least 3 points, so put the last datapoint at the end (when we're done)
@@ -119,11 +124,21 @@ v1.query = {
         })
 
         result.datapoints = result.datapoints.concat(datapoints, [ p ])
-      })
+      }
+
+      for (let result of results) {
+        let first = underscore.first(await tseries.find({ series: result.target }, { sort: { $natural: 1 }, limit: 1 }))
+
+        if ((first) && (parseInt(first.timestamp, 10) > start)) { result.datapoints.splice(0, 0, [ 0, start ]) }
+      }
 
       reply(results)
     }
   },
+
+/* ONLY FOR DEBUGGING
+  cors: { origin: [ '*' ] },
+ */
 
   description: 'Returns metrics based on input',
   tags: [ 'api', 'grafana' ],
@@ -139,7 +154,7 @@ v1.query = {
         refId: Joi.string(),
         target: Joi.string()
       }).unknown(true)).required(),
-      format: Joi.string().valid('json').required(),
+      format: Joi.string().valid('json').optional().default('json'),
       maxDataPoints: Joi.number().integer().positive().required()
     }).unknown(true).required()
   },
@@ -174,41 +189,8 @@ v1.annotations = {
     { schema: Joi.array().length(0) }
 }
 
-const id2dt = (id) => {
-  return new Date(parseInt(id.toHexString().substring(0, 8), 16) * 1000).getTime()
-}
-
-const updateTSDB = async (debug, runtime) => {
-  const publishers = runtime.database.get('publishers', debug)
-  let entries
-
-  entries = await publishers.find(tsdb._id ? { _id: { $gt: tsdb._id } } : { }, { _id: true, publisher: true })
-  for (let entry of entries) { entry.timestamp = id2dt(entry._id) }
-
-  for (let entry of entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
-    let key, props, series
-
-    tsdb._id = entry._id
-    props = getPublisherProps(entry.publisher)
-    if (!props) continue
-
-    key = props.publisherType ? (props.providerName + '_' + pluralize(props.providerSuffix)) : 'sites'
-    key += '_verified'
-    if (!tsdb.series[key]) tsdb.series[key] = { count: 0, timestamp: 0, datapoints: [] }
-    series = tsdb.series[key]
-    series.count++
-    if (series.timestamp === entry.timestamp) underscore.last(series.datapoints)[0]++
-    else {
-      series.timestamp = entry.timestamp
-      series.datapoints.push([ series.count, series.timestamp ])
-    }
-  }
-}
-
 module.exports.routes = [
   braveHapi.routes.async().post().path('/search').config(v1.search),
   braveHapi.routes.async().post().path('/query').config(v1.query),
   braveHapi.routes.async().post().path('/annotations').config(v1.annotations)
 ]
-
-module.exports.initialize = updateTSDB

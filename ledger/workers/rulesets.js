@@ -1,23 +1,5 @@
-const dateformat = require('dateformat')
 const json2csv = require('json2csv')
 const underscore = require('underscore')
-
-const datefmt2 = 'yyyymmdd-HHMMss-l'
-
-const create = async (runtime, prefix, params) => {
-  let extension, filename, options
-
-  if (params.format === 'json') {
-    options = { content_type: 'application/json' }
-    extension = '.json'
-  } else {
-    options = { content_type: 'text/csv' }
-    extension = '.csv'
-  }
-  filename = prefix + dateformat(underscore.now(), datefmt2) + extension
-  options.metadata = { 'content-disposition': 'attachment; filename="' + filename + '"' }
-  return runtime.database.file(params.reportId, 'w', options)
-}
 
 var exports = {}
 
@@ -66,7 +48,7 @@ exports.workers = {
         data.push({ publisher: entry.publisher, message: '' })
       }
 
-      file = await create(runtime, 'publisher-rulesets-', payload)
+      file = await runtime.database.createFile(runtime, 'publisher-rulesets-', payload)
       try { await file.write(json2csv({ data: data }), true) } catch (ex) {
         debug('reports', { report: 'patch-publisher-rulesets', reason: ex.toString() })
         file.close()
@@ -107,7 +89,7 @@ exports.workers = {
                                     { timestamp: entry.timestamp.toString() }))
       })
 
-      file = await create(runtime, 'publisher-rulesets-', payload)
+      file = await runtime.database.createFile(runtime, 'publisher-rulesets-', payload)
       if (format === 'json') {
         await file.write(JSON.stringify(data, null, 2), true)
         return runtime.notify(debug, { channel: '#ledger-bot', text: authority + ' report-publisher-rulesets completed' })

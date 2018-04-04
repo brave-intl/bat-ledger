@@ -8,13 +8,13 @@ const underscore = require('underscore')
 const uuid = require('uuid')
 
 const getPublisherProps = require('bat-publisher').getPublisherProps
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
-const verifier = require('./publishers.js')
-const getToken = verifier.getToken
-const putToken = verifier.putToken
+const common = require('./common.js')
+const getToken = common.getToken
+const putToken = common.putToken
 
 const v1 = {}
 const v2 = {}
@@ -36,7 +36,6 @@ const ownerString = (owner, info) => {
 
 /*
    POST /v1/owners
-       [ used by publishers ]
 */
 
 v1.bulk = {
@@ -89,7 +88,6 @@ v1.bulk = {
 
 /*
    POST /v2/owners
-       [ used by publishers ]
 */
 
 v2.bulk = {
@@ -140,7 +138,6 @@ v2.bulk = {
 
 /*
    POST /v3/owners
-       [ used by publishers ]
 */
 
 v3.bulk = {
@@ -235,7 +232,7 @@ v3.bulk = {
   },
 
   description: 'Creates publisher entries in bulk',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     payload: Joi.array().min(1).items(Joi.object().keys({
@@ -327,7 +324,6 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
 
 /*
    DELETE /v1/owners/{owner}/{publisher}
-       [ used by publishers ]
  */
 
 v1.unlinkPublisher = {
@@ -381,7 +377,6 @@ v1.unlinkPublisher = {
 
 /*
    GET /v1/owners/{owner}/wallet
-       [ used by publishers ]
  */
 
 v1.getWallet = {
@@ -535,7 +530,6 @@ v1.getWallet = {
 
 /*
    PUT /v1/owners/{owner}/wallet
-       [ used by publishers ]
  */
 
 v1.putWallet = {
@@ -610,7 +604,6 @@ v1.putWallet = {
 
 /*
    GET /v1/owner/{owner}/statement
-       [ used by publishers ]
  */
 
 v1.getStatement = {
@@ -660,7 +653,6 @@ v1.getStatement = {
 
 /*
    GET /v1/owners/{owner}/verify/{publisher}
-       [ used by publishers ]
  */
 
 v1.getToken = {
@@ -691,7 +683,6 @@ v1.getToken = {
 
 /*
    PUT /v1/owners/{owner}/verify/{publisher}
-       [ used by publishers ]
  */
 
 v1.putToken = {

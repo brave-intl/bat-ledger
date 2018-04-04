@@ -1,5 +1,3 @@
-const crypto = require('crypto')
-const dns = require('dns')
 const url = require('url')
 
 const BigNumber = require('bignumber.js')
@@ -12,15 +10,16 @@ const uuid = require('uuid')
 const batPublisher = require('bat-publisher')
 const getPublisher = batPublisher.getPublisher
 const getPublisherProps = batPublisher.getPublisherProps
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const common = require('./common.js')
+const getToken = common.getToken
+const putToken = common.putToken
+
 const v1 = {}
 const v2 = {}
-
-const prefix1 = 'brave-ledger-verification'
-const prefix2 = prefix1 + '='
 
 let altcurrency
 
@@ -163,7 +162,6 @@ v2.settlement = {
 
 /*
    GET /v2/publishers/{publisher}/balance
-       [ used by publishers ]
  */
 
 v2.getBalance = {
@@ -229,7 +227,7 @@ v2.getBalance = {
   },
 
   description: 'Gets the balance for a verified publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -250,7 +248,6 @@ v2.getBalance = {
 
 /*
    GET /v2/publishers/{publisher}/wallet
-       [ used by publishers ]
  */
 
 v2.getWallet = {
@@ -359,7 +356,7 @@ v2.getWallet = {
   },
 
   description: 'Gets information for a publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -474,7 +471,6 @@ v2.putWallet = {
 
 /*
    GET /v1/publishers/identity?url=...
-       [ used by publishers ]
  */
 
 v1.identity =
@@ -611,7 +607,6 @@ v1.getStatements = {
 
 /*
    GET /v1/publishers/{publisher}/statement
-       [ used by publishers ]
  */
 
 v1.getStatement = {
@@ -641,7 +636,7 @@ v1.getStatement = {
   },
 
   description: 'Generates a statement for a publisher',
-  tags: [ 'api', 'publishers' ],
+  tags: [ 'api', 'publishers', 'deprecated' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -661,7 +656,6 @@ v1.getStatement = {
 
 /*
    GET /v1/publishers/{publisher}/verifications/{verificationId}
-       [ used by publishers ]
  */
 
 v1.putToken = {
@@ -693,25 +687,6 @@ v1.putToken = {
 
   response:
     { schema: Joi.object().keys({ token: Joi.string().hex().length(64).required().description('verification token') }) }
-}
-
-const putToken = async (request, reply, runtime, owner, publisher, verificationId, visible) => {
-  const debug = braveHapi.debug(module, request)
-  const tokens = runtime.database.get('tokens', debug)
-  let entry, state, token
-
-  entry = await tokens.findOne({ verificationId: verificationId, publisher: publisher })
-  if (entry) return reply({ token: entry.token })
-
-  token = crypto.randomBytes(32).toString('hex')
-  state = {
-    $currentDate: { timestamp: { $type: 'timestamp' } },
-    $set: { token: token, visible: visible }
-  }
-  if (owner) state.$set.owner = owner
-  await tokens.update({ verificationId: verificationId, publisher: publisher }, state, { upsert: true })
-
-  reply({ token: token })
 }
 
 /*
@@ -789,6 +764,8 @@ v1.deletePublisher = {
       }
 
       await tokens.remove({ publisher: publisher }, { justOne: false })
+      await runtime.queue.send(debug, 'publisher-report',
+                               { publisher: publisher, verified: false, visible: false })
 
       reply({})
     }
@@ -812,7 +789,6 @@ v1.deletePublisher = {
 
 /*
    GET /v1/publishers/{publisher}/verify
-       [ used by publishers ]
  */
 
 v1.getToken = {
@@ -1093,122 +1069,4 @@ module.exports.routes = [
 
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
-
-  runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('publishers', debug),
-      name: 'publishers',
-      property: 'publisher',
-      empty: {
-        publisher: '',    // domain OR 'oauth#' + provider + ':' + (profile.id || profile._id)
-        authority: '',
-
-     // v1 only
-     // authorized: false,
-     // address: '',
-     // legalFormURL: '',
-
-        verified: false,
-        visible: false,
-
-     // v2 and later
-        owner: '',
-
-        providerName: '',
-        providerSuffix: '',
-        providerValue: '',
-        authorizerEmail: '',
-        authorizerName: '',
-
-        altcurrency: '',
-
-        info: {},
-
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { publisher: 1 } ],
-      others: [ { authority: 1 },
-                { owner: 1 },
-                { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
-                { authorizerEmail: 1 }, { authorizerName: 1 },
-                { altcurrency: 1 },
-                { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('restricted', debug),
-      name: 'restricted',
-      property: 'publisher',
-      empty: { publisher: '', tags: [], timestamp: bson.Timestamp.ZERO },
-      unique: [ { publisher: 1 } ],
-      others: [ { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('settlements', debug),
-      name: 'settlements',
-      property: 'settlementId_1_publisher',
-      empty: {
-        settlementId: '',
-        publisher: '',
-        hash: '',
-        address: '',
-
-     // v1 only
-     // satoshis: 1
-
-     // v2 and later
-        owner: '',
-        altcurrency: '',
-        probi: bson.Decimal128.POSITIVE_ZERO,
-        currency: '',
-        amount: bson.Decimal128.POSITIVE_ZERO,
-        commission: bson.Decimal128.POSITIVE_ZERO,    // conversion + network fees (i.e., for settlement)
-
-        fees: bson.Decimal128.POSITIVE_ZERO,          // network fees (i.e., for contribution)
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
-      others: [ { address: 1 },
-                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-                { fees: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('tokens', debug),
-      name: 'tokens',
-      property: 'verificationId_1_publisher',
-      empty: {
-        verificationId: '',
-        publisher: '',
-        token: '',
-        verified: false,
-        authority: '',
-
-     // v2 and later
-        owner: '',
-        ownerEmail: '',
-        ownerName: '',
-        visible: false,
-        info: {},
-        method: '',
-
-        reason: '',
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { verificationId: 1, publisher: 1 } ],
-      others: [ { verificationId: 1 }, { publisher: 1 }, { token: 1 }, { verified: 1 }, { authority: 1 },
-                { owner: 1 }, { visible: 1 }, { method: 1 },
-                { reason: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('publishersV2', debug),
-      name: 'publishersV2',
-      property: 'publisher',
-      empty: { publisher: '', facet: '', exclude: false, tags: [], timestamp: bson.Timestamp.ZERO },
-      unique: [ { publisher: 1 } ],
-      others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
-    }
-  ])
-
-  await runtime.queue.create('publishers-bulk-create')
-  await runtime.queue.create('publisher-report')
-  await runtime.queue.create('report-publishers-statements')
 }

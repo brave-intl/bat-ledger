@@ -7,9 +7,9 @@ import test from 'ava'
 import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
-
+import dotenv from 'dotenv';
 import server from '../ledger/server'
-
+dotenv.config();
 function ok (res) {
   if (res.status !== 200) {
     return new Error(JSON.stringify(res.body, null, 2).replace(/\\n/g, '\n'))
@@ -86,16 +86,17 @@ test('api : v2 contribution workflow with BAT', async t => {
     .expect(ok)
   t.true(response.body.paymentId === paymentId)
 
-  response = await request(srv.listener)
-    .post('/v2/surveyor/contribution')
-    .send({ 'adFree': {
-      'fee': { 'USD': 5 },
-      'probi': '24123500000000000000',
-      'altcurrency': 'BAT',
-      'votes': 5
-    }})
-    .set('Authorization', 'Bearer mytoken123')
-    .expect(ok)
+  // const token = process.env.TOKEN_LIST;
+  // response = await request(srv.listener)
+  //   .post('/v2/surveyor/contribution')
+  //   .send({ 'adFree': {
+  //     'fee': { 'USD': 5 },
+  //     'probi': '24123500000000000000',
+  //     'altcurrency': 'BAT',
+  //     'votes': 5
+  //   }})
+  //   .set('Authorization', `Bearer ${token}`)
+  //   .expect(ok)
 
   response = await request(srv.listener)
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)

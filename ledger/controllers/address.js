@@ -3,7 +3,7 @@ const boom = require('boom')
 const Joi = require('joi')
 const underscore = require('underscore')
 
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
@@ -123,9 +123,5 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/address/{address}/validate').whitelist().config(v1.validate),
   braveHapi.routes.async().path('/v2/address/{altcurrency}/{address}/balance').config(v2.balance)
 ]
-
-module.exports.initialize = async (debug, runtime) => {
-  await runtime.queue.create('wallet-report')
-}
 
 /* END: EXPERIMENTAL/DEPRECATED */

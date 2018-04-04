@@ -1,5 +1,7 @@
 /* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
 
+const url = require('url')
+
 const services = {
   ledger: {
     portno: 3001,
@@ -41,7 +43,7 @@ const services = {
       uphold()
     }
   },
-  
+
   eyeshade: {
     portno: 3002,
 
@@ -73,21 +75,86 @@ const services = {
 
   helper: {
     portno: 3004
+  },
+
+  collector: {
+    portno: 3005,
+
+    f: () => {
+      module.exports.gather = { site: {} }
+      if (process.env.YOUTUBE_API_KEY) {
+        module.exports.gather.youtube =
+          { url                 : process.env.YOUTUBE_URL       || 'https://www.googleapis.com/youtube/v3/channels'
+          , api_key             : process.env.YOUTUBE_API_KEY
+          }
+      }
+
+      helper()
+      mongo2()
+    }
+  },
+
+  extractor: {
+    portno: 3006,
+
+    f: () => {
+      if (!process.env.POSTGRES_URI) {
+        parts = {
+          protocol: 'postgresql:',
+          slashes: true,
+          auth: process.env.PGUSER                              || process.env.USER,
+          port: process.env.PGPORT                              ||'5432',
+          hostname: process.env.PGHOST                          || '127.0.0.1',
+          pathname: process.env.PGDATABASE                      || '/test_extractor',
+          query: {
+            sslmode: process.env.PGSSLMODE                      || 'require',
+            ssl: true
+          }
+        }
+        if (parts.auth && process.env.PGPASSWORD) parts.auth += ':' + process.env.PGPASSWORD
+        parts.host = parts.hostname + ':' + parts.port
+        parts.path = parts.pathname
+        process.env.POSTGRES_URI = url.format(parts)
+      }
+      module.exports.sql = { postgres: { connectionString: process.env.POSTGRES_URI } }
+
+      helper()
+      mongo2()
+      mongo3()
+    }
   }
 }
 
 const helper = () => {
   if (!process.env.HELPER_URL) return
-  
+
   module.exports.currency.helper =
   { url               : process.env.HELPER_URL
   , access_token      : process.env.HELPER_TOKEN                || '00000000-0000-4000-0000-000000000000'
   }
 }
 
+const mongo2 = () => {
+  let uri = process.env.MONGODB2_URI
+
+  if (!uri) return
+
+  uri += ((uri.indexOf('?') === -1) ? '?' : '&') + 'readOnly=true&readPreference=secondary'
+  module.exports.database.mongo2 = uri
+}
+
+const mongo3 = () => {
+  let uri = process.env.MONGODB3_URI
+
+  if (!uri) return
+
+  uri += ((uri.indexOf('?') === -1) ? '?' : '&') + 'readOnly=true&readPreference=secondary'
+  module.exports.database.mongo3 = uri
+}
+
 const uphold = () => {
   if ((!process.env.UPHOLD_ACCESS_TOKEN) && (!process.env.UPHOLD_CLIENT_ID)) return
-  
+
   module.exports.wallet.uphold =
   { accessToken       : process.env.UPHOLD_ACCESS_TOKEN         || 'none'
   , clientId          : process.env.UPHOLD_CLIENT_ID            || 'none'
@@ -98,13 +165,17 @@ const uphold = () => {
 
 
 const service = services[process.env.SERVICE]
-if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.service)
+if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.SERVICE)
 
 process.env.PORT = process.env.PORT  || service.portno
 
 const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
-  process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
+new Array('MONGODB_URI', 'MONGODB2_URI', 'MONGODB3_URI', 'POSTGRES_URI',
+          'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET',
+          'SLACK_CHANNEL', 'SLACK_ICON_URL', 'SLACK_WEBOOK').forEach((v) => {
+  const value = process.env[v]  || process.env[SERVICE + '_' + v]
+
+  if (typeof value !== 'undefined') process.env[v] = value
 })
 
 module.exports =
@@ -129,9 +200,9 @@ module.exports =
 if (service.f) service.f()
 
 if (process.env.NODE_ENV === 'production') {
-  module.exports.server = require('url').parse('https://' + process.env.HOST)
+  module.exports.server = url.parse('https://' + process.env.HOST)
 } else {
-  module.exports.server = require('url').parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
+  module.exports.server = url.parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
 }
 
 if (process.env.OXR_APP_ID) {

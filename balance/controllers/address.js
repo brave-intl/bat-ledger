@@ -5,7 +5,7 @@ const boom = require('boom')
 const underscore = require('underscore')
 const SDebug = require('sdebug')
 
-const utils = require('bat-utils')
+const utils = require('../../bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
