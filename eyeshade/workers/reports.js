@@ -673,7 +673,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
   return { data: data, altcurrency: altcurrency, probi: probi, fees: fees }
 }
 
-const publisherSettlements = (runtime, entries, format, summaryP) => {
+const publisherSettlements = (runtime, entries, format, summaryP, spacingP) => {
   const publishers = {}
   let amount, commission, currency, data, fees, lastxn, results, probi
 
@@ -717,16 +717,41 @@ const publisherSettlements = (runtime, entries, format, summaryP) => {
   results = []
   underscore.keys(publishers).forEach((publisher) => {
     const entry = publishers[publisher]
+    const oneP = underscore.groupBy(entry.txns, (txn) => { return txn.currency }).size === 1
+    const txns = {}
 
     entry.txns = underscore.sortBy(entry.txns, 'created')
     if (summaryP) {
-      lastxn = underscore.last(entry.txns)
-      delete entry.txns
+      entry.txns.forEach((txn) => {
+        const row = txns[txn.currency]
+
+        if (!row) {
+          txns[txn.currency] = txn
+          return
+        }
+
+        row.probi = new BigNumber(row.probi).plus(new BigNumber(txn.probi))
+        row.amount = new BigNumber(row.amount).plus(new BigNumber(txn.amount))
+        row.fees = new BigNumber(row.fees).plus(new BigNumber(txn.fees))
+        row.commission = new BigNumber(row.commission).plus(new BigNumber(txn.commission))
+
+        delete row.settlementId
+        if (row.address !== txn.address) delete row.address
+        delete row.hash
+        row.created = txn.created
+        row.modified = txn.modified
+      })
+
+      if (underscore.keys(txns).length > 1) entry.txns = underscore.values(txns)
+      else {
+        lastxn = underscore.last(entry.txns)
+        entry.txns = []
+      }
     }
 
     results.push(underscore.extend({ publisher: publisher }, entry, {
       probi: entry.probi.toString(),
-      amount: entry.amount.toString(),
+      amount: oneP ? entry.amount.toString() : '',
       fees: entry.fees.toString(),
       commission: entry.commission.toString()
     }))
@@ -743,7 +768,7 @@ const publisherSettlements = (runtime, entries, format, summaryP) => {
   data = []
   results.forEach((result) => {
     probi = probi.plus(result.probi)
-    amount = amount.plus(result.amount)
+    amount = amount.plus(result.amount || 0)
     fees = fees.plus(result.fees)
     commission = commission.plus(result.commission)
     if (typeof currency === 'undefined') currency = result.currency
@@ -758,14 +783,12 @@ const publisherSettlements = (runtime, entries, format, summaryP) => {
       commission: result.commission.toString(),
       timestamp: lastxn && lastxn.created && dateformat(lastxn.created, datefmt)
     })
-    if (!summaryP) {
-      result.txns.forEach((txn) => {
-        data.push(underscore.extend({ publisher: result.publisher },
-                                    underscore.omit(txn, [ 'hash', 'settlementId', 'created', 'modified' ]),
-                                    { transactionId: txn.hash, timestamp: txn.created && dateformat(txn.created, datefmt) }))
-      })
-      if (entries.length > 1) data.push([])
-    }
+    result.txns.forEach((txn) => {
+      data.push(underscore.extend({ publisher: result.publisher },
+                                  underscore.omit(txn, [ 'hash', 'settlementId', 'created', 'modified' ]),
+                                  { transactionId: txn.hash, timestamp: txn.created && dateformat(txn.created, datefmt) }))
+    })
+    if (spacingP) data.push([])
   })
 
   return {
@@ -925,21 +948,19 @@ exports.workers = {
           try {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
-            if (!entry.owner) {
-              debug('report-publishers-contributions', { reason: 'publisher is missing an owner' })
-              continue
-            }
 
             props = getPublisherProps(datum.publisher)
             datum.name = entry.info && entry.info.name
             datum.URL = props && props.URL
 
-            entry = await owners.findOne({ owner: entry.owner })
             if (entry.provider) wallet = await runtime.wallet.status(entry)
-
-            if ((wallet) && (wallet.address) && (wallet.defaultCurrency)) {
+            if ((!wallet) && (entry.owner)) {
+              entry = await owners.findOne({ owner: entry.owner })
+              if (entry.provider) wallet = await runtime.wallet.status(entry)
+            }
+            if ((wallet) && (wallet.address) && (wallet.preferredCurrency)) {
               datum.address = wallet.address
-              datum.currency = wallet.defaultCurrency
+              datum.currency = wallet.preferredCurrency
             } else {
               await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
             }
@@ -1007,7 +1028,7 @@ exports.workers = {
 
       entries = publisher ? (await settlements.find({ publisher: publisher })) : (await settlements.find())
 
-      info = publisherSettlements(runtime, entries, format, summaryP)
+      info = publisherSettlements(runtime, entries, format, summaryP, !publisher)
       data = info.data
 
       file = await create(runtime, 'publishers-settlements-', payload)
@@ -1050,7 +1071,6 @@ exports.workers = {
            GET /v1/reports/publisher/{publisher}/statements
            GET /v1/reports/publishers/statements/{hash}
            GET /v2/reports/publishers/statements
-           GET /v1/owners/{owner}/statement
 
     { queue            : 'report-publishers-statements'
     , message          :
@@ -1123,6 +1143,7 @@ exports.workers = {
         if (!summaryP) data.push([])
 
         info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP)
+        if ((summaryP) && (info.data.length > 1)) data.push([])
         info.data.forEach((datum) => {
           datum.probi = datum.probi.toString()
           datum.amount = datum.amount.toString()
@@ -1594,3 +1615,4 @@ exports.workers = {
 }
 
 module.exports = exports
+
