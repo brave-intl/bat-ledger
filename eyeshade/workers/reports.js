@@ -673,7 +673,7 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
   return { data: data, altcurrency: altcurrency, probi: probi, fees: fees }
 }
 
-const publisherSettlements = (runtime, entries, format, summaryP, spacingP) => {
+const publisherSettlements = (runtime, entries, format, summaryP) => {
   const publishers = {}
   let amount, commission, currency, data, fees, lastxn, results, probi
 
@@ -717,41 +717,16 @@ const publisherSettlements = (runtime, entries, format, summaryP, spacingP) => {
   results = []
   underscore.keys(publishers).forEach((publisher) => {
     const entry = publishers[publisher]
-    const oneP = underscore.groupBy(entry.txns, (txn) => { return txn.currency }).size === 1
-    const txns = {}
 
     entry.txns = underscore.sortBy(entry.txns, 'created')
     if (summaryP) {
-      entry.txns.forEach((txn) => {
-        const row = txns[txn.currency]
-
-        if (!row) {
-          txns[txn.currency] = txn
-          return
-        }
-
-        row.probi = new BigNumber(row.probi).plus(new BigNumber(txn.probi))
-        row.amount = new BigNumber(row.amount).plus(new BigNumber(txn.amount))
-        row.fees = new BigNumber(row.fees).plus(new BigNumber(txn.fees))
-        row.commission = new BigNumber(row.commission).plus(new BigNumber(txn.commission))
-
-        delete row.settlementId
-        if (row.address !== txn.address) delete row.address
-        delete row.hash
-        row.created = txn.created
-        row.modified = txn.modified
-      })
-
-      if (underscore.keys(txns).length > 1) entry.txns = underscore.values(txns)
-      else {
-        lastxn = underscore.last(entry.txns)
-        entry.txns = []
-      }
+      lastxn = underscore.last(entry.txns)
+      delete entry.txns
     }
 
     results.push(underscore.extend({ publisher: publisher }, entry, {
       probi: entry.probi.toString(),
-      amount: oneP ? entry.amount.toString() : '',
+      amount: entry.amount.toString(),
       fees: entry.fees.toString(),
       commission: entry.commission.toString()
     }))
@@ -768,7 +743,7 @@ const publisherSettlements = (runtime, entries, format, summaryP, spacingP) => {
   data = []
   results.forEach((result) => {
     probi = probi.plus(result.probi)
-    amount = amount.plus(result.amount || 0)
+    amount = amount.plus(result.amount)
     fees = fees.plus(result.fees)
     commission = commission.plus(result.commission)
     if (typeof currency === 'undefined') currency = result.currency
@@ -783,12 +758,14 @@ const publisherSettlements = (runtime, entries, format, summaryP, spacingP) => {
       commission: result.commission.toString(),
       timestamp: lastxn && lastxn.created && dateformat(lastxn.created, datefmt)
     })
-    result.txns.forEach((txn) => {
-      data.push(underscore.extend({ publisher: result.publisher },
-                                  underscore.omit(txn, [ 'hash', 'settlementId', 'created', 'modified' ]),
-                                  { transactionId: txn.hash, timestamp: txn.created && dateformat(txn.created, datefmt) }))
-    })
-    if (spacingP) data.push([])
+    if (!summaryP) {
+      result.txns.forEach((txn) => {
+        data.push(underscore.extend({ publisher: result.publisher },
+                                    underscore.omit(txn, [ 'hash', 'settlementId', 'created', 'modified' ]),
+                                    { transactionId: txn.hash, timestamp: txn.created && dateformat(txn.created, datefmt) }))
+      })
+      if (entries.length > 1) data.push([])
+    }
   })
 
   return {
@@ -1030,7 +1007,7 @@ exports.workers = {
 
       entries = publisher ? (await settlements.find({ publisher: publisher })) : (await settlements.find())
 
-      info = publisherSettlements(runtime, entries, format, summaryP, !publisher)
+      info = publisherSettlements(runtime, entries, format, summaryP)
       data = info.data
 
       file = await create(runtime, 'publishers-settlements-', payload)
@@ -1146,7 +1123,6 @@ exports.workers = {
         if (!summaryP) data.push([])
 
         info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP)
-        if ((summaryP) && (info.data.length > 1)) data.push([])
         info.data.forEach((datum) => {
           datum.probi = datum.probi.toString()
           datum.amount = datum.amount.toString()
