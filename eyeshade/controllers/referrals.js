@@ -33,7 +33,8 @@ v1.findReferrals = {
 
       results = []
       entries.forEach((entry) => {
-        results.push(underscore.extend({ channelId: entry.publisher }, underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
+        results.push(underscore.extend({ channelId: entry.publisher },
+                                       underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
       })
       reply(results)
     }
@@ -69,6 +70,7 @@ v1.createReferrals = {
       const transactionId = request.params.transactionId
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
+      const publishers = runtime.database.get('publishers', debug)
       const referrals = runtime.database.get('referrals', debug)
       let entries, matches, query
 
@@ -76,7 +78,13 @@ v1.createReferrals = {
       if (entries.length > 0) return reply(boom.badData('existing transaction-identifier: ' + transactionId))
 
       query = { $or: [] }
-      for (let referral of payload) query.$or.push({ downloadId: referral.downloadId })
+      for (let referral of payload) {
+        const entry = await publishers.findOne({ publisher: referral.channelId })
+        if (!entry) return reply(boom.badData('no such channelId: ' + referral.channelId))
+
+        referral.owner = entry.owner
+        query.$or.push({ downloadId: referral.downloadId })
+      }
       entries = await referrals.find(query)
       if (entries.length > 0) {
         matches = []
@@ -93,6 +101,7 @@ v1.createReferrals = {
           $set: {
             transactionId: transactionId,
             publisher: referral.channelId,
+            owner: referral.owner,
             platform: referral.platform,
             finalized: new Date(referral.finalized)
           }
@@ -140,13 +149,14 @@ module.exports.initialize = async (debug, runtime) => {
 
         transactionId: '',
         publisher: '',
+        owner: '',
         platform: '',
         finalized: bson.Timestamp.ZERO,
 
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { downloadId: 1 } ],
-      others: [ { transactionId: 1 }, { publisher: 1 }, { finalized: 1 },
+      others: [ { transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
                 { timestamp: 1 } ]
     }
   ])

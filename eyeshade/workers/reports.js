@@ -1124,6 +1124,8 @@ exports.workers = {
 
         info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP)
         info.data.forEach((datum) => {
+          if (typeof datum.probi === 'undefined') return
+
           datum.probi = datum.probi.toString()
           datum.amount = datum.amount.toString()
         })
@@ -1131,7 +1133,7 @@ exports.workers = {
         data2.probi = data2.probi.plus(info.probi)
         data2.fees = data2.fees.plus(info.fees)
         data.push([])
-        if (!summaryP) data.push([])
+        if ((!summaryP) && (!payload.owner)) data.push([])
       })
       if (!publisher) {
         data.push({
@@ -1142,7 +1144,7 @@ exports.workers = {
           'publisher USD': usd && data1.probi.times(usd).dividedBy(scale).toFixed(2),
           'processor USD': usd && data1.fees.times(usd).dividedBy(scale).toFixed(2)
         })
-        if (!summaryP) data.push([])
+        if ((!summaryP) && (!payload.owner)) data.push([])
         data.push({
           publisher: 'TOTAL',
           altcurrency: data2.altcurrency,
