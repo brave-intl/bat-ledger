@@ -899,19 +899,21 @@ exports.workers = {
           try {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
+            if (!entry.owner) {
+              debug('report-publishers-contributions', { reason: 'publisher is missing an owner' })
+              continue
+            }
 
             props = getPublisherProps(datum.publisher)
             datum.name = entry.info && entry.info.name
             datum.URL = props && props.URL
 
+            entry = await owners.findOne({ owner: entry.owner })
             if (entry.provider) wallet = await runtime.wallet.status(entry)
-            if ((!wallet) && (entry.owner)) {
-              entry = await owners.findOne({ owner: entry.owner })
-              if (entry.provider) wallet = await runtime.wallet.status(entry)
-            }
-            if ((wallet) && (wallet.address) && (wallet.preferredCurrency)) {
+
+            if ((wallet) && (wallet.address) && (wallet.defaultCurrency)) {
               datum.address = wallet.address
-              datum.currency = wallet.preferredCurrency
+              datum.currency = wallet.defaultCurrency
             } else {
               await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
             }
@@ -1022,6 +1024,7 @@ exports.workers = {
            GET /v1/reports/publisher/{publisher}/statements
            GET /v1/reports/publishers/statements/{hash}
            GET /v2/reports/publishers/statements
+           GET /v1/owners/{owner}/statement
 
     { queue            : 'report-publishers-statements'
     , message          :

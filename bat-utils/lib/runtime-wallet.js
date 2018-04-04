@@ -400,11 +400,11 @@ Wallet.providers.uphold = {
     result = {
       provider: info.provider,
       authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
-      preferredCurrency: currency,
+      defaultCurrency: info.defaultCurrency || currency,
       availableCurrencies: currencies
     }
     if (result.authorized) {
-      card = underscore.findWhere(cards, { currency: result.preferredCurrency })
+      card = underscore.findWhere(cards, { currency: result.defaultCurrency })
       result.address = card && card.id
     }
 
