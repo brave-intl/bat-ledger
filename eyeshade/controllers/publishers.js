@@ -172,6 +172,7 @@ v2.getBalance = {
       const publisher = request.params.publisher
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, summary
@@ -194,6 +195,24 @@ v2.getBalance = {
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
 
       summary = await settlements.aggregate([
         {
@@ -260,6 +279,7 @@ v2.getWallet = {
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, entries, entry, provider, rates, result, summary
@@ -282,6 +302,24 @@ v2.getWallet = {
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
 
       summary = await settlements.aggregate([
         {

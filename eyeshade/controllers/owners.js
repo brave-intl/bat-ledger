@@ -392,6 +392,7 @@ v1.getWallet = {
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, entries, entry, provider, query, rates, result, summary
@@ -421,6 +422,19 @@ v1.getWallet = {
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await referrals.aggregate([
+        {
+          $match: query
+        },
+        {
+          $group: {
+            _id: '$owner',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
 
       summary = await settlements.aggregate([
         {

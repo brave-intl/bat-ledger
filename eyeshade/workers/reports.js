@@ -1242,10 +1242,12 @@ exports.workers = {
       const verified = payload.verified
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const tokens = runtime.database.get('tokens', debug)
       const voting = runtime.database.get('voting', debug)
-      let data, entries, f, fields, file, keys, now, results, probi, summary
+      const probi = {}
+      let data, entries, f, fields, file, keys, now, results, summary
 
       const daysago = (timestamp) => {
         return Math.round((now - timestamp) / (86400 * 1000))
@@ -1292,8 +1294,28 @@ exports.workers = {
           }
         }
       ])
-      probi = {}
       summary.forEach((entry) => { probi[entry._id] = new BigNumber(entry.probi.toString()) })
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      summary.forEach((entry) => {
+        if (!probi[entry._id]) probi[entry._id] = new BigNumber(0)
+        probi[entry._id] = probi[entry._id].plus(new BigNumber(entry.probi.toString()))
+      })
+
       summary = await settlements.aggregate([
         {
           $match: {
