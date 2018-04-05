@@ -624,27 +624,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   } = finalWalletContribs
   t.is(finalWalletProbi, refProbi)
   t.is(usdAmount, '5.00')
-  // /v1/reports/publishers/referrals
-  /*
-channelId
-downloadId
-platform
-finalized
-{ rates:
-   { BTC: '0.00004662',
-     ETH: 0.000663920978877572,
-     LTC: 0.0028617906141616277,
-     USD: 0.4212089028,
-     EUR: 0.34518785639594757 },
-  contributions:
-   { amount: '2.08',
-     currency: 'USD',
-     altcurrency: 'BAT',
-     probi: '4932771363636363636' },
-  status:
-   { provider: 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg',
-     action: 're-authorize' } }
-     */
 
   function contribution (base) {
     return _.extend({

@@ -1119,9 +1119,7 @@ exports.workers = {
       const threshold = payload.threshold || 0
       const verified = payload.verified
       const {
-        blacklisted: blacklistMe
-      } = payload
-      const {
+        blacklisted: blacklistMe,
         includeUnpayable = false
       } = payload
       const {
@@ -1175,7 +1173,6 @@ exports.workers = {
         publishers[publisher].authorized = false
         publishers[publisher].verified = false
       })
-
       entries = await findEligPublishers(debug, runtime, undefined)
       entries.forEach((entry) => {
         if (typeof publishers[entry.publisher] === 'undefined') return
