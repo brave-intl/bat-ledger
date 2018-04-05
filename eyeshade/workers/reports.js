@@ -1101,26 +1101,28 @@ exports.workers = {
       const publisher = payload.publisher
       const settlements = runtime.database.get('settlements', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, data1, data2, file, entries, publishers, query, usd
+      let data, data1, data2, file, entries, publishers, query, range, usd
       let ending = payload.ending
 
+      if ((starting) || (ending)) {
+        range = {}
+        if (starting) range.$gte = date2objectId(starting, false)
+        if (ending) range.$lte = date2objectId(ending, true)
+      }
       if (publisher) {
         query = { publisher: publisher }
-        if ((starting) || (ending)) {
-          query._id = {}
-          if (starting) query._id.$gte = date2objectId(starting, false)
-          if (ending) query._id.$lte = date2objectId(ending, true)
-        }
         entries = await settlements.find(query)
-        publishers = await mixer(debug, runtime, publisher, query._id)
+        publishers = await mixer(debug, runtime, publisher, range)
       } else {
-        entries = await settlements.find(underscore.pick(payload, [ 'owner', 'hash', 'settlementId' ]))
+        query = underscore.pick(payload, [ 'owner', 'hash', 'settlementId' ])
+        if (range) query._id = range
+        entries = await settlements.find(query)
         if ((rollupP) && (entries.length > 0)) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
           entries = await settlements.find(query)
         }
-        publishers = await mixer(debug, runtime, undefined, undefined)
+        publishers = await mixer(debug, runtime, undefined, range)
         underscore.keys(publishers).forEach((publisher) => {
           if (underscore.where(entries, { publisher: publisher }).length === 0) delete publishers[publisher]
         })
@@ -1149,6 +1151,8 @@ exports.workers = {
         info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP)
         if ((summaryP) && (info.data.length > 1)) data.push([])
         info.data.forEach((datum) => {
+          if (typeof datum.probi === 'undefined') return
+
           datum.probi = datum.probi.toString()
           datum.amount = datum.amount.toString()
         })
@@ -1156,7 +1160,7 @@ exports.workers = {
         data2.probi = data2.probi.plus(info.probi)
         data2.fees = data2.fees.plus(info.fees)
         data.push([])
-        if (!summaryP) data.push([])
+        if ((!summaryP) && (!payload.owner)) data.push([])
       })
       if (!publisher) {
         data.push({
@@ -1167,7 +1171,7 @@ exports.workers = {
           'publisher USD': usd && data1.probi.times(usd).dividedBy(scale).toFixed(2),
           'processor USD': usd && data1.fees.times(usd).dividedBy(scale).toFixed(2)
         })
-        if (!summaryP) data.push([])
+        if ((!summaryP) && (!payload.owner)) data.push([])
         data.push({
           publisher: 'TOTAL',
           altcurrency: data2.altcurrency,
@@ -1240,10 +1244,12 @@ exports.workers = {
       const verified = payload.verified
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const tokens = runtime.database.get('tokens', debug)
       const voting = runtime.database.get('voting', debug)
-      let data, entries, f, fields, file, keys, now, results, probi, summary
+      const probi = {}
+      let data, entries, f, fields, file, keys, now, results, summary
 
       const daysago = (timestamp) => {
         return Math.round((now - timestamp) / (86400 * 1000))
@@ -1290,8 +1296,28 @@ exports.workers = {
           }
         }
       ])
-      probi = {}
       summary.forEach((entry) => { probi[entry._id] = new BigNumber(entry.probi.toString()) })
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      summary.forEach((entry) => {
+        if (!probi[entry._id]) probi[entry._id] = new BigNumber(0)
+        probi[entry._id] = probi[entry._id].plus(new BigNumber(entry.probi.toString()))
+      })
+
       summary = await settlements.aggregate([
         {
           $match: {

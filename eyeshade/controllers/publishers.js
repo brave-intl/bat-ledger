@@ -172,6 +172,7 @@ v2.getBalance = {
       const publisher = request.params.publisher
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, summary
@@ -194,6 +195,24 @@ v2.getBalance = {
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
 
       summary = await settlements.aggregate([
         {
@@ -260,6 +279,7 @@ v2.getWallet = {
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, entries, entry, provider, rates, result, summary
@@ -282,6 +302,24 @@ v2.getWallet = {
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
 
       summary = await settlements.aggregate([
         {
@@ -358,7 +396,7 @@ v2.getWallet = {
     mode: 'required'
   },
 
-  description: 'Gets information for a publisher',
+  description: 'Gets wallet information for a publisher',
   tags: [ 'api', 'publishers' ],
 
   validate: {
@@ -408,9 +446,7 @@ v2.putWallet = {
       const publisher = request.params.publisher
       const payload = request.payload
       const provider = payload.provider
-      const defaultCurrency = payload.defaultCurrency
       const verificationId = request.payload.verificationId
-      const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
       const tokens = runtime.database.get('tokens', debug)
@@ -426,13 +462,13 @@ v2.putWallet = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.omit(payload, [ 'verificationId', 'show_verification_status' ]), {
-          visible: visible,
+        $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
+          defaultCurrency: payload.defaultCurrency,
+          visible: payload.show_verification_status,
           verified: true,
           altcurrency: altcurrency,
           authorized: true,
-          authority: provider,
-          defaultCurrency: defaultCurrency || entry.defaultCurrency
+          authority: provider
         })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
@@ -440,8 +476,7 @@ v2.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'publisher ' + 'https://' + publisher + ' ' +
-          (payload.parameters && (payload.parameters.access_token || payload.defaultCurrency) ? 'registered with'
-           : 'unregistered from') + ' ' + provider
+          (payload.parameters && payload.parameters.access_token) ? 'registered with' : 'unregistered from' + ' ' + provider
       })
 
       reply({})
@@ -453,7 +488,7 @@ v2.putWallet = {
     mode: 'required'
   },
 
-  description: 'Sets information for a verified publisher',
+  description: 'Sets wallet information for a verified publisher',
   tags: [ 'api', 'publishers', 'unused' ],
 
   validate: {
