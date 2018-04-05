@@ -875,19 +875,31 @@ exports.workers = {
       const threshold = payload.threshold || 0
       const verified = payload.verified
       const owners = runtime.database.get('owners', debug)
-      const publishersC = runtime.database.get('publishers', debug)
+      const publishersCollection = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const tokens = runtime.database.get('tokens', debug)
+      const blacklist = runtime.database.get('blacklist', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, entries, file, info, previous, publishers, usd
+      const publisherList = publisher && [ publisher ]
+      const publishers = await mixer(debug, runtime, publisherList)
 
-      publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
+      const $in = Object.keys(publishers)
+      const blacklisted = blacklist.findOne({ $in })
+      if (blacklisted) {
+        debug('report-publishers-contributions', {
+          reason: 'blacklisted publisher found in report',
+          blacklisted
+        })
+        throw blacklisted
+      }
+
+      let data, entries, file, info, previous, usd
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false
         publishers[publisher].verified = false
       })
-      entries = await publishersC.find({ authorized: true })
+      entries = await publishersCollection.find({ authorized: true })
       entries.forEach((entry) => {
         if (typeof publishers[entry.publisher] === 'undefined') return
 
@@ -946,7 +958,7 @@ exports.workers = {
           delete datum.fee
 
           try {
-            entry = await publishersC.findOne({ publisher: datum.publisher })
+            entry = await publishersCollection.findOne({ publisher: datum.publisher })
             if (!entry) continue
 
             if (!entry.owner) {

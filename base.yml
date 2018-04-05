@@ -9,6 +9,7 @@ services:
       - "MONGODB_URI=${MONGODB_URI-mongodb://mongo}"
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
+      - "BAT_EYESHADE_SERVER=${BAT_EYESHADE_SERVER-http://eyeshade-web:3002}"
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN
       - BALANCE_URL
