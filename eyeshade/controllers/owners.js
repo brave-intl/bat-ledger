@@ -660,8 +660,8 @@ v1.getStatement = {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { owner: braveJoi.string().owner().required().description('the owner identity') },
     query: {
-      starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format'),
-      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format')
+      starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z'),
+      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
     }
   },
 

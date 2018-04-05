@@ -1101,26 +1101,28 @@ exports.workers = {
       const publisher = payload.publisher
       const settlements = runtime.database.get('settlements', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, data1, data2, file, entries, publishers, query, usd
+      let data, data1, data2, file, entries, publishers, query, range, usd
       let ending = payload.ending
 
+      if ((starting) || (ending)) {
+        range = {}
+        if (starting) range.$gte = date2objectId(starting, false)
+        if (ending) range.$lte = date2objectId(ending, true)
+      }
       if (publisher) {
         query = { publisher: publisher }
-        if ((starting) || (ending)) {
-          query._id = {}
-          if (starting) query._id.$gte = date2objectId(starting, false)
-          if (ending) query._id.$lte = date2objectId(ending, true)
-        }
         entries = await settlements.find(query)
-        publishers = await mixer(debug, runtime, publisher, query._id)
+        publishers = await mixer(debug, runtime, publisher, range)
       } else {
-        entries = await settlements.find(underscore.pick(payload, [ 'owner', 'hash', 'settlementId' ]))
+        query = underscore.pick(payload, [ 'owner', 'hash', 'settlementId' ])
+        if (range) query._id = range
+        entries = await settlements.find(query)
         if ((rollupP) && (entries.length > 0)) {
           query = { $or: [] }
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
           entries = await settlements.find(query)
         }
-        publishers = await mixer(debug, runtime, undefined, undefined)
+        publishers = await mixer(debug, runtime, undefined, range)
         underscore.keys(publishers).forEach((publisher) => {
           if (underscore.where(entries, { publisher: publisher }).length === 0) delete publishers[publisher]
         })
