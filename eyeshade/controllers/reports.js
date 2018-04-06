@@ -69,9 +69,10 @@ v1.publisher.contributions = {
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
 
-      await runtime.queue.send(debug, 'report-publishers-contributions',
+      const result = await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
+      console.log(result)
       reply({ reportURL: reportURL })
     }
   },

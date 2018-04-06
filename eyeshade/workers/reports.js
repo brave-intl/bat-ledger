@@ -884,15 +884,25 @@ exports.workers = {
       const publishers = await mixer(debug, runtime, publisherList)
 
       const $in = Object.keys(publishers)
-      const blacklisted = blacklist.findOne({
+      const blacklisted = await blacklist.findOne({
         publisher: { $in }
       })
       if (blacklisted) {
-        debug('report-publishers-contributions', {
-          reason: 'blacklisted publisher found in report',
-          blacklisted
+        const reason = 'blacklisted publisher found in report'
+        const error = { reason, blacklisted }
+        const dataSubset = underscore.omit(blacklisted, ['_id'])
+        const dataString = JSON.stringify(dataSubset, null, 2)
+        const params = { type: 'application/json' }
+        const file = await create(runtime, 'publishers-', params)
+        const utf8 = utf8ify(error)
+        const text = `${authority} report-publishers-contributions failed: ${reason}.\n${dataString}`
+        const channel = '#publishers-bot'
+        debug('report-publishers-contributions', error)
+        await file.write(utf8, true)
+        return runtime.notify(debug, {
+          channel,
+          text
         })
-        throw blacklisted
       }
 
       let data, entries, file, info, previous, usd
