@@ -898,7 +898,9 @@ exports.workers = {
         const text = `${authority} report-publishers-contributions failed: ${reason}.\n${dataString}`
         const channel = '#publishers-bot'
         debug('report-publishers-contributions', error)
-        await file.write(utf8, true)
+        const writing = file.write(utf8, true)
+        console.log(writing)
+        await writing
         return runtime.notify(debug, {
           channel,
           text
