@@ -885,11 +885,11 @@ exports.workers = {
       const publishers = await mixer(debug, runtime, publisherList)
 
       const $in = Object.keys(publishers)
-      let blacklisted = await blacklist.findOne({
+      let blacklisted = await blacklist.find({
         publisher: { $in }
       })
 
-      if (blacklisted || blacklistMe) {
+      if (blacklisted.length || blacklistMe) {
         const reason = 'blacklisted publisher found in report'
         debug(reason)
         const dataSubset = underscore.omit(blacklisted, ['_id'])
