@@ -115,6 +115,29 @@ test('blacklist > removes with the delete method', async t => {
   t.true(getStatus === 404)
   t.true(_.isObject(getBody))
 })
+test('blacklist > throws in the report-publishers-contributions report generation', async t => {
+  t.plan(1)
+  let response = null
+  const channel = uniqueChannel()
+  const publishers = [channel]
+  response = await req({
+    url: posterURL,
+    method: 'post'
+  }).send({
+    publishers
+  })
+  // exists
+  const url = '/v1/reports/publishers/contributions?'
+  response = await req({
+    url
+  })
+  const {
+    body: getBody,
+    status: getStatus
+  } = response
+  console.log(getStatus, getBody)
+  t.true(getStatus === 500)
+})
 
 function req({ url, method }) {
   return request(srv.listener)[method ? method : 'get'](url)

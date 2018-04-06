@@ -884,7 +884,9 @@ exports.workers = {
       const publishers = await mixer(debug, runtime, publisherList)
 
       const $in = Object.keys(publishers)
-      const blacklisted = blacklist.findOne({ $in })
+      const blacklisted = blacklist.findOne({
+        publisher: { $in }
+      })
       if (blacklisted) {
         debug('report-publishers-contributions', {
           reason: 'blacklisted publisher found in report',
