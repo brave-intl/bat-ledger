@@ -652,13 +652,13 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-grants-outstanding')
 }
 
-function authorityProvider (request) {
-  const { auth } = request
-  const { credentials } = auth
-  const { provider, profile } = credentials
-  let authority = provider
+function authorityProvider(request) {
+  const { auth } = request;
+  const { credentials } = auth;
+  const { provider, profile } = credentials;
+  let authority = provider;
   if (process.env.NODE_ENV === 'production') {
     authority = provider + ':' + profile.username
   }
-  return authority
+  return authority;
 }

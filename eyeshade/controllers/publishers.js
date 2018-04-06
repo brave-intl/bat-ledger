@@ -1285,6 +1285,15 @@ module.exports.initialize = async (debug, runtime) => {
 
   runtime.database.checkIndices(debug, [
     {
+      category: runtime.database.get('blacklist', debug),
+      name: 'blacklist',
+      property: 'publisher',
+      empty: {
+        publisher: ''
+      },
+      unique: [ { publisher: 1 } ]
+    },
+    {
       category: runtime.database.get('publishers', debug),
       name: 'publishers',
       property: 'publisher',
