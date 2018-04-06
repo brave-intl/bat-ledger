@@ -2,6 +2,10 @@ import request from 'supertest'
 import test from 'ava'
 import _ from 'underscore'
 import uuid from 'uuid'
+import { isURL } from 'validator'
+import dotenv from 'dotenv'
+import { parse as URLparse } from 'url'
+dotenv.config()
 
 function ok (res) {
   if (res.status !== 200) {
@@ -116,7 +120,7 @@ test('blacklist > removes with the delete method', async t => {
   t.true(_.isObject(getBody))
 })
 test('blacklist > throws in the report-publishers-contributions report generation', async t => {
-  t.plan(1)
+  t.plan(3)
   let response = null
   const channel = uniqueChannel()
   const publishers = [channel]
@@ -127,7 +131,7 @@ test('blacklist > throws in the report-publishers-contributions report generatio
     publishers
   })
   // exists
-  const url = '/v1/reports/publishers/contributions?'
+  const url = '/v1/reports/publishers/contributions'
   response = await req({
     url
   })
@@ -135,8 +139,24 @@ test('blacklist > throws in the report-publishers-contributions report generatio
     body: getBody,
     status: getStatus
   } = response
+  const { reportURL } = getBody
   console.log(getStatus, getBody)
-  t.true(getStatus === 500)
+  t.true(getStatus === 200)
+  t.true(isURL(reportURL))
+
+  do {
+    let pathname = URLparse(reportURL).pathname
+    await snooze(5000)
+    response = await req({
+      url: pathname
+    })
+  } while (response.status === 503)
+  const {
+    body: checkBody,
+    status: checkStatus
+  } = response
+  console.log('check body', checkBody)
+  t.true(checkStatus === 200)
 })
 
 function req({ url, method }) {
