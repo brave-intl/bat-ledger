@@ -123,7 +123,6 @@ v1.publisher.contributions = {
       const result = await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
-      console.log(result)
       reply({ reportURL: reportURL })
     }
   },
@@ -141,7 +140,8 @@ v1.publisher.contributions = {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
-      summary: Joi.boolean().optional().default(true).description('summarize report')
+      summary: Joi.boolean().optional().default(true).description('summarize report'),
+      blacklist: Joi.boolean().optional().default(false).description('trip the blacklist check in the worker')
     }
   },
 
