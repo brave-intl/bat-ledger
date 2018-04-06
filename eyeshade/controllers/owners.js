@@ -396,18 +396,57 @@ v1.getWallet = {
       const publishers = runtime.database.get('publishers', debug)
       const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
+      const blacklist = database.get('blacklist', debug)
       const voting = runtime.database.get('voting', debug)
-      let amount, entries, entry, provider, query, rates, result, summary
+      let amount, entries, entry, provider, query, result, summary
       let probi = new BigNumber(0)
+      const rates = runtime.currency.rates[altcurrency]
 
-      entry = await owners.findOne({ owner: owner })
+      entry = await owners.findOne({ owner })
       if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
+      const blacklisted = await blacklist.findOne({ publisher })
+      const exclude = !!blacklisted
+      if (exclude) {
+        let contributions = {
+          amount: 0,
+          probi: '0',
+          currency,
+          altcurrency
+        }
+        let timestamp = 1
+        let lastSettlement = {
+          probi: '0',
+          amount: 0,
+          altcurrency,
+          currency,
+          timestamp
+        }
+        let wallet = {
+          defaultCurrency: altcurrency,
+        }
+        let status = {}
+        return reply({
+          rates,
+          contributions,
+          lastSettlement,
+          wallet,
+          status
+        })
+      }
+      // wallet
+        // provider
+        // authorized
+        // defaultCurrency
+        // availableCurrencies
+      // status
+        // provider
+        // action
       query = {
         probi: { $gt: 0 },
         $or: [ { owner: owner } ],
         altcurrency: { $eq: altcurrency },
-        exclude: false
+        exclude
       }
       entries = await publishers.find({ owner: owner }, { publisher: true })
       entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
@@ -457,7 +496,7 @@ v1.getWallet = {
 
       amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
       result = {
-        rates: runtime.currency.rates[altcurrency],
+        rates,
         contributions: {
           amount: amount,
           currency: currency,
@@ -518,7 +557,7 @@ v1.getWallet = {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
           result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
-          rates = result.rates
+          let rates = result.rates
 
           underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
             const fxrates = runtime.currency.fxrates

@@ -213,7 +213,6 @@ async function removeFromBlacklist (blacklist, {
   return blacklist.remove(removeQuery)
 }
 
-// DELETE
 /*
    POST /v2/publishers/settlement
  */
@@ -324,20 +323,36 @@ v2.getBalance = {
         })
       }
 
+      const blacklisted = await blacklist.findOne({ publisher })
+      const exclude = !!blacklisted
+
+      if (exclude) {
+        return reply({
+          rates: rates[altcurrency],
+          altcurrency: altcurrency,
+          probi: '0',
+          amount: 0,
+          currency: currency
+        })
+      }
+
+      const $group = {
+        _id: '$publisher',
+        probi: { $sum: '$probi' }
+      }
+      const $match = {
+        probi: { $gt: 0 },
+        publisher: { $eq: publisher },
+        altcurrency: { $eq: altcurrency },
+        exclude
+      }
+
       summary = await voting.aggregate([
         {
-          $match: {
-            probi: { $gt: 0 },
-            publisher: { $eq: publisher },
-            altcurrency: { $eq: altcurrency },
-            exclude: false
-          }
+          $match
         },
         {
-          $group: {
-            _id: '$publisher',
-            probi: { $sum: '$probi' }
-          }
+          $group
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
