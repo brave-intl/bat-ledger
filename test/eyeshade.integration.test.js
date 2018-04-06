@@ -4,6 +4,7 @@ import _ from 'underscore'
 import uuid from 'uuid'
 import { isURL } from 'validator'
 import dotenv from 'dotenv'
+import querystring from 'querystring'
 import { parse as URLparse } from 'url'
 dotenv.config()
 
@@ -131,7 +132,9 @@ test('blacklist > throws in the report-publishers-contributions report generatio
     publishers
   })
   // exists
-  const url = '/v1/reports/publishers/contributions'
+  const url = `/v1/reports/publishers/contributions?${querystring.stringify({
+    blacklisted: true
+  })}`
   response = await req({
     url
   })

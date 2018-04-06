@@ -874,6 +874,7 @@ exports.workers = {
       const summaryP = payload.summary
       const threshold = payload.threshold || 0
       const verified = payload.verified
+      const { blacklisted: blacklistMe } = payload
       const owners = runtime.database.get('owners', debug)
       const publishersCollection = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
@@ -887,8 +888,10 @@ exports.workers = {
       const blacklisted = await blacklist.findOne({
         publisher: { $in }
       })
-      if (blacklisted) {
+      console.log(blacklistMe, $in, blacklisted)
+      if (blacklisted || blacklistMe) {
         const reason = 'blacklisted publisher found in report'
+        debug(reason)
         const error = { reason, blacklisted }
         const dataSubset = underscore.omit(blacklisted, ['_id'])
         const dataString = JSON.stringify(dataSubset, null, 2)
@@ -898,9 +901,7 @@ exports.workers = {
         const text = `${authority} report-publishers-contributions failed: ${reason}.\n${dataString}`
         const channel = '#publishers-bot'
         debug('report-publishers-contributions', error)
-        const writing = file.write(utf8, true)
-        console.log(writing)
-        await writing
+        await file.write(utf8, true)
         return runtime.notify(debug, {
           channel,
           text
