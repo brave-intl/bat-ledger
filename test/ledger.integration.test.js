@@ -26,7 +26,7 @@ function uint8tohex (arr) {
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 // FIXME assert has env vars set and is using uphold
 // NOTE this requires a contibution surveyor to have already been created
-test.skip('integration : v2 contribution workflow with uphold BAT wallet', async t => {
+test('integration : v2 contribution workflow with uphold BAT wallet', async t => {
   const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
@@ -225,7 +225,7 @@ test.skip('integration : v2 contribution workflow with uphold BAT wallet', async
   }
 })
 
-test.skip('integration : v2 grant contribution workflow with uphold BAT wallet', async t => {
+test('integration : v2 grant contribution workflow with uphold BAT wallet', async t => {
   const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()

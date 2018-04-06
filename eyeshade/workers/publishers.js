@@ -82,6 +82,18 @@ exports.workers = {
       }
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' publishers-bulk-create completed' })
     }
+  // 'publishers-blacklist-get': async (debug, runtime, payload) => {
+  //   const { database } = runtime
+  //   const blacklist = database.get('blacklist', debug)
+  //   const { publishers } = payload
+  //   return findInBlacklist()
+  // }
 }
+// async (debug, runtime, payload) => {
+
+// function findInBlacklist(blacklist, publisher) {
+//   return blacklist.findOne({ publisher })
+// }
+
 
 module.exports = exports
