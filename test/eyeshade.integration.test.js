@@ -131,10 +131,11 @@ test('blacklist > throws in the report-publishers-contributions report generatio
   }).send({
     publishers
   })
-  // exists
-  const url = `/v1/reports/publishers/contributions?${querystring.stringify({
+  const query = querystring.stringify({
     blacklisted: true
-  })}`
+  })
+  // exists
+  const url = `/v1/reports/publishers/contributions?${query}`
   response = await req({
     url
   })
@@ -153,7 +154,7 @@ test('blacklist > throws in the report-publishers-contributions report generatio
     response = await req({
       url: pathname
     })
-  } while (response.status === 503)
+  } while (response.status !== 200)
   const {
     body: checkBody,
     status: checkStatus
