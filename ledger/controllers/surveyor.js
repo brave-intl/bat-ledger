@@ -90,7 +90,6 @@ const enumerate = (runtime, surveyorType, payload) => {
 module.exports.enumerate = enumerate
 
 /*
-   GET /v1/surveyor/{surveyorType}/{surveyorId}
    GET /v2/surveyor/{surveyorType}/{surveyorId}
  */
 
@@ -117,7 +116,7 @@ v2.read =
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     }
   },
 
@@ -132,7 +131,6 @@ v2.read =
 }
 
 /*
-   POST /v1/surveyor/{surveyorType}
    POST /v2/surveyor/{surveyorType}
  */
 
@@ -144,17 +142,17 @@ v2.create =
     let surveyor, validity
     let payload = request.payload || {}
 
-    if (request.params.apiV === 'v1') {
-      validity = validateV1(surveyorType, payload)
-    } else {
+    // if (request.params.apiV === 'v1') {
+    //   validity = validateV1(surveyorType, payload)
+    // } else {
       validity = validateV2(surveyorType, payload)
-    }
+    // }
 
     if (validity.error) return reply(boom.badData(validity.error))
 
-    if (request.params.apiV === 'v1') {
-      payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
-    }
+    // if (request.params.apiV === 'v1') {
+    //   payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
+    // }
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -162,9 +160,9 @@ v2.create =
     surveyor = await create(debug, runtime, surveyorType, payload)
     if (!surveyor) return reply(boom.notFound('invalid surveyorType: ' + surveyorType))
 
-    if (request.params.apiV === 'v1') {
-      payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
-    }
+    // if (request.params.apiV === 'v1') {
+    //   payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
+    // }
 
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
   }
@@ -182,7 +180,7 @@ v2.create =
   validate: {
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     },
     payload: Joi.object().optional().description('additional information')
   },
@@ -198,7 +196,6 @@ v2.create =
 }
 
 /*
-   PATCH /v1/surveyor/{surveyorType}/{surveyorId}
    PATCH /v2/surveyor/{surveyorType}/{surveyorId}
  */
 
@@ -215,17 +212,17 @@ v2.update =
     surveyor = await server(request, reply, runtime)
     if (!surveyor) return
 
-    if (request.params.apiV === 'v1') {
-      validity = validateV1(surveyorType, payload)
-    } else {
+    // if (request.params.apiV === 'v1') {
+    //   validity = validateV1(surveyorType, payload)
+    // } else {
       validity = validateV2(surveyorType, payload)
-    }
+    // }
 
     if (validity.error) return reply(boom.badData(validity.error))
 
-    if (request.params.apiV === 'v1') {
-      payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
-    }
+    // if (request.params.apiV === 'v1') {
+    //   payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
+    // }
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -239,9 +236,9 @@ v2.update =
                                                  underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
     }
 
-    if (request.params.apiV === 'v1') {
-      payload = underscore.omit(underscore.extend(payload, { satoshis: Number(payload.probi) }), ['altcurrency', 'probi'])
-    }
+    // if (request.params.apiV === 'v1') {
+    //   payload = underscore.omit(underscore.extend(payload, { satoshis: Number(payload.probi) }), ['altcurrency', 'probi'])
+    // }
 
     surveyor.payload = payload
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
@@ -266,7 +263,7 @@ v2.update =
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     },
     payload: Joi.object().optional().description('additional information')
   },
@@ -282,7 +279,6 @@ v2.update =
 }
 
 /*
-   GET /v1/surveyor/{surveyorType}/{surveyorId}/{uId}
    GET /v2/surveyor/{surveyorType}/{surveyorId}/{uId}
  */
 
@@ -334,11 +330,11 @@ v2.phase1 =
     })
 
     var payload = surveyor.payload
-    if (request.params.apiV === 'v1') {
-      if (payload.adFree) {
-        payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
-      }
-    }
+    // if (request.params.apiV === 'v1') {
+    //   if (payload.adFree) {
+    //     payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
+    //   }
+    // }
 
     reply(underscore.extend({ signature: signature, payload: payload }, surveyor.publicInfo()))
   }
@@ -352,7 +348,7 @@ v2.phase1 =
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
       uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
-      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     }
   },
 
@@ -368,7 +364,6 @@ v2.phase1 =
 }
 
 /*
-   PUT /v1/surveyor/{surveyorType}/{surveyorId}
    PUT /v2/surveyor/{surveyorType}/{surveyorId}
  */
 
@@ -439,7 +434,7 @@ v2.phase2 =
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
     },
 
     payload: { proof: Joi.string().required().description('report information and proof') }
