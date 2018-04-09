@@ -939,7 +939,7 @@ exports.workers = {
       if (format === 'json') {
         entries = []
         for (let datum of data) {
-          let entry, props, wallet
+          let entry, props, provider, wallet
 
           delete datum.currency
           delete datum.amount
@@ -959,16 +959,20 @@ exports.workers = {
             datum.URL = props && props.URL
 
             entry = await owners.findOne({ owner: entry.owner })
-            if (entry.provider) wallet = await runtime.wallet.status(entry)
+            provider = entry && entry.provider
+            if (provider && entry.parameters) wallet = await runtime.wallet.status(entry)
 
-            if ((wallet) && (wallet.address) && (wallet.defaultCurrency)) {
-              datum.address = wallet.address
-              datum.currency = wallet.defaultCurrency
-            } else {
+            if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
               await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
+              continue
             }
+
+            datum.address = wallet.address
+            datum.currency = wallet.defaultCurrency
             entries.push(datum)
-          } catch (ex) {}
+          } catch (ex) {
+            await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_invalid_wallet' })
+          }
         }
         data = entries
 
