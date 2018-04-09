@@ -24,6 +24,20 @@ const prefix2 = prefix1 + '='
 
 let altcurrency
 
+const publisherV2 = { publisher: Joi.string().required().description('the publisher identity') }
+
+const propertiesV2 =
+  {
+    facet: Joi.string().valid('domain', 'SLD', 'TLD').optional().default('domain').description('the entry type'),
+    exclude: Joi.boolean().optional().default(true).description('exclude from auto-include list'),
+    tags: Joi.array().items(Joi.string()).optional().description('taxonomy tags')
+  }
+
+const schemaV2 = Joi.object().keys(underscore.extend({}, publisherV2, propertiesV2,
+  { timestamp: Joi.string().regex(/^[0-9]+$/).required().description('an opaque, monotonically-increasing value') }
+))
+
+
 /*
    POST /v1/publishers
 */
@@ -1108,6 +1122,173 @@ const publish = async (debug, runtime, method, owner, publisher, endpoint, paylo
   return result
 }
 
+/*
+   POST /v2/publisher/ruleset
+ */
+
+v2.create =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const payload = request.payload
+    const publisher = payload.publisher
+    const publishers = runtime.database.get('publishersV2', debug)
+    let result
+
+    result = await publishers.findOne({ publisher: publisher })
+    if (result) return reply(boom.badData('publisher identity entry already exists: ' + publisher))
+
+    try {
+      await publishers.insert(underscore.extend(payload, { timestamp: bson.Timestamp() }))
+    } catch (ex) {
+      runtime.captureException(ex, { req: request })
+      debug('publishers error', { reason: ex.toString(), stack: ex.stack })
+      return reply(boom.badData(ex.toString()))
+    }
+
+    result = await publishers.findOne({ publisher: publisher })
+    if (!result) return reply(boom.badImplementation('database creation failed: ' + publisher))
+
+    result = underscore.extend(underscore.omit(result, [ '_id', 'timestamp' ]), { timestamp: result.timestamp.toString() })
+
+    reply(result)
+  }
+},
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
+  },
+
+  description: 'Defines information a new publisher identity ruleset entry',
+  tags: [ 'api' ],
+
+  validate:
+    { payload: underscore.extend({}, publisherV2, propertiesV2) },
+
+  response:
+    { schema: schemaV2 }
+}
+
+/*
+   PATCH /v2/publisher/rulesets
+ */
+
+v2.update =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
+    const reportId = uuid.v4().toLowerCase()
+    const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+    const debug = braveHapi.debug(module, request)
+
+    await runtime.queue.send(debug, 'patch-publisher-rulesets',
+                             underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
+                                                 { entries: request.payload }))
+    reply({ reportURL: reportURL })
+  }
+},
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'devops' ],
+    mode: 'required'
+  },
+
+  description: 'Batched update of publisher identity ruleset entries',
+  tags: [ 'api' ],
+
+  validate:
+    { payload: Joi.array().items(Joi.object().keys(underscore.extend(publisherV2, propertiesV2))).required() },
+
+  response: {
+    schema: Joi.object().keys({
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+    }).unknown(true).description('information about the most forthcoming report')
+  }
+}
+
+/*
+   PUT /v2/publisher/ruleset/{publisher}
+ */
+
+v2.write =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const publisher = request.params.publisher
+    const publishers = runtime.database.get('publishersV2', debug)
+    let result, state
+
+    state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: request.payload }
+    await publishers.update({ publisher: publisher }, state, { upsert: true })
+
+    result = await publishers.findOne({ publisher: publisher })
+    if (!result) return reply(boom.badImplementation('database update failed: ' + publisher))
+
+    result = underscore.extend(underscore.omit(result, [ '_id', 'timestamp' ]), { timestamp: result.timestamp.toString() })
+
+    reply(result)
+  }
+},
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'devops' ],
+    mode: 'required'
+  },
+
+  description: 'Sets information for a publisher identity ruleset entry',
+  tags: [ 'api' ],
+
+  validate: {
+    params: publisherV2,
+    payload: Joi.object().keys(propertiesV2)
+  },
+
+  response:
+    { schema: schemaV2 }
+}
+
+/*
+   DELETE /v2/publisher/ruleset/{publisher}
+ */
+
+v2.delete =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const publisher = request.params.publisher
+    const publishers = runtime.database.get('publishersV2', debug)
+    let entry
+
+    entry = await publishers.findOne({ publisher: publisher })
+    if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
+
+    await publishers.remove({ publisher: publisher })
+
+    reply().code(204)
+  }
+},
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
+  },
+
+  description: 'Deletes information a publisher identity ruleset entry',
+  tags: [ 'api' ],
+
+  validate:
+    { params: publisherV2 },
+
+  response:
+    { schema: Joi.any() }
+}
+
+
 module.exports.getToken = getToken
 module.exports.putToken = putToken
 
@@ -1123,7 +1304,12 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/publishers/{publisher}/verifications/{verificationId}').whitelist().config(v1.putToken),
   braveHapi.routes.async().patch().path('/v2/publishers/{publisher}').whitelist().config(v2.patchPublisher),
   braveHapi.routes.async().delete().path('/v1/publishers/{publisher}').whitelist().config(v1.deletePublisher),
-  braveHapi.routes.async().path('/v1/publishers/{publisher}/verify').config(v1.getToken)
+  braveHapi.routes.async().path('/v1/publishers/{publisher}/verify').config(v1.getToken),
+
+  braveHapi.routes.async().post().path('/v2/publisher/ruleset').config(v2.create),
+  braveHapi.routes.async().patch().path('/v2/publisher/rulesets').config(v2.update),
+  braveHapi.routes.async().put().path('/v2/publisher/ruleset/{publisher}').config(v2.write),
+  braveHapi.routes.async().delete().path('/v2/publisher/ruleset/{publisher}').config(v2.delete),
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -1246,4 +1432,5 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('publishers-bulk-create')
   await runtime.queue.create('publisher-report')
   await runtime.queue.create('report-publishers-statements')
+  await runtime.queue.create('patch-publisher-rulesets')
 }
