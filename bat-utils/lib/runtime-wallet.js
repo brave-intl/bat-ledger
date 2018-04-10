@@ -231,7 +231,6 @@ Wallet.providers.uphold = {
         }
         return { 'wallet': { 'addresses': {
           'BAT': ethAddr.id,
-          'BTC': btcAddr.id,
           'CARD_ID': wallet.id,
           'ETH': ethAddr.id,
           'LTC': ltcAddr.id
@@ -388,9 +387,7 @@ Wallet.providers.uphold = {
 
 Wallet.providers.mock = {
   create: async function (requestType, request) {
-    if (requestType === 'bitcoinMultisig') {
-      return { 'wallet': { 'addresses': {'BTC': request.keychains.user.xpub}, 'provider': 'mock', 'altcurrency': 'BTC' } }
-    } else if (requestType === 'httpSignature') {
+    if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
         // TODO generate random addresses?
@@ -408,14 +405,7 @@ Wallet.providers.mock = {
     }
   },
   balances: async function (info) {
-    if (info.altcurrency === 'BTC') {
-      return {
-        balance: '845480',
-        spendable: '845480',
-        confirmed: '845480',
-        unconfirmed: '0'
-      }
-    } else if (info.altcurrency === 'BAT') {
+    if (info.altcurrency === 'BAT') {
       return {
         balance: '32061750000000000000',
         spendable: '32061750000000000000',
@@ -534,8 +524,7 @@ Wallet.providers.simplex = {
             },
             requested_digital_amount: quote.digital_money,
             destination_wallet: {
-              currency: params.currency,
-              address: info.addresses.BTC
+              currency: params.currency
             }
           }
         }
@@ -555,7 +544,6 @@ Wallet.providers.simplex = {
         quote_id: quote.quote_id,
         payment_id: quote.payment_id,
         user_id: quote.user_id,
-        'destination_wallet[address]': info.addresses.BTC,
         'destination_wallet[currency]': params.currency,
         'fiat_total_amount[amount]': quote.fiat_money.base_amount,
         'fiat_total_amount[currency]': quote.fiat_money.currency,
