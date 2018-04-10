@@ -1,0 +1,34 @@
+language: node_js
+node_js:
+  - 9
+  - 8
+  - 6
+env:
+  - FRESH_DEPS=false
+  - FRESH_DEPS=true
+matrix:
+  exclude:
+    - node_js: 9
+      env: FRESH_DEPS=true
+    - node_js: 6
+      env: FRESH_DEPS=true
+cache:
+  directories:
+    - $HOME/.npm
+before_install:
+  - openssl aes-256-cbc -K $encrypted_8bcd13e0bfb0_key -iv $encrypted_8bcd13e0bfb0_iv -in .env.enc -out .env -d
+  - npm i --global npm@5.8.0
+  - npm --version
+install: |
+  if [[ ${FRESH_DEPS} == "true" ]]; then
+    npm i --no-shrinkwrap --prefer-online;
+  else
+    npm ci;
+    checksum=$(md5sum package-lock.json);
+    npm i --package-lock-only;
+    if ! echo ${checksum} | md5sum --quiet -c -; then
+      echo "package-lock.json was modified unexpectedly. Please rebuild it using npm@$(npm -v) and commit the changes.";
+      exit 1;
+    fi
+  fi
+after_success: npx codecov --file=./coverage/lcov.info
