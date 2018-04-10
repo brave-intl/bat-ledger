@@ -910,7 +910,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
 const findEligPublishers = async (debug, runtime, publishers) => {
   const publishersC = runtime.database.get('publishers', debug)
 
-  if (!publishers) {
+  if (!publishers || publishers.length === 0) {
     return []
   }
 
@@ -929,6 +929,7 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   const owners = runtime.database.get('owners', debug)
 
   const statements = await referralStatement(debug, runtime, undefined, true)
+  console.log(statements)
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
   })
