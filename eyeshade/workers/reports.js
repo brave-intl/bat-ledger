@@ -817,7 +817,7 @@ const date2objectId = (iso8601, ceilP) => {
 }
 
 /**
- * A referral statement consists of entries describing accrued earnings from referrals,
+ * A referral statement consists of entries describing earnings from referrals,
  * past successful settlements (payouts), and a balance entry showing a publishers current
  * settlement balance from referrals.
  **/
@@ -855,7 +855,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
   ])
   referralTotals.forEach((total) => {
     total.publisher = total._id
-    total.probi = new BigNumber(total.probi)
+    total.probi = new BigNumber(total.probi.toString())
 
     if (!statements[total.publisher]) statements[total.publisher] = statementTemplate
     statements[total.publisher].referrals.summary = total
@@ -892,7 +892,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
       balance = balance.minus(summary.probi)
     })
     if (balance.lessThan(0)) {
-      throw new Error('Publisher has been overpaid')
+      throw new Error(`Publisher ${publisher} has been overpaid`)
     }
     statements[publisher].balance = {
       publisher: publisher,
@@ -927,7 +927,6 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   const publishers = runtime.database.get('publishers', debug)
 
   const statements = await referralStatement(debug, runtime, undefined, true)
-  console.log(JSON.stringify(statements))
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
   })
@@ -946,20 +945,24 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
     const entry = await owners.findOne({ owner: payment.owner })
     if ((!entry) || (!entry.provider) || (!entry.parameters)) {
-      await notification(debug, runtime, entry.owner, payment.publisher, { type: 'verified_no_wallet' })
+      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
       continue
     }
 
-    const wallet = await runtime.wallet.status(entry)
-    if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
-      await notification(debug, runtime, entry.owner, payment.publisher, { type: 'verified_no_wallet' })
-      continue
+    try {
+      const wallet = await runtime.wallet.status(entry)
+      if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
+        await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
+        continue
+      }
+
+      payment.address = wallet.address
+      payment.currency = wallet.defaultCurrency
+
+      payments.push(payment)
+    } catch (ex) {
+      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
     }
-
-    payment.address = wallet.address
-    payment.currency = wallet.defaultCurrency
-
-    payments.push(payment)
   }
 
   return payments
@@ -1023,8 +1026,8 @@ exports.workers = {
         throw new Error('only summary && balance && authorized && verified is supported')
       }
 
-      if (format === 'csv') {
-        throw new Error('csv is not supported')
+      if (format !== 'json') {
+        throw new Error('formats other than json are not supported')
       }
 
       const payments = await prepareReferralPayout(debug, runtime, authority, reportId, thresholdProbi)

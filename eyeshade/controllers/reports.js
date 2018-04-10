@@ -89,7 +89,7 @@ v1.publishers.referrals = {
 
   validate: {
     query: {
-      format: Joi.string().valid('json', 'csv').optional().default('json').description('the format of the report'),
+      format: Joi.string().valid('json').optional().default('json').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       balance: Joi.boolean().optional().default(true).description('show balance due'),
       authorized: Joi.boolean().optional().default(true).description('filter on authorization status'),
@@ -639,7 +639,7 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-grants-outstanding')
 }
 
-function authorityProvider (request) {
+const authorityProvider = (request) => {
   const { auth } = request
   const { credentials } = auth
   const { provider, profile } = credentials
