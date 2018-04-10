@@ -9,6 +9,10 @@ services:
       - "MONGODB_URI=${MONGODB_URI-mongodb://mongo}"
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
+      - "BAT_LEDGER_SERVER=${BAT_LEDGER_SERVER-http://ledger-web:3001}"
+      - "BAT_EYESHADE_SERVER=${BAT_EYESHADE_SERVER-http://eyeshade-web:3002}"
+      - "BAT_HELPER_SERVER=${BAT_HELPER_SERVER-http://helper-web:3004}"
+      - "BAT_GRANT_SERVER=${BAT_GRANT_SERVER-http://grant-web:3333}"
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN
       - BALANCE_URL
