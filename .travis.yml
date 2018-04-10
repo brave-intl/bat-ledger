@@ -22,4 +22,6 @@ install: |
       exit 1;
     fi
   fi
+before_script:
+  - mongo test --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
 after_success: npx codecov --file=./coverage/lcov.info
