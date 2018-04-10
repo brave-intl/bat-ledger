@@ -529,11 +529,11 @@ const provision = async (debug, runtime, surveyorId, bump) => {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v2/surveyor/{surveyorType}/{surveyorId}').config(v2.read),
-  braveHapi.routes.async().post().path('/v2/surveyor/{surveyorType}').config(v2.create),
-  braveHapi.routes.async().patch().path('/v2/surveyor/{surveyorType}/{surveyorId}').config(v2.update),
-  braveHapi.routes.async().path('/v2/surveyor/{surveyorType}/{surveyorId}/{uId}').config(v2.phase1),
-  braveHapi.routes.async().put().path('/v2/surveyor/{surveyorType}/{surveyorId}').config(v2.phase2)
+  braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.read),
+  braveHapi.routes.async().post().path('/{apiV}/surveyor/{surveyorType}').config(v2.create),
+  braveHapi.routes.async().patch().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.update),
+  braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}/{uId}').config(v2.phase1),
+  braveHapi.routes.async().put().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.phase2)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
