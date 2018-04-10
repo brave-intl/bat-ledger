@@ -139,30 +139,18 @@ v2.create =
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
     const surveyorType = request.params.surveyorType
-    let surveyor, validity
     let payload = request.payload || {}
+    const validity = validateV2(surveyorType, payload)
 
-    // if (request.params.apiV === 'v1') {
-    //   validity = validateV1(surveyorType, payload)
-    // } else {
-      validity = validateV2(surveyorType, payload)
-    // }
+    let surveyor
 
     if (validity.error) return reply(boom.badData(validity.error))
-
-    // if (request.params.apiV === 'v1') {
-    //   payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
-    // }
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
 
     surveyor = await create(debug, runtime, surveyorType, payload)
     if (!surveyor) return reply(boom.notFound('invalid surveyorType: ' + surveyorType))
-
-    // if (request.params.apiV === 'v1') {
-    //   payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
-    // }
 
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
   }
@@ -212,17 +200,9 @@ v2.update =
     surveyor = await server(request, reply, runtime)
     if (!surveyor) return
 
-    // if (request.params.apiV === 'v1') {
-    //   validity = validateV1(surveyorType, payload)
-    // } else {
-      validity = validateV2(surveyorType, payload)
-    // }
+    validity = validateV2(surveyorType, payload)
 
     if (validity.error) return reply(boom.badData(validity.error))
-
-    // if (request.params.apiV === 'v1') {
-    //   payload.adFree = underscore.omit(underscore.extend(payload.adFree, { probi: payload.adFree.satoshis.toString() }), ['satoshis'])
-    // }
 
     payload = enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
@@ -235,10 +215,6 @@ v2.update =
                                underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
                                                  underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
     }
-
-    // if (request.params.apiV === 'v1') {
-    //   payload = underscore.omit(underscore.extend(payload, { satoshis: Number(payload.probi) }), ['altcurrency', 'probi'])
-    // }
 
     surveyor.payload = payload
     reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
@@ -330,11 +306,6 @@ v2.phase1 =
     })
 
     var payload = surveyor.payload
-    // if (request.params.apiV === 'v1') {
-    //   if (payload.adFree) {
-    //     payload.adFree = underscore.omit(underscore.extend(payload.adFree, { satoshis: Number(payload.adFree.probi) }), ['altcurrency', 'probi'])
-    //   }
-    // }
 
     reply(underscore.extend({ signature: signature, payload: payload }, surveyor.publicInfo()))
   }
