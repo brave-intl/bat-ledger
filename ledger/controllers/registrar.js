@@ -382,11 +382,11 @@ v2.createPersona =
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v2/registrar/{registrarType}').config(v2.read),
-  braveHapi.routes.async().patch().path('/v2/registrar/{registrarType}').config(v2.update),
+  braveHapi.routes.async().path('/{apiV}/registrar/{registrarType}').config(v2.read),
+  braveHapi.routes.async().patch().path('/{apiV}/registrar/{registrarType}').config(v2.update),
   braveHapi.routes.async().post().path('/v1/registrar/persona/{uId}').config(v1.createPersona),
   braveHapi.routes.async().post().path('/v2/registrar/persona/{uId}').config(v2.createPersona),
-  braveHapi.routes.async().post().path('/v2/registrar/viewing/{uId}').config(v2.createViewing)
+  braveHapi.routes.async().post().path('/{apiV}/registrar/viewing/{uId}').config(v2.createViewing)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
