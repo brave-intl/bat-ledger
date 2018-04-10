@@ -884,11 +884,9 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
   })
 
   underscore.keys(statements).forEach((publisher) => {
-    let pubOwner = ''
     let balance = new BigNumber(0)
     if (statements[publisher].referrals.summary.probi) {
       balance = balance.plus(statements[publisher].referrals.summary.probi)
-      pubOwner = statements[publisher]
     }
     statements[publisher].settlements.summaries.forEach((summary) => {
       balance = balance.minus(summary.probi)
@@ -898,7 +896,6 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
     }
     statements[publisher].balance = {
       publisher: publisher,
-      owner: pubOwner,
       altcurrency: altcurrency,
       probi: balance
     }
@@ -927,9 +924,10 @@ const findEligPublishers = async (debug, runtime, publishers) => {
  **/
 const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi) => {
   const owners = runtime.database.get('owners', debug)
+  const publishers = runtime.database.get('publishers', debug)
 
   const statements = await referralStatement(debug, runtime, undefined, true)
-  console.log(statements)
+  console.log(JSON.stringify(statements))
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
   })
@@ -942,6 +940,9 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
     payment.probi = payment.probi.minus(payment.fees)
     payment.authority = authority
     payment.transactionId = reportId
+
+    const publisher = await publishers.findOne({ publisher: payment.publisher })
+    payment.owner = publisher.owner
 
     const entry = await owners.findOne({ owner: payment.owner })
     if ((!entry) || (!entry.provider) || (!entry.parameters)) {
