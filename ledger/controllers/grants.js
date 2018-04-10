@@ -12,6 +12,10 @@ const braveHapi = utils.extras.hapi
 const braveUtils = utils.extras.utils
 const whitelist = utils.hapi.auth.whitelist
 
+const { env } = process
+const { NODE_ENV } = env
+const rateLimitEnabled = NODE_ENV === 'production'
+
 const grantSchema = Joi.object().keys({
   grantId: Joi.string().guid().required().description('the grant-identifier'),
   promotionId: Joi.string().guid().required().description('the associated promotion'),
@@ -277,7 +281,7 @@ v1.write = { handler: (runtime) => {
 
   plugins: {
     rateLimit: {
-      enabled: true,
+      enabled: rateLimitEnabled,
       rate: (request) => claimRate
     }
   },
