@@ -17,6 +17,7 @@ let altcurrency
 
 const datefmt = 'yyyymmdd-HHMMss'
 const datefmt2 = 'yyyymmdd-HHMMss-l'
+const feePercent = 0.05
 
 const create = async (runtime, prefix, params) => {
   let extension, filename, options
@@ -490,8 +491,8 @@ const mixer = async (debug, runtime, filter, qid) => {
     if (qid) query._id = qid
     slices = await voting.find(query)
     for (let slice of slices) {
-      probi = new BigNumber(quantum.quantum.toString()).times(slice.counts).times(0.95)
-      fees = new BigNumber(quantum.quantum.toString()).times(slice.counts).minus(probi)
+      fees = new BigNumber(quantum.quantum.toString()).times(slice.counts).times(feePercent)
+      probi = new BigNumber(quantum.quantum.toString()).times(slice.counts).minus(fees)
       if ((filter) && (filter.indexOf(slice.publisher) === -1)) continue
 
       if (!publishers[slice.publisher]) {
@@ -815,6 +816,153 @@ const date2objectId = (iso8601, ceilP) => {
                        (ceilP ? 'ffffffffffffffff' : '0000000000000000'))
 }
 
+/**
+ * A referral statement consists of entries describing accrued earnings from referrals,
+ * past successful settlements (payouts), and a balance entry showing a publishers current
+ * settlement balance from referrals.
+ **/
+const referralStatement = async (debug, runtime, owner, summaryP) => {
+  const referrals = runtime.database.get('referrals', debug)
+  const settlements = runtime.database.get('settlements', debug)
+
+  if (!summaryP) {
+    throw new Error('non summary not currently supported')
+  }
+
+  const statements = []
+  const statementTemplate = {
+    referrals: { summary: {}, entries: {} },
+    settlements: { summaries: [], entries: {} },
+    balance: {}
+  }
+
+  const referralFilter = { probi: { $gt: 0 }, altcurrency: { $eq: altcurrency }, exclude: false }
+  const settlementFilter = { probi: { $gt: 0 }, altcurrency: { $eq: altcurrency }, type: { $eq: 'referral' } }
+  if (owner) {
+    referralFilter.owner = { $eq: owner }
+    settlementFilter.owner = { $eq: owner }
+  }
+
+  const referralTotals = await referrals.aggregate([
+    { $match: referralFilter },
+    {
+      $group: {
+        _id: '$publisher',
+        count: { $sum: 1 },
+        probi: { $sum: '$probi' }
+      }
+    }
+  ])
+  referralTotals.forEach((total) => {
+    total.publisher = total._id
+    total.probi = new BigNumber(total.probi)
+
+    if (!statements[total.publisher]) statements[total.publisher] = statementTemplate
+    statements[total.publisher].referrals.summary = total
+  })
+
+  const referralSettlementSummaries = await settlements.aggregate([
+    { $match: settlementFilter },
+    {
+      $group: {
+        // FIXME handle domain transfer case, multiple entries with different owner for same publisher
+        _id: { publisher: '$publisher', currency: '$currency' },
+        amount: { $sum: '$amount' },
+        probi: { $sum: '$probi' },
+        fees: { $sum: '$fees' },
+        commission: { $sum: '$commission' }
+      }
+    }
+  ])
+  referralSettlementSummaries.forEach((summary) => {
+    summary.publisher = summary._id.publisher
+    summary.currency = summary._id.currency
+    summary.probi = new BigNumber(summary.probi)
+
+    if (!statements[summary.publisher]) statements[summary.publisher] = statementTemplate
+    statements[summary.publisher].settlements.summaries.push(summary)
+  })
+
+  underscore.keys(statements).forEach((publisher) => {
+    let pubOwner = ''
+    let balance = new BigNumber(0)
+    if (statements[publisher].referrals.summary.probi) {
+      balance = balance.plus(statements[publisher].referrals.summary.probi)
+      pubOwner = statements[publisher]
+    }
+    statements[publisher].settlements.summaries.forEach((summary) => {
+      balance = balance.minus(summary.probi)
+    })
+    if (balance.lessThan(0)) {
+      throw new Error('Publisher has been overpaid')
+    }
+    statements[publisher].balance = {
+      publisher: publisher,
+      owner: pubOwner,
+      altcurrency: altcurrency,
+      probi: balance
+    }
+  })
+
+  return statements
+}
+
+const findEligPublishers = async (debug, runtime, publishers) => {
+  const publishersC = runtime.database.get('publishers', debug)
+
+  if (!publishers) {
+    return []
+  }
+
+  const entries = await publishersC.find({ $or: publishers.map((pub) => { return { publisher: pub } }),
+    authorized: true,
+    verified: true }, { publisher: 1 })
+  return underscore.map(entries, (entry) => { return entry.publisher })
+}
+
+/**
+ * Prepare a json datastructure consisting of transactions to pay out the
+ * current balance owed to eligible publisher from referrals in the format expected
+ * by our payment tooling
+ **/
+const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi) => {
+  const owners = runtime.database.get('owners', debug)
+
+  const statements = await referralStatement(debug, runtime, undefined, true)
+  const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
+    return statements[publisher].balance.probi.greaterThan(thresholdProbi)
+  })
+  const eligPublishers = await findEligPublishers(debug, runtime, threshPubs)
+
+  const payments = []
+  for (let i = 0; i < eligPublishers.length; i++) {
+    const payment = statements[eligPublishers[i]].balance
+    payment.fees = payment.probi.times(feePercent)
+    payment.probi = payment.probi.minus(payment.fees)
+    payment.authority = authority
+    payment.transactionId = reportId
+
+    const entry = await owners.findOne({ owner: payment.owner })
+    if ((!entry) || (!entry.provider) || (!entry.parameters)) {
+      await notification(debug, runtime, entry.owner, payment.publisher, { type: 'verified_no_wallet' })
+      continue
+    }
+
+    const wallet = await runtime.wallet.status(entry)
+    if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
+      await notification(debug, runtime, entry.owner, payment.publisher, { type: 'verified_no_wallet' })
+      continue
+    }
+
+    payment.address = wallet.address
+    payment.currency = wallet.defaultCurrency
+
+    payments.push(payment)
+  }
+
+  return payments
+}
+
 var exports = {}
 
 exports.initialize = async (debug, runtime) => {
@@ -843,6 +991,52 @@ exports.create = create
 exports.publish = publish
 
 exports.workers = {
+/* sent by GET /v1/reports/publisher/{publisher}/referrals
+           GET /v1/reports/publishers/referrals
+
+    { queue            : 'report-publishers-referrals'
+    , message          :
+      { reportId       : '...'
+      , reportURL      : '...'
+      , authority      : '...:...'
+      , format         : 'json' | 'csv'
+      , balance        :  true  | false
+      , summary        :  true  | false
+      , threshold      : probi
+      }
+    }
+ */
+  'report-publishers-referrals':
+    async (debug, runtime, payload) => {
+      const authority = payload.authority
+      const authorized = payload.authorized
+      const balance = payload.balance
+      const format = payload.format
+      const reportId = payload.reportId
+      const summary = payload.summary
+      const thresholdProbi = payload.threshold || 0
+      const verified = payload.verified
+
+      if ((!balance) || (!summary) || (!authorized) || (!verified)) {
+        throw new Error('only summary && balance && authorized && verified is supported')
+      }
+
+      if (format === 'csv') {
+        throw new Error('csv is not supported')
+      }
+
+      const payments = await prepareReferralPayout(debug, runtime, authority, reportId, thresholdProbi)
+
+      const file = await create(runtime, 'publishers-', payload)
+
+      await file.write(utf8ify(payments), true)
+
+      return runtime.notify(debug, {
+        channel: '#publishers-bot',
+        text: authority + ' report-publishers-referrals completed'
+      })
+    },
+
 /* sent by GET /v1/reports/publisher/{publisher}/contributions
            GET /v1/reports/publishers/contributions
 

@@ -56,6 +56,57 @@ v2.publishers = {}
 v3.publishers = {}
 
 /*
+   GET /v1/reports/publishers/referrals
+ */
+
+v1.publishers.referrals = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const amount = request.query.amount
+      const authority = authorityProvider(request)
+      const currency = request.query.currency.toUpperCase()
+      const reportId = uuid.v4().toLowerCase()
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const debug = braveHapi.debug(module, request)
+
+      const threshold = runtime.currency.fiat2alt(currency, amount, altcurrency)
+
+      await runtime.queue.send(debug, 'report-publishers-referrals',
+                               underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
+                                                   { threshold: threshold }, request.query))
+      reply({ reportURL: reportURL })
+    }
+  },
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger', 'QA' ],
+    mode: 'required'
+  },
+
+  description: 'Returns information about referrals to publishers, used to prepare referral payout',
+  tags: [ 'api' ],
+
+  validate: {
+    query: {
+      format: Joi.string().valid('json', 'csv').optional().default('json').description('the format of the report'),
+      summary: Joi.boolean().optional().default(true).description('summarize report'),
+      balance: Joi.boolean().optional().default(true).description('show balance due'),
+      authorized: Joi.boolean().optional().default(true).description('filter on authorization status'),
+      verified: Joi.boolean().optional().default(true).description('filter on verification status'),
+      amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+    }).unknown(true)
+  }
+}
+
+/*
    GET /v1/reports/publisher/{publisher}/contributions
    GET /v1/reports/publishers/contributions
  */
@@ -63,8 +114,7 @@ v3.publishers = {}
 v1.publisher.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      let authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -104,8 +154,7 @@ v1.publishers.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
       const amount = request.query.amount
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const currency = request.query.currency.toUpperCase()
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
@@ -155,8 +204,7 @@ v1.publishers.contributions = {
 v1.publisher.settlements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -195,8 +243,7 @@ v1.publisher.settlements = {
 v1.publishers.settlements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -241,8 +288,7 @@ v1.publishers.settlements = {
 v1.publisher.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -278,8 +324,7 @@ v1.publisher.statements = {
 v1.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const hash = request.params.hash
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
@@ -319,8 +364,7 @@ v1.publishers.statements = {
 v3.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const settlementId = request.params.settlementId
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
@@ -360,8 +404,7 @@ v3.publishers.statements = {
 v2.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -404,8 +447,7 @@ v2.publishers.statements = {
 v1.publishers.status = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -490,8 +532,7 @@ v1.surveyors = {}
 v1.surveyors.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -536,8 +577,7 @@ v1.grants = {}
 v1.grants.outstanding = {
   handler: (runtime) => {
     return async (request, reply) => {
-      // const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -573,6 +613,7 @@ v1.grants.outstanding = {
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/reports/file/{reportId}').config(v1.getFile),
+  braveHapi.routes.async().path('/v1/reports/publishers/referrals').config(v1.publishers.referrals),
   braveHapi.routes.async().path('/v1/reports/publisher/{publisher}/contributions').config(v1.publisher.contributions),
   braveHapi.routes.async().path('/v1/reports/publishers/contributions').config(v1.publishers.contributions),
   braveHapi.routes.async().path('/v1/reports/publisher/{publisher}/settlements').config(v1.publisher.settlements),
@@ -590,6 +631,7 @@ module.exports.routes = [
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
 
+  await runtime.queue.create('report-publishers-referrals')
   await runtime.queue.create('report-publishers-contributions')
   await runtime.queue.create('report-publishers-settlements')
   await runtime.queue.create('report-publishers-status')
@@ -597,13 +639,13 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-grants-outstanding')
 }
 
-function authorityProvider(request) {
-  const { auth } = request;
-  const { credentials } = auth;
-  const { provider, profile, } = credentials;
-  let authority = provider;
+function authorityProvider (request) {
+  const { auth } = request
+  const { credentials } = auth
+  const { provider, profile } = credentials
+  let authority = provider
   if (process.env.NODE_ENV === 'production') {
     authority = provider + ':' + profile.username
   }
-  return authority;
+  return authority
 }

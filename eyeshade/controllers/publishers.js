@@ -109,12 +109,9 @@ v2.settlement = {
         publisher = await publishers.findOne({ publisher: entry.publisher })
         if (!publisher) return reply(boom.badData('no such entry: ' + entry.publisher))
 
-        if (!publisher.owner) return reply(boom.badData('no owner for publisher: ' + entry.publisher))
-
-        owner = await owners.findOne({ owner: publisher.owner })
+        // The owner at the time of uploading could be different
+        owner = await owners.findOne({ owner: entry.owner })
         if (!owner) return reply(boom.badData('no such owner ' + publisher.owner + ' for entry: ' + entry.publisher))
-
-        entry.owner = publisher.owner
       }
 
       state = {
@@ -1199,12 +1196,13 @@ module.exports.initialize = async (debug, runtime) => {
         commission: bson.Decimal128.POSITIVE_ZERO,    // conversion + network fees (i.e., for settlement)
 
         fees: bson.Decimal128.POSITIVE_ZERO,          // network fees (i.e., for contribution)
-        timestamp: bson.Timestamp.ZERO
+        timestamp: bson.Timestamp.ZERO,
+        type: ''
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
       others: [ { address: 1 },
                 { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-                { fees: 1 }, { timestamp: 1 } ]
+                { fees: 1 }, { timestamp: 1 }, { type: 1 }]
     },
     {
       category: runtime.database.get('tokens', debug),
