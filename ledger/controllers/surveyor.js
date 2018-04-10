@@ -116,7 +116,7 @@ v2.read =
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      apiV: Joi.string().required().description('the api version')
     }
   },
 
@@ -180,7 +180,7 @@ v2.create =
   validate: {
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      apiV: Joi.string().required().description('the api version')
     },
     payload: Joi.object().optional().description('additional information')
   },
@@ -263,7 +263,7 @@ v2.update =
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      apiV: Joi.string().required().description('the api version')
     },
     payload: Joi.object().optional().description('additional information')
   },
@@ -348,7 +348,7 @@ v2.phase1 =
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
       uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
-      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      apiV: Joi.string().required().description('the api version')
     }
   },
 
@@ -434,7 +434,7 @@ v2.phase2 =
     params: {
       surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      // apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      apiV: Joi.string().required().description('the api version')
     },
 
     payload: { proof: Joi.string().required().description('report information and proof') }
