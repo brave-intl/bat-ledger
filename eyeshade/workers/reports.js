@@ -877,7 +877,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
   referralSettlementSummaries.forEach((summary) => {
     summary.publisher = summary._id.publisher
     summary.currency = summary._id.currency
-    summary.probi = new BigNumber(summary.probi)
+    summary.probi = new BigNumber(summary.probi.toString())
 
     if (!statements[summary.publisher]) statements[summary.publisher] = statementTemplate
     statements[summary.publisher].settlements.summaries.push(summary)
@@ -961,7 +961,7 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
       payments.push(payment)
     } catch (ex) {
-      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
+      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
     }
   }
 
