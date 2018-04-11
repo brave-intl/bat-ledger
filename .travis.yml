@@ -1,4 +1,7 @@
 language: node_js
+services:
+  - mongodb
+  - redis-server
 node_js:
   - 9
 env:
@@ -23,5 +26,5 @@ install: |
     fi
   fi
 before_script:
-  - mongo test --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
+  - npm run lint && npm run redis-flush && npm run source && npm run start-ledger & npm run start-ledger-worker & sleep 3 && npm run create-promotion &&
 after_success: npx codecov --file=./coverage/lcov.info
