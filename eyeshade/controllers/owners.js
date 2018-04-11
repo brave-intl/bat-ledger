@@ -465,22 +465,25 @@ v1.getWallet = {
       }
 
       entries = await publishers.find({ owner: owner })
-      summary = await settlements.group(
-        { publisher: 1, type: 1 },
-        { $or: entries.map((entry) => { return { publisher: entry.publisher } }) },
-        {},
-        (current, result) => {
-          if ((result.timestamp) && (current.timestamp <= result.timestamp)) return
-
-          result.timestamp = current.timestamp
-          result.probi = current.probi
-          result.amount = current.amount
-          result.probi = current.probi
-          result.altcurrency = current.altcurrency
-          result.currency = current.currency
+      summary = await settlements.aggregate([
+        {
+          $match: { owner: owner }
         },
-        (result) => {}
-      )
+        {
+          $sort: { timestamp: 1 }
+        },
+        {
+          $group:
+          {
+            _id: { publisher: '$publisher', type: '$type' },
+            timestamp: { $last: '$timestamp' },
+            probi: { $last: '$probi' },
+            amount: { $last: '$amount' },
+            altcurrency: { $last: '$altcurrency' },
+            currency: { $last: '$currency' }
+          }
+        }
+      ])
       entry = underscore.first(summary)
       if (entry) {
         result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
