@@ -469,7 +469,7 @@ v3.identity =
         delete result.timestamp
       }
 
-      entry = await publishers.findOne({ publisher: publisher })
+      entry = await publishers.findOne({ publisher: result.publisher })
       if (entry) {
         timestamp = entry.timestamp.toString()
 
