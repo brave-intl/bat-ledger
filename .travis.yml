@@ -7,8 +7,8 @@ services:
 env:
   # i thought this would help, but it does not seem to.
   # probably not getting into image
-  # global:
-  #   - MONGODB_URI=localhost/test
+  global:
+    - MONGODB_URI=localhost/test
   - FRESH_DEPS=true
 cache:
   directories:
@@ -34,6 +34,7 @@ before_script:
   - npm run lint
   - sleep 15
   - docker-compose build
+  - docker-compose exec mongo mongo admin --eval 'db.createUser({user:"admin",pwd:"test",roles:["readWrite"]});'
   # this is where the problem lies
   - docker-compose up ledger-web ledger-worker
   - npm run create-promotion
