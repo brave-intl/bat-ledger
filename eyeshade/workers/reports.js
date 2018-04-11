@@ -857,7 +857,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
     total.publisher = total._id
     total.probi = new BigNumber(total.probi.toString())
 
-    if (!statements[total.publisher]) statements[total.publisher] = statementTemplate
+    if (!statements[total.publisher]) statements[total.publisher] = JSON.parse(JSON.stringify(statementTemplate))
     statements[total.publisher].referrals.summary = total
   })
 
@@ -879,7 +879,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
     summary.currency = summary._id.currency
     summary.probi = new BigNumber(summary.probi.toString())
 
-    if (!statements[summary.publisher]) statements[summary.publisher] = statementTemplate
+    if (!statements[summary.publisher]) statements[summary.publisher] = JSON.parse(JSON.stringify(statementTemplate))
     statements[summary.publisher].settlements.summaries.push(summary)
   })
 
