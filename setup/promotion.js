@@ -8,8 +8,8 @@ const options = {
   headers: {
     "Content-Type": "application/json",
     "Accept": "application/json",
-    "Authorization": "Bearer foobarfoobar"
-  }
+    "Authorization": "Bearer foobarfoobar",
+  },
 }
 const req = http.request(options, (res) => {
   console.log(`STATUS: ${res.statusCode}`)
