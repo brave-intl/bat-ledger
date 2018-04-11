@@ -42,3 +42,4 @@ before_script:
   - sleep 10
   - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
+
