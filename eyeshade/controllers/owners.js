@@ -625,7 +625,7 @@ v1.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'owner ' + ownerString(owner, entry.info) + ' ' +
-          (payload.parameters && payload.parameters.access_token) ? 'registered with' : 'unregistered from' + ' ' + provider +
+          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
            ': ' + sites.join(' ')
       })
 
