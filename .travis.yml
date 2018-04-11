@@ -28,7 +28,7 @@ install: |
 before_script:
   - npm run lint
   - docker-compose build
-  - docker-compose up ledger-web
+  - docker-compose up ledger-web ledger-worker
   - npm run create-promotion
   - npm run test
 after_success: npx codecov --file=./coverage/lcov.info
