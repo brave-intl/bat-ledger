@@ -1,5 +1,4 @@
 
-const querystring = require('querystring')
 const http = require('http')
 const options = {
   hostname: '127.0.0.1',
