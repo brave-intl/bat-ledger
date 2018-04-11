@@ -1,12 +1,12 @@
 language: node_js
 node_js:
   - 9
-services:
-  - mongodb
-  - redis-server
+# services:
+#   - mongodb
+#   - redis-server
 env:
-  global:
-    - MONGODB_URI=localhost/test
+  # global:
+  #   - MONGODB_URI=localhost/test
   - FRESH_DEPS=true
 cache:
   directories:
@@ -27,13 +27,13 @@ install: |
       exit 1;
     fi
   fi
+
 before_script:
   - npm run lint
-  - sleep 15
-  - mongo admin --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
-  - docker-compose build
-  - docker-compose up ledger-web ledger-worker
+  # - sleep 15
+  # - mongo admin --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
+  # - docker-compose build
+  # - docker-compose up ledger-web ledger-worker
   - npm run create-promotion
-  - npm run test
 after_success: npx codecov --file=./coverage/lcov.info
 
