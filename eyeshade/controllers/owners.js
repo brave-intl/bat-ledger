@@ -464,15 +464,47 @@ v1.getWallet = {
         }
       }
 
-      entries = await settlements.find({ owner: owner }, { sort: { timestamp: -1 }, limit: 1 })
-      entry = entries && entries[0]
+      entries = await publishers.find({ owner: owner })
+      summary = await settlements.group(
+        { publisher: 1, type: 1 },
+        { $or: entries.map((entry) => { return { publisher: entry.publisher } }) },
+        {},
+        (current, result) => {
+          if ((result.timestamp) && (current.timestamp <= result.timestamp)) return
+
+          result.timestamp = current.timestamp
+          result.probi = current.probi
+          result.amount = current.amount
+          result.probi = current.probi
+          result.altcurrency = current.altcurrency
+          result.currency = current.currency
+        },
+        (result) => {}
+      )
+      entry = underscore.first(summary)
       if (entry) {
         result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
-          probi: entry.probi.toString(),
-          amount: entry.amount.toString(),
-          timestamp: (entry.timestamp.high_ * 1000) +
-            (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+          probi: new BigNumber(entry.probi.toString()),
+          amount: new BigNumber(entry.amount.toString()),
+          timestamp: (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
         })
+        underscore.rest(summary).forEach((entry) => {
+          const timestamp = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+
+          result.lastSettlement.probi = result.lastSettlement.probi.plus(new BigNumber(entry.probi.toString()))
+          if (result.lastSettlement.timestamp < timestamp) result.lastSettlement.timestamp = timestamp
+          if (!result.lastSettlement.currency) return
+
+          if (result.lastSettlement.currency !== entry.currency) {
+            delete result.lastSettlement.currency
+            delete result.lastSettlement.amount
+          } else {
+            result.lastSettlement.amount = result.lastSettlement.amount.plus(new BigNumber(entry.amount.toString()))
+          }
+        })
+
+        result.lastSettlement.probi = result.lastSettlement.probi.toString()
+        if (result.lastSettlement.amount) result.lastSettlement.amount = result.lastSettlement.amount.toString()
       }
 
       entry = await owners.findOne({ owner: owner })
