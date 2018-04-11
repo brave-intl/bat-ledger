@@ -1,6 +1,9 @@
 language: node_js
 node_js:
   - 9
+services:
+  - mongodb
+  - redis-server
 env:
   global:
     - MONGODB_URI=localhost/test
