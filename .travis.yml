@@ -33,7 +33,7 @@ install: |
 before_script:
   - npm run lint
   - sleep 15
-  - mongo admin --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
+  - docker-compose exec mongo mongo admin --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
   - docker-compose build
   # this is where the problem lies
   - docker-compose up ledger-web ledger-worker
