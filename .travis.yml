@@ -5,6 +5,8 @@ node_js:
 #   - mongodb
 #   - redis-server
 env:
+  # i thought this would help, but it does not seem to.
+  # probably not getting into image
   # global:
   #   - MONGODB_URI=localhost/test
   - FRESH_DEPS=true
@@ -30,10 +32,11 @@ install: |
 
 before_script:
   - npm run lint
-  # - sleep 15
-  # - mongo admin --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
-  # - docker-compose build
-  # - docker-compose up ledger-web ledger-worker
+  - sleep 15
+  - mongo admin --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
+  - docker-compose build
+  # this is where the problem lies
+  - docker-compose up ledger-web ledger-worker
   - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
 

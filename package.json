@@ -46,7 +46,7 @@
   },
   "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
-    "@uphold/uphold-sdk-javascript": "^2.0.3",
+    "@uphold/uphold-sdk-javascript": "^2.0.4",
     "accept-language-parser": "1.4.1",
     "babel-cli": "^6.26.0",
     "babel-preset-stage-2": "^6.24.1",
@@ -99,7 +99,7 @@
     "oxr": "1.0.2",
     "pluralize": "^7.0.0",
     "prom-client": "10.2.2",
-    "proxy-agent": "^2.1.0",
+    "proxy-agent": "^2.3.0",
     "raven": "^2.5.0",
     "rsmq": "^0.8.2",
     "rsmq-worker": "^0.5.2",
