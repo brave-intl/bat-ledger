@@ -1,9 +1,9 @@
 language: node_js
 node_js:
   - 9
-# services:
-#   - mongodb
-#   - redis-server
+services:
+  - mongodb
+  - redis-server
 env:
   # i thought this would help, but it does not seem to.
   # probably not getting into image
