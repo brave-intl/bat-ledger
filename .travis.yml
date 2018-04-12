@@ -7,9 +7,9 @@ services:
   - docker
 env:
   global:
-    - "REDIS_URL-redis://redis:6379"
-    - "MONGODB_URI=mongodb://mongo"
-    - "BAT_LEDGER_SERVER=http://ledger-web:3001"
+    # - "REDIS_URL-redis://redis:6379"
+    # - "MONGODB_URI=mongodb://mongo"
+    # - "BAT_LEDGER_SERVER=http://ledger-web:3001"
   matrix:
     - FRESH_DEPS=true
 cache:
@@ -33,6 +33,8 @@ install: |
   fi
 
 before_script:
+  - npm run source
+  - travis env list
   - npm run lint
   - sleep 15
   # START DOCKER

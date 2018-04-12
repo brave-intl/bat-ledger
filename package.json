@@ -24,7 +24,7 @@
     "start-helper": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=helper ./node_modules/.bin/babel-node helper/server.js",
     "start-ledger": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node ledger/server.js",
     "start-ledger-worker": "NODE_PATH=. DEBUG=*,-babel,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
-    "source": "set -a && source .env",
+    "source": "node ./setup/source.js",
     "test": "npm run test-unit && npm run test-security",
     "redis-flush": "node ./setup/redis.js",
     "create-promotion": "node ./setup/promotion.js",
