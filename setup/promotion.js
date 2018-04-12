@@ -1,8 +1,8 @@
 
 const http = require('http')
-const hostname = 'ledger-web'
 const options = {
-  hostname,
+  hostname: 'ledger-web',
+  protocol: 'http:',
   port: 3001,
   path: '/v1/grants',
   method: 'POST',
