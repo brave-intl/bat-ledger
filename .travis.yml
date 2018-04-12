@@ -34,7 +34,6 @@ install: |
 
 before_script:
   - npm run source
-  - travis env list
   - npm run lint
   - sleep 15
   # START DOCKER
