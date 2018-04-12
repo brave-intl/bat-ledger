@@ -7,6 +7,7 @@ services:
   - docker
 env:
   global:
+    - "REDIS_URL-redis://redis:6379"
     - "MONGODB_URI=mongodb://mongo"
     - "BAT_LEDGER_SERVER=http://ledger-web:3001"
   matrix:
@@ -37,7 +38,8 @@ before_script:
   # START DOCKER
   - docker-compose build
   # this is where the problem lies
-  - docker-compose up ledger-web
+  - docker-compose up ledger-web ledger-worker &
+  - sleep 30
   # ledger-worker
   # - npm run create-promotion
   # END DOCKER
