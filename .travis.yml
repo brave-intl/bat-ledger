@@ -33,10 +33,13 @@ install: |
 before_script:
   - npm run lint
   - sleep 15
-  - docker-compose build
-  # this is where the problem lies
-  - docker-compose up ledger-web
-  # ledger-worker
-  # - npm run create-promotion
+  # START DOCKER
+  # - docker-compose build
+  # # this is where the problem lies
+  # - docker-compose up ledger-web
+  # # ledger-worker
+  # # - npm run create-promotion
+  # END DOCKER
+  npm run start-ledger
 after_success: npx codecov --file=./coverage/lcov.info
 
