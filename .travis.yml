@@ -1,6 +1,43 @@
 language: node_js
 node_js:
   - 9
+env:
+  global:
+    # exchange rate information
+    - BITCOIN_AVERAGE_PUBLIC_KEY=NjNkYTllNzg1YjdjNDc5NDgxMGY5NGVjMWM1MWQyNmM
+    - BITCOIN_AVERAGE_SECRET_KEY=NWU0NjUwYTk0ZjA3NGVkZTgxN2U5ODE1YThhZmQ2NjM5OWYxNzE3Y2QwMzk0YjNjYjc1YjE1YTQ4MDE0ZWM3ZQ
+
+    # ledgerops@brave.com (sandbox)
+    - UPHOLD_ACCESS_TOKEN=a08555ba6cb3ecdc939780a00dd7b1efc2b5a873
+    - UPHOLD_DONOR_CARD_ID=6654ecb0-6079-4f6c-ba58-791cc890a561
+    # hack for testing to use card id as settlement addr
+    - BAT_SETTLEMENT_ADDRESS=6654ecb0-6079-4f6c-ba58-791cc890a561
+    - DEBUG=*,-babel,-mongo:*,mongo:queries
+    # IP_GRAYLIST=0.0.0.0/0
+    - TOKEN_LIST=foobarfoobar
+
+    - REDEEMER_URL=http://grant-web:3333
+    - REDEEMER_TOKEN=foobarfoobar
+    # checks that a token is valid
+    - GRANT_SIGNATOR_PUBLIC_KEY=bbe028009e744422bfc39b0e226633324d8c5fe0744c87c1018b88a488bc5899
+
+    # ledger presents key to ask user's wallet to be filled
+    - GRANT_WALLET_PUBLIC_KEY=e04bb7ad426a7d69bda9c4d0a75ff7d0d502f92e215908eb98d3bd428aed477f
+    - GRANT_WALLET_PRIVATE_KEY=c40e94f6afdc5b209f84f16f39193f733fb2f4257ad5043ab9b0b91f9c641c0ae04bb7ad426a7d69bda9c4d0a75ff7d0d502f92e215908eb98d3bd428aed477f
+    - GRANT_WALLET_CARD_ID=f042845f-fa62-4022-8117-a476ec583a7b
+
+    # where funds came from
+    - VOTING_COHORTS=control,grant,test,quarantine
+    - TESTING_COHORTS=test
+
+    # disable rate limiting
+    - CLAIM_RATE_DISABLED=true
+
+    # publisher url
+    - PUBLISHERS_URL=http://127.0.0.1:30051
+    - POSTGRES_URI=postgresql://127.0.0.1:5432/test
+    - PGPASSWORD=password
+
 services:
   - mongodb
   - redis-server
