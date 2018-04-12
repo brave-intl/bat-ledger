@@ -38,3 +38,4 @@ before_script:
   # ledger-worker
   # - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
+
