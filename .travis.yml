@@ -32,10 +32,10 @@ install: |
 before_script:
   - npm run lint
   - sleep 15
-  - export MONGODB_URI=localhost/test && docker-compose build
-  - docker-compose exec mongo mongo admin --eval 'db.createUser({user:"admin",pwd:"test",roles:["readWrite"]});'
+  - docker-compose build
   # this is where the problem lies
-  - docker-compose up ledger-web ledger-worker
-  - npm run create-promotion
+  - docker-compose up ledger-web
+  # ledger-worker
+  # - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
 
