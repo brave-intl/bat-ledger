@@ -1,5 +1,4 @@
 'use strict'
-
 import BigNumber from 'bignumber.js'
 import UpholdSDK from '@uphold/uphold-sdk-javascript'
 import anonize from 'node-anonize2-relic'
@@ -9,6 +8,8 @@ import test from 'ava'
 import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
+import dotenv from 'dotenv'
+dotenv.config()
 
 function ok (res) {
   if (res.status !== 200) {
