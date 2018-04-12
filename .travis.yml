@@ -43,5 +43,6 @@ before_script:
   # - exec .env
   - npm run start-ledger & npm run start-ledger-worker &
   - sleep 10
+  - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
 
