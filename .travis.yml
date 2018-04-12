@@ -5,7 +5,11 @@ services:
   - mongodb
   - redis-server
 env:
-  - FRESH_DEPS=true
+  global:
+    - MONGODB_URI=localhost/test
+    - BAT_LEDGER_SERVER-http://ledger-web:3001
+  matrix:
+    - FRESH_DEPS=true
 cache:
   directories:
     - $HOME/.npm
