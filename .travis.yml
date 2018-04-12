@@ -5,10 +5,9 @@ services:
   - mongodb
   - redis-server
 env:
-  # i thought this would help, but it does not seem to.
-  # probably not getting into image
   global:
     - MONGODB_URI=localhost/test
+    - BAT_LEDGER_SERVER-http://ledger-web:3001
   - FRESH_DEPS=true
 cache:
   directories:
@@ -36,7 +35,7 @@ before_script:
   - docker-compose build
   - docker-compose exec mongo mongo admin --eval 'db.createUser({user:"admin",pwd:"test",roles:["readWrite"]});'
   # this is where the problem lies
-  - docker-compose up ledger-web ledger-worker
+  - MONGODB_URI=localhost/test docker-compose up ledger-web ledger-worker
   - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
 
