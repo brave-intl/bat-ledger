@@ -7,7 +7,7 @@ services:
   - docker
 env:
   global:
-    - "MONGODB_URI=localhost/test"
+    - "MONGODB_URI=mongo://mongo"
     - "BAT_LEDGER_SERVER=http://ledger-web:3001"
   matrix:
     - FRESH_DEPS=true
