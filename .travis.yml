@@ -39,6 +39,6 @@ before_script:
   # END DOCKER
   # - npm run start-ledger
   # - npm run start-ledger-worker
-  # - npm run create-promotion
+  - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
 
