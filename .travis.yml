@@ -9,8 +9,8 @@ env:
     - "BAT_LEDGER_SERVER=http://localhost:3001"
     - "BAT_EYESHADE_SERVER=http://localhost:3002"
     - "BAT_HELPER_SERVER=http://localhost:3004"
-    - "REDEEMER_URL=http://localhost:3333"
-    - "BAT_GRANT_SERVER=http://localhost:3333"
+    - "REDEEMER_URL=http://grant-web:3333"
+    - "BAT_GRANT_SERVER=http://grant-web:3333"
 services:
   - mongodb
   - redis-server
@@ -36,13 +36,18 @@ install: |
   fi
 sudo: required
 before_script:
-  - npm run source
+  # - npm run source
+  # lint the files (fail early)
   - npm run lint
   # sometimes travis takes a while to bring up mongo
   - sleep 15
   # build docker image
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  # pull the bat go layer
+  - docker pull brave/bat-go:latest
+  # build the docker compose file
   - docker-compose build
+  # bring up the relevant services
   - docker-compose up -d ledger-web ledger-worker grant-web
   # let the detached up command start up
   - sleep 10
