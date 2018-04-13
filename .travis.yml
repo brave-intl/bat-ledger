@@ -3,7 +3,7 @@ node_js:
   - 9
 env:
   global:
-    - "MONGODB_URI=mongodb://mongo"
+    - "MONGODB_URI=mongodb://mongo/test"
     - "NODE_ENV=development"
     - "REDIS_URL=redis://redis:6379"
     - "BAT_LEDGER_SERVER=http://ledger-web:3001"
@@ -11,7 +11,6 @@ env:
     - "BAT_HELPER_SERVER=http://helper-web:3004"
     - "REDEEMER_URL=http://grant-web:3333"
     - "BAT_GRANT_SERVER=http://grant-web:3333"
-
 services:
   - mongodb
   - redis-server
@@ -43,7 +42,7 @@ before_script:
   # START DOCKER
   - docker-compose build
   # this is where the problem lies
-  - docker-compose up -d ledger-web ledger-worker
+  - docker-compose up ledger-web ledger-worker
   # - sleep 30
   # ledger-worker
   # - npm run create-promotion
