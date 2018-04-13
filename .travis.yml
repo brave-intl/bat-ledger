@@ -43,7 +43,7 @@ before_script:
   # build docker image
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - docker-compose build
-  - docker-compose up ledger-web ledger-worker grant-web
+  - docker-compose up ledger-web ledger-worker
   # let the detached up command start up
   - sleep 10
   # put promotion into docker
