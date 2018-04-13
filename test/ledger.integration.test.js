@@ -228,7 +228,6 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 })
 
 test('integration : v2 grant contribution workflow with uphold BAT wallet', async t => {
-  // const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
 
