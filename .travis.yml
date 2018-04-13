@@ -42,7 +42,7 @@ before_script:
   - sleep 15
   # build docker image
   - docker-compose build
-  # this is where the problem lies
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - docker-compose up ledger-web ledger-worker grant-web
   # let the detached up command start up
   - sleep 10
