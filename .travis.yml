@@ -50,7 +50,7 @@ before_script:
   - docker-compose up -d ledger-web ledger-worker grant-web
   # let the detached up command start up
   - sleep 10
-  # put promotion into docker
+  # put surveyor into docker
   - npm run create-surveyor
   # put promotion into docker
   - npm run create-promotion
