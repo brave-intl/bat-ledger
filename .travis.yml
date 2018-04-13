@@ -36,7 +36,6 @@ install: |
   fi
 sudo: required
 before_script:
-  # - npm run source
   # lint the files (fail early)
   - npm run lint
   # sometimes travis takes a while to bring up mongo
