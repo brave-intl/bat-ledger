@@ -1,7 +1,7 @@
 
 const http = require('http')
 const options = {
-  hostname: 'ledger-web',
+  hostname: 'localhost',
   protocol: 'http:',
   port: 3001,
   path: '/v1/grants',
@@ -12,6 +12,7 @@ const options = {
     "Authorization": "Bearer foobarfoobar",
   },
 }
+console.log(options)
 const req = http.request(options, (res) => {
   console.log(`STATUS: ${res.statusCode}`)
   console.log(`HEADERS: ${JSON.stringify(res.headers)}`)

@@ -38,17 +38,15 @@ sudo: false
 before_script:
   - npm run source
   - npm run lint
+  # sometimes travis takes a while to bring up mongo
   - sleep 15
-  # START DOCKER
+  # build docker image
   - docker-compose build
   # this is where the problem lies
-  - docker-compose up -d ledger-web ledger-worker
+  - docker-compose up ledger-web ledger-worker grant-web
+  # let the detached up command start up
   - sleep 10
-  # ledger-worker
-  # - npm run create-promotion
-  # END DOCKER
-  # - npm run start-ledger
-  # - npm run start-ledger-worker
+  # put promotion into docker
   - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
 
