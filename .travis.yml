@@ -42,8 +42,8 @@ before_script:
   # START DOCKER
   - docker-compose build
   # this is where the problem lies
-  - docker-compose up ledger-web ledger-worker
-  # - sleep 30
+  - docker-compose up -d ledger-web ledger-worker
+  - sleep 10
   # ledger-worker
   # - npm run create-promotion
   # END DOCKER
