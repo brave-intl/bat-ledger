@@ -41,8 +41,8 @@ before_script:
   # sometimes travis takes a while to bring up mongo
   - sleep 15
   # build docker image
-  - docker-compose build
   - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+  - docker-compose build
   - docker-compose up ledger-web ledger-worker grant-web
   # let the detached up command start up
   - sleep 10
