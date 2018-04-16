@@ -138,7 +138,6 @@ async function findInBlacklist(blacklist, publisher) {
   }
   pubs = pubs.map(publisher => underscore.omit(publisher, ['_id']))
   if (publisher) {
-    // not undefined
     return pubs[0] || null
   } else {
     return pubs
