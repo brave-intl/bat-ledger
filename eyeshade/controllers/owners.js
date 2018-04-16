@@ -392,6 +392,7 @@ v1.getWallet = {
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, entries, entry, provider, query, rates, result, summary
@@ -422,6 +423,19 @@ v1.getWallet = {
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
 
+      summary = await referrals.aggregate([
+        {
+          $match: query
+        },
+        {
+          $group: {
+            _id: '$owner',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
+
       summary = await settlements.aggregate([
         {
           $match: underscore.pick(query, [ '$or', 'probi' ])
@@ -450,15 +464,50 @@ v1.getWallet = {
         }
       }
 
-      entries = await settlements.find({ owner: owner }, { sort: { timestamp: -1 }, limit: 1 })
-      entry = entries && entries[0]
+      entries = await publishers.find({ owner: owner })
+      summary = await settlements.aggregate([
+        {
+          $match: { owner: owner }
+        },
+        {
+          $sort: { timestamp: 1 }
+        },
+        {
+          $group:
+          {
+            _id: { publisher: '$publisher', type: '$type' },
+            timestamp: { $last: '$timestamp' },
+            probi: { $last: '$probi' },
+            amount: { $last: '$amount' },
+            altcurrency: { $last: '$altcurrency' },
+            currency: { $last: '$currency' }
+          }
+        }
+      ])
+      entry = underscore.first(summary)
       if (entry) {
         result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
-          probi: entry.probi.toString(),
-          amount: entry.amount.toString(),
-          timestamp: (entry.timestamp.high_ * 1000) +
-            (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+          probi: new BigNumber(entry.probi.toString()),
+          amount: new BigNumber(entry.amount.toString()),
+          timestamp: (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
         })
+        underscore.rest(summary).forEach((entry) => {
+          const timestamp = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+
+          result.lastSettlement.probi = result.lastSettlement.probi.plus(new BigNumber(entry.probi.toString()))
+          if (result.lastSettlement.timestamp < timestamp) result.lastSettlement.timestamp = timestamp
+          if (!result.lastSettlement.currency) return
+
+          if (result.lastSettlement.currency !== entry.currency) {
+            delete result.lastSettlement.currency
+            delete result.lastSettlement.amount
+          } else {
+            result.lastSettlement.amount = result.lastSettlement.amount.plus(new BigNumber(entry.amount.toString()))
+          }
+        })
+
+        result.lastSettlement.probi = result.lastSettlement.probi.toString()
+        if (result.lastSettlement.amount) result.lastSettlement.amount = result.lastSettlement.amount.toString()
       }
 
       entry = await owners.findOne({ owner: owner })
@@ -494,7 +543,7 @@ v1.getWallet = {
     mode: 'required'
   },
 
-  description: 'Gets information for a publisher',
+  description: 'Gets wallet information for a publisher',
   tags: [ 'api', 'publishers' ],
 
   validate: {
@@ -544,8 +593,6 @@ v1.putWallet = {
       const owner = request.params.owner
       const payload = request.payload
       const provider = payload.provider
-      const defaultCurrency = payload.defaultCurrency
-      const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
@@ -557,14 +604,83 @@ v1.putWallet = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(payload, {
-          visible: visible,
+        $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
+          defaultCurrency: payload.defaultCurrency,
+          visible: payload.show_verification_status,
           verified: true,
           altcurrency: altcurrency,
           authorized: true,
-          authority: provider,
-          defaultCurrency: defaultCurrency || entry.defaultCurrency
+          authority: provider
         })
+      }
+      await owners.update({ owner: owner }, state, { upsert: true })
+
+      entries = await publishers.find({ owner: owner })
+      entries.forEach((entry) => {
+        const props = getPublisherProps(entry.publisher)
+
+        if (props && props.URL) sites.push(props.URL)
+      })
+      if (sites.length === 0) sites.push('none')
+      runtime.notify(debug, {
+        channel: '#publishers-bot',
+        text: 'owner ' + ownerString(owner, entry.info) + ' ' +
+          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
+           ': ' + sites.join(' ')
+      })
+
+      reply({})
+    }
+  },
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Sets wallet information for a verified publisher',
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    payload: {
+      provider: Joi.string().required().description('wallet provider'),
+      parameters: Joi.object().required().description('wallet parameters'),
+      defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
+      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
+    }
+  },
+
+  response:
+    { schema: Joi.object().length(0) }
+}
+
+/*
+   PATCH /v1/owners/{owner}/wallet
+       [ used by publishers ]
+ */
+
+v1.patchWallet = {
+  handler: (runtime) => {
+    return async (request, reply) => {
+      const owner = request.params.owner
+      const payload = request.payload
+      const provider = payload.provider
+      const debug = braveHapi.debug(module, request)
+      const owners = runtime.database.get('owners', debug)
+      const publishers = runtime.database.get('publishers', debug)
+      const sites = []
+      let entry, entries, state
+
+      entry = await owners.findOne({ owner: owner })
+      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: underscore.pick(underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
+          defaultCurrency: payload.defaultCurrency,
+          visible: payload.show_verification_status
+        }), (value) => { return (typeof value !== 'undefined') })
       }
       await owners.update({ owner: owner }, state, { upsert: true })
 
@@ -591,16 +707,16 @@ v1.putWallet = {
     mode: 'required'
   },
 
-  description: 'Sets information for a verified publisher',
+  description: 'Updates wallet information for a verified publisher',
   tags: [ 'api', 'publishers' ],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     payload: {
-      provider: Joi.string().required().description('wallet provider'),
+      provider: Joi.string().optional().description('wallet provider'),
       parameters: Joi.object().optional().description('wallet parameters'),
-      defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
-      show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
+      defaultCurrency: braveJoi.string().anycurrencyCode().optional().description('the default currency to pay a publisher in'),
+      show_verification_status: Joi.boolean().optional().description('authorizes display')
     }
   },
 
@@ -646,8 +762,8 @@ v1.getStatement = {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { owner: braveJoi.string().owner().required().description('the owner identity') },
     query: {
-      starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format'),
-      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format')
+      starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z'),
+      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
     }
   },
 
@@ -732,6 +848,7 @@ module.exports.routes = [
  */
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
+  braveHapi.routes.async().patch().path('/v1/owners/{owner}/wallet').whitelist().config(v1.patchWallet),
   braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement),
   braveHapi.routes.async().path('/v1/owners/{owner}/verify/{publisher}').config(v1.getToken),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/verify/{publisher}').whitelist().config(v1.putToken),

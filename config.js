@@ -52,6 +52,10 @@ const services = {
           , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
           }
       }
+      module.exports.referrals =
+        { currency              : process.env.REFERRALS_CURRENCY || 'USD'
+        , amount                : process.env.REFERRALS_AMOUNT || 5
+        }
 
       helper()
       uphold()

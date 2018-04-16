@@ -235,7 +235,7 @@ v2.settlement = {
       const owners = runtime.database.get('owners', debug)
       const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
-      const fields = [ 'probi', 'amount', 'fees', 'commission' ]
+      const fields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
       let owner, publisher, state
 
       for (let entry of payload) {
@@ -244,12 +244,9 @@ v2.settlement = {
         publisher = await publishers.findOne({ publisher: entry.publisher })
         if (!publisher) return reply(boom.badData('no such entry: ' + entry.publisher))
 
-        if (!publisher.owner) return reply(boom.badData('no owner for publisher: ' + entry.publisher))
-
-        owner = await owners.findOne({ owner: publisher.owner })
+        // The owner at the time of uploading could be different
+        owner = await owners.findOne({ owner: entry.owner })
         if (!owner) return reply(boom.badData('no such owner ' + publisher.owner + ' for entry: ' + entry.publisher))
-
-        entry.owner = publisher.owner
       }
 
       state = {
@@ -259,7 +256,8 @@ v2.settlement = {
       for (let entry of payload) {
         entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
         fields.forEach((field) => { state.$set[field] = bson.Decimal128.fromString(entry[field].toString()) })
-        underscore.extend(state.$set, underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'owner' ]))
+        underscore.extend(state.$set,
+                          underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner' ]))
 
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
@@ -279,15 +277,18 @@ v2.settlement = {
 
   validate: {
     payload: Joi.array().min(1).items(Joi.object().keys({
+      owner: braveJoi.string().owner().required().description('the owner identity'),
       publisher: braveJoi.string().publisher().required().description('the publisher identity'),
       address: Joi.string().guid().required().description('settlement address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),
-      currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the deposit currency'),
+      fees: braveJoi.string().numeric().default('0.00').description('processing fees'),
+      currency: braveJoi.string().anycurrencyCode().default('USD').description('the deposit currency'),
       amount: braveJoi.string().numeric().required().description('the amount in the deposit currency'),
       commission: braveJoi.string().numeric().default('0.00').description('settlement commission'),
-      fee: braveJoi.string().numeric().default('0.00').description('additional settlement fee'),
-      transactionId: Joi.string().guid().description('the transactionId'),
+      fee: braveJoi.string().numeric().default('0.00').description('fee in addition to settlement commission'),
+      transactionId: Joi.string().guid().required().description('the transactionId'),
+      type: Joi.string().valid('contribution', 'referral').default('contribution').description('settlement input'),
       hash: Joi.string().guid().required().description('settlement-identifier')
     }).unknown(true)).required().description('publisher settlement report')
   },
@@ -307,6 +308,7 @@ v2.getBalance = {
       const publisher = request.params.publisher
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, summary
@@ -329,6 +331,24 @@ v2.getBalance = {
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
 
       summary = await settlements.aggregate([
         {
@@ -395,6 +415,7 @@ v2.getWallet = {
       const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let amount, entries, entry, provider, rates, result, summary
@@ -417,6 +438,24 @@ v2.getWallet = {
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            publisher: { $eq: publisher },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
 
       summary = await settlements.aggregate([
         {
@@ -493,7 +532,7 @@ v2.getWallet = {
     mode: 'required'
   },
 
-  description: 'Gets information for a publisher',
+  description: 'Gets wallet information for a publisher',
   tags: [ 'api', 'publishers' ],
 
   validate: {
@@ -543,9 +582,7 @@ v2.putWallet = {
       const publisher = request.params.publisher
       const payload = request.payload
       const provider = payload.provider
-      const defaultCurrency = payload.defaultCurrency
       const verificationId = request.payload.verificationId
-      const visible = payload.show_verification_status
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
       const tokens = runtime.database.get('tokens', debug)
@@ -561,13 +598,13 @@ v2.putWallet = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.omit(payload, [ 'verificationId', 'show_verification_status' ]), {
-          visible: visible,
+        $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
+          defaultCurrency: payload.defaultCurrency,
+          visible: payload.show_verification_status,
           verified: true,
           altcurrency: altcurrency,
           authorized: true,
-          authority: provider,
-          defaultCurrency: defaultCurrency || entry.defaultCurrency
+          authority: provider
         })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
@@ -575,8 +612,7 @@ v2.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'publisher ' + 'https://' + publisher + ' ' +
-          (payload.parameters && (payload.parameters.access_token || payload.defaultCurrency) ? 'registered with'
-           : 'unregistered from') + ' ' + provider
+          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider
       })
 
       reply({})
@@ -588,7 +624,7 @@ v2.putWallet = {
     mode: 'required'
   },
 
-  description: 'Sets information for a verified publisher',
+  description: 'Sets wallet information for a verified publisher',
   tags: [ 'api', 'publishers', 'unused' ],
 
   validate: {
@@ -1306,17 +1342,18 @@ module.exports.initialize = async (debug, runtime) => {
         owner: '',
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
+        fees: bson.Decimal128.POSITIVE_ZERO,          // processing fees
         currency: '',
         amount: bson.Decimal128.POSITIVE_ZERO,
-        commission: bson.Decimal128.POSITIVE_ZERO,    // conversion + network fees (i.e., for settlement)
-
-        fees: bson.Decimal128.POSITIVE_ZERO,          // network fees (i.e., for contribution)
-        timestamp: bson.Timestamp.ZERO
+        commission: bson.Decimal128.POSITIVE_ZERO,    // conversion fee (i.e., for settlement)
+        fee: bson.Decimal128.POSITIVE_ZERO,           // network fee (i.e., for settlement)
+        timestamp: bson.Timestamp.ZERO,
+        type: ''
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
       others: [ { address: 1 },
                 { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-                { fees: 1 }, { timestamp: 1 } ]
+                { fees: 1 }, { timestamp: 1 }, { type: 1 }]
     },
     {
       category: runtime.database.get('tokens', debug),
