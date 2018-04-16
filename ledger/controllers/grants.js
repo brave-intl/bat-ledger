@@ -12,9 +12,7 @@ const braveHapi = utils.extras.hapi
 const braveUtils = utils.extras.utils
 const whitelist = utils.hapi.auth.whitelist
 
-const { env } = process
-const { NODE_ENV } = env
-const rateLimitEnabled = NODE_ENV === 'production'
+const rateLimitEnabled = process.env.NODE_ENV === 'production'
 
 const grantSchema = Joi.object().keys({
   grantId: Joi.string().guid().required().description('the grant-identifier'),
