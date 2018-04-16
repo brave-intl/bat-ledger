@@ -81,7 +81,7 @@ exports.workers = {
         }
       }
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' publishers-bulk-create completed' })
-    },
+    }
 }
 
 module.exports = exports

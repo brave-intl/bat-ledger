@@ -124,7 +124,7 @@ v2.blacklist.GET = {
   }
 }
 
-async function findInBlacklist(blacklist, publisher) {
+async function findInBlacklist (blacklist, publisher) {
   let pubs = []
   if (publisher) {
     let found = await blacklist.findOne({ publisher })
@@ -179,7 +179,7 @@ v2.blacklist.POST = {
   }
 }
 
-async function addToBlacklist(blacklist, {
+async function addToBlacklist (blacklist, {
   publishers = []
 }) {
   const upsert = { upsert: true }
@@ -194,7 +194,8 @@ v2.blacklist.DELETE = {
     const debug = braveHapi.debug(module, request)
     const { database } = runtime
     const blacklist = database.get('blacklist', debug)
-    const result = await removeFromBlacklist(blacklist, request.payload)
+    // const result =
+    await removeFromBlacklist(blacklist, request.payload)
     reply()
   },
   auth: {
@@ -212,7 +213,7 @@ v2.blacklist.DELETE = {
   }
 }
 
-async function removeFromBlacklist(blacklist, {
+async function removeFromBlacklist (blacklist, {
   publishers = []
 }) {
   const publisher = { $in: publishers }
@@ -221,7 +222,6 @@ async function removeFromBlacklist(blacklist, {
 }
 
 // DELETE
-
 
 /*
    POST /v2/publishers/settlement

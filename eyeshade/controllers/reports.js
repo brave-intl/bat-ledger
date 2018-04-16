@@ -63,12 +63,13 @@ v3.publishers = {}
 v1.publisher.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
-      let authority = authorityProvider(request);
+      let authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
 
-      const result = await runtime.queue.send(debug, 'report-publishers-contributions',
+      // const result =
+      await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
       reply({ reportURL: reportURL })
@@ -104,7 +105,7 @@ v1.publishers.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
       const amount = request.query.amount
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const currency = request.query.currency.toUpperCase()
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
@@ -155,7 +156,7 @@ v1.publishers.contributions = {
 v1.publisher.settlements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -194,7 +195,7 @@ v1.publisher.settlements = {
 v1.publishers.settlements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -239,7 +240,7 @@ v1.publishers.settlements = {
 v1.publisher.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -275,7 +276,7 @@ v1.publisher.statements = {
 v1.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const hash = request.params.hash
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
@@ -315,7 +316,7 @@ v1.publishers.statements = {
 v3.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const settlementId = request.params.settlementId
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
@@ -355,7 +356,7 @@ v3.publishers.statements = {
 v2.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -398,7 +399,7 @@ v2.publishers.statements = {
 v1.publishers.status = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -483,7 +484,7 @@ v1.surveyors = {}
 v1.surveyors.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -528,7 +529,7 @@ v1.grants = {}
 v1.grants.outstanding = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const authority = authorityProvider(request);
+      const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
       const debug = braveHapi.debug(module, request)
@@ -588,13 +589,13 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-grants-outstanding')
 }
 
-function authorityProvider(request) {
-  const { auth } = request;
-  const { credentials } = auth;
-  const { provider, profile, } = credentials;
-  let authority = provider;
+function authorityProvider (request) {
+  const { auth } = request
+  const { credentials } = auth
+  const { provider, profile } = credentials
+  let authority = provider
   if (process.env.NODE_ENV === 'production') {
     authority = provider + ':' + profile.username
   }
-  return authority;
+  return authority
 }

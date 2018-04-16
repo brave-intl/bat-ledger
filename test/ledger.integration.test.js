@@ -9,7 +9,6 @@ import test from 'ava'
 import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
-import underscore from 'underscore'
 
 function ok (res) {
   if (res.status !== 200) {
