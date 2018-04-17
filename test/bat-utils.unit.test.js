@@ -2,6 +2,8 @@
 
 import batUtils from '../bat-utils'
 import test from 'ava'
+import dotenv from 'dotenv'
+dotenv.config()
 const braveHapi = batUtils.extras.hapi
 const whitelist = batUtils.hapi.auth.whitelist
 const Database = require('../bat-utils/lib/runtime-database')

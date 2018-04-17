@@ -107,7 +107,7 @@ v1.createReferrals = {
             publisher: referral.channelId,
             finalized: new Date(referral.finalized),
             exclude: false
-          }, underscore.pick(referral, [ 'owner', 'platform', 'altcurrency', 'platform' ]))
+          }, underscore.pick(referral, [ 'owner', 'platform', 'altcurrency', 'probi' ]))
         }
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
       }

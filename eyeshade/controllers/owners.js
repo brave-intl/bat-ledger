@@ -464,15 +464,50 @@ v1.getWallet = {
         }
       }
 
-      entries = await settlements.find({ owner: owner }, { sort: { timestamp: -1 }, limit: 1 })
-      entry = entries && entries[0]
+      entries = await publishers.find({ owner: owner })
+      summary = await settlements.aggregate([
+        {
+          $match: { owner: owner }
+        },
+        {
+          $sort: { timestamp: 1 }
+        },
+        {
+          $group:
+          {
+            _id: { publisher: '$publisher', type: '$type' },
+            timestamp: { $last: '$timestamp' },
+            probi: { $last: '$probi' },
+            amount: { $last: '$amount' },
+            altcurrency: { $last: '$altcurrency' },
+            currency: { $last: '$currency' }
+          }
+        }
+      ])
+      entry = underscore.first(summary)
       if (entry) {
         result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
-          probi: entry.probi.toString(),
-          amount: entry.amount.toString(),
-          timestamp: (entry.timestamp.high_ * 1000) +
-            (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+          probi: new BigNumber(entry.probi.toString()),
+          amount: new BigNumber(entry.amount.toString()),
+          timestamp: (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
         })
+        underscore.rest(summary).forEach((entry) => {
+          const timestamp = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+
+          result.lastSettlement.probi = result.lastSettlement.probi.plus(new BigNumber(entry.probi.toString()))
+          if (result.lastSettlement.timestamp < timestamp) result.lastSettlement.timestamp = timestamp
+          if (!result.lastSettlement.currency) return
+
+          if (result.lastSettlement.currency !== entry.currency) {
+            delete result.lastSettlement.currency
+            delete result.lastSettlement.amount
+          } else {
+            result.lastSettlement.amount = result.lastSettlement.amount.plus(new BigNumber(entry.amount.toString()))
+          }
+        })
+
+        result.lastSettlement.probi = result.lastSettlement.probi.toString()
+        if (result.lastSettlement.amount) result.lastSettlement.amount = result.lastSettlement.amount.toString()
       }
 
       entry = await owners.findOne({ owner: owner })
@@ -590,7 +625,7 @@ v1.putWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'owner ' + ownerString(owner, entry.info) + ' ' +
-          (payload.parameters && payload.parameters.access_token) ? 'registered with' : 'unregistered from' + ' ' + provider +
+          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
            ': ' + sites.join(' ')
       })
 
