@@ -1,6 +1,9 @@
 language: node_js
 node_js:
   - 9
+branches:
+  only:
+  - master
 env:
   global:
     - "MONGODB_URI=mongodb://mongo/test"
