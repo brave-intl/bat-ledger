@@ -1,0 +1,57 @@
+language: node_js
+node_js:
+  - 9
+env:
+  global:
+    - "MONGODB_URI=mongodb://mongo/test"
+    - "NODE_ENV=development"
+    - "REDIS_URL=redis://redis:6379"
+    - "BAT_LEDGER_SERVER=http://localhost:3001"
+    - "BAT_EYESHADE_SERVER=http://localhost:3002"
+    - "BAT_HELPER_SERVER=http://localhost:3004"
+    - "REDEEMER_URL=http://grant-web:3333"
+    - "BAT_GRANT_SERVER=http://localhost:3333"
+services:
+  - mongodb
+  - redis-server
+  - docker
+cache:
+  directories:
+    - $HOME/.npm
+before_install:
+  - openssl aes-256-cbc -K $encrypted_8bcd13e0bfb0_key -iv $encrypted_8bcd13e0bfb0_iv -in .env.enc -out .env -d
+  - npm i --global npm@5.8.0
+  - npm --version
+install: |
+  if [[ ${FRESH_DEPS} == "true" ]]; then
+    npm i --no-shrinkwrap --prefer-online;
+  else
+    npm ci;
+    checksum=$(md5sum package-lock.json);
+    npm i --package-lock-only;
+    if ! echo ${checksum} | md5sum --quiet -c -; then
+      echo "package-lock.json was modified unexpectedly. Please rebuild it using npm@$(npm -v) and commit the changes.";
+      exit 1;
+    fi
+  fi
+sudo: required
+before_script:
+  # lint the files (fail early)
+  - npm run lint
+  # sometimes travis takes a while to bring up mongo
+  - sleep 15
+  # build docker image
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  # pull the bat go layer
+  - docker pull brave/bat-go:latest
+  # build the docker compose file
+  - docker-compose build
+  # bring up the relevant services
+  - docker-compose up -d ledger-web ledger-worker grant-web
+  # let the detached up command start up
+  - sleep 10
+  # put surveyor into docker
+  - npm run create-surveyor
+  # put promotion into docker
+  - npm run create-promotion
+after_success: npx codecov --file=./coverage/lcov.info
