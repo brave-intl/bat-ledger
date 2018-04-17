@@ -50,7 +50,7 @@ before_script:
   # build the docker compose file
   - docker-compose build
   # bring up the relevant services
-  - docker-compose up -d ledger-web ledger-worker grant-web
+  - docker-compose up -d ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web
   # let the detached up command start up
   - sleep 10
   # put surveyor into docker
