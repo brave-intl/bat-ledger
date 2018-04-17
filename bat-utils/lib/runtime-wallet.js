@@ -72,8 +72,6 @@ Wallet.prototype.getTxProbi = function (info, txn) {
   } else {
     throw new Error('getTxProbi not supported for ' + info.altcurrency + ' at ' + info.provider)
   }
-
-  return new BigNumber(0)
 }
 
 Wallet.prototype.validateTxSignature = function (info, txn, signature) {

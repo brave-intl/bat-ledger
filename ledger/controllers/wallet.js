@@ -227,7 +227,7 @@ const write = function (runtime, apiVersion) {
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
     let cohort, fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
-
+    console.log('received', request.params, request.payload)
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
     if (!wallet.unsignedTx) throw new Error('no unsignedTx found')
@@ -326,9 +326,6 @@ const write = function (runtime, apiVersion) {
 
     var picked = ['votes', 'probi', 'altcurrency']
     // BTC only
-    if (result.hash) {
-      picked.push('hash')
-    }
     result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
     if (apiVersion === 1) {
       reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))
