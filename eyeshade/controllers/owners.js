@@ -605,7 +605,7 @@ v1.putWallet = {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
-          defaultCurrency: payload.defaultCurrency,
+          defaultCurrency: payload.default_currency,
           visible: payload.show_verification_status,
           verified: true,
           altcurrency: altcurrency,
@@ -626,7 +626,7 @@ v1.putWallet = {
         channel: '#publishers-bot',
         text: 'owner ' + ownerString(owner, entry.info) + ' ' +
           (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
-           ': ' + sites.join(' ')
+          ': ' + sites.join(' ')
       })
 
       reply({})
@@ -646,7 +646,7 @@ v1.putWallet = {
     payload: {
       provider: Joi.string().required().description('wallet provider'),
       parameters: Joi.object().required().description('wallet parameters'),
-      defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
+      default_currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
       show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
     }
   },
@@ -678,7 +678,7 @@ v1.patchWallet = {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.pick(underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
-          defaultCurrency: payload.defaultCurrency,
+          defaultCurrency: payload.default_currency,
           visible: payload.show_verification_status
         }), (value) => { return (typeof value !== 'undefined') })
       }
@@ -694,8 +694,8 @@ v1.patchWallet = {
       runtime.notify(debug, {
         channel: '#publishers-bot',
         text: 'owner ' + ownerString(owner, entry.info) + ' ' +
-          (payload.parameters && (payload.parameters.access_token || payload.defaultCurrency) ? 'registered with'
-           : 'unregistered from') + ' ' + provider + ': ' + sites.join(' ')
+          (payload.parameters && (payload.parameters.access_token || payload.default_currency) ? 'registered with'
+           : 'unregistered from') + ' ' + (provider || entry.provider) + ': ' + sites.join(' ')
       })
 
       reply({})
@@ -715,7 +715,7 @@ v1.patchWallet = {
     payload: {
       provider: Joi.string().optional().description('wallet provider'),
       parameters: Joi.object().optional().description('wallet parameters'),
-      defaultCurrency: braveJoi.string().anycurrencyCode().optional().description('the default currency to pay a publisher in'),
+      default_currency: braveJoi.string().anycurrencyCode().optional().description('the default currency to pay a publisher in'),
       show_verification_status: Joi.boolean().optional().description('authorizes display')
     }
   },
