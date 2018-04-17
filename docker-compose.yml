@@ -124,7 +124,7 @@ services:
       - ledger
   grant-web:
     container_name: grant-web
-    image: bat-go
+    image: brave/bat-go:latest
     ports:
       - "3333:3333"
     environment:
