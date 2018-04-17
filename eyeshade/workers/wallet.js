@@ -277,7 +277,7 @@ exports.workers = {
       }
 
       const blacklisted = await blacklist.findOne({ publisher })
-      const exclude = blacklisted || testingCohorts.includes(cohort)
+      const exclude = (!!blacklisted) || testingCohorts.includes(cohort)
       const timestamp = { $type: 'timestamp' }
       const state = {
         $currentDate: { timestamp },

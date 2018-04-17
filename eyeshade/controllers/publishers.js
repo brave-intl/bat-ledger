@@ -304,28 +304,54 @@ v2.settlement = {
 v2.getBalance = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const publisher = request.params.publisher
-      const currency = request.query.currency.toUpperCase()
+      const { params, query } = request
+      const { database } = runtime
+      const publisher = params.publisher
+      const cohort = query.cohort || 'control'
+      const currency = query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
-      const settlements = runtime.database.get('settlements', debug)
-      const voting = runtime.database.get('voting', debug)
+      const settlements = database.get('settlements', debug)
+      const blacklist = database.get('blacklist', debug)
+      const voting = database.get('voting', debug)
+      const {
+        config,
+        currency: runtimeCurrency
+      } = runtime
+      const { rates } = runtimeCurrency
+      const { testingCohorts } = config
       let amount, summary
       let probi = new BigNumber(0)
 
+      const blacklisted = await blacklist.findOne({ publisher })
+      const exclude = !!blacklisted
+
+      if (exclude) {
+        return reply({
+          rates: rates[altcurrency],
+          altcurrency: altcurrency,
+          probi: '0',
+          amount: 0,
+          currency: currency
+        })
+      }
+
+      const $group = {
+        _id: '$publisher',
+        probi: { $sum: '$probi' }
+      }
+      const $match = {
+        probi: { $gt: 0 },
+        publisher: { $eq: publisher },
+        altcurrency: { $eq: altcurrency },
+        exclude
+      }
+
       summary = await voting.aggregate([
         {
-          $match: {
-            probi: { $gt: 0 },
-            publisher: { $eq: publisher },
-            altcurrency: { $eq: altcurrency },
-            exclude: false
-          }
+          $match
         },
         {
-          $group: {
-            _id: '$publisher',
-            probi: { $sum: '$probi' }
-          }
+          $group
         }
       ])
       if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
