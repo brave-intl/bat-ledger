@@ -13,11 +13,9 @@ const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 const tkn = 'foobarfoobar'
 const token = `Bearer ${tkn}`
 const {
-  BAT_EYESHADE_SERVER = 'https://eyeshade-staging.mercury.basicattentiontoken.org'
+  BAT_EYESHADE_SERVER: listener = 'https://eyeshade-staging.mercury.basicattentiontoken.org'
 } = process.env
-const srv = {
-  listener: BAT_EYESHADE_SERVER
-}
+const srv = { listener }
 const posterURL = '/v2/publishers/blacklist/'
 test('blacklist > GET > retrieve all', async t => {
   t.plan(2)

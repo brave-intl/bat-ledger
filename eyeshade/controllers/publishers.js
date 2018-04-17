@@ -308,7 +308,6 @@ v2.getBalance = {
       const { params, query } = request
       const { database } = runtime
       const publisher = params.publisher
-      const cohort = query.cohort || 'control'
       const currency = query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
       const settlements = database.get('settlements', debug)
@@ -316,11 +315,9 @@ v2.getBalance = {
       const voting = database.get('voting', debug)
       const referrals = runtime.database.get('referrals', debug)
       const {
-        config,
         currency: runtimeCurrency
       } = runtime
       const { rates } = runtimeCurrency
-      const { testingCohorts } = config
       let amount, summary
       let probi = new BigNumber(0)
 
