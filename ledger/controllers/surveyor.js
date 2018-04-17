@@ -41,17 +41,6 @@ const registrarType = (surveyorType) => {
   return { contribution: 'persona', voting: 'viewing' }[surveyorType]
 }
 
-const validateV1 = (surveyorType, payload) => {
-  const fee = Joi.object().keys({ USD: Joi.number().min(1).required() }).unknown(true).required()
-  const satoshis = Joi.number().integer().min(1).optional()
-  const votes = Joi.number().integer().min(1).max(100).required()
-  const schema = {
-    contribution: Joi.object().keys({ adFree: Joi.object().keys({ votes: votes, satoshis: satoshis, fee: fee }) }).required()
-  }[surveyorType] || Joi.object().max(0)
-
-  return Joi.validate(payload || {}, schema)
-}
-
 const validateV2 = (surveyorType, payload) => {
   const fee = Joi.object().keys({ USD: Joi.number().min(1).required() }).unknown(true).required()
   const altcurrency = braveJoi.string().altcurrencyCode().optional()

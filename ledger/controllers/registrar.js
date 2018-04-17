@@ -180,9 +180,9 @@ const createPersona = function (runtime) {
 
     const paymentId = uuid.v4().toLowerCase()
     const wallets = runtime.database.get('wallets', debug)
-    let host, prefix, result, wallet, requestBody
-
-    requestBody = request.payload.request
+    let result
+    let wallet
+    let requestBody = request.payload.request
 
     try {
       result = await runtime.wallet.create(requestType, requestBody)
