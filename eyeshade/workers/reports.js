@@ -1421,7 +1421,7 @@ exports.workers = {
       })
       if (!publisher) {
         data.push({
-          note: 'TOTAL IN',
+          note: 'ACTIVITY',
           altcurrency: data1.altcurrency,
           probi: data1.probi.toString(),
           fees: data1.fees.toString(),
@@ -1430,7 +1430,7 @@ exports.workers = {
         })
         if ((!summaryP) && (!payload.owner)) data.push([])
         data.push({
-          note: 'TOTAL OUT',
+          note: 'TOTAL PAID OUT',
           altcurrency: data2.altcurrency,
           probi: data2.probi.toString()
         })
