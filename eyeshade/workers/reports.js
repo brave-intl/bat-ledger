@@ -1108,7 +1108,8 @@ exports.workers = {
           {
             $match: {
               probi: { $gt: 0 },
-              altcurrency: { $eq: altcurrency }
+              altcurrency: { $eq: altcurrency },
+              type: 'contribution'
             }
           },
           {
@@ -1678,7 +1679,8 @@ exports.workers = {
           {
             $match: {
               probi: { $gt: 0 },
-              altcurrency: { $eq: altcurrency }
+              altcurrency: { $eq: altcurrency },
+              type: 'contribution'
             }
           },
           {
