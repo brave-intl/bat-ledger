@@ -1310,10 +1310,11 @@ exports.workers = {
       const authority = payload.authority
       const rollupP = payload.rollup
       const starting = payload.starting
-      const summaryP = payload.summary
       const publisher = payload.publisher
+      const publishersC = runtime.database.get('publishers', debug)
       const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
+      const summaryP = payload.summary
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let contributions, data, data1, data2, file, entries, publishers, query, range, referralTotals, usd
       let ending = payload.ending
@@ -1336,10 +1337,12 @@ exports.workers = {
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
           entries = await settlements.find(query)
         }
-        contributions = await mixer(debug, runtime, undefined, range)
-        underscore.keys(contributions).forEach((publisher) => {
-          if (underscore.where(entries, { publisher: publisher }).length === 0) delete contributions[publisher]
-        })
+        if (payload.owner) {
+          publishers = await publishersC.find({ owner: payload.owner })
+          contributions = await mixer(debug, runtime, publishers.map((p) => p.publisher), range)
+        } else {
+          contributions = await mixer(debug, runtime, undefined, range)
+        }
       }
 
       referralTotals = await referrals.aggregate([
