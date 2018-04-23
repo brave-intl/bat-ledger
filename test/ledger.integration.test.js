@@ -4,10 +4,16 @@ import UpholdSDK from '@uphold/uphold-sdk-javascript'
 import anonize from 'node-anonize2-relic'
 import crypto from 'crypto'
 import request from 'supertest'
-import test from 'ava'
+import { serial as test } from 'ava'
 import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
+import _ from 'underscore'
+import {
+  owner,
+  publisher,
+  req
+} from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
 
@@ -29,6 +35,45 @@ const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging
 // FIXME assert has env vars set and is using uphold
 // NOTE this requires a contibution surveyor to have already been created
 
+test('create an owner', async t => {
+  t.plan(2)
+  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const ownerName = 'venture'
+  const url = '/v1/owners'
+  const name = ownerName
+  const email = 'mmclaughlin@brave.com'
+  const phone = '+16122458588'
+  const ownerEmail = email
+  const authorizer = {
+    owner,
+    ownerEmail,
+    ownerName
+  }
+  const contactInfo = {
+    name,
+    email,
+    phone
+  }
+  const provider = {
+    publisher
+  }
+  const providers = [provider]
+  const data = {
+    authorizer,
+    contactInfo,
+    providers
+  }
+  const options = {
+    url,
+    method: 'post',
+    domain
+  }
+  const result = await req(options).send(data)
+  const status = result.status
+  const body = result.body
+  t.true(status === 200)
+  t.true(_.isObject(body))
+})
 test('integration : v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
@@ -212,7 +257,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   viewingCredential.finalize(response.body.verification)
 
-  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
+  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', publisher]
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
     response = await request(srv.listener)
@@ -388,10 +433,10 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   t.true(response.body.hasOwnProperty('surveyorIds'))
   const surveyorIds = response.body.surveyorIds
   t.true(surveyorIds.length >= 5)
-
+  console.log(surveyorIds)
   viewingCredential.finalize(response.body.verification)
 
-  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
+  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', publisher]
   // const votes = ['basicattentiontoken.org']
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
@@ -405,4 +450,55 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
       .send({'proof': viewingCredential.submit(surveyor, { publisher: votes[i % votes.length] })})
       .expect(ok)
   }
+})
+test('ensure publisher verified with /v2/publishers/settlement', async t => {
+  t.plan(1)
+  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const url = `/v2/publishers/settlement`
+  const method = 'post'
+  const altcurrency = 'BAT'
+  const probi = 10e18.toString()
+  const amount = '0.20'
+  const type = 'contribution'
+  const options = { url, method, domain }
+  console.log('owner printed here', owner)
+  const datum = {
+    owner,
+    publisher,
+    altcurrency,
+    probi,
+    amount,
+    type
+  }
+  const datum1 = contribution(datum)
+  const datum2 = contribution(datum)
+  const data = [datum1, datum2]
+  const result = await req(options).send(data)
+  const { body, status } = result
+  t.true(status === 200)
+
+  function contribution(base) {
+    return _.extend({
+      address: uuid.v4(),
+      transactionId: uuid.v4(),
+      hash: uuid.v4()
+    }, base)
+  }
+})
+test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
+  t.plan(2)
+  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
+  const options = { url, domain }
+  let result = null
+  do {
+    console.log('owner', owner)
+    await snooze(5000)
+    result = await req(options)
+    console.log(result.body)
+  } while (!Object.keys(result.body).length || !(+result.body.contributions.amount))
+  const { status, body } = result
+  console.log('GET /v1/owners/{owner}/wallet', status, body)
+  t.true(status === 200)
+  t.true(_.isObject(body))
 })

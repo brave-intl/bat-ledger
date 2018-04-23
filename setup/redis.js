@@ -1,10 +1,24 @@
 const redis = require('redis')
-const client = redis.createClient()
+Promise.all([
+  flush({
+    host: 'redis'
+  })
+]).then(
+  () => process.exit(0),
+  () => process.exit(1)
+)
 
-client.flushdb((err, succeeded) => {
-  if (err) {
-    console.error(err)
-    return process.exit(1)
-  }
-  process.exit(0)
-})
+function flush(...args) {
+  const client = redis.createClient(...args)
+  return new Promise((resolve, reject) => {
+    client.flushdb((err, succeeded) => {
+      console.log(...args, err, succeeded)
+      if (err) {
+        console.error(err)
+        return reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
