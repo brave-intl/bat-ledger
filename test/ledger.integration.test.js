@@ -69,10 +69,23 @@ test('create an owner', async t => {
     domain
   }
   const result = await req(options).send(data)
-  const status = result.status
-  const body = result.body
+  const { status, body } = result
   t.true(status === 200)
   t.true(_.isObject(body))
+})
+test('tie owner to publisher', async t => {
+  t.plan(1)
+  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
+  const method = 'put'
+  const options = { url, method, domain }
+  const provider = publisher
+  const parameters = {}
+  const defaultCurrency = 'BAT'
+  const data = { provider, parameters, defaultCurrency }
+  const result = await req(options).send(data)
+  const { status, body } = result
+  t.true(status === 200)
 })
 test('integration : v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
@@ -451,13 +464,43 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
       .expect(ok)
   }
 })
+// wipe owner and publisher
+// send votes,
+// pull contributions report
+// test('pull contributions report', async t => {
+//   t.plan(1)
+//   const { BAT_EYESHADE_SERVER: domain } = process.env
+//   let response = null
+//   // get available grant
+//   response = await request(domain)
+//     .get('/v1/grants')
+//     .expect(ok)
+
+//   t.true(response.body.hasOwnProperty('promotionId'))
+
+//   const promotionId = response.body.promotionId
+
+//   // request grant
+//   response = await request(domain)
+//       .put(`/v1/grants/${paymentId}`)
+//       .send({ promotionId })
+//       .expect(ok)
+//   console.log(response.body)
+//   t.true(response.body.hasOwnProperty('probi'))
+
+//   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
+//   const desired = donateAmt.toString()
+
+// })
+// check contributions report is correct
+// send settlement
 test('ensure publisher verified with /v2/publishers/settlement', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
   const url = `/v2/publishers/settlement`
   const method = 'post'
   const altcurrency = 'BAT'
-  const probi = 10e18.toString()
+  const probi = 1e18.toString()
   const amount = '0.20'
   const type = 'contribution'
   const options = { url, method, domain }
@@ -490,15 +533,21 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const { BAT_EYESHADE_SERVER: domain } = process.env
   const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const options = { url, domain }
-  let result = null
-  do {
-    console.log('owner', owner)
-    await snooze(5000)
-    result = await req(options)
-    console.log(result.body)
-  } while (!Object.keys(result.body).length || !(+result.body.contributions.amount))
+  console.log('owner', owner)
+  const result = await req(options)
   const { status, body } = result
   console.log('GET /v1/owners/{owner}/wallet', status, body)
   t.true(status === 200)
   t.true(_.isObject(body))
+})
+test('remove newly created owner', async t => {
+  t.plan(1)
+  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const url = `/v1/owners/${encodeURIComponent(owner)}/${encodeURIComponent(publisher)}`
+  const method = 'delete'
+  const options = { method, url, domain }
+  const result = await req(options)
+  const { status, body } = result
+  console.log(body)
+  t.true(status === 200)
 })
