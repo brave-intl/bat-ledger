@@ -123,7 +123,7 @@ v1.publisher.contributions = {
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -166,7 +166,7 @@ v1.publishers.contributions = {
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    { threshold: threshold }, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 

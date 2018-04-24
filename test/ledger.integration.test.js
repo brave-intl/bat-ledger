@@ -6,6 +6,7 @@ import crypto from 'crypto'
 import request from 'supertest'
 import { serial as test } from 'ava'
 import tweetnacl from 'tweetnacl'
+import { stringify } from 'querystring'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
 import _ from 'underscore'
@@ -16,7 +17,14 @@ import {
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
-
+const createFormURL = (pathname, params) => () => `${pathname}?${stringify(params)}`
+const formPublishersContributionsURL = createFormURL(
+  '/v1/reports/publishers/contributions', {
+    format: 'json',
+    summary: true,
+    balance: true,
+    currency: 'USD'
+  })
 function ok (res) {
   if (res.status !== 200) {
     return new Error(JSON.stringify(res.body, null, 2).replace(/\\n/g, '\n'))
@@ -29,7 +37,7 @@ function uint8tohex (arr) {
   return strBuilder.join('')
 }
 
-const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
+const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
 
 // FIXME assert has env vars set and is using uphold
@@ -162,7 +170,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   do { // This depends on currency conversion rates being available, retry until then are available
     response = await request(srv.listener)
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
-    if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
   var err = ok(response)
   if (err) throw err
@@ -195,8 +203,8 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   do {
     response = await request(srv.listener)
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
-    if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
-    else if (response.body.balance === '0.0000') await snooze(500)
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+    else if (response.body.balance === '0.0000') await timeout(500)
   } while (response.status === 503 || response.body.balance === '0.0000')
   err = ok(response)
   if (err) throw err
@@ -233,7 +241,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
-      await snooze(response.headers['retry-after'] * 1000)
+      await timeout(response.headers['retry-after'] * 1000)
     }
     response = await request(srv.listener)
       .put('/v2/wallet/' + paymentId)
@@ -255,7 +263,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
-      await snooze(response.headers['retry-after'] * 1000)
+      await timeout(response.headers['retry-after'] * 1000)
     }
     response = await request(srv.listener)
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
@@ -366,7 +374,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
       .put(`/v1/grants/${paymentId}`)
       .send({'promotionId': promotionId})
       .expect(ok)
-  console.log(response.body)
+
   t.true(response.body.hasOwnProperty('probi'))
 
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
@@ -381,8 +389,8 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   do {
     response = await request(srv.listener)
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
-    if (response.status === 503) await snooze(response.headers['retry-after'] * 1000)
-    else if (response.body.balance === '0.0000') await snooze(500)
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+    else if (response.body.balance === '0.0000') await timeout(500)
   } while (response.status === 503 || response.body.balance === '0.0000')
   var err = ok(response)
   if (err) throw err
@@ -412,7 +420,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
-      await snooze(response.headers['retry-after'] * 1000)
+      await timeout(response.headers['retry-after'] * 1000)
     }
     response = await request(srv.listener)
       .put('/v2/wallet/' + paymentId)
@@ -434,7 +442,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
-      await snooze(response.headers['retry-after'] * 1000)
+      await timeout(response.headers['retry-after'] * 1000)
     }
     response = await request(srv.listener)
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
@@ -446,7 +454,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   t.true(response.body.hasOwnProperty('surveyorIds'))
   const surveyorIds = response.body.surveyorIds
   t.true(surveyorIds.length >= 5)
-  console.log(surveyorIds)
+
   viewingCredential.finalize(response.body.verification)
 
   const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', publisher]
@@ -467,33 +475,20 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 // wipe owner and publisher
 // send votes,
 // pull contributions report
-// test('pull contributions report', async t => {
-//   t.plan(1)
-//   const { BAT_EYESHADE_SERVER: domain } = process.env
-//   let response = null
-//   // get available grant
-//   response = await request(domain)
-//     .get('/v1/grants')
-//     .expect(ok)
 
-//   t.true(response.body.hasOwnProperty('promotionId'))
-
-//   const promotionId = response.body.promotionId
-
-//   // request grant
-//   response = await request(domain)
-//       .put(`/v1/grants/${paymentId}`)
-//       .send({ promotionId })
-//       .expect(ok)
-//   console.log(response.body)
-//   t.true(response.body.hasOwnProperty('probi'))
-
-//   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
-//   const desired = donateAmt.toString()
-
-// })
-// check contributions report is correct
-// send settlement
+test('get contribution data', async t => {
+  t.plan(1)
+  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const url = formPublishersContributionsURL()
+  const res = await req({ url, domain })
+  const { body: bod } = res
+  const { reportId } = bod
+  const res2 = await fetchReport(domain, reportId)
+  const { body } = res2
+  console.log('contribution data', reportId, body)
+  const isArray = Array.isArray(body)
+  t.true(isArray)
+})
 test('ensure publisher verified with /v2/publishers/settlement', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
@@ -504,7 +499,6 @@ test('ensure publisher verified with /v2/publishers/settlement', async t => {
   const amount = '0.20'
   const type = 'contribution'
   const options = { url, method, domain }
-  console.log('owner printed here', owner)
   const datum = {
     owner,
     publisher,
@@ -513,9 +507,7 @@ test('ensure publisher verified with /v2/publishers/settlement', async t => {
     amount,
     type
   }
-  const datum1 = contribution(datum)
-  const datum2 = contribution(datum)
-  const data = [datum1, datum2]
+  const data = [contribution(datum)]
   const result = await req(options).send(data)
   const { body, status } = result
   t.true(status === 200)
@@ -533,7 +525,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const { BAT_EYESHADE_SERVER: domain } = process.env
   const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const options = { url, domain }
-  console.log('owner', owner)
   const result = await req(options)
   const { status, body } = result
   console.log('GET /v1/owners/{owner}/wallet', status, body)
@@ -543,7 +534,9 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
 test('remove newly created owner', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
-  const url = `/v1/owners/${encodeURIComponent(owner)}/${encodeURIComponent(publisher)}`
+  const encodedOwner = encodeURIComponent(owner)
+  const encodedPublisher = encodeURIComponent(publisher)
+  const url = `/v1/owners/${encodedOwner}/${encodedPublisher}`
   const method = 'delete'
   const options = { method, url, domain }
   const result = await req(options)
@@ -551,3 +544,42 @@ test('remove newly created owner', async t => {
   console.log(body)
   t.true(status === 200)
 })
+
+// write an abstraction for the do while loops
+async function tryAfterMany(ms, theDoBlock, theCatchBlock) {
+  let tryagain = null
+  let result = null
+  do {
+    tryagain = false
+    try {
+      result = await theDoBlock()
+      tryagain = theCatchBlock(null, result)
+    } catch (e) {
+      tryagain = theCatchBlock(e, result)
+    }
+    if (tryagain) {
+      await timeout(ms)
+    }
+  } while (tryagain)
+  return result
+}
+
+async function fetchReport(domain, reportId) {
+  let url = `/v1/reports/file/${reportId}`
+  return tryAfterMany(5000,
+    () => req({ url, domain }),
+    (e, result) => {
+      if (e) {
+        throw e
+      }
+      const { statusCode } = result
+      if (statusCode < 400) {
+        return false
+      }
+      const tryagain = statusCode === 404
+      if (!tryagain) {
+        throw result
+      }
+      return tryagain
+    })
+}

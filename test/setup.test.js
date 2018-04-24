@@ -15,7 +15,7 @@ module.exports = {
   req
 }
 
-function req ({ url, method, domain }) {
+function req ({ domain, method, url }) {
   return request(domain)[method || 'get'](url).set('Authorization', token)
 }
 
