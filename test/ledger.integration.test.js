@@ -20,9 +20,11 @@ dotenv.config()
 const createFormURL = (pathname, params) => () => `${pathname}?${stringify(params)}`
 const formPublishersContributionsURL = createFormURL(
   '/v1/reports/publishers/contributions', {
-    format: 'json',
+    format: 'csv',
     summary: true,
     balance: true,
+    verified: true,
+    amount: 40,
     currency: 'USD'
   })
 function ok (res) {
@@ -87,7 +89,7 @@ test('tie owner to publisher', async t => {
   const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const method = 'put'
   const options = { url, method, domain }
-  const provider = publisher
+  const provider = 'mock'
   const parameters = {}
   const defaultCurrency = 'BAT'
   const data = { provider, parameters, defaultCurrency }
@@ -489,14 +491,26 @@ test('get contribution data', async t => {
   const isArray = Array.isArray(body)
   t.true(isArray)
 })
+test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
+  t.plan(2)
+  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
+  const options = { url, domain }
+  const result = await req(options)
+  const { status, body } = result
+  console.log('GET /v1/owners/{owner}/wallet', status, body)
+  t.true(status === 200)
+  t.true(_.isObject(body))
+})
 test('ensure publisher verified with /v2/publishers/settlement', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
   const url = `/v2/publishers/settlement`
   const method = 'post'
   const altcurrency = 'BAT'
-  const probi = 1e18.toString()
-  const amount = '0.20'
+  const bat = 1000
+  const probi = (1e18 * bat).toString()
+  const amount = (0.2 * bat).toString()
   const type = 'contribution'
   const options = { url, method, domain }
   const datum = {
@@ -510,6 +524,7 @@ test('ensure publisher verified with /v2/publishers/settlement', async t => {
   const data = [contribution(datum)]
   const result = await req(options).send(data)
   const { body, status } = result
+  console.log('here', body)
   t.true(status === 200)
 
   function contribution(base) {

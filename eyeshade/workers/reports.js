@@ -1245,7 +1245,6 @@ exports.workers = {
           'processor USD': 0
         })
       }
-
       try { await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, data) })), true) } catch (ex) {
         debug('reports', { report: 'report-publishers-contributions', reason: ex.toString() })
         file.close()
