@@ -96,16 +96,18 @@ v2.bulk = {
   handler: (runtime) => {
     return async (request, reply) => {
       const channels = request.payload.channels || []
+      const nonWebChannels = []
 
       for (let channel of channels) {
         const props = getPublisherProps(channel.channelId)
 
         if (!props) return reply(boom.badData('invalid channel-identifier ' + channel.channelId))
 
-        if (!props.publisherType) return reply(boom.badData('channel ' + channel.channelId + ' must .../verify/... first'))
+        // web channels don't have a publisherType, publishers is only responsible for verifying non-web
+        if (props.publisherType) nonWebChannels.push(channel)
       }
 
-      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, channels)
+      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, nonWebChannels)
     }
   },
   auth: {
