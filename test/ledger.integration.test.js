@@ -24,7 +24,7 @@ const formPublishersContributionsURL = createFormURL(
     summary: true,
     balance: true,
     verified: true,
-    amount: 40,
+    amount: 5,
     currency: 'USD'
   })
 function ok (res) {
@@ -89,7 +89,7 @@ test('tie owner to publisher', async t => {
   const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const method = 'put'
   const options = { url, method, domain }
-  const provider = 'mock'
+  const provider = publisher
   const parameters = {}
   const defaultCurrency = 'BAT'
   const data = { provider, parameters, defaultCurrency }
@@ -463,6 +463,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   // const votes = ['basicattentiontoken.org']
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
+    let publisher = votes[i % votes.length]
     response = await request(srv.listener)
       .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
       .expect(ok)
@@ -470,7 +471,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     const surveyor = new anonize.Surveyor(response.body)
     response = await request(srv.listener)
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
-      .send({'proof': viewingCredential.submit(surveyor, { publisher: votes[i % votes.length] })})
+      .send({'proof': viewingCredential.submit(surveyor, { publisher })})
       .expect(ok)
   }
 })
@@ -478,6 +479,11 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 // send votes,
 // pull contributions report
 
+//
+const quote = {
+  '"': 1,
+  "'": 2
+}
 test('get contribution data', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
@@ -485,11 +491,19 @@ test('get contribution data', async t => {
   const res = await req({ url, domain })
   const { body: bod } = res
   const { reportId } = bod
-  const res2 = await fetchReport(domain, reportId)
-  const { body } = res2
-  console.log('contribution data', reportId, body)
-  const isArray = Array.isArray(body)
-  t.true(isArray)
+  const res2 = await fetchReport(domain, reportId, true)
+  const { text: body, status } = res2
+  t.is(status, 200)
+  const json = body.split('\n').map(row => row.split(',').map(cell => {
+    const last = cell.length - 1;
+    const first = quote[cell[0]]
+    if (first && first === quote[cell[last]]) {
+      return cell.slice(1, last)
+    } else {
+      return cell
+    }
+  }))
+  console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.plan(2)
@@ -502,6 +516,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.true(status === 200)
   t.true(_.isObject(body))
 })
+// do a statement report on the owner to see all of the channels' totals
 test('ensure publisher verified with /v2/publishers/settlement', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
@@ -524,7 +539,6 @@ test('ensure publisher verified with /v2/publishers/settlement', async t => {
   const data = [contribution(datum)]
   const result = await req(options).send(data)
   const { body, status } = result
-  console.log('here', body)
   t.true(status === 200)
 
   function contribution(base) {
@@ -579,7 +593,7 @@ async function tryAfterMany(ms, theDoBlock, theCatchBlock) {
   return result
 }
 
-async function fetchReport(domain, reportId) {
+async function fetchReport(domain, reportId, waitForString) {
   let url = `/v1/reports/file/${reportId}`
   return tryAfterMany(5000,
     () => req({ url, domain }),
@@ -587,7 +601,10 @@ async function fetchReport(domain, reportId) {
       if (e) {
         throw e
       }
-      const { statusCode } = result
+      const { statusCode, headers } = result
+      if (waitForString) {
+        return headers['content-type'].indexOf('text/csv') === -1
+      }
       if (statusCode < 400) {
         return false
       }

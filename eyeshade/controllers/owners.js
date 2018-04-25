@@ -857,7 +857,7 @@ module.exports.routes = [
 
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
-  debug('creating owner indices HERE')
+
   runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('owners', debug),

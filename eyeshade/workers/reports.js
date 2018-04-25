@@ -531,7 +531,6 @@ const mixer = async (debug, runtime, filter, qid) => {
       await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' }, state, { upsert: true })
     }
   }
-
   results = await quanta(debug, runtime, qid)
   for (let result of results) await slicer(result)
   return publishers
