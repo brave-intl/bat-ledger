@@ -17,14 +17,13 @@ import {
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
-const createFormURL = (pathname, params) => () => `${pathname}?${stringify(params)}`
-const formPublishersContributionsURL = createFormURL(
-  '/v1/reports/publishers/contributions', {
+const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
+const formURL = createFormURL({
     format: 'csv',
     summary: true,
     balance: true,
     verified: true,
-    amount: 5,
+    amount: 0,
     currency: 'USD'
   })
 function ok (res) {
@@ -487,11 +486,15 @@ const quote = {
 test('get contribution data', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
-  const url = formPublishersContributionsURL()
+  const url = formURL('/v1/reports/publishers/contributions')
   const res = await req({ url, domain })
   const { body: bod } = res
   const { reportId } = bod
-  const res2 = await fetchReport(domain, reportId, true)
+  const res2 = await fetchReport({
+    domain,
+    reportId,
+    isCSV: true
+  })
   const { text: body, status } = res2
   t.is(status, 200)
   const json = body.split('\n').map(row => row.split(',').map(cell => {
@@ -506,40 +509,144 @@ test('get contribution data', async t => {
   console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
-  t.plan(2)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
-  const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
-  const options = { url, domain }
-  const result = await req(options)
-  const { status, body } = result
-  console.log('GET /v1/owners/{owner}/wallet', status, body)
-  t.true(status === 200)
-  t.true(_.isObject(body))
-})
-// do a statement report on the owner to see all of the channels' totals
-test('ensure publisher verified with /v2/publishers/settlement', async t => {
-  t.plan(1)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
-  const url = `/v2/publishers/settlement`
+  t.plan(3)
+  const {
+    BAT_EYESHADE_SERVER: domain
+  } = process.env
+  const wallet = `/v1/owners/${encodeURIComponent(owner)}/wallet`
+  const ownerOptions = {
+    url: wallet,
+    domain
+  }
+  const initWalletResults = await req(ownerOptions)
+  const {
+    status: initWalletStatus,
+    body: initWalletBody
+  } = initWalletResults
+  t.is(initWalletStatus, 200)
+  const {
+    contributions: initContributions,
+    rates: initRates
+  } = initWalletBody
+  console.log('init wallet', initWalletBody)
+  const {
+    USD
+  } = initRates
+  const {
+    probi: initWalletProbi
+  } = initContributions
+  // settle half of the bat
+  const settlementURL = `/v2/publishers/settlement`
   const method = 'post'
   const altcurrency = 'BAT'
-  const bat = 1000
-  const probi = (1e18 * bat).toString()
-  const amount = (0.2 * bat).toString()
+  const probi = new BigNumber(initWalletProbi)
+  const bigUSD = new BigNumber(String(USD))
+  const halfUSD = probi.dividedBy(1e18).times(bigUSD)
+  const probiString = probi.toString()
+  const halfUSDString = halfUSD.toString()
   const type = 'contribution'
-  const options = { url, method, domain }
+  const settlementOptions = {
+    url: settlementURL,
+    method,
+    domain
+  }
   const datum = {
     owner,
     publisher,
     altcurrency,
-    probi,
-    amount,
+    probi: probiString,
+    amount: halfUSDString,
     type
   }
-  const data = [contribution(datum)]
-  const result = await req(options).send(data)
-  const { body, status } = result
-  t.true(status === 200)
+  const settlementDatum = contribution(datum)
+  const settlementData = [settlementDatum]
+  const settlementResults = await req(settlementOptions).send(settlementData)
+  const {
+    status: settlementStatus
+  } = settlementResults
+  t.is(settlementStatus, 200)
+  const finalWalletResults = await req(ownerOptions)
+  const {
+    status: finalWalletStatus,
+    body: finalBodyStatus
+  } = finalWalletResults
+  t.is(finalWalletStatus, 200)
+  const {
+    contributions: finalContributions
+  } = finalBodyStatus
+  const {
+    probi: finalWalletProbi
+  } = finalContributions
+  // PUT /v1/referrals/{transactionID}
+  const referralTransactionID = uuid.v4()
+  const referralURL = `/v1/referrals/${referralTransactionID}`
+  const referralOptions = {
+    method: 'put',
+    url: referralURL,
+    domain
+  }
+  const referralDatum = {
+    channelId: publisher,
+    downloadId: uuid.v4(),
+    platform: '1234',
+    finalized: (new Date()).toISOString()
+  }
+  const referralData = [referralDatum]
+  const referralResult = await req(referralOptions).send(referralData)
+  const {
+    body: referralBody,
+    status: referralStatus
+  } = referralResult
+  // const referralWalletResults = await req(ownerOptions)
+  // const {
+  //   status: referralWalletStatus,
+  //   body: referralWalletBody
+  // } = referralWalletResults
+  // console.log(referralWalletBody)
+  const refPubPathname = '/v1/reports/publishers/referrals'
+  const urlQuery = { format: 'json' }
+  const refPubURL = formURL(refPubPathname, urlQuery)
+  const refPubOptions = {
+    url: refPubURL,
+    domain
+  }
+  const refPubResult = await req(refPubOptions)
+  const {
+    body: refPubBody
+  } = refPubResult
+  const {
+    reportId: refPubReportId
+  } = refPubBody
+  console.log(refPubBody)
+  const refPubReportResult = await fetchReport({
+    reportId: refPubReportId,
+    domain
+  })
+  const {
+    body: refPubReportBody
+  } = refPubReportResult
+  console.log(refPubReportBody)
+  // /v1/reports/publishers/referrals
+  /*
+channelId
+downloadId
+platform
+finalized
+{ rates:
+   { BTC: '0.00004662',
+     ETH: 0.000663920978877572,
+     LTC: 0.0028617906141616277,
+     USD: 0.4212089028,
+     EUR: 0.34518785639594757 },
+  contributions:
+   { amount: '2.08',
+     currency: 'USD',
+     altcurrency: 'BAT',
+     probi: '4932771363636363636' },
+  status:
+   { provider: 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg',
+     action: 're-authorize' } }
+     */
 
   function contribution(base) {
     return _.extend({
@@ -548,17 +655,6 @@ test('ensure publisher verified with /v2/publishers/settlement', async t => {
       hash: uuid.v4()
     }, base)
   }
-})
-test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
-  t.plan(2)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
-  const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
-  const options = { url, domain }
-  const result = await req(options)
-  const { status, body } = result
-  console.log('GET /v1/owners/{owner}/wallet', status, body)
-  t.true(status === 200)
-  t.true(_.isObject(body))
 })
 test('remove newly created owner', async t => {
   t.plan(1)
@@ -593,7 +689,11 @@ async function tryAfterMany(ms, theDoBlock, theCatchBlock) {
   return result
 }
 
-async function fetchReport(domain, reportId, waitForString) {
+async function fetchReport({
+  domain,
+  reportId,
+  isCSV
+}) {
   let url = `/v1/reports/file/${reportId}`
   return tryAfterMany(5000,
     () => req({ url, domain }),
@@ -602,7 +702,7 @@ async function fetchReport(domain, reportId, waitForString) {
         throw e
       }
       const { statusCode, headers } = result
-      if (waitForString) {
+      if (isCSV) {
         return headers['content-type'].indexOf('text/csv') === -1
       }
       if (statusCode < 400) {
