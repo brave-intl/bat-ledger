@@ -962,8 +962,8 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
   })
   const eligPublishers = await findEligPublishers(debug, runtime, threshPubs)
+
   const payments = []
-  // debug('checking elig pubs')
   for (let i = 0; i < eligPublishers.length; i++) {
     const payment = statements[eligPublishers[i].publisher].balance
     payment.type = 'referral'
@@ -974,34 +974,26 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
     payment.owner = eligPublishers[i].owner
 
-    const entries_ = eligPublishers[i].ownerdata
-    const entries = underscore.isArray(entries_) ? entries_ : [entries_]
-    entries.forEach(async (entry) => {
-      if ((!entry) || (!entry.provider) || (!entry.parameters)) {
-        // debug('not eligible entry', { entry })
+    const entry = eligPublishers[i].ownerdata
+    if ((!entry) || (!entry.provider) || (!entry.parameters)) {
+      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
+      continue
+    }
+
+    try {
+      const wallet = await runtime.wallet.status(entry)
+      if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
         await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
-        return
+        continue
       }
-      // debug('eligible entry', { entry })
 
-      try {
-        // debug('trying to get wallet status for', {entry})
-        const wallet = await runtime.wallet.status(entry)
-        // debug('wallet found for entry', { i, entry, wallet })
-        if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
-          await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
-          return
-        }
+      payment.address = wallet.address
+      payment.currency = wallet.defaultCurrency
 
-        payment.address = wallet.address
-        payment.currency = wallet.defaultCurrency
-
-        payments.push(payment)
-      } catch (ex) {
-        // debug('eligible pub error', {ex:{message:ex.message, stack:ex.stack}})
-        await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
-      }
-    })
+      payments.push(payment)
+    } catch (ex) {
+      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
+    }
   }
 
   return payments
@@ -1070,7 +1062,7 @@ exports.workers = {
       }
 
       const payments = await prepareReferralPayout(debug, runtime, authority, reportId, thresholdProbi)
-      debug('payments and options', {payments, authority, reportId, thresholdProbi})
+
       const file = await create(runtime, 'publishers-', payload)
 
       await file.write(utf8ify(payments), true)
