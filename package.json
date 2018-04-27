@@ -37,7 +37,7 @@
     "test-transition": "echo 'no transition tests'",
     "test-unit": "ava test/*.unit.test.js",
     "docker-build": "docker-compose build",
-    "docker-up": "docker-compose up ledger-web ledger-worker grant-web"
+    "docker-up": "docker-compose up ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
   },
   "repository": {
     "type": "git",
