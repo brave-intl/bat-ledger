@@ -511,7 +511,7 @@ test('get contribution data', async t => {
   // console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
-  t.plan(3)
+  t.plan(4)
   const {
     BAT_EYESHADE_SERVER: domain
   } = process.env
