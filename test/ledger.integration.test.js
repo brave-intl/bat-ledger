@@ -593,7 +593,8 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     finalized: (new Date()).toISOString()
   }
   const referralData = [referralDatum]
-  const referralResult = await req(referralOptions).send(referralData)
+  // const referralResult =
+  await req(referralOptions).send(referralData)
   // const {
   //   body: referralBody,
   //   status: referralStatus
