@@ -40,10 +40,10 @@ const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging
 // FIXME assert has env vars set and is using uphold
 // NOTE this requires a contibution surveyor to have already been created
 
+console.log(process.env)
 test('create an owner', async t => {
   t.plan(2)
   const { BAT_EYESHADE_SERVER: domain } = process.env
-  console.log(process.env)
   const ownerName = 'venture'
   const url = '/v1/owners'
   const name = ownerName
