@@ -18,7 +18,7 @@ import {
 import dotenv from 'dotenv'
 dotenv.config()
 const { BAT_EYESHADE_SERVER: domain } = process.env
-console.log('eyeshade domain', domain)
+// console.log('eyeshade domain', domain)
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 const formURL = createFormURL({
   format: 'csv',
@@ -508,7 +508,7 @@ test('get contribution data', async t => {
       return cell
     }
   }))
-  console.log('contribution data', reportId, json)
+  // console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.plan(3)
@@ -530,7 +530,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     contributions: initContributions,
     rates: initRates
   } = initWalletBody
-  console.log('init wallet', initWalletBody)
+  // console.log('init wallet', initWalletBody)
   const {
     USD
   } = initRates
@@ -569,17 +569,18 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.is(settlementStatus, 200)
   const finalWalletResults = await req(ownerOptions)
   const {
-    status: finalWalletStatus,
-    body: finalBodyStatus
+    status: finalWalletStatus
+    // ,
+    // body: finalBodyStatus
   } = finalWalletResults
   t.is(finalWalletStatus, 200)
-  const {
-    contributions: finalContributions
-  } = finalBodyStatus
+  // const {
+  //   contributions: finalContributions
+  // } = finalBodyStatus
   // const {
   //   probi: finalWalletProbi
   // } = finalContributions
-  console.log('final contributions', finalContributions)
+  // console.log('final contributions', finalContributions)
   // PUT /v1/referrals/{transactionID}
   const referralTransactionID = uuid.v4()
   const referralURL = `/v1/referrals/${referralTransactionID}`
@@ -620,9 +621,11 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     domain
   })
   const {
-    body: refPubReportBody
+    // body: refPubReportBody,
+    status: refPubReportStatus
   } = refPubReportResult
-  console.log(refPubReportBody)
+  t.is(refPubReportStatus, 200)
+  // console.log(refPubReportBody)
   // /v1/reports/publishers/referrals
   /*
 channelId
@@ -663,7 +666,7 @@ test('remove newly created owner', async t => {
   const options = { method, url, domain }
   const result = await req(options)
   const { status, body } = result
-  console.log(body)
+  // console.log(body)
   t.true(status === 200)
 })
 
