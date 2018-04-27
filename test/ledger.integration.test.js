@@ -17,7 +17,7 @@ import {
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
-const { BAT_EYESHADE_SERVER: domain } = process.env
+// const { BAT_EYESHADE_SERVER: domain } = process.env
 // console.log('eyeshade domain', domain)
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 const formURL = createFormURL({
@@ -481,10 +481,10 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 // pull contributions report
 
 //
-const quote = {
-  '"': 1,
-  "'": 2
-}
+// const quote = {
+//   '"': 1,
+//   "'": 2
+// }
 test('get contribution data', async t => {
   t.plan(1)
   const { BAT_EYESHADE_SERVER: domain } = process.env
@@ -668,7 +668,10 @@ test('remove newly created owner', async t => {
   const method = 'delete'
   const options = { method, url, domain }
   const result = await req(options)
-  const { status, body } = result
+  const {
+    // body,
+    status
+  } = result
   // console.log(body)
   t.true(status === 200)
 })
