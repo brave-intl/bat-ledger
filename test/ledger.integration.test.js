@@ -22,6 +22,8 @@ import {
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
+// const { BAT_EYESHADE_SERVER: domain } = process.env
+// console.log('eyeshade domain', domain)
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 const formURL = createFormURL({
   format: 'json',
@@ -51,6 +53,7 @@ test('create a surveyor', async t => {
     expect: 200
   }).send(data)
 })
+
 test('create a promotion', async t => {
   t.plan(0)
   const url = '/v1/grants'
@@ -62,6 +65,7 @@ test('create a promotion', async t => {
     expect: 200
   }).send(data)
 })
+
 test('create an owner', async t => {
   t.plan(2)
   const ownerName = 'venture'
@@ -99,6 +103,7 @@ test('create an owner', async t => {
   t.true(status === 200)
   t.true(_.isObject(body))
 })
+
 test('tie owner to publisher', async t => {
   t.plan(1)
   const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
@@ -116,6 +121,7 @@ test('tie owner to publisher', async t => {
   const { status } = result
   t.true(status === 200)
 })
+
 test('integration : v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
@@ -513,6 +519,7 @@ test('get contribution data', async t => {
   } = res2
   t.is(status, 200)
 })
+
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.plan(4)
   const wallet = `/v1/owners/${encodeURIComponent(owner)}/wallet`
@@ -599,7 +606,8 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     domain: eyeshade
   })
   const {
-    body: refPubReportBody
+    // body: refPubReportBody,
+    status: refPubReportStatus
   } = refPubReportResult
   t.true(refPubReportBody.length > 0)
   const singleEntry = _.findWhere(refPubReportBody, {
@@ -633,6 +641,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     }, base)
   }
 })
+
 test('remove newly created owner', async t => {
   t.plan(0)
   const encodedOwner = encodeURIComponent(owner)

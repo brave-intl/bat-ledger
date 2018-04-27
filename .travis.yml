@@ -8,8 +8,8 @@ env:
   global:
     - "BAT_EYESHADE_SERVER=http://localhost:3002"
     - "BAT_GRANT_SERVER=http://localhost:3333"
-    - "BAT_HELPER_SERVER=http://localhost:3004"
     - "BAT_LEDGER_SERVER=http://localhost:3001"
+    - "BAT_HELPER_SERVER=http://localhost:3004"
     - "BAT_SETTLEMENT_ADDRESS=6654ecb0-6079-4f6c-ba58-791cc890a561"
     - "DEBUG=*,-babel,-eslint:*,-mongo:*,mongo:queries"
     - "GRANT_SIGNATOR_PUBLIC_KEY=bbe028009e744422bfc39b0e226633324d8c5fe0744c87c1018b88a488bc5899"
@@ -18,7 +18,6 @@ env:
     - "NODE_ENV=development"
     - "NODE_PATH=."
     - "REDEEMER_TOKEN=foobarfoobar"
-    - "REDEEMER_URL=http://grant-web:3333"
     - "REDEEMER_URL=http://grant-web:3333"
     - "REDIS_URL=redis://redis:6379"
     - "TESTING_COHORTS=test"
