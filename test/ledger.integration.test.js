@@ -19,13 +19,13 @@ import dotenv from 'dotenv'
 dotenv.config()
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 const formURL = createFormURL({
-    format: 'csv',
-    summary: true,
-    balance: true,
-    verified: true,
-    amount: 0,
-    currency: 'USD'
-  })
+  format: 'csv',
+  summary: true,
+  balance: true,
+  verified: true,
+  amount: 0,
+  currency: 'USD'
+})
 function ok (res) {
   if (res.status !== 200) {
     return new Error(JSON.stringify(res.body, null, 2).replace(/\\n/g, '\n'))
@@ -93,7 +93,7 @@ test('tie owner to publisher', async t => {
   const defaultCurrency = 'BAT'
   const data = { provider, parameters, defaultCurrency }
   const result = await req(options).send(data)
-  const { status, body } = result
+  const { status } = result
   t.true(status === 200)
 })
 test('integration : v2 contribution workflow with uphold BAT wallet', async t => {
@@ -498,7 +498,7 @@ test('get contribution data', async t => {
   const { text: body, status } = res2
   t.is(status, 200)
   const json = body.split('\n').map(row => row.split(',').map(cell => {
-    const last = cell.length - 1;
+    const last = cell.length - 1
     const first = quote[cell[0]]
     if (first && first === quote[cell[last]]) {
       return cell.slice(1, last)
@@ -577,6 +577,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const {
     probi: finalWalletProbi
   } = finalContributions
+  console.log('final contributions', finalContributions)
   // PUT /v1/referrals/{transactionID}
   const referralTransactionID = uuid.v4()
   const referralURL = `/v1/referrals/${referralTransactionID}`
@@ -597,12 +598,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     body: referralBody,
     status: referralStatus
   } = referralResult
-  // const referralWalletResults = await req(ownerOptions)
-  // const {
-  //   status: referralWalletStatus,
-  //   body: referralWalletBody
-  // } = referralWalletResults
-  // console.log(referralWalletBody)
   const refPubPathname = '/v1/reports/publishers/referrals'
   const urlQuery = { format: 'json' }
   const refPubURL = formURL(refPubPathname, urlQuery)
@@ -617,7 +612,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const {
     reportId: refPubReportId
   } = refPubBody
-  console.log(refPubBody)
   const refPubReportResult = await fetchReport({
     reportId: refPubReportId,
     domain
@@ -648,7 +642,7 @@ finalized
      action: 're-authorize' } }
      */
 
-  function contribution(base) {
+  function contribution (base) {
     return _.extend({
       address: uuid.v4(),
       transactionId: uuid.v4(),
@@ -671,7 +665,7 @@ test('remove newly created owner', async t => {
 })
 
 // write an abstraction for the do while loops
-async function tryAfterMany(ms, theDoBlock, theCatchBlock) {
+async function tryAfterMany (ms, theDoBlock, theCatchBlock) {
   let tryagain = null
   let result = null
   do {
@@ -689,7 +683,7 @@ async function tryAfterMany(ms, theDoBlock, theCatchBlock) {
   return result
 }
 
-async function fetchReport({
+async function fetchReport ({
   domain,
   reportId,
   isCSV
