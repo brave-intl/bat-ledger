@@ -574,9 +574,9 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const {
     contributions: finalContributions
   } = finalBodyStatus
-  const {
-    probi: finalWalletProbi
-  } = finalContributions
+  // const {
+  //   probi: finalWalletProbi
+  // } = finalContributions
   console.log('final contributions', finalContributions)
   // PUT /v1/referrals/{transactionID}
   const referralTransactionID = uuid.v4()
@@ -594,10 +594,10 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   }
   const referralData = [referralDatum]
   const referralResult = await req(referralOptions).send(referralData)
-  const {
-    body: referralBody,
-    status: referralStatus
-  } = referralResult
+  // const {
+  //   body: referralBody,
+  //   status: referralStatus
+  // } = referralResult
   const refPubPathname = '/v1/reports/publishers/referrals'
   const urlQuery = { format: 'json' }
   const refPubURL = formURL(refPubPathname, urlQuery)
