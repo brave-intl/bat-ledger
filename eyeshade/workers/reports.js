@@ -974,7 +974,12 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
     payment.owner = eligPublishers[i].owner
 
-    const entry = eligPublishers[i].ownerdata
+    const entries = eligPublishers[i].ownerdata
+    if (entries.length > 1) {
+      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_bad_ownerlink' })
+      continue
+    }
+    const entry = entries[0]
     if ((!entry) || (!entry.provider) || (!entry.parameters)) {
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
       continue
