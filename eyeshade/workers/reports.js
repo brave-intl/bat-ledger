@@ -37,7 +37,12 @@ const create = async (runtime, prefix, params) => {
 const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
   let path, result
 
-  if (!runtime.config.publishers) throw new Error('no configuration for publishers server')
+  if (!runtime.config.publishers) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('no configuration for publishers server')
+    }
+    return {}
+  }
 
   path = '/api'
   if (owner) path += '/owners/' + encodeURIComponent(owner)
@@ -614,10 +619,10 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
     result.fees = result.fees.truncated().toString()
 
     result.votes.forEach((vote) => {
-      vote['publisher USD'] = usd && vote.probi.times(usd).dividedBy(scale).toFixed(2)
-      vote['processor USD'] = usd && vote.fees.times(usd).dividedBy(scale).toFixed(2)
-      vote.probi = vote.probi.truncated().toString()
-      vote.fees = vote.fees.truncated().toString()
+      vote['publisher USD'] = usd && new BigNumber(vote.probi).times(usd).dividedBy(scale).toFixed(2)
+      vote['processor USD'] = usd && new BigNumber(vote.fees).times(usd).dividedBy(scale).toFixed(2)
+      vote.probi = new BigNumber(vote.probi).truncated().toString()
+      vote.fees = new BigNumber(vote.fees).truncated().toString()
     })
   })
 
@@ -716,7 +721,7 @@ const publisherSettlements = (runtime, entries, format, summaryP, spacingP) => {
     entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
     publishers[entry.publisher].txns.push(underscore.pick(entry, [
       'altcurrency', 'probi', 'currency', 'amount', 'fees', 'commission', 'settlementId', 'address', 'hash', 'created',
-      'modified'
+      'modified', 'type'
     ]))
   })
 
@@ -912,14 +917,30 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
 const findEligPublishers = async (debug, runtime, publishers) => {
   const publishersC = runtime.database.get('publishers', debug)
 
-  if (!publishers || publishers.length === 0) {
-    return []
+  const query = { verified: true }
+
+  if (Array.isArray(publishers)) {
+    if (publishers.length === 0) {
+      return []
+    }
+    query.$or = publishers.map((pub) => { return { publisher: pub } })
+  } else if (typeof publishers !== 'undefined') {
+    throw new Error('Only an array of publisher names or undefined are allowed for argument publishers')
   }
 
-  const entries = await publishersC.find({ $or: publishers.map((pub) => { return { publisher: pub } }),
-    authorized: true,
-    verified: true }, { publisher: 1 })
-  return underscore.map(entries, (entry) => { return entry.publisher })
+  return publishersC.aggregate([
+    { $match: query },
+    {
+      $lookup:
+      {
+        from: 'owners',
+        localField: 'owner',
+        foreignField: 'owner',
+        as: 'ownerdata'
+      }
+    },
+    { $match: { 'ownerdata.authorized': true } }
+  ])
 }
 
 /**
@@ -928,9 +949,6 @@ const findEligPublishers = async (debug, runtime, publishers) => {
  * by our payment tooling
  **/
 const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi) => {
-  const owners = runtime.database.get('owners', debug)
-  const publishers = runtime.database.get('publishers', debug)
-
   const statements = await referralStatement(debug, runtime, undefined, true)
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
@@ -939,17 +957,16 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
   const payments = []
   for (let i = 0; i < eligPublishers.length; i++) {
-    const payment = statements[eligPublishers[i]].balance
+    const payment = statements[eligPublishers[i].publisher].balance
     payment.type = 'referral'
     payment.fees = payment.probi.times(feePercent).truncated()
     payment.probi = payment.probi.minus(payment.fees)
     payment.authority = authority
     payment.transactionId = reportId
 
-    const publisher = await publishers.findOne({ publisher: payment.publisher })
-    payment.owner = publisher.owner
+    payment.owner = eligPublishers[i].owner
 
-    const entry = await owners.findOne({ owner: payment.owner })
+    const entry = eligPublishers[i].ownerdata
     if ((!entry) || (!entry.provider) || (!entry.parameters)) {
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
       continue
@@ -1126,15 +1143,12 @@ exports.workers = {
         publishers[publisher].authorized = false
         publishers[publisher].verified = false
       })
-      entries = await publishersCollection.find({ authorized: true })
+
+      entries = await findEligPublishers(debug, runtime, undefined)
       entries.forEach((entry) => {
         if (typeof publishers[entry.publisher] === 'undefined') return
-
-        underscore.extend(publishers[entry.publisher], underscore.pick(entry, [ 'authorized', 'altcurrency', 'provider' ]))
-      })
-      entries = await tokens.find({ verified: true })
-      entries.forEach((entry) => {
-        if (typeof publishers[entry.publisher] !== 'undefined') publishers[entry.publisher].verified = true
+        publishers[entry.publisher].authorized = true
+        publishers[entry.publisher].verified = true
       })
 
       if (balanceP) {
@@ -1344,11 +1358,13 @@ exports.workers = {
       const authority = payload.authority
       const rollupP = payload.rollup
       const starting = payload.starting
-      const summaryP = payload.summary
       const publisher = payload.publisher
+      const publishersC = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
+      const summaryP = payload.summary
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, data1, data2, file, entries, publishers, query, range, usd
+      let contributions, data, data1, data2, file, entries, publishers, query, range, referralTotals, usd
       let ending = payload.ending
 
       if ((starting) || (ending)) {
@@ -1369,30 +1385,72 @@ exports.workers = {
           entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
           entries = await settlements.find(query)
         }
-        publishers = await mixer(debug, runtime, undefined, range)
-        underscore.keys(publishers).forEach((publisher) => {
-          if (underscore.where(entries, { publisher: publisher }).length === 0) delete publishers[publisher]
-        })
+        if (payload.owner) {
+          publishers = await publishersC.find({ owner: payload.owner })
+          contributions = await mixer(debug, runtime, publishers.map((p) => p.publisher), range)
+        } else {
+          contributions = await mixer(debug, runtime, undefined, range)
+        }
+      }
+
+      referralTotals = await referrals.aggregate([
+        { $match: { owner: payload.owner } },
+        {
+          $group: {
+            _id: '$publisher',
+            count: { $sum: 1 },
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      referralTotals = referralTotals.reduce((obj, item) => {
+        item.publisher = item._id
+        item.probi = new BigNumber(item.probi.toString())
+        item.fees = item.probi.times(feePercent).truncated()
+        item.probi = item.probi.minus(item.fees)
+        item.altcurrency = altcurrency
+        item.note = 'Finalized referrals'
+
+        obj[item._id] = item
+        return obj
+      }, {})
+
+      publishers = underscore.keys(contributions)
+      if (payload.owner) {
+        publishers.push(...underscore.keys(referralTotals))
+        publishers = underscore.uniq(publishers)
       }
 
       usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || new BigNumber(0)
       data = []
       data1 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
       data2 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
-      underscore.keys(publishers).sort(braveHapi.domainCompare).forEach((publisher) => {
+
+      publishers.sort(braveHapi.domainCompare).forEach((publisher) => {
         const entry = {}
         let info
 
-        entry[publisher] = publishers[publisher]
-        info = publisherContributions(runtime, entry, undefined, undefined, undefined, 'csv', undefined, summaryP, undefined,
-                                      usd)
-        info.data.forEach((datum) => {
-          datum.probi = datum.probi.toString()
-          datum.fees = datum.fees.toString()
-        })
-        data = data.concat(info.data)
-        data1.probi = data1.probi.plus(info.probi)
-        data1.fees = data1.fees.plus(info.fees)
+        if (contributions[publisher]) {
+          entry[publisher] = contributions[publisher]
+          info = publisherContributions(runtime, entry, undefined, undefined, undefined, 'csv', undefined, summaryP, undefined,
+                                        usd)
+          info.data.forEach((datum) => {
+            datum.probi = datum.probi.toString()
+            datum.fees = datum.fees.toString()
+            datum.note = 'User contributions'
+          })
+          data = data.concat(info.data)
+          data1.probi = data1.probi.plus(info.probi)
+          data1.fees = data1.fees.plus(info.fees)
+        }
+        if (!summaryP) data.push([])
+
+        if (referralTotals[publisher]) {
+          info = referralTotals[publisher]
+          data.push(info)
+          data1.probi = data1.probi.plus(info.probi)
+          data1.fees = data1.fees.plus(info.fees)
+        }
         if (!summaryP) data.push([])
 
         info = publisherSettlements(runtime, underscore.where(entries, { publisher: publisher }), 'csv', summaryP)
@@ -1402,6 +1460,9 @@ exports.workers = {
 
           datum.probi = datum.probi.toString()
           datum.amount = datum.amount.toString()
+          if (datum.type) {
+            datum.note = datum.type[0].toUpperCase() + datum.type.substr(1) + ' payout'
+          }
         })
         data = data.concat(info.data)
         data2.probi = data2.probi.plus(info.probi)
@@ -1411,7 +1472,7 @@ exports.workers = {
       })
       if (!publisher) {
         data.push({
-          publisher: 'TOTAL',
+          note: 'ACTIVITY',
           altcurrency: data1.altcurrency,
           probi: data1.probi.toString(),
           fees: data1.fees.toString(),
@@ -1420,7 +1481,7 @@ exports.workers = {
         })
         if ((!summaryP) && (!payload.owner)) data.push([])
         data.push({
-          publisher: 'TOTAL',
+          note: 'TOTAL PAID OUT',
           altcurrency: data2.altcurrency,
           probi: data2.probi.toString()
         })
@@ -1438,8 +1499,8 @@ exports.workers = {
         let fields = []
         let fieldNames = []
 
-        fields.push('timestamp', 'publisher')
-        fieldNames.push('timestamp', 'publisher')
+        fields.push('note', 'timestamp', 'publisher')
+        fieldNames.push('note', 'timestamp', 'publisher')
         fields.push('publisher USD', 'processor USD')
         fieldNames.push('estimated USD', 'estimated fees')
         fields.push('currency', 'amount')
