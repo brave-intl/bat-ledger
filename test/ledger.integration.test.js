@@ -497,17 +497,20 @@ test('get contribution data', async t => {
     reportId,
     isCSV: true
   })
-  const { text: body, status } = res2
+  const {
+    // text: body,
+    status
+  } = res2
   t.is(status, 200)
-  const json = body.split('\n').map(row => row.split(',').map(cell => {
-    const last = cell.length - 1
-    const first = quote[cell[0]]
-    if (first && first === quote[cell[last]]) {
-      return cell.slice(1, last)
-    } else {
-      return cell
-    }
-  }))
+  // const json = body.split('\n').map(row => row.split(',').map(cell => {
+  //   const last = cell.length - 1
+  //   const first = quote[cell[0]]
+  //   if (first && first === quote[cell[last]]) {
+  //     return cell.slice(1, last)
+  //   } else {
+  //     return cell
+  //   }
+  // }))
   // console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
