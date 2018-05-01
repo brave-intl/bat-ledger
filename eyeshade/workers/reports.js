@@ -990,6 +990,10 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
         stack: ex.stack
       })
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
+      // assuming error occured at wallet status line
+      if (includeUnpayable) {
+        payments.push(payment)
+      }
     }
     if (includeUnpayable || validateWallet(wallet)) {
       payments.push(payment)
@@ -1200,7 +1204,6 @@ exports.workers = {
             if (provider && entry.parameters) {
               wallet = await runtime.wallet.status(entry)
             }
-
             if (validateWallet(wallet)) {
               datum.address = wallet.address
               datum.currency = wallet.defaultCurrency
