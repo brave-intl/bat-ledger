@@ -5,7 +5,6 @@ module.exports = (opts, data) => {
       hostname: 'localhost',
       protocol: 'http:',
       port: 3001,
-      path,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
