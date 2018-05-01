@@ -17,17 +17,16 @@ import {
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
-// const { BAT_EYESHADE_SERVER: domain } = process.env
-// console.log('eyeshade domain', domain)
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 const formURL = createFormURL({
-  format: 'csv',
+  format: 'json',
   summary: true,
   balance: true,
   verified: true,
   amount: 0,
   currency: 'USD'
 })
+
 function ok (res) {
   if (res.status !== 200) {
     return new Error(JSON.stringify(res.body, null, 2).replace(/\\n/g, '\n'))
@@ -494,8 +493,7 @@ test('get contribution data', async t => {
   const { reportId } = bod
   const res2 = await fetchReport({
     domain,
-    reportId,
-    isCSV: true
+    reportId
   })
   const {
     // text: body,
@@ -514,7 +512,7 @@ test('get contribution data', async t => {
   // console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
-  t.plan(4)
+  // t.plan(4)
   const {
     BAT_EYESHADE_SERVER: domain
   } = process.env
@@ -606,7 +604,17 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   //   status: referralStatus
   // } = referralResult
   const refPubPathname = '/v1/reports/publishers/referrals'
-  const urlQuery = { format: 'json' }
+  // const refPubPathname = '/v2/reports/publishers/statements'
+  const rollup = true
+  const summary = false
+  const includeUnpayable = true
+  const urlQuery = {
+    // format: 'json'
+    // rollup,
+    // summary,
+    includeUnpayable
+  }
+  // const refPubPathNameUrl = createFormURL(urlQuery)
   const refPubURL = formURL(refPubPathname, urlQuery)
   const refPubOptions = {
     url: refPubURL,
@@ -619,16 +627,33 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const {
     reportId: refPubReportId
   } = refPubBody
+  console.log(refPubBody)
   const refPubReportResult = await fetchReport({
     reportId: refPubReportId,
     domain
   })
   const {
-    // body: refPubReportBody,
+    body: refPubReportBody,
     status: refPubReportStatus
   } = refPubReportResult
   t.is(refPubReportStatus, 200)
-  // console.log(refPubReportBody)
+  const {
+    length: refPubReportBodyLength
+  } = refPubReportBody
+  t.plan(5 + refPubReportBodyLength)
+  t.true(refPubReportBodyLength > 0)
+  refPubReportBody.forEach((entry) => {
+    const {
+      probi,
+      fees
+    } = entry
+    const probiBig = new BigNumber(probi)
+    const feesBig = new BigNumber(fees)
+    const divided = probiBig.dividedBy(feesBig)
+    const value = +divided.toPrecision(14)
+    console.log(entry, value)
+    t.is(value, 19)
+  })
   // /v1/reports/publishers/referrals
   /*
 channelId

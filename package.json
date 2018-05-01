@@ -33,6 +33,7 @@
     "lint-fix": "standard --fix",
     "test-api": "echo 'no api tests'",
     "test-integration": "ava test/*.integration.test.js",
+    "test-ledger-integration": "ava test/ledger.integration.test.js",
     "test-security": "nsp check",
     "test-transition": "echo 'no transition tests'",
     "test-unit": "ava test/*.unit.test.js",
