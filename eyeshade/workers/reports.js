@@ -960,7 +960,6 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   for (let i = 0; i < eligPublishers.length; i++) {
     const publisher = eligPublishers[i].publisher
     const payment = statements[publisher].balance
-    console.log(payment)
     payment.type = 'referral'
     payment.fees = '0'
     // payment.probi = payment.probi
