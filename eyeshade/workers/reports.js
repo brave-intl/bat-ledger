@@ -993,6 +993,10 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
         stack: ex.stack
       })
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
+      // assuming error occured at wallet status line
+      if (includeUnpayable) {
+        payments.push(payment)
+      }
     }
     debug('trying to add payment', {
       payment,

@@ -22,8 +22,6 @@ import {
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
-// const { BAT_EYESHADE_SERVER: domain } = process.env
-// console.log('eyeshade domain', domain)
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 const formURL = createFormURL({
   format: 'json',
@@ -601,12 +599,13 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const {
     reportId: refPubReportId
   } = refPubBody
+  console.log(refPubBody)
   const refPubReportResult = await fetchReport({
     reportId: refPubReportId,
     domain: eyeshade
   })
   const {
-    // body: refPubReportBody,
+    body: refPubReportBody,
     status: refPubReportStatus
   } = refPubReportResult
   t.true(refPubReportBody.length > 0)
