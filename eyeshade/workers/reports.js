@@ -948,7 +948,7 @@ const findEligPublishers = async (debug, runtime, publishers) => {
  * current balance owed to eligible publisher from referrals in the format expected
  * by our payment tooling
  **/
-const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi) => {
+const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi, includeUnpayable) => {
   const statements = await referralStatement(debug, runtime, undefined, true)
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
@@ -979,7 +979,7 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
     try {
       const wallet = await runtime.wallet.status(entry)
-      if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
+      if (!includeUnpayable && (!wallet || !wallet.address || !wallet.defaultCurrency)) {
         await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
         continue
       }
@@ -990,6 +990,10 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
       payments.push(payment)
     } catch (ex) {
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
+      // assuming error occured at wallet status line
+      if (includeUnpayable) {
+        payments.push(payment)
+      }
     }
   }
 
@@ -1049,6 +1053,9 @@ exports.workers = {
       const summary = payload.summary
       const thresholdProbi = payload.threshold || 0
       const verified = payload.verified
+      const {
+        includeUnpayable = false
+      } = payload
 
       if ((!balance) || (!summary) || (!authorized) || (!verified)) {
         throw new Error('only summary && balance && authorized && verified is supported')
@@ -1058,8 +1065,7 @@ exports.workers = {
         throw new Error('formats other than json are not supported')
       }
 
-      const payments = await prepareReferralPayout(debug, runtime, authority, reportId, thresholdProbi)
-
+      const payments = await prepareReferralPayout(debug, runtime, authority, reportId, thresholdProbi, includeUnpayable)
       const file = await create(runtime, 'publishers-', payload)
 
       await file.write(utf8ify(payments), true)
@@ -1101,6 +1107,9 @@ exports.workers = {
       const summaryP = payload.summary
       const threshold = payload.threshold || 0
       const verified = payload.verified
+      const {
+        includeUnpayable = false
+      } = payload
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
@@ -1186,7 +1195,7 @@ exports.workers = {
             provider = entry && entry.provider
             if (provider && entry.parameters) wallet = await runtime.wallet.status(entry)
 
-            if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
+            if (!includeUnpayable && (!wallet || !wallet.address || !wallet.defaultCurrency)) {
               await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
               continue
             }
@@ -1199,6 +1208,9 @@ exports.workers = {
             entries.push(datum)
           } catch (ex) {
             await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_invalid_wallet' })
+            if (includeUnpayable) {
+              entries.push(datum)
+            }
           }
         }
         data = entries

@@ -621,6 +621,7 @@ v1.getStatements = {
 
       await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL },
+                                                   request.query,
                                                    { authority: 'automated', summary: true }))
       reply({ reportURL: reportURL })
     }
@@ -635,7 +636,10 @@ v1.getStatements = {
   tags: [ 'api' ],
 
   validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown()
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address')
+    }
   },
 
   response: {
@@ -683,6 +687,7 @@ v1.getStatement = {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format'),
       ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format')
     }
