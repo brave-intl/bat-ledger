@@ -957,7 +957,8 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
   const payments = []
   for (let i = 0; i < eligPublishers.length; i++) {
-    const payment = statements[eligPublishers[i].publisher].balance
+    const publisher = eligPublishers[i].publisher
+    const payment = statements[publisher].balance
     payment.type = 'referral'
     payment.fees = payment.probi.times(feePercent).truncated()
     payment.probi = payment.probi.minus(payment.fees)
@@ -968,8 +969,7 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
     const entries = eligPublishers[i].ownerdata
     if (entries.length > 1) {
-      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_bad_ownerlink' })
-      continue
+      throw new Error(`Too many owners: ${entries.length} for a single channel: ${publisher}`)
     }
     const entry = entries[0]
     if ((!entry) || (!entry.provider) || (!entry.parameters)) {
