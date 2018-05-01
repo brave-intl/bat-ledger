@@ -615,7 +615,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const {
     reportId: refPubReportId
   } = refPubBody
-  console.log(refPubBody)
   const refPubReportResult = await fetchReport({
     reportId: refPubReportId,
     domain
