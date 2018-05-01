@@ -597,24 +597,14 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     finalized: (new Date()).toISOString()
   }
   const referralData = [referralDatum]
-  // const referralResult =
   await req(referralOptions).send(referralData)
-  // const {
-  //   body: referralBody,
-  //   status: referralStatus
-  // } = referralResult
   const refPubPathname = '/v1/reports/publishers/referrals'
-  // const refPubPathname = '/v2/reports/publishers/statements'
   const rollup = true
   const summary = false
   const includeUnpayable = true
   const urlQuery = {
-    // format: 'json'
-    // rollup,
-    // summary,
     includeUnpayable
   }
-  // const refPubPathNameUrl = createFormURL(urlQuery)
   const refPubURL = formURL(refPubPathname, urlQuery)
   const refPubOptions = {
     url: refPubURL,
@@ -651,7 +641,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     const feesBig = new BigNumber(fees)
     const divided = probiBig.dividedBy(feesBig)
     const value = +divided.toPrecision(14)
-    console.log(entry, value)
     t.is(value, 19)
   })
   // /v1/reports/publishers/referrals
