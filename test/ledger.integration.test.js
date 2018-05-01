@@ -599,8 +599,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const referralData = [referralDatum]
   await req(referralOptions).send(referralData)
   const refPubPathname = '/v1/reports/publishers/referrals'
-  const rollup = true
-  const summary = false
   const includeUnpayable = true
   const urlQuery = {
     includeUnpayable
