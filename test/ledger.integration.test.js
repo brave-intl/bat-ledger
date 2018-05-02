@@ -470,42 +470,6 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
       .expect(ok)
   }
 })
-// wipe owner and publisher
-// send votes,
-// pull contributions report
-
-//
-// const quote = {
-//   '"': 1,
-//   "'": 2
-// }
-test('get contribution data', async t => {
-  t.plan(1)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
-  const url = formURL('/v1/reports/publishers/contributions')
-  const res = await req({ url, domain })
-  const { body: bod } = res
-  const { reportId } = bod
-  const res2 = await fetchReport({
-    domain,
-    reportId
-  })
-  const {
-    // text: body,
-    status
-  } = res2
-  t.is(status, 200)
-  // const json = body.split('\n').map(row => row.split(',').map(cell => {
-  //   const last = cell.length - 1
-  //   const first = quote[cell[0]]
-  //   if (first && first === quote[cell[last]]) {
-  //     return cell.slice(1, last)
-  //   } else {
-  //     return cell
-  //   }
-  // }))
-  // console.log('contribution data', reportId, json)
-})
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.plan(4)
   const {
@@ -623,27 +587,6 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   } = finalWalletContribs
   t.is(finalWalletProbi, refProbi)
   t.is(usdAmount, '5.00')
-  // /v1/reports/publishers/referrals
-  /*
-channelId
-downloadId
-platform
-finalized
-{ rates:
-   { BTC: '0.00004662',
-     ETH: 0.000663920978877572,
-     LTC: 0.0028617906141616277,
-     USD: 0.4212089028,
-     EUR: 0.34518785639594757 },
-  contributions:
-   { amount: '2.08',
-     currency: 'USD',
-     altcurrency: 'BAT',
-     probi: '4932771363636363636' },
-  status:
-   { provider: 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg',
-     action: 're-authorize' } }
-     */
 
   function contribution (base) {
     return _.extend({
