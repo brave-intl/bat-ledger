@@ -9,7 +9,6 @@ import {
 import dotenv from 'dotenv'
 import querystring from 'querystring'
 import {
-  // owner,
   publisher,
   // only using eyeshade here
   eyeshade as domain,

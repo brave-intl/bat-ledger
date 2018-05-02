@@ -604,8 +604,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     domain: eyeshade
   })
   const {
-    body: refPubReportBody,
-    status: refPubReportStatus
+    body: refPubReportBody
   } = refPubReportResult
   t.true(refPubReportBody.length > 0)
   const singleEntry = _.findWhere(refPubReportBody, {
