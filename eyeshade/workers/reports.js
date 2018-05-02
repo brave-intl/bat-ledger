@@ -959,9 +959,10 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   for (let i = 0; i < eligPublishers.length; i++) {
     const publisher = eligPublishers[i].publisher
     const payment = statements[publisher].balance
+    console.log(payment)
     payment.type = 'referral'
-    payment.fees = payment.probi.times(feePercent).truncated()
-    payment.probi = payment.probi.minus(payment.fees)
+    payment.fees = '0'
+    // payment.probi = payment.probi
     payment.authority = authority
     payment.transactionId = reportId
 
@@ -979,25 +980,29 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
     try {
       const wallet = await runtime.wallet.status(entry)
-      if (!includeUnpayable && (!wallet || !wallet.address || !wallet.defaultCurrency)) {
+      if (validateWallet(wallet)) {
+        payment.address = wallet.address
+        payment.currency = wallet.defaultCurrency
+      } else {
         await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
-        continue
       }
-
-      payment.address = wallet.address
-      payment.currency = wallet.defaultCurrency
-
-      payments.push(payment)
     } catch (ex) {
+      debug('exception raised', {
+        message: ex.message,
+        stack: ex.stack
+      })
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
-      // assuming error occured at wallet status line
-      if (includeUnpayable) {
-        payments.push(payment)
-      }
+    }
+    if (includeUnpayable || validateWallet(wallet)) {
+      payments.push(payment)
     }
   }
 
   return payments
+
+  function validateWallet (wallet) {
+    return wallet && wallet.address && wallet.defaultCurrency
+  }
 }
 
 var exports = {}

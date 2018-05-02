@@ -52,7 +52,7 @@ before_script:
   # bring up the relevant services
   - npm run docker-up-detached
   # let the detached up command start up
-  - sleep 10
+  - sleep 20
   # put surveyor into docker
   - npm run create-surveyor
   # put promotion into docker
