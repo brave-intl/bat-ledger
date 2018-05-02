@@ -977,9 +977,9 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
       continue
     }
-
+    let wallet = null
     try {
-      const wallet = await runtime.wallet.status(entry)
+      wallet = await runtime.wallet.status(entry)
       if (validateWallet(wallet)) {
         payment.address = wallet.address
         payment.currency = wallet.defaultCurrency
