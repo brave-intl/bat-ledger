@@ -13,7 +13,8 @@ import _ from 'underscore'
 import {
   owner,
   publisher,
-  req
+  req,
+  ok
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -26,12 +27,6 @@ const formURL = createFormURL({
   amount: 0,
   currency: 'USD'
 })
-
-function ok (res) {
-  if (res.status !== 200) {
-    return new Error(JSON.stringify(res.body, null, 2).replace(/\\n/g, '\n'))
-  }
-}
 
 function uint8tohex (arr) {
   var strBuilder = []
@@ -512,26 +507,24 @@ test('get contribution data', async t => {
   // console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
-  // t.plan(4)
+  t.plan(4)
   const {
     BAT_EYESHADE_SERVER: domain
   } = process.env
   const wallet = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const ownerOptions = {
     url: wallet,
-    domain
+    domain,
+    expect: true
   }
   const initWalletResults = await req(ownerOptions)
   const {
-    status: initWalletStatus,
     body: initWalletBody
   } = initWalletResults
-  t.is(initWalletStatus, 200)
   const {
     contributions: initContributions,
     rates: initRates
   } = initWalletBody
-  // console.log('init wallet', initWalletBody)
   const {
     USD
   } = initRates
@@ -551,7 +544,8 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const settlementOptions = {
     url: settlementURL,
     method,
-    domain
+    domain,
+    expect: true
   }
   const datum = {
     owner,
@@ -563,26 +557,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   }
   const settlementDatum = contribution(datum)
   const settlementData = [settlementDatum]
-  const settlementResults = await req(settlementOptions).send(settlementData)
-  const {
-    status: settlementStatus
-  } = settlementResults
-  t.is(settlementStatus, 200)
-  const finalWalletResults = await req(ownerOptions)
-  const {
-    status: finalWalletStatus
-    // ,
-    // body: finalBodyStatus
-  } = finalWalletResults
-  t.is(finalWalletStatus, 200)
-  // const {
-  //   contributions: finalContributions
-  // } = finalBodyStatus
-  // const {
-  //   probi: finalWalletProbi
-  // } = finalContributions
-  // console.log('final contributions', finalContributions)
-  // PUT /v1/referrals/{transactionID}
+  await req(settlementOptions).send(settlementData)
   const referralTransactionID = uuid.v4()
   const referralURL = `/v1/referrals/${referralTransactionID}`
   const referralOptions = {
@@ -620,26 +595,34 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     domain
   })
   const {
-    body: refPubReportBody,
-    status: refPubReportStatus
+    body: refPubReportBody
   } = refPubReportResult
-  t.is(refPubReportStatus, 200)
   const {
     length: refPubReportBodyLength
   } = refPubReportBody
-  t.plan(5 + refPubReportBodyLength)
   t.true(refPubReportBodyLength > 0)
-  refPubReportBody.forEach((entry) => {
-    const {
-      probi,
-      fees
-    } = entry
-    const probiBig = new BigNumber(probi)
-    const feesBig = new BigNumber(fees)
-    const divided = probiBig.dividedBy(feesBig)
-    const value = +divided.toPrecision(14)
-    t.is(value, 19)
+  const singleEntry = _.findWhere(refPubReportBody, {
+    publisher,
+    owner
   })
+  const {
+    probi: refProbi,
+    fees: refFees
+  } = singleEntry
+  t.is(refFees, '0')
+  const finalWalletResults = await req(ownerOptions)
+  const {
+    body: finalWalletBody
+  } = finalWalletResults
+  const {
+    contributions: finalWalletContribs
+  } = finalWalletBody
+  const {
+    probi: finalWalletProbi,
+    amount: usdAmount
+  } = finalWalletContribs
+  t.is(finalWalletProbi, refProbi)
+  t.is(usdAmount, '5.00')
   // /v1/reports/publishers/referrals
   /*
 channelId
@@ -680,10 +663,8 @@ test('remove newly created owner', async t => {
   const options = { method, url, domain }
   const result = await req(options)
   const {
-    // body,
     status
   } = result
-  // console.log(body)
   t.true(status === 200)
 })
 

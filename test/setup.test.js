@@ -8,9 +8,17 @@ const token = `Bearer ${tkn}`
 module.exports = {
   owner,
   publisher,
-  req
+  req,
+  ok
 }
 
-function req ({ domain, method, url }) {
-  return request(domain)[method || 'get'](url).set('Authorization', token)
+function req ({ domain, method, url, expect }) {
+  const req = request(domain)[method || 'get'](url).set('Authorization', token)
+  return expect ? req.expect(ok) : req
+}
+
+function ok ({ status, body }) {
+  if (status !== 200) {
+    return new Error(JSON.stringify(body, null, 2).replace(/\\n/g, '\n'))
+  }
 }
