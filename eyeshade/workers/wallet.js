@@ -14,6 +14,15 @@ exports.initialize = async (debug, runtime) => {
 
   runtime.database.checkIndices(debug, [
     {
+      category: runtime.database.get('blacklist', debug),
+      name: 'blacklist',
+      property: 'publisher',
+      empty: {
+        publisher: ''
+      },
+      unique: [ { publisher: 1 } ]
+    },
+    {
       category: runtime.database.get('wallets', debug),
       name: 'wallets',
       property: 'paymentId',
@@ -258,17 +267,31 @@ exports.workers = {
       const publisher = payload.publisher
       const surveyorId = payload.surveyorId
       const cohort = payload.cohort || 'control'
-      const voting = runtime.database.get('voting', debug)
-      let state
+      const { config, database } = runtime
+      const voting = database.get('voting', debug)
+      const blacklist = database.get('blacklist', debug)
+      const { testingCohorts } = config
 
-      if (!publisher) throw new Error('no publisher specified')
-
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $inc: { counts: 1 },
-        $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
+      if (!publisher) {
+        throw new Error('no publisher specified')
       }
-      await voting.update({ surveyorId: surveyorId, publisher: publisher, cohort: cohort }, state, { upsert: true })
+
+      const blacklisted = await blacklist.findOne({ publisher })
+      const exclude = (!!blacklisted) || testingCohorts.includes(cohort)
+      const timestamp = { $type: 'timestamp' }
+      const state = {
+        $currentDate: { timestamp },
+        $inc: { counts: 1 },
+        $set: { exclude }
+      }
+
+      await voting.update({
+        surveyorId,
+        publisher,
+        cohort
+      }, state, {
+        upsert: true
+      })
     },
 
 /* sent when the wallet balance updates

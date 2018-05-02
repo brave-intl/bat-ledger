@@ -14,7 +14,11 @@ import {
   owner,
   publisher,
   req,
-  ok
+  ok,
+  ledger,
+  eyeshade,
+  timeout,
+  fetchReport
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -34,15 +38,15 @@ function uint8tohex (arr) {
   return strBuilder.join('')
 }
 
-const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
-const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
+const srv = {
+  listener: ledger
+}
 
 // FIXME assert has env vars set and is using uphold
 // NOTE this requires a contibution surveyor to have already been created
 
 test('create an owner', async t => {
   t.plan(2)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
   const ownerName = 'venture'
   const url = '/v1/owners'
   const name = ownerName
@@ -71,7 +75,7 @@ test('create an owner', async t => {
   const options = {
     url,
     method: 'post',
-    domain
+    domain: eyeshade
   }
   const result = await req(options).send(data)
   const { status, body } = result
@@ -80,10 +84,13 @@ test('create an owner', async t => {
 })
 test('tie owner to publisher', async t => {
   t.plan(1)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
   const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const method = 'put'
-  const options = { url, method, domain }
+  const options = {
+    url,
+    method,
+    domain: eyeshade
+  }
   const provider = publisher
   const parameters = {}
   const defaultCurrency = 'BAT'
@@ -470,52 +477,32 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
       .expect(ok)
   }
 })
-// wipe owner and publisher
-// send votes,
-// pull contributions report
 
-//
-// const quote = {
-//   '"': 1,
-//   "'": 2
-// }
 test('get contribution data', async t => {
   t.plan(1)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
   const url = formURL('/v1/reports/publishers/contributions')
-  const res = await req({ url, domain })
+  const res = await req({
+    url,
+    domain: eyeshade
+  })
   const { body: bod } = res
   const { reportId } = bod
   const res2 = await fetchReport({
-    domain,
+    domain: eyeshade,
     reportId
   })
   const {
-    // text: body,
     status
   } = res2
   t.is(status, 200)
-  // const json = body.split('\n').map(row => row.split(',').map(cell => {
-  //   const last = cell.length - 1
-  //   const first = quote[cell[0]]
-  //   if (first && first === quote[cell[last]]) {
-  //     return cell.slice(1, last)
-  //   } else {
-  //     return cell
-  //   }
-  // }))
-  // console.log('contribution data', reportId, json)
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.plan(4)
-  const {
-    BAT_EYESHADE_SERVER: domain
-  } = process.env
   const wallet = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const ownerOptions = {
     url: wallet,
-    domain,
-    expect: true
+    domain: eyeshade,
+    expect: 200
   }
   const initWalletResults = await req(ownerOptions)
   const {
@@ -544,8 +531,8 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const settlementOptions = {
     url: settlementURL,
     method,
-    domain,
-    expect: true
+    domain: eyeshade,
+    expect: 200
   }
   const datum = {
     owner,
@@ -563,7 +550,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const referralOptions = {
     method: 'put',
     url: referralURL,
-    domain
+    domain: eyeshade
   }
   const referralDatum = {
     channelId: publisher,
@@ -581,7 +568,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   const refPubURL = formURL(refPubPathname, urlQuery)
   const refPubOptions = {
     url: refPubURL,
-    domain
+    domain: eyeshade
   }
   const refPubResult = await req(refPubOptions)
   const {
@@ -592,15 +579,12 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   } = refPubBody
   const refPubReportResult = await fetchReport({
     reportId: refPubReportId,
-    domain
+    domain: eyeshade
   })
   const {
     body: refPubReportBody
   } = refPubReportResult
-  const {
-    length: refPubReportBodyLength
-  } = refPubReportBody
-  t.true(refPubReportBodyLength > 0)
+  t.true(refPubReportBody.length > 0)
   const singleEntry = _.findWhere(refPubReportBody, {
     publisher,
     owner
@@ -654,62 +638,16 @@ finalized
   }
 })
 test('remove newly created owner', async t => {
-  t.plan(1)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
+  t.plan(0)
   const encodedOwner = encodeURIComponent(owner)
   const encodedPublisher = encodeURIComponent(publisher)
   const url = `/v1/owners/${encodedOwner}/${encodedPublisher}`
   const method = 'delete'
-  const options = { method, url, domain }
-  const result = await req(options)
-  const {
-    status
-  } = result
-  t.true(status === 200)
+  const options = {
+    method,
+    url,
+    domain: eyeshade,
+    expect: 200
+  }
+  await req(options)
 })
-
-// write an abstraction for the do while loops
-async function tryAfterMany (ms, theDoBlock, theCatchBlock) {
-  let tryagain = null
-  let result = null
-  do {
-    tryagain = false
-    try {
-      result = await theDoBlock()
-      tryagain = theCatchBlock(null, result)
-    } catch (e) {
-      tryagain = theCatchBlock(e, result)
-    }
-    if (tryagain) {
-      await timeout(ms)
-    }
-  } while (tryagain)
-  return result
-}
-
-async function fetchReport ({
-  domain,
-  reportId,
-  isCSV
-}) {
-  let url = `/v1/reports/file/${reportId}`
-  return tryAfterMany(5000,
-    () => req({ url, domain }),
-    (e, result) => {
-      if (e) {
-        throw e
-      }
-      const { statusCode, headers } = result
-      if (isCSV) {
-        return headers['content-type'].indexOf('text/csv') === -1
-      }
-      if (statusCode < 400) {
-        return false
-      }
-      const tryagain = statusCode === 404
-      if (!tryagain) {
-        throw result
-      }
-      return tryagain
-    })
-}

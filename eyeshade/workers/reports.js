@@ -564,7 +564,7 @@ const publisherCompare = (a, b) => {
 const labelize = async (debug, runtime, data) => {
   const labels = {}
   const owners = runtime.database.get('owners', debug)
-  const publishersC = runtime.database.get('publishers', debug)
+  const publishersCollection = runtime.database.get('publishers', debug)
 
   for (let datum of data) {
     const publisher = datum.publisher
@@ -580,7 +580,7 @@ const labelize = async (debug, runtime, data) => {
     props = getPublisherProps(publisher)
     labels[publisher] = publisher
 
-    if (props && props.publisherType) entry = await publishersC.findOne({ publisher: publisher })
+    if (props && props.publisherType) entry = await publishersCollection.findOne({ publisher: publisher })
     if (entry) {
       labels[publisher] = props.URL
       if ((!entry.info) && (entry.owner)) {
@@ -915,7 +915,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
 }
 
 const findEligPublishers = async (debug, runtime, publishers) => {
-  const publishersC = runtime.database.get('publishers', debug)
+  const publishersCollection = runtime.database.get('publishers', debug)
 
   const query = { verified: true }
 
@@ -928,7 +928,7 @@ const findEligPublishers = async (debug, runtime, publishers) => {
     throw new Error('Only an array of publisher names or undefined are allowed for argument publishers')
   }
 
-  return publishersC.aggregate([
+  return publishersCollection.aggregate([
     { $match: query },
     {
       $lookup:
@@ -950,6 +950,7 @@ const findEligPublishers = async (debug, runtime, publishers) => {
  **/
 const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi, includeUnpayable) => {
   const statements = await referralStatement(debug, runtime, undefined, true)
+  debug('statements', statements)
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
   })
@@ -993,7 +994,12 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
       })
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
     }
+    debug('trying to add payment', {
+      payment,
+      includeUnpayable
+    })
     if (includeUnpayable || validateWallet(wallet)) {
+      debug('adding payment', payment)
       payments.push(payment)
     }
   }
@@ -1113,15 +1119,57 @@ exports.workers = {
       const threshold = payload.threshold || 0
       const verified = payload.verified
       const {
+        blacklisted: blacklistMe
+      } = payload
+      const {
         includeUnpayable = false
       } = payload
-      const owners = runtime.database.get('owners', debug)
-      const publishersC = runtime.database.get('publishers', debug)
-      const settlements = runtime.database.get('settlements', debug)
+      const {
+        database
+      } = runtime
+      const owners = database.get('owners', debug)
+      const publishersCollection = database.get('publishers', debug)
+      const settlements = database.get('settlements', debug)
+      const blacklist = database.get('blacklist', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, entries, file, info, previous, publishers, usd
 
-      publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
+      const publisherList = publisher && [ publisher ]
+      const publishers = await mixer(debug, runtime, publisherList)
+
+      const $in = Object.keys(publishers)
+      let blacklisted = await blacklist.find({
+        publisher: { $in }
+      })
+
+      if (blacklisted.length || blacklistMe) {
+        const reason = 'blacklisted publisher found in report'
+        debug(reason)
+        const dataSubset = underscore.omit(blacklisted, ['_id'])
+        let dataString = JSON.stringify(dataSubset, null, 2)
+        if (blacklistMe) {
+          dataString = 'forced'
+          blacklisted = dataString
+        }
+        const error = {
+          reason,
+          blacklisted
+        }
+        const params = {
+          format: 'json',
+          reportId
+        }
+        const file = await create(runtime, 'publishers-', params)
+        const utf8 = utf8ify(error)
+        const text = `${authority} report-publishers-contributions failed: ${reason}.\n${dataString}`
+        const channel = '#publishers-bot'
+        await file.write(utf8, true)
+        debug('report-publishers-contributions', error)
+        return runtime.notify(debug, {
+          channel,
+          text
+        })
+      }
+      let data, entries, file, info, previous, usd
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false
@@ -1184,7 +1232,7 @@ exports.workers = {
           delete datum.fee
 
           try {
-            entry = await publishersC.findOne({ publisher: datum.publisher })
+            entry = await publishersCollection.findOne({ publisher: datum.publisher })
             if (!entry) continue
 
             if (!entry.owner) {
@@ -1346,7 +1394,7 @@ exports.workers = {
       const rollupP = payload.rollup
       const starting = payload.starting
       const publisher = payload.publisher
-      const publishersC = runtime.database.get('publishers', debug)
+      const publishersCollection = runtime.database.get('publishers', debug)
       const referrals = runtime.database.get('referrals', debug)
       const settlements = runtime.database.get('settlements', debug)
       const summaryP = payload.summary
@@ -1373,7 +1421,7 @@ exports.workers = {
           entries = await settlements.find(query)
         }
         if (payload.owner) {
-          publishers = await publishersC.find({ owner: payload.owner })
+          publishers = await publishersCollection.find({ owner: payload.owner })
           contributions = await mixer(debug, runtime, publishers.map((p) => p.publisher), range)
         } else {
           contributions = await mixer(debug, runtime, undefined, range)

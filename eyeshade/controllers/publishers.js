@@ -88,6 +88,132 @@ v1.bulk = {
   }
 }
 
+v2.blacklist = {}
+
+/*
+  GET /v2/publisher/blacklisted
+*/
+
+v2.blacklist.GET = {
+  handler: runtime => async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const { database } = runtime
+    const blacklist = database.get('blacklist', debug)
+    const { params } = request
+    const { publisher } = params
+    const found = await findInBlacklist(blacklist, publisher)
+    debug('blacklist > GET', found)
+    if (found) {
+      return reply(found)
+    }
+    const MESSAGE = `No such publisher: ${publisher}`
+    return reply(boom.notFound(MESSAGE))
+  },
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Posts a settlement for one or more publishers',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      publisher: Joi.string().optional().description('a publisher to be queried for').allow('')
+    }
+  }
+}
+
+async function findInBlacklist (blacklist, publisher) {
+  let pubs = []
+  if (publisher) {
+    let found = await blacklist.findOne({ publisher })
+    if (found) {
+      pubs = [found]
+    } else {
+      pubs = []
+    }
+  } else {
+    pubs = await blacklist.find({})
+  }
+  pubs = pubs.map(publisher => underscore.omit(publisher, ['_id']))
+  if (publisher) {
+    return pubs[0] || null
+  } else {
+    return pubs
+  }
+}
+/*
+  POST /v2/publishers/blacklist
+ */
+v2.blacklist.POST = {
+  handler: runtime => async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const { payload } = request
+    const { database } = runtime
+    const blacklist = database.get('blacklist', debug)
+    debug('blacklist > POST', payload)
+    const result = await addToBlacklist(blacklist, payload)
+    debug('blacklist create', result)
+    reply()
+  },
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Updates the black list collection with add or remove lists',
+  tags: [ 'api' ],
+
+  validate: {
+    payload: Joi.object().keys({
+      publishers: Joi.array().items(Joi.string()).description('adds these publishers to the blacklist')
+    }).unknown(true).description('all options')
+  }
+}
+
+async function addToBlacklist (blacklist, {
+  publishers = []
+}) {
+  const upsert = { upsert: true }
+  const publishersToAdd = publishers.map(publisher => ({ publisher }))
+  return blacklist.insert(publishersToAdd, upsert)
+}
+/*
+  DELETE /v2/publishers/blacklist
+ */
+v2.blacklist.DELETE = {
+  handler: runtime => async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const { database } = runtime
+    const blacklist = database.get('blacklist', debug)
+    await removeFromBlacklist(blacklist, request.payload)
+    reply()
+  },
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Removes publishers from blacklist collection',
+  tags: [ 'api' ],
+
+  validate: {
+    payload: Joi.object().keys({
+      publishers: Joi.array().items(Joi.string()).description('removes these publishers from the blacklist')
+    }).unknown(true).description('all options')
+  }
+}
+
+async function removeFromBlacklist (blacklist, {
+  publishers = []
+}) {
+  const publisher = { $in: publishers }
+  const removeQuery = { publisher }
+  return blacklist.remove(removeQuery)
+}
+
+// DELETE
 /*
    POST /v2/publishers/settlement
  */
@@ -170,14 +296,33 @@ v2.settlement = {
 v2.getBalance = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const publisher = request.params.publisher
-      const currency = request.query.currency.toUpperCase()
+      const { params, query } = request
+      const { database } = runtime
+      const { publisher } = params
+      const currency = query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
-      const referrals = runtime.database.get('referrals', debug)
-      const settlements = runtime.database.get('settlements', debug)
-      const voting = runtime.database.get('voting', debug)
+      const settlements = database.get('settlements', debug)
+      const blacklist = database.get('blacklist', debug)
+      const voting = database.get('voting', debug)
+      const referrals = database.get('referrals', debug)
+      const {
+        currency: runtimeCurrency
+      } = runtime
+      const { rates } = runtimeCurrency
       let amount, summary
       let probi = new BigNumber(0)
+      const blacklisted = await blacklist.findOne({ publisher })
+      const exclude = !!blacklisted
+
+      if (exclude) {
+        return reply({
+          rates: rates[altcurrency],
+          altcurrency: altcurrency,
+          probi: '0',
+          amount: 0,
+          currency: currency
+        })
+      }
 
       summary = await voting.aggregate([
         {
@@ -1119,6 +1264,9 @@ module.exports.putToken = putToken
 
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v1/publishers').config(v1.bulk),
+  braveHapi.routes.async().path('/v2/publishers/blacklist/{publisher?}').config(v2.blacklist.GET),
+  braveHapi.routes.async().post().path('/v2/publishers/blacklist/').config(v2.blacklist.POST),
+  braveHapi.routes.async().delete().path('/v2/publishers/blacklist/').config(v2.blacklist.DELETE),
   braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement),
   braveHapi.routes.async().path('/v2/publishers/{publisher}/balance').whitelist().config(v2.getBalance),
   braveHapi.routes.async().path('/v2/publishers/{publisher}/wallet').whitelist().config(v2.getWallet),
