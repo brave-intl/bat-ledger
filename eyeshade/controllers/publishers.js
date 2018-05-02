@@ -1200,13 +1200,13 @@ module.exports.initialize = async (debug, runtime) => {
         amount: bson.Decimal128.POSITIVE_ZERO,
         commission: bson.Decimal128.POSITIVE_ZERO,    // conversion fee (i.e., for settlement)
         fee: bson.Decimal128.POSITIVE_ZERO,           // network fee (i.e., for settlement)
-        timestamp: bson.Timestamp.ZERO,
-        type: ''
+        type: '',
+        timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
       others: [ { address: 1 },
-                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-                { fees: 1 }, { timestamp: 1 }, { type: 1 }]
+                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { fees: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
+                { fee: 1 }, { type: 1 }, { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('tokens', debug),
