@@ -1,5 +1,5 @@
 # bat-ledger
-BAT back-end servers (ledger, eyeshade, balance, and helper)
+BAT back-end servers (ledger, eyeshade, balance, helper, and extractor)
 
 ## Initialization
 Authentication is achieved via a GitHub [OAuth application](https://github.com/settings/developers). Create a developer application with an authorization callback of the form `https://{DOMAIN:PORT}/v1/login`.  Set the environment variables `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to those corresponding in your OAuth application.
@@ -15,7 +15,7 @@ Authorization is achieved by verifying that the user is a member of a GitHub org
 6. Install the dependencies `npm install`
 7. Start Redis `brew services start redis`
 8. Start MongoDB `brew services start mongodb`
-9. Start with `npm run start-[ledger|eyeshade|balance|helper]`
+9. Start with `npm run start-[ledger|eyeshade|balance|helper|extractor]`
 
 If you get an error when starting a service, try clearing the Redis database:
 ```
@@ -65,7 +65,7 @@ docker-compose stop
 ```
 
 ### Configuration
-Configuration variables are stored as environment preferences. See `config.js` for a list of these variables for ledger, eyeshade, balance, and helper respectively.
+Configuration variables are stored as environment preferences. See `config.js` for a list of these variables for ledger, eyeshade, balance, helper, and extractor respectively.
 
 If you intend to run eyeshade in communication with the [publisher's website](https://github.com/brave-intl/publishers), you will need to set the `UPHOLD_CLIENT_ID` and `UPHOLD_CLIENT_SECRET` environment variables to the same as those used on your copy of the publishers site.
 
