@@ -471,7 +471,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   }
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
-  // t.plan(4)
+  t.plan(4)
   const {
     BAT_EYESHADE_SERVER: domain
   } = process.env
@@ -559,8 +559,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     domain
   })
   const {
-    body: refPubReportBody,
-    status: refPubReportStatus
+    body: refPubReportBody
   } = refPubReportResult
   const {
     length: refPubReportBodyLength

@@ -985,15 +985,11 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
         await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
       }
     } catch (ex) {
-      debug('exception raised', {
+      debug('wallet not available', {
         message: ex.message,
         stack: ex.stack
       })
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
-      // assuming error occured at wallet status line
-      if (includeUnpayable) {
-        payments.push(payment)
-      }
     }
     if (includeUnpayable || validateWallet(wallet)) {
       payments.push(payment)
@@ -1001,6 +997,10 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   }
 
   return payments
+
+  function validateWallet (wallet) {
+    return wallet && wallet.address && wallet.defaultCurrency
+  }
 }
 
 function validateWallet (wallet) {
