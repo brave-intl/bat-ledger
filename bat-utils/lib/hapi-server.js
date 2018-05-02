@@ -326,12 +326,7 @@ const Server = async (options, runtime) => {
   // automated fishing expeditions shouldn't result in devops alerts...
   server.route({ method: 'GET', path: '/{path*}', handler: { file: './documentation/robots.txt' } })
 
-  server.start((err) => {
-    if (err) {
-      debug('unable to start server', err)
-      throw err
-    }
-
+  await server.start().then(() => {
     let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
 
     dns.setServers(resolvers)
@@ -350,6 +345,11 @@ const Server = async (options, runtime) => {
 
     // Hook to notify start script.
     if (process.send) { process.send('started') }
+  }, (err) => {
+    if (err) {
+      debug('unable to start server', err)
+      throw err
+    }
   })
 
   return server

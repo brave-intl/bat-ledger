@@ -43,13 +43,20 @@ const Wallet = function (config, runtime) {
   }
 }
 
-Wallet.prototype.create = async function (requestType, request) {
+Wallet.prototype.addAddress = async function (info, altcoin) {
+  const f = Wallet.providers[info.provider].addAddress
+
+  if (!f) throw new Error('provider ' + info.provider + ' addAddress not supported')
+  return f.bind(this)(info, altcoin)
+}
+
+Wallet.prototype.create = async function (apiVersion, requestType, request) {
   let f = Wallet.providers.mock.create
   if (this.config.uphold) {
     f = Wallet.providers.uphold.create
   }
   if (!f) return {}
-  return f.bind(this)(requestType, request)
+  return f.bind(this)(apiVersion, requestType, request)
 }
 
 Wallet.prototype.balances = async function (info) {
@@ -207,36 +214,81 @@ Wallet.prototype.purchaseBAT = async function (info, amount, currency, language)
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
-  create: async function (requestType, request) {
+  createAddress: async function (cardId, altcoin) {
+    const networks = {
+      BCH: 'bitcoin-cash',
+      BTC: 'bitcoin',
+      BTG: 'bitcoin-gold',
+      DASH: 'dash',
+      ETH: 'ethereum',
+      LTC: 'litecoin'
+/* soon!
+      XRP: 'ripple'
+ */
+    }
+    let addresses, cardInfo
+    let network = networks[altcoin]
+
+    if (!network) return ('unsupported altcoin: ' + altcoin)
+
+    if (this.runtime.config.currency.altcoins.indexOf(altcoin) === -1) return ('unconfigured altcoin: ' + altcoin)
+
+    cardInfo = await this.uphold.getCard(cardId)
+    addresses = (cardInfo && cardInfo.address) || {}
+    if (addresses[network]) return { id: addresses[network], network: network }
+
+    return this.uphold.createCardAddress(cardId, network)
+  },
+  addAddress: async function (info, altcoin) {
+    let result
+
+    try {
+      result = await Wallet.providers.uphold.createAddress.bind(this)(info.providerId, altcoin)
+      if (typeof result === 'string') return result
+
+      info.addresses[altcoin] = result.id
+    } catch (ex) {
+      debug('addAddress',
+            { provider: 'uphold', reason: ex.toString(), operation: '/me/cards/:id/addresses', altcoin: altcoin })
+      throw ex
+    }
+  },
+  create: async function (apiVersion, requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
-        let btcAddr, ethAddr, ltcAddr, wallet
+        const altcoins = [ 'ETH' ]
+        let addresses, result, wallet
 
+        if (apiVersion === 2) altcoins.push('BTC', 'LTC')
         try {
           wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
-          ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
-          btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
-          ltcAddr = await this.uphold.createCardAddress(wallet.id, 'litecoin')
+          addresses = { CARD_ID: wallet.id }
+          for (let altcoin of altcoins) {
+            result = await Wallet.providers.uphold.createAddress.bind(this)(wallet.id, altcoin)
+            if (typeof result === 'string') throw new Error(result)
+
+            addresses[altcoin] = result.id
+          }
         } catch (ex) {
           debug('create', {
             provider: 'uphold',
             reason: ex.toString(),
-            operation: btcAddr ? 'litecoin' : ethAddr ? 'bitcoin' : wallet ? 'ethereum' : '/me/cards'
+            operation: wallet ? '/me/cards' : '/me/cards/:id/addresses'
           })
           throw ex
         }
-        return { 'wallet': { 'addresses': {
-          'BAT': ethAddr.id,
-          'BTC': btcAddr.id,
-          'CARD_ID': wallet.id,
-          'ETH': ethAddr.id,
-          'LTC': ltcAddr.id
-        },
-          'provider': 'uphold',
-          'providerId': wallet.id,
-          'httpSigningPubKey': request.body.publicKey,
-          'altcurrency': 'BAT' } }
+        addresses.BAT = addresses.ETH
+
+        return {
+          wallet: {
+            addresses: addresses,
+            provider: 'uphold',
+            providerId: wallet.id,
+            httpSigningPubKey: request.body.publicKey,
+            altcurrency: 'BAT'
+          }
+        }
       } else {
         throw new Error('wallet uphold create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
       }

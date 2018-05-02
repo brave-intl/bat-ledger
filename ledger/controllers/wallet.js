@@ -13,14 +13,17 @@ const braveUtils = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 /*
    GET /v1/wallet/{paymentId}
    GET /v2/wallet/{paymentId}
+   GET /v3/wallet/{paymentId}
  */
 
 const read = function (runtime, apiVersion) {
   return async (request, reply) => {
+    const altcoin = request.query.altcoin
     const amount = request.query.amount
     const balanceP = request.query.balance
     const debug = braveHapi.debug(module, request)
@@ -28,9 +31,10 @@ const read = function (runtime, apiVersion) {
     const refreshP = request.query.refresh
     const wallets = runtime.database.get('wallets', debug)
     const altcurrency = request.query.altcurrency
+    const altcurrencies = [ 'BAT', 'BTC', 'CARD_ID', 'ETH', 'LTC' ]
 
     let currency = request.query.currency
-    let balances, info, result, state, wallet, wallet2
+    let address, addresses, balances, info, result, state, wallet, wallet2
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -45,11 +49,25 @@ const read = function (runtime, apiVersion) {
       rates: currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency]
     }
 
-    if (apiVersion === 2) {
-      result = underscore.extend(result, { addresses: wallet.addresses })
+    if (apiVersion > 1) {
+      addresses = wallet.addresses
+      if (apiVersion === 2) {
+        underscore.keys(addresses).forEach((key) => { if (altcurrencies.indexOf(key) === -1) delete addresses[key] })
+      }
+      result = underscore.extend(result, { addresses: addresses })
       if (runtime.registrars.persona) {
         result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
       }
+    }
+    if ((apiVersion > 2) && (altcoin) && (!wallet.addresses[altcoin])) {
+      address = await runtime.wallet.addAddress(wallet, altcoin)
+      if (typeof address === 'string') return reply(boom.badData(address))
+
+      state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { addresses: wallet.addresses } }
+      await wallets.update({ paymentId: paymentId }, state, { upsert: true })
+
+      await runtime.queue.send(debug, 'wallet-report', underscore.extend({ paymentId: paymentId }, state.$set))
+      state = null
     }
 
     if ((refreshP) || (balanceP && !wallet.balances)) {
@@ -206,6 +224,44 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
         ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
       })
+    }).unknown(true)
+  }
+}
+
+v3.read = { handler: (runtime) => { return read(runtime, 3) },
+  description: 'Returns information about the wallet associated with the user',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    },
+    query: {
+      // FIXME since this amount is not in native probi - need some kind of sig fig limit
+      amount: Joi.number().positive().optional().description('the payment amount in fiat currency if provied, otherwise the altcurrency'),
+      balance: Joi.boolean().optional().default(false).description('return balance information'),
+      currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
+      altcurrency: braveJoi.string().altcurrencyCode().optional().description('the altcurrency of the requested transaction'),
+      altcoin: braveJoi.string().altcurrencyCode().optional().description('the wallet altcurrency to add, as needed'),
+      refresh: Joi.boolean().optional().default(false).description('return balance and transaction information')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      balance: Joi.number().min(0).optional().description('the (confirmed) wallet balance'),
+      unconfirmed: Joi.number().min(0).optional().description('the unconfirmed wallet balance'),
+      paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful payment'),
+      rates: Joi.object().optional().description('current exchange rates to various currencies'),
+      probi: braveJoi.string().numeric().optional().description('the wallet balance in probi'),
+      altcurrency: Joi.string().optional().description('the wallet balance currency'),
+      requestType: Joi.string().valid('httpSignature', 'bitcoinMultisig').optional().description('the type of the request'),
+      unsignedTx: Joi.object().optional().description('unsigned transaction'),
+      addresses: Joi.object().keys({
+        BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
+        ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
+        CARD_ID: Joi.string().guid().optional().description('provider identifier')
+      }).unknown(true)
     }).unknown(true)
   }
 }
@@ -424,6 +480,7 @@ v2.lookup = { handler: (runtime) => {
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
+  braveHapi.routes.async().path('/v3/wallet/{paymentId}').config(v3.read),
   braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)

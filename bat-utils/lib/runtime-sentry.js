@@ -24,6 +24,8 @@ const Sentry = function (config, runtime) {
   }).install()
 
   runtime.captureException = (ex, optional) => {
+    if (process.env.NODE_ENV !== 'production') console.log('exception: ' + (ex.stack || ex.toString()))
+
     if (optional && optional.req) {
       const request = optional.req
       optional.req = { // If present rewrite the request into sentry format
