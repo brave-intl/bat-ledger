@@ -1003,7 +1003,6 @@ function validateWallet (wallet) {
   return wallet && wallet.address && wallet.defaultCurrency
 }
 
-
 var exports = {}
 
 exports.initialize = async (debug, runtime) => {
