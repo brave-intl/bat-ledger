@@ -38,13 +38,30 @@ function uint8tohex (arr) {
   return strBuilder.join('')
 }
 
-const srv = {
-  listener: ledger
-}
-
 // FIXME assert has env vars set and is using uphold
 // NOTE this requires a contibution surveyor to have already been created
-
+test('create a surveyor', async t => {
+  t.plan(0)
+  const url = '/v2/surveyor/contribution'
+  const data = {'adFree': {'fee': {'USD': 5}, 'votes': 5, 'altcurrency': 'BAT', 'probi': '27116311373482831368'}}
+  await req({
+    url,
+    method: 'post',
+    domain: ledger,
+    expect: 200
+  }).send(data)
+})
+test('create a promotion', async t => {
+  t.plan(0)
+  const url = '/v1/grants'
+  const data = {'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ], 'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]}
+  await req({
+    url,
+    method: 'post',
+    domain: ledger,
+    expect: 200
+  }).send(data)
+})
 test('create an owner', async t => {
   t.plan(2)
   const ownerName = 'venture'
@@ -103,7 +120,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
 
-  var response = await request(srv.listener).get('/v2/registrar/persona').expect(ok)
+  var response = await request(ledger).get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -138,7 +155,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     },
     proof: personaCredential.request()
   }
-  response = await request(srv.listener).post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await request(ledger).post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   t.true(response.body.hasOwnProperty('wallet'))
   const paymentId = response.body.wallet.paymentId
@@ -155,11 +172,11 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   personaCredential.finalize(response.body.verification)
 
-  response = await request(srv.listener).get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+  response = await request(ledger).get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
     .expect(ok)
   t.true(response.body.paymentId === paymentId)
 
-  response = await request(srv.listener)
+  response = await request(ledger)
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
 
@@ -172,7 +189,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
 
   do { // This depends on currency conversion rates being available, retry until then are available
-    response = await request(srv.listener)
+    response = await request(ledger)
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
@@ -205,7 +222,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   )
 
   do {
-    response = await request(srv.listener)
+    response = await request(ledger)
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await timeout(500)
@@ -247,7 +264,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await request(ledger)
       .put('/v2/wallet/' + paymentId)
       .send(payload)
   } while (response.status === 503)
@@ -258,7 +275,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
 
-  response = await request(srv.listener)
+  response = await request(ledger)
     .get('/v2/registrar/viewing')
     .expect(ok)
 
@@ -269,7 +286,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await request(ledger)
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
       .send({ proof: viewingCredential.request() })
   } while (response.status === 503)
@@ -285,12 +302,12 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', publisher]
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
-    response = await request(srv.listener)
+    response = await request(ledger)
       .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
       .expect(ok)
 
     const surveyor = new anonize.Surveyor(response.body)
-    response = await request(srv.listener)
+    response = await request(ledger)
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
       .send({'proof': viewingCredential.submit(surveyor, { publisher: votes[i % votes.length] })})
       .expect(ok)
@@ -301,7 +318,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
 
-  var response = await request(srv.listener).get('/v2/registrar/persona').expect(ok)
+  var response = await request(ledger).get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -336,7 +353,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     },
     proof: personaCredential.request()
   }
-  response = await request(srv.listener).post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await request(ledger).post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   t.true(response.body.hasOwnProperty('wallet'))
   const paymentId = response.body.wallet.paymentId
@@ -352,7 +369,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   personaCredential.finalize(response.body.verification)
 
-  response = await request(srv.listener)
+  response = await request(ledger)
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
 
@@ -365,7 +382,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   // const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
 
   // get available grant
-  response = await request(srv.listener)
+  response = await request(ledger)
     .get('/v1/grants')
     .expect(ok)
 
@@ -374,7 +391,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   const promotionId = response.body.promotionId
 
   // request grant
-  response = await request(srv.listener)
+  response = await request(ledger)
       .put(`/v1/grants/${paymentId}`)
       .send({'promotionId': promotionId})
       .expect(ok)
@@ -385,13 +402,13 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   const desired = donateAmt.toString()
 
   // try re-claiming grant, should return ok
-  response = await request(srv.listener)
+  response = await request(ledger)
       .put(`/v1/grants/${paymentId}`)
       .send({'promotionId': promotionId})
       .expect(ok)
 
   do {
-    response = await request(srv.listener)
+    response = await request(ledger)
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await timeout(500)
@@ -426,7 +443,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await request(ledger)
       .put('/v2/wallet/' + paymentId)
       .send(payload)
   } while (response.status === 503)
@@ -437,7 +454,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
 
-  response = await request(srv.listener)
+  response = await request(ledger)
     .get('/v2/registrar/viewing')
     .expect(ok)
 
@@ -448,7 +465,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await request(ledger)
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
       .send({ proof: viewingCredential.request() })
   } while (response.status === 503)
@@ -466,12 +483,12 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
     let publisher = votes[i % votes.length]
-    response = await request(srv.listener)
+    response = await request(ledger)
       .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
       .expect(ok)
 
     const surveyor = new anonize.Surveyor(response.body)
-    response = await request(srv.listener)
+    response = await request(ledger)
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
       .send({'proof': viewingCredential.submit(surveyor, { publisher })})
       .expect(ok)

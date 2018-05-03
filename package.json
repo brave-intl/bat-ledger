@@ -27,8 +27,6 @@
     "test": "npm run test-security & (npm run test-unit && npm run test-integration && npm run test-eyeshade)",
     "mongo-reset": "docker exec -it ledger-mongo mongo eyeshade --eval \"db.dropDatabase()\"",
     "redis-flush": "docker exec -it grant-redis redis-cli flushall",
-    "create-surveyor": "node ./setup/surveyor.js",
-    "create-promotion": "node ./setup/promotion.js",
     "lint": "standard",
     "lint-fix": "standard --fix",
     "test-api": "echo 'no api tests'",

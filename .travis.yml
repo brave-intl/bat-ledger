@@ -49,12 +49,11 @@ before_script:
   - docker pull brave/bat-go:latest
   # build the docker compose file
   - npm run docker-build
+  # reset the dbs
+  - npm run mongo-reset
+  - npm run redis-flush
   # bring up the relevant services
   - npm run docker-up-detached
-  # let the detached up command start up
+  # give enough time for the detached up command to start
   - sleep 20
-  # put surveyor into docker
-  - npm run create-surveyor
-  # put promotion into docker
-  - npm run create-promotion
 after_success: npx codecov --file=./coverage/lcov.info
