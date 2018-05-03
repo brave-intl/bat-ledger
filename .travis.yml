@@ -49,9 +49,6 @@ before_script:
   - docker pull brave/bat-go:latest
   # build the docker compose file
   - npm run docker-build
-  # reset the dbs
-  - npm run mongo-reset
-  - npm run redis-flush
   # bring up the relevant services
   - npm run docker-up-detached
   # give enough time for the detached up command to start
