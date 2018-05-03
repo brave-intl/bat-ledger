@@ -573,7 +573,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     probi: refProbi,
     fees: refFees
   } = singleEntry
-  t.is(refFees, '0')
+  t.is(refFees, 0)
   const finalWalletResults = await req(ownerOptions)
   const {
     body: finalWalletBody
