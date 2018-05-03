@@ -959,10 +959,8 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   for (let i = 0; i < eligPublishers.length; i++) {
     const publisher = eligPublishers[i].publisher
     const payment = statements[publisher].balance
-    console.log(payment)
     payment.type = 'referral'
-    payment.fees = '0'
-    // payment.probi = payment.probi
+    payment.fees = 0
     payment.authority = authority
     payment.transactionId = reportId
 
@@ -999,11 +997,12 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   }
 
   return payments
-
-  function validateWallet (wallet) {
-    return wallet && wallet.address && wallet.defaultCurrency
-  }
 }
+
+function validateWallet (wallet) {
+  return wallet && wallet.address && wallet.defaultCurrency
+}
+
 
 var exports = {}
 
@@ -1177,12 +1176,13 @@ exports.workers = {
       if (format === 'json') {
         entries = []
         for (let datum of data) {
-          let entry, props, provider, wallet
+          let entry, props, provider
 
           delete datum.currency
           delete datum.amount
           delete datum.fee
 
+          let wallet = null
           try {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
@@ -1198,24 +1198,22 @@ exports.workers = {
 
             entry = await owners.findOne({ owner: entry.owner })
             provider = entry && entry.provider
-            if (provider && entry.parameters) wallet = await runtime.wallet.status(entry)
-
-            if (!includeUnpayable && (!wallet || !wallet.address || !wallet.defaultCurrency)) {
-              await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
-              continue
+            if (provider && entry.parameters) {
+              wallet = await runtime.wallet.status(entry)
             }
 
-            datum.address = wallet.address
-            datum.currency = wallet.defaultCurrency
-
-            datum.type = 'contribution'
-
-            entries.push(datum)
+            if (validateWallet(wallet)) {
+              datum.address = wallet.address
+              datum.currency = wallet.defaultCurrency
+              datum.type = 'contribution'
+            } else {
+              await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
+            }
           } catch (ex) {
             await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_invalid_wallet' })
-            if (includeUnpayable) {
-              entries.push(datum)
-            }
+          }
+          if (includeUnpayable || validateWallet(wallet)) {
+            entries.push(datum)
           }
         }
         data = entries
