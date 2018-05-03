@@ -997,10 +997,6 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
   }
 
   return payments
-
-  function validateWallet (wallet) {
-    return wallet && wallet.address && wallet.defaultCurrency
-  }
 }
 
 function validateWallet (wallet) {
@@ -1204,6 +1200,7 @@ exports.workers = {
             if (provider && entry.parameters) {
               wallet = await runtime.wallet.status(entry)
             }
+
             if (validateWallet(wallet)) {
               datum.address = wallet.address
               datum.currency = wallet.defaultCurrency
