@@ -533,12 +533,76 @@ const provision = async (debug, runtime, surveyorId, bump) => {
   })
 }
 
+/*
+   POST /{apiV}/batch/surveyor/voting
+ */
+
+v2.batch =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const f = v2.phase2(runtime)
+    const id = request.id
+    const params = request.params
+    const payload = request.payload
+    const results = []
+
+    for (let item of payload) {
+      // only these three properties are needed...
+      await f({
+        id: id,
+        params: underscore.extend({ surveyorType: 'voting', surveyorId: item.surveyorId }, params),
+        payload: { proof: item.proof }
+      }, (response) => {
+        results.push({ surveyorId: item.surveyorId, response: response })
+      })
+    }
+
+    return results
+  }
+},
+
+  description: 'Submits a completed report',
+  tags: [ 'api' ],
+
+  validate: {
+    params: { apiV: Joi.string().valid('v2').required().description('the api version') },
+
+    payload: Joi.array().min(1).items(
+      Joi.object().keys({
+        surveyorId: Joi.string().required().description('the identity of the surveyor'),
+        proof: Joi.string().required().description('report information and proof')
+      })
+    )
+  },
+
+  response: {
+    schema: Joi.array().min(1).items(
+      Joi.object().keys({
+        surveyorId: Joi.string().required().description('the identity of the surveyor'),
+
+        response: Joi.alternatives().try(
+          Joi.object().keys({
+            submissionId: Joi.string().required().description('verification submissionId')
+          }),
+
+          Joi.object().keys({
+            statusCode: Joi.number().min(400).max(599).required(),
+            error: Joi.string().optional(),
+            message: Joi.string().optional()
+          }).description('boom result')
+        )
+      })
+    )
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.read),
   braveHapi.routes.async().post().path('/{apiV}/surveyor/{surveyorType}').config(v2.create),
   braveHapi.routes.async().patch().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.update),
   braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}/{uId}').config(v2.phase1),
-  braveHapi.routes.async().put().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.phase2)
+  braveHapi.routes.async().put().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.phase2),
+  braveHapi.routes.async().post().path('/{apiV}/batch/surveyor/voting').config(v2.batch)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
