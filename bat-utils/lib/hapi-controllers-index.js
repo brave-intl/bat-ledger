@@ -3,15 +3,18 @@ const path = require('path')
 
 const underscore = require('underscore')
 
-var exports = {}
-
 exports.routes = async (debug, runtime, options) => {
   const entries = {}
   const parent = options.parent || path.join(process.cwd(), 'src/controllers')
   const routes = [
     { method: 'GET',
       path: '/',
-      config: { handler: (request, reply) => { reply('ack.') } }
+      config: {
+/* ONLY FOR DEBUGGING
+        cors: { origin: [ '*' ] },
+ */
+        handler: (request, reply) => { reply('ack.') }
+      }
     }
   ]
   let errP, names
@@ -46,13 +49,21 @@ exports.routes = async (debug, runtime, options) => {
     }
   }
 
+  names = []
   try {
-    names = fs.readdirSync(parent)
+    fs.statSync(path.join(parent, '..', 'common.js'))
+    names.push(path.join('..', 'common.js'))
+  } catch (ex) {
+    if (ex.code !== 'ENOENT') throw ex
+
+    debug('no commoners to load')
+  }
+  try {
+    names = names.concat(fs.readdirSync(parent))
   } catch (ex) {
     if (ex.code !== 'ENOENT') throw ex
 
     debug('no controllers directory to scan')
-    names = []
   }
   for (let name of names) {
     if ((name === 'index.js') || (path.extname(name) !== '.js')) continue
@@ -71,5 +82,3 @@ exports.routes = async (debug, runtime, options) => {
 
   return routes
 }
-
-module.exports = exports

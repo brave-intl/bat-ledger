@@ -1,5 +1,7 @@
 /* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
 
+const url = require('url')
+
 const services = {
   ledger: {
     portno: 3001,
@@ -77,6 +79,36 @@ const services = {
 
   helper: {
     portno: 3004
+  },
+
+  extractor: {
+    portno: 3006,
+
+    f: () => {
+      if (!process.env.POSTGRES_URI) {
+        const parts = {
+          protocol: 'postgresql:',
+          slashes: true,
+          auth: process.env.PGUSER                              || process.env.USER,
+          port: process.env.PGPORT                              ||'5432',
+          hostname: process.env.PGHOST                          || '127.0.0.1',
+          pathname: process.env.PGDATABASE                      || '/test_extractor',
+          query: {
+            sslmode: process.env.PGSSLMODE                      || 'require',
+            ssl: true
+          }
+        }
+        if (parts.auth && process.env.PGPASSWORD) parts.auth += ':' + process.env.PGPASSWORD
+        parts.host = parts.hostname + ':' + parts.port
+        parts.path = parts.pathname
+        process.env.POSTGRES_URI = url.format(parts)
+      }
+      module.exports.sql = { postgres: { connectionString: process.env.POSTGRES_URI } }
+
+      helper()
+      mongo2()
+      mongo3()
+    }
   }
 }
 
@@ -87,6 +119,24 @@ const helper = () => {
   { url               : process.env.HELPER_URL
   , access_token      : process.env.HELPER_TOKEN                || '00000000-0000-4000-0000-000000000000'
   }
+}
+
+const mongo2 = () => {
+  let uri = process.env.MONGODB2_URI
+
+  if (!uri) return
+
+  uri += ((uri.indexOf('?') === -1) ? '?' : '&') + 'readOnly=true&readPreference=secondary'
+  module.exports.database.mongo2 = uri
+}
+
+const mongo3 = () => {
+  let uri = process.env.MONGODB3_URI
+
+  if (!uri) return
+
+  uri += ((uri.indexOf('?') === -1) ? '?' : '&') + 'readOnly=true&readPreference=secondary'
+  module.exports.database.mongo3 = uri
 }
 
 const uphold = () => {
@@ -102,13 +152,17 @@ const uphold = () => {
 
 
 const service = services[process.env.SERVICE]
-if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.service)
+if (!service) throw new Error('invalid process.env.SERVICE=' + process.env.SERVICE)
 
 process.env.PORT = process.env.PORT  || service.portno
 
 const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
-  process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
+new Array('MONGODB_URI', 'MONGODB2_URI', 'MONGODB3_URI', 'POSTGRES_URI',
+          'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET',
+          'SLACK_CHANNEL', 'SLACK_ICON_URL', 'SLACK_WEBOOK').forEach((v) => {
+  const value = process.env[v]  || process.env[SERVICE + '_' + v]
+
+  if (typeof value !== 'undefined') process.env[v] = value
 })
 
 module.exports =
@@ -133,9 +187,9 @@ module.exports =
 if (service.f) service.f()
 
 if (process.env.NODE_ENV === 'production') {
-  module.exports.server = require('url').parse('https://' + process.env.HOST)
+  module.exports.server = url.parse('https://' + process.env.HOST)
 } else {
-  module.exports.server = require('url').parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
+  module.exports.server = url.parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
 }
 
 if (process.env.OXR_APP_ID) {
