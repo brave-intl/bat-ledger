@@ -657,7 +657,8 @@ module.exports.initialize = async (debug, runtime) => {
       property: 'publisher',
       empty: { publisher: '', facet: '', exclude: false, tags: [], timestamp: bson.Timestamp.ZERO },
       unique: [ { publisher: 1 } ],
-      others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
+      others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 },
+                { publisher: 1, facet: 1 } ]
     }
   ])
 
