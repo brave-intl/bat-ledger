@@ -8,10 +8,10 @@ module.exports = (path, data) => {
       path,
       method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": "Bearer foobarfoobar",
-      },
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer foobarfoobar'
+      }
     }
     const req = http.request(options, (res) => {
       console.log(`STATUS: ${res.statusCode}`)
