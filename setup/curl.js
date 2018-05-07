@@ -1,18 +1,17 @@
 const http = require('http')
-module.exports = (path, data) => {
+module.exports = (opts, data) => {
   return new Promise((resolve, reject) => {
-    const options = {
+    const options = Object.assign({
       hostname: 'localhost',
       protocol: 'http:',
       port: 3001,
-      path,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': 'Bearer foobarfoobar'
       }
-    }
+    }, opts)
     const req = http.request(options, (res) => {
       console.log(`STATUS: ${res.statusCode}`)
       console.log(`HEADERS: ${JSON.stringify(res.headers)}`)
@@ -28,5 +27,6 @@ module.exports = (path, data) => {
     })
     req.write(JSON.stringify(data))
     req.end()
+    console.log('send request')
   })
 }
