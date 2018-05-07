@@ -161,7 +161,7 @@ const createPersona = function (runtime, apiVersion) {
         octets: Joi.string().optional().description('octet string that was signed and digested')
       }).required()
     }
-    var validity = (Joi.validate(request.payload, requestSchema).error)
+    var validity = Joi.validate(request.payload.request, requestSchema)
     if (validity.error) return reply(boom.badData(validity.error))
 
     if (requestType === 'httpSignature') {
