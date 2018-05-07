@@ -357,6 +357,47 @@ const sanity = async (debug, runtime) => {
               { message: 'collection issues', collection: collection, empties: empties.length, misses: misses.length })
       }
     }
+
+    await scratchpad.remove({}, { justOne: false })
+
+    page = 0
+    while (true) {
+      entries = await runtime.common.publish(debug, runtime, 'get', null, null, '/tokens/?page=' + page + '&per_page=1024')
+      page++
+      if (entries.length === 0) break
+
+      for (let entry of entries) {
+        const id = { verificationId: entry.verification_token, publisher: entry.brave_publisher_id }
+        let state, token
+
+        state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $set: { token: entry.verification_token, owner: entry.owner_identifier }
+        }
+
+        await scratchpad.update(id, { $set: { seen: true } }, { upsert: true })
+
+        token = await tokens.findOne(id)
+        if ((!token) || (token.token !== entry.verification_token) || (token.owner !== entry.owner_identifier)) {
+          console.log(JSON.stringify(token) + ' vs. ' + JSON.stringify(entry))
+          await tokens.update(id, state, { upsert: true })
+          debug('sanity', underscore.extend({ message: token ? 'update' : 'create', token: id }, state.$set))
+          continue
+        }
+      }
+    }
+
+    entries = await tokens.find({ verified: false })
+    for (let entry of entries) {
+      const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
+      let match
+
+      match = await scratchpad.findOne(id)
+      if (match) continue
+
+      debug('sanity', { message: 'remove', token: id, owner: entry.owner })
+      await tokens.remove(id)
+    }
   } catch (ex) {
     runtime.captureException(ex)
     debug('sanity', { reason: ex.toString(), stack: ex.stack })
