@@ -74,7 +74,7 @@ v1.publishers.referrals = {
       await runtime.queue.send(debug, 'report-publishers-referrals',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    { threshold: threshold }, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -89,6 +89,7 @@ v1.publishers.referrals = {
 
   validate: {
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       format: Joi.string().valid('json').optional().default('json').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       balance: Joi.boolean().optional().default(true).description('show balance due'),
@@ -164,7 +165,7 @@ v1.publishers.contributions = {
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    { threshold: threshold }, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -282,7 +283,6 @@ v1.publishers.settlements = {
    GET /v1/reports/publisher/{publisher}/statements
    GET /v1/reports/publishers/statements/{hash}
    GET /v2/reports/publishers/statements/{settlementId}
-   GET /v2/reports/publishers/statements
  */
 
 v1.publisher.statements = {
@@ -296,7 +296,7 @@ v1.publisher.statements = {
       await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -311,7 +311,10 @@ v1.publisher.statements = {
 
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
-    query: { summary: Joi.boolean().optional().default(true).description('summarize report') }
+    query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
+      summary: Joi.boolean().optional().default(true).description('summarize report')
+    }
   },
 
   response: {
@@ -349,6 +352,7 @@ v1.publishers.statements = {
   validate: {
     params: { hash: Joi.string().hex().required().description('transaction hash') },
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
     }
@@ -389,6 +393,7 @@ v3.publishers.statements = {
   validate: {
     params: { settlementId: Joi.string().guid().required().description('transaction-identifier') },
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
     }
@@ -400,7 +405,9 @@ v3.publishers.statements = {
     }).unknown(true)
   }
 }
-
+/*
+  GET /v2/reports/publishers/statements
+*/
 v2.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
@@ -412,7 +419,7 @@ v2.publishers.statements = {
       await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -426,7 +433,9 @@ v2.publishers.statements = {
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().optional() }).unknown(),
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
     }
@@ -434,7 +443,8 @@ v2.publishers.statements = {
 
   response: {
     schema: Joi.object().keys({
-      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report'),
+      reportId: Joi.string().optional().description('id of the report')
     }).unknown(true)
   }
 }
