@@ -4,11 +4,11 @@ const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
+const uuid = require('uuid')
 
 const braveHapi = require('./extras-hapi')
 const braveUtils = require('./extras-utils')
 const whitelist = require('./hapi-auth-whitelist')
-
 const Currency = require('./runtime-currency')
 
 const debug = new SDebug('wallet')
