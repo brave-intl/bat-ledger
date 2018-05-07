@@ -697,7 +697,7 @@ v1.patchWallet = {
         channel: '#publishers-bot',
         text: 'owner ' + ownerString(owner, entry.info) + ' ' +
           (payload.parameters && (payload.parameters.access_token || payload.defaultCurrency) ? 'registered with'
-           : 'unregistered from') + ' ' + provider + ': ' + sites.join(' ')
+           : 'unregistered from') + ' ' + (provider || entry.provider) + ': ' + sites.join(' ')
       })
 
       reply({})
