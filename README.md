@@ -72,3 +72,27 @@ If you intend to run eyeshade in communication with the [publisher's website](ht
 ### StandardJS
 For linting we use StandardJS. It's recommended that you install the necessary IDE plugin. Since this repo uses ES7 features, you'll need a global install of both the standard and babel-eslint packages.
 
+
+## Running tests
+
+**Please note:** Some tests access live APIs and require auth tokens which are not stored in the repo.
+
+### Prepare .env file
+
+1. Copy example over: `cp .env.example .env`.
+2. Confirm .env vars match the contents of `.travis.yml` section env.global.
+2. Fill in the remaining `{CHANGE_ME}` .env vars appropriately; please consult your local BAT dev to find the answers.
+
+### Start local servers
+
+```sh
+docker-compose up ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web
+npm run create-surveyor
+npm run create-promotion
+```
+
+### Run tests
+
+```sh
+npm test
+```

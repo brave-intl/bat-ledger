@@ -139,6 +139,7 @@ v1.publisher.contributions = {
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report')
     }
@@ -312,7 +313,6 @@ v1.publisher.statements = {
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
-      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       summary: Joi.boolean().optional().default(true).description('summarize report')
     }
   },
@@ -352,7 +352,6 @@ v1.publishers.statements = {
   validate: {
     params: { hash: Joi.string().hex().required().description('transaction hash') },
     query: {
-      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
     }
@@ -393,7 +392,6 @@ v3.publishers.statements = {
   validate: {
     params: { settlementId: Joi.string().guid().required().description('transaction-identifier') },
     query: {
-      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
     }
@@ -435,7 +433,6 @@ v2.publishers.statements = {
   validate: {
     headers: Joi.object({ authorization: Joi.string().optional() }).unknown(),
     query: {
-      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
     }
@@ -565,6 +562,7 @@ v1.surveyors.contributions = {
 
   validate: {
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       excluded: Joi.boolean().optional().default(false).description('include only excluded votes in report')
