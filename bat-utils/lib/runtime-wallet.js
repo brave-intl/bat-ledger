@@ -1,7 +1,6 @@
 const BigNumber = require('bignumber.js')
 const SDebug = require('sdebug')
 const UpholdSDK = require('@uphold/uphold-sdk-javascript')
-const bitcoinjs = require('bitcoinjs-lib')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
@@ -68,42 +67,15 @@ Wallet.prototype.transfer = async function (info, satoshis) {
 }
 
 Wallet.prototype.getTxProbi = function (info, txn) {
-  if (info.altcurrency === 'BTC') {
-    const tx = bitcoinjs.Transaction.fromHex(txn)
-    for (let i = tx.outs.length - 1; i >= 0; i--) {
-      if (bitcoinjs.address.fromOutputScript(tx.outs[i].script) !== this.config.settlementAddress['BTC']) continue
-
-      return new BigNumber(tx.outs[i].value)
-    }
-  } else if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
+  if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
     return new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
   } else {
     throw new Error('getTxProbi not supported for ' + info.altcurrency + ' at ' + info.provider)
   }
-
-  return new BigNumber(0)
 }
 
 Wallet.prototype.validateTxSignature = function (info, txn, signature) {
-  if (info.altcurrency === 'BTC') {
-    const signedTx = bitcoinjs.Transaction.fromHex(signature)
-    const unsignedTx = bitcoinjs.Transaction.fromHex(txn)
-
-    if ((unsignedTx.version !== signedTx.version) || (unsignedTx.locktime !== signedTx.locktime)) {
-      throw new Error('the signed and unsigned transactions differed')
-    }
-
-    if (unsignedTx.ins.length !== signedTx.ins.length) {
-      throw new Error('the signed and unsigned transactions differed')
-    }
-    for (let i = 0; i < unsignedTx.ins.length; i++) {
-      if (!underscore.isEqual(underscore.omit(unsignedTx.ins[i], 'script'), underscore.omit(signedTx.ins[i], 'script'))) {
-        throw new Error('the signed and unsigned transactions differed')
-      }
-    }
-
-    if (!underscore.isEqual(unsignedTx.outs, signedTx.outs)) throw new Error('the signed and unsigned transactions differed')
-  } else if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
+  if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
     if (!signature.headers.digest) throw new Error('a valid http signature must include the content digest')
     if (!underscore.isEqual(txn, JSON.parse(signature.octets))) throw new Error('the signed and unsigned transactions differed')
     const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(signature.octets, 'utf8').digest('base64')
@@ -413,9 +385,7 @@ Wallet.providers.uphold = {
 
 Wallet.providers.mock = {
   create: async function (requestType, request) {
-    if (requestType === 'bitcoinMultisig') {
-      return { 'wallet': { 'addresses': {'BTC': request.keychains.user.xpub}, 'provider': 'mock', 'altcurrency': 'BTC' } }
-    } else if (requestType === 'httpSignature') {
+    if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
         // TODO generate random addresses?
@@ -433,14 +403,7 @@ Wallet.providers.mock = {
     }
   },
   balances: async function (info) {
-    if (info.altcurrency === 'BTC') {
-      return {
-        balance: '845480',
-        spendable: '845480',
-        confirmed: '845480',
-        unconfirmed: '0'
-      }
-    } else if (info.altcurrency === 'BAT') {
+    if (info.altcurrency === 'BAT') {
       return {
         balance: '32061750000000000000',
         spendable: '32061750000000000000',
@@ -452,16 +415,7 @@ Wallet.providers.mock = {
     }
   },
   unsignedTx: async function (info, amount, currency, balance) {
-    if (info.altcurrency === 'BTC') {
-      var tx = new bitcoinjs.TransactionBuilder()
-      var txId = 'aa94ab02c182214f090e99a0d57021caffd0f195a81c24602b1028b130b63e31'
-      tx.addInput(txId, 0)
-      tx.addOutput(this.config.settlementAddress['BTC'], 845480)
-
-      return { 'requestType': 'bitcoinMultisig',
-        'unsignedTx': { 'transactionHex': tx.buildIncomplete().toHex() }
-      }
-    } else if (info.altcurrency === 'BAT' && info.provider === 'mockHttpSignature') {
+    if (info.altcurrency === 'BAT' && info.provider === 'mockHttpSignature') {
       return { 'requestType': 'httpSignature',
         'unsignedTx': { 'denomination': { 'amount': '24.1235', currency: 'BAT' },
           'destination': this.config.settlementAddress['BAT']
@@ -472,17 +426,7 @@ Wallet.providers.mock = {
     }
   },
   submitTx: async function (info, txn, signature) {
-    if (info.altcurrency === 'BTC') {
-      const tx = bitcoinjs.Transaction.fromHex(txn)
-      return {
-        probi: tx.outs[0].value.toString(),
-        altcurrency: 'BTC',
-        address: bitcoinjs.address.fromOutputScript(tx.outs[0].script),
-        fee: '300',
-        status: 'accepted',
-        hash: 'deadbeef'
-      }
-    } else if (info.altcurrency === 'BAT') {
+    if (info.altcurrency === 'BAT') {
       return {
         probi: new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency)).toString(),
         altcurrency: txn.denomination.currency,
