@@ -72,8 +72,10 @@ v1.createReferrals = {
       const transactionId = request.params.transactionId
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
-      const publishers = runtime.database.get('publishers', debug)
-      const referrals = runtime.database.get('referrals', debug)
+      const { database } = runtime
+      const publishers = database.get('publishers', debug)
+      const referrals = database.get('referrals', debug)
+      const blacklist = database.get('blacklist', debug)
       let entries, matches, probi, query
 
       entries = await referrals.find({ transactionId: transactionId })
@@ -98,15 +100,16 @@ v1.createReferrals = {
       }
 
       for (let referral of payload) {
-        let state
-
-        state = {
+        let publisher = referral.channelId
+        let blacklisted = await blacklist.findOne({ publisher })
+        let exclude = !!blacklisted
+        let state = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
           $set: underscore.extend({
             transactionId: transactionId,
-            publisher: referral.channelId,
+            publisher,
             finalized: new Date(referral.finalized),
-            exclude: false
+            exclude
           }, underscore.pick(referral, [ 'owner', 'platform', 'altcurrency', 'probi' ]))
         }
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })

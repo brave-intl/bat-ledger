@@ -96,7 +96,8 @@ v1.publishers.referrals = {
       authorized: Joi.boolean().optional().default(true).description('filter on authorization status'),
       verified: Joi.boolean().optional().default(true).description('filter on verification status'),
       amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+      blacklisted: Joi.boolean().optional().default(false).description('trip the blacklist check in the worker')
     }
   },
 
@@ -649,7 +650,7 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-grants-outstanding')
 }
 
-const authorityProvider = (request) => {
+function authorityProvider (request) {
   const { auth } = request
   const { credentials } = auth
   const { provider, profile } = credentials

@@ -1131,9 +1131,44 @@ exports.workers = {
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
-      let data, entries, file, info, previous, publishers, usd
 
-      publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
+      const publisherList = publisher && [ publisher ]
+      const publishers = await mixer(debug, runtime, publisherList)
+
+      const $in = Object.keys(publishers)
+      let blacklisted = await blacklist.find({
+        publisher: { $in }
+      })
+
+      if (blacklisted.length || blacklistMe) {
+        const reason = 'blacklisted publisher found in report'
+        debug(reason)
+        const dataSubset = underscore.omit(blacklisted, ['_id'])
+        let dataString = JSON.stringify(dataSubset, null, 2)
+        if (blacklistMe) {
+          dataString = 'forced'
+          blacklisted = dataString
+        }
+        const error = {
+          reason,
+          blacklisted
+        }
+        const params = {
+          format: 'json',
+          reportId
+        }
+        const file = await create(runtime, 'publishers-', params)
+        const utf8 = utf8ify(error)
+        const text = `${authority} report-publishers-contributions failed: ${reason}.\n${dataString}`
+        const channel = '#publishers-bot'
+        await file.write(utf8, true)
+        debug('report-publishers-contributions', error)
+        return runtime.notify(debug, {
+          channel,
+          text
+        })
+      }
+      let data, entries, file, info, previous, usd
 
       underscore.keys(publishers).forEach((publisher) => {
         publishers[publisher].authorized = false
