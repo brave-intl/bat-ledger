@@ -636,10 +636,7 @@ v1.getStatements = {
   tags: [ 'api' ],
 
   validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    query: {
-      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address')
-    }
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown()
   },
 
   response: {
@@ -687,7 +684,6 @@ v1.getStatement = {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
-      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format'),
       ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format')
     }
