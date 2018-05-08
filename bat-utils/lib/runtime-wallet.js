@@ -228,6 +228,7 @@ Wallet.providers.uphold = {
         }
         return { 'wallet': { 'addresses': {
           'BAT': ethAddr.id,
+          'BTC': btcAddr.id,
           'CARD_ID': wallet.id,
           'ETH': ethAddr.id,
           'LTC': ltcAddr.id

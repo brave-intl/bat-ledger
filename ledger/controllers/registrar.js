@@ -342,6 +342,7 @@ v2.createPersona =
       wallet: Joi.object().keys({
         paymentId: Joi.string().guid().required().description('opaque identifier for BTC address'),
         addresses: Joi.object().keys({
+          BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
           BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
           CARD_ID: Joi.string().guid().optional().description('Card id'),
           ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),

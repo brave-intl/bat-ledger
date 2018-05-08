@@ -77,6 +77,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   t.true(response.body.hasOwnProperty('verification'))
 
   t.true(response.body.wallet.addresses.hasOwnProperty('BAT'))
+  t.true(response.body.wallet.addresses.hasOwnProperty('BTC'))
   t.true(response.body.wallet.addresses.hasOwnProperty('CARD_ID'))
   t.true(response.body.wallet.addresses.hasOwnProperty('ETH'))
   t.true(response.body.wallet.addresses.hasOwnProperty('LTC'))
@@ -274,6 +275,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   t.true(response.body.hasOwnProperty('verification'))
 
   t.true(response.body.wallet.addresses.hasOwnProperty('BAT'))
+  t.true(response.body.wallet.addresses.hasOwnProperty('BTC'))
   t.true(response.body.wallet.addresses.hasOwnProperty('CARD_ID'))
   t.true(response.body.wallet.addresses.hasOwnProperty('ETH'))
   t.true(response.body.wallet.addresses.hasOwnProperty('LTC'))
