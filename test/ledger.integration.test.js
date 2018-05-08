@@ -37,6 +37,19 @@ function uint8tohex (arr) {
 const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
 
+test('create a surveyor', async t => {
+  t.plan(0)
+  const url = '/v2/surveyor/contribution'
+  const data = {'adFree': {'fee': {'USD': 5}, 'votes': 5, 'altcurrency': 'BAT', 'probi': '27116311373482831368'}}
+  await request(srv.listener).post(url).set('Authorization', 'Bearer foobarfoobar').send(data).expect(ok)
+})
+
+test('create a promotion', async t => {
+  t.plan(0)
+  const url = '/v1/grants'
+  const data = {'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ], 'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]}
+  await request(srv.listener).post(url).set('Authorization', 'Bearer foobarfoobar').send(data).expect(ok)
+})
 // FIXME assert has env vars set and is using uphold
 // NOTE this requires a contibution surveyor to have already been created
 
