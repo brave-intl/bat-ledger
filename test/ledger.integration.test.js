@@ -55,7 +55,7 @@ test('create a promotion', async t => {
 
 test('create an owner', async t => {
   t.plan(2)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const domain = process.env.BAT_EYESHADE_SERVER
   const ownerName = 'venture'
   const url = '/v1/owners'
   const name = ownerName
@@ -93,7 +93,7 @@ test('create an owner', async t => {
 })
 test('tie owner to publisher', async t => {
   t.plan(1)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const domain = process.env.BAT_EYESHADE_SERVER
   const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const method = 'put'
   const options = { url, method, domain }
@@ -485,9 +485,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 })
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.plan(4)
-  const {
-    BAT_EYESHADE_SERVER: domain
-  } = process.env
+  const domain = process.env.BAT_EYESHADE_SERVER
   const wallet = `/v1/owners/${encodeURIComponent(owner)}/wallet`
   const ownerOptions = {
     url: wallet,
@@ -495,19 +493,13 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     expect: true
   }
   const initWalletResults = await req(ownerOptions)
-  const {
-    body: initWalletBody
-  } = initWalletResults
-  const {
-    contributions: initContributions,
-    rates: initRates
-  } = initWalletBody
+  const initWalletBody = initWalletResults.body
+  const initContributions = initWalletBody.contributions
+  const initRates = initWalletBody.rates
   const {
     USD
   } = initRates
-  const {
-    probi: initWalletProbi
-  } = initContributions
+  const initWalletProbi = initContributions.probi
   // settle half of the bat
   const settlementURL = `/v2/publishers/settlement`
   const method = 'post'
@@ -561,43 +553,26 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
     domain
   }
   const refPubResult = await req(refPubOptions)
-  const {
-    body: refPubBody
-  } = refPubResult
-  const {
-    reportId: refPubReportId
-  } = refPubBody
+  const refPubBody = refPubResult.body
+  const refPubReportId = refPubBody.reportId
   const refPubReportResult = await fetchReport({
     reportId: refPubReportId,
     domain
   })
-  const {
-    body: refPubReportBody
-  } = refPubReportResult
-  const {
-    length: refPubReportBodyLength
-  } = refPubReportBody
-  t.true(refPubReportBodyLength > 0)
+  const refPubReportBody = refPubReportResult.body
+  t.true(refPubReportBody.length > 0)
   const singleEntry = _.findWhere(refPubReportBody, {
     publisher,
     owner
   })
-  const {
-    probi: refProbi,
-    fees: refFees
-  } = singleEntry
+  const refProbi = singleEntry.probi
+  const refFees = singleEntry.fees
   t.is(refFees, 0)
   const finalWalletResults = await req(ownerOptions)
-  const {
-    body: finalWalletBody
-  } = finalWalletResults
-  const {
-    contributions: finalWalletContribs
-  } = finalWalletBody
-  const {
-    probi: finalWalletProbi,
-    amount: usdAmount
-  } = finalWalletContribs
+  const finalWalletBody = finalWalletResults.body
+  const finalWalletContribs = finalWalletBody.contributions
+  const finalWalletProbi = finalWalletContribs.probi
+  const usdAmount = finalWalletContribs.amount
   t.is(finalWalletProbi, refProbi)
   t.is(usdAmount, '5.00')
 
@@ -611,7 +586,7 @@ test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
 })
 test('remove newly created owner', async t => {
   t.plan(1)
-  const { BAT_EYESHADE_SERVER: domain } = process.env
+  const domain = process.env.BAT_EYESHADE_SERVER
   const encodedOwner = encodeURIComponent(owner)
   const encodedPublisher = encodeURIComponent(publisher)
   const url = `/v1/owners/${encodedOwner}/${encodedPublisher}`
