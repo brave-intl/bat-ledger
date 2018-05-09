@@ -960,7 +960,7 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
     const publisher = eligPublishers[i].publisher
     const payment = statements[publisher].balance
     payment.type = 'referral'
-    payment.fees = 0
+    payment.fees = new BigNumber(0)
     payment.authority = authority
     payment.transactionId = reportId
 
