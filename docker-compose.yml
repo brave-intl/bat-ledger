@@ -70,6 +70,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
+      - PUBLISHERS_TAKEOVER
     depends_on:
       - mongo
       - redis
@@ -129,3 +130,12 @@ services:
       - grant-redis
     networks:
       - ledger
+  # publishers-web:
+  #   container_name: publishers-web
+  #   image: brave/publishers:latest
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - mongo
+  #   networks:
+  #     - ledger

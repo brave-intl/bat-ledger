@@ -5,6 +5,8 @@ const bson = require('bson')
 const Joi = require('joi')
 const batPublisher = require('bat-publisher')
 const underscore = require('underscore')
+const querystring = require('querystring')
+const wreck = require('wreck')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -95,7 +97,9 @@ const identity = async (debug, runtime, result) => {
 
 v3.identity =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return process.env.PUBLISHERS_TAKEOVER === 'true' ? publishersHandleIdentity : handleIdentityInternally
+
+  async function handleIdentityInternally (request, reply) {
     const publisher = request.query.publisher
     const location = 'https://' + publisher
     const debug = braveHapi.debug(module, request)
@@ -136,21 +140,80 @@ v3.identity =
       reply(boom.badData(ex.toString()))
     }
   }
+
+  async function publishersHandleIdentity (request, reply) {
+    const debug = braveHapi.debug(module, request)
+    const {
+      query
+    } = request
+    const stringified = querystring.stringify(query)
+    const pubs = runtime.config.publishers
+    const baseUrl = pubs.url
+    const token = pubs.access_token
+    const Authorization = `Token token=${token}`
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    const url = `/api/public/channels/identity?${stringified}`
+    const isDev = process.env.ENV === 'development'
+    const options = isDev ? {
+      rejectUnauthorized: false,
+      json: true,
+      baseUrl,
+      headers
+    } : {
+      baseUrl,
+      json: true,
+      headers: Object.assign({
+        Authorization
+      }, headers)
+    }
+    const {
+      payload
+    } = await wreck.get(url, options)
+    const {
+      errors
+    } = payload
+    const error = errors && errors[0]
+    if (error) {
+      debug('error sent back from identity', {payload})
+      return reply(boom.badData(error))
+    }
+    debug('result from identity call', {payload})
+    return reply(payload)
+  }
 },
 
-  description: 'Returns information about a publisher identity',
+  description: 'Returns information about a publisher identity or asks publishers',
   tags: [ 'api' ],
 
   validate:
     { query: { publisher: braveJoi.string().publisher().required().description('the publisher identity') } },
 
-  response:
-    { schema: Joi.object().optional().description('the publisher identity') }
+  response: {
+    schema: Joi.object().keys({
+      SLD: Joi.string().description('entry value'),
+      RLD: Joi.string().description('entry value'),
+      QLD: Joi.string().description('entry value'),
+      publisher: Joi.string().description('publisher name'),
+      properties: Joi.object().keys({
+        facet: Joi.string().description('the channel that was verified'),
+        exclude: Joi.boolean().description('exclude from auto-include list'),
+        tags: Joi.array().items(
+          Joi.string()
+        ).description('taxonomy tags'),
+        timestamp: Joi.string().description('when the publisher was last updated')
+      })
+    }).description('the publisher identity')
+  }
 }
 
 v3.timestamp =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  // return process.env.PUBLISHERS_TAKEOVER === 'true' ? publishersHandleTimestamp : handleTimestampInternally
+  return handleTimestampInternally
+
+  async function handleTimestampInternally (request, reply) {
     const debug = braveHapi.debug(module, request)
     const publishers = runtime.database.get('publishersX', debug)
     const publishersV2 = runtime.database.get('publishersV2', debug)
@@ -171,6 +234,46 @@ v3.timestamp =
 
     reply({ timestamp: timestamp })
   }
+  /*eslint-disable*/
+  async function publishersHandleTimestamp (request, reply) {
+    const debug = braveHapi.debug(module, request)
+    const pubs = runtime.config.publishers
+    const baseUrl = pubs.url
+    const token = pubs.access_token
+    const url = `/api/public/channels/timestamp`
+    const Authorization = `Token token=${token}`
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    let identityRequest = {}
+    const isDev = process.env.ENV === 'development'
+    const options = isDev ? {
+      rejectUnauthorized: false,
+      json: true,
+      baseUrl,
+      headers
+    } : {
+      baseUrl,
+      json: true,
+      headers: Object.assign({
+        Authorization
+      }, headers)
+    }
+    const {
+      payload
+    } = await wreck.get(url, options)
+    const {
+      errors
+    } = payload
+    const error = errors && errors[0]
+    if (error) {
+      debug('error sent back from publishers/timestamp', {payload})
+      return reply(boom.badData(error))
+    }
+    debug('result from publishers/timestamp call', {payload})
+    return reply(payload)
+  }
+  /*eslint-enable*/
 },
 
   description: 'Returns information about the latest publisher timestamp',
