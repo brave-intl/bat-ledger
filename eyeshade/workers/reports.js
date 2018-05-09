@@ -1056,9 +1056,7 @@ exports.workers = {
       const summary = payload.summary
       const thresholdProbi = payload.threshold || 0
       const verified = payload.verified
-      const {
-        includeUnpayable = false
-      } = payload
+      const includeUnpayable = !!payload.includeUnpayable
 
       if ((!balance) || (!summary) || (!authorized) || (!verified)) {
         throw new Error('only summary && balance && authorized && verified is supported')
@@ -1111,9 +1109,7 @@ exports.workers = {
       const summaryP = payload.summary
       const threshold = payload.threshold || 0
       const verified = payload.verified
-      const {
-        includeUnpayable = false
-      } = payload
+      const includeUnpayable = !!payload.includeUnpayable
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
