@@ -45,7 +45,7 @@ v2.read =
   validate:
   { params: {
     registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-    apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+    apiV: Joi.string().required().description('the api version')
   } },
 
   response: {
@@ -105,7 +105,7 @@ v2.update =
   validate: {
     params: {
       registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      apiV: Joi.string().required().description('the api version')
     },
     payload: Joi.object().optional().description('additional information')
   },
@@ -122,7 +122,7 @@ v2.update =
    POST /v1/registrar/persona/{uId}
    POST /v2/registrar/persona/{uId}
  */
-const createPersona = function (runtime, apiVersion) {
+const createPersona = function (runtime) {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
     const uId = request.params.uId.toLowerCase()
@@ -138,15 +138,8 @@ const createPersona = function (runtime, apiVersion) {
     if (entry) return reply(boom.badData('persona credential exists: ' + uId))
 
     requestType = request.payload.requestType
-    if (apiVersion === 1) {
-      requestType = 'bitcoinMultisig'
-    }
 
-    if (requestType === 'bitcoinMultisig') {
-      requestSchema = Joi.object().keys({
-        keychains: Joi.object().keys({ user: keychainSchema.required(), backup: keychainSchema.optional() })
-      }).required()
-    } else if (requestType === 'httpSignature') {
+    if (requestType === 'httpSignature') {
       // TODO consider moving this to a custom joi validator along with signature verif below
       requestSchema = Joi.object().keys({
         headers: Joi.object().keys({
@@ -161,7 +154,7 @@ const createPersona = function (runtime, apiVersion) {
         octets: Joi.string().optional().description('octet string that was signed and digested')
       }).required()
     }
-    var validity = (Joi.validate(request.payload, requestSchema).error)
+    var validity = Joi.validate(request.payload.request, requestSchema)
     if (validity.error) return reply(boom.badData(validity.error))
 
     if (requestType === 'httpSignature') {
@@ -188,20 +181,10 @@ const createPersona = function (runtime, apiVersion) {
 
     const paymentId = uuid.v4().toLowerCase()
     const wallets = runtime.database.get('wallets', debug)
-    let host, prefix, result, wallet, requestBody
+    let result, wallet, requestBody
 
     requestBody = request.payload.request
 
-    if (apiVersion === 1) {
-      requestBody = { 'keychains': request.payload.keychains }
-    }
-
-    if (requestType === 'bitcoinMultisig') {
-      host = request.headers.host
-      prefix = ((host.indexOf('127.0.0.1') !== 0) && (host.indexOf('localhost') !== 0))
-                 ? ('https://' + host) : 'ledger-staging.mercury.basicattentiontoken.org'
-      requestBody = underscore.extend(requestBody, { 'prefix': prefix, 'label': paymentId })
-    }
     try {
       result = await runtime.wallet.create(requestType, requestBody)
       wallet = result.wallet
@@ -226,16 +209,6 @@ const createPersona = function (runtime, apiVersion) {
 
     state = { $currentDate: { timestamp: { $type: 'timestamp' } } }
     await credentials.update({ uId: uId, registrarId: registrar.registrarId }, state, { upsert: true })
-
-    if (apiVersion === 1) {
-      if (response.wallet) {
-        response.wallet = underscore.omit(underscore.extend(response.wallet, { address: response.wallet.addresses.BTC }), [ 'altcurrency', 'addresses' ])
-      }
-      if (response.probi) {
-        response = underscore.extend(response, { satoshis: Number(response.probi) })
-      }
-      response = underscore.omit(response, [ 'probi' ])
-    }
 
     reply(underscore.extend(response, { verification: verification }))
   }
@@ -299,7 +272,7 @@ v2.createViewing =
   validate: {
     params: {
       uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
-      apiV: Joi.string().valid('v1', 'v2').required().description('the api version')
+      apiV: Joi.string().required().description('the api version')
     },
     payload: Joi.object().keys({
       proof: Joi.string().required().description('credential registration request')
@@ -357,7 +330,7 @@ v2.createPersona =
       uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
     },
     payload: Joi.object().keys({
-      requestType: Joi.string().valid('httpSignature', 'bitcoinMultisig').required().description('the type of the request'),
+      requestType: Joi.string().valid('httpSignature').required().description('the type of the request'),
       request: Joi.object().required().description('wallet registration request'),
       proof: Joi.string().required().description('credential registration request')
     }).unknown(true).required()
