@@ -30,7 +30,7 @@
     "redis-flush": "docker exec -it grant-redis redis-cli flushall",
     "db-reset": "npm run mongo-reset && npm run redis-flush",
     "lint": "standard",
-    "lint-fix": "standard --fix",
+    "lint-fix": "npm run lint -- --fix",
     "test-api": "echo 'no api tests'",
     "test-integration": "ava test/*.integration.test.js",
     "test-ledger-integration": "ava test/ledger.integration.test.js",
@@ -39,8 +39,13 @@
     "test-transition": "echo 'no transition tests'",
     "test-unit": "ava test/*.unit.test.js",
     "docker-build": "docker-compose build",
-    "docker-up": "docker-compose up ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web",
-    "docker-up-detached": "docker-compose up -d ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
+    "docker-up": "docker-compose up $npm_package_config_docker_services",
+    "docker-up-detached": "docker-compose up -d $npm_package_config_docker_services"
+  },
+  "config": {
+    "docker": {
+      "services": "ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
+    }
   },
   "repository": {
     "type": "git",
