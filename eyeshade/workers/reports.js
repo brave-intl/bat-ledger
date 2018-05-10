@@ -1109,6 +1109,7 @@ exports.workers = {
       , verified        :  true  | false | undefined
       , amount          : '...'    // ignored (converted to threshold probi)
       , currency        : '...'    //   ..
+      , blacklisted    : false
       , includeNegative :  true  | false
       , includeUnpayable:  true  | false
       }
@@ -1127,9 +1128,11 @@ exports.workers = {
       const verified = payload.verified
       const includeUnpayable = !!payload.includeUnpayable
       const includeNegative = payload.includeNegative
+      const blacklistMe = !!payload.blacklisted
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
+      const blacklist = runtime.database.get('blacklist', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
 
       const publisherList = publisher && [ publisher ]

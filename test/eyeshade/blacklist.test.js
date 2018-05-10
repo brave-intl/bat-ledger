@@ -9,13 +9,12 @@ import {
 import dotenv from 'dotenv'
 import querystring from 'querystring'
 import {
-  // owner,
   publisher,
   // only using eyeshade here
   eyeshade as domain,
   fetchReport,
   req
-} from '../setup.test'
+} from 'test/setup.test'
 dotenv.config()
 
 const channel = uniqueChannel()
@@ -97,7 +96,7 @@ test('blacklist > removes with the delete method', async t => {
   const getBody = checkResponse.body
   t.true(_.isObject(getBody))
 })
-test('blacklist > throws in the report-publishers-contributions report generation', async t => {
+test('blacklist > report-publishers-contributions generation', async t => {
   t.plan(2)
   const publishers = [publisher]
   // clear the db if it exists because of error or otherwise

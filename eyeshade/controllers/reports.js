@@ -110,7 +110,6 @@ v1.publishers.referrals = {
 
 /*
    GET /v1/reports/publisher/{publisher}/contributions
-   GET /v1/reports/publishers/contributions
  */
 
 v1.publisher.contributions = {
@@ -124,7 +123,7 @@ v1.publisher.contributions = {
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -153,6 +152,9 @@ v1.publisher.contributions = {
   }
 }
 
+/*
+  GET /v1/reports/publishers/contributions
+*/
 v1.publishers.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
@@ -182,6 +184,7 @@ v1.publishers.contributions = {
 
   validate: {
     query: {
+      blacklisted: Joi.boolean().optional().default(false).description('trip the blacklist check in the worker'),
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       balance: Joi.boolean().optional().default(true).description('show balance due'),
