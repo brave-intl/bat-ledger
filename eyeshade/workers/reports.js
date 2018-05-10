@@ -1758,7 +1758,7 @@ exports.workers = {
       const authority = payload.authority
       const format = payload.format || 'csv'
       const excluded = payload.excluded
-      const summaryP = (typeof excluded !== 'undefined') ? false : payload.summary
+      const summaryP = (excluded !== true) ? payload.summary : false
       const settlements = runtime.database.get('settlements', debug)
       const voting = runtime.database.get('voting', debug)
       let data, fields, file, mixerP, previous, results, slices, publishers
@@ -1862,7 +1862,8 @@ exports.workers = {
 
       fields = [ 'surveyorId', 'probi', 'fee', 'inputs', 'quantum' ]
       if (!summaryP) fields.push('publisher')
-      fields = fields.concat([ 'votes', 'created', 'modified', 'cohort' ])
+      fields = fields.concat([ 'votes', 'created', 'modified' ])
+      if (!summaryP) fields.push('cohort')
       try {
         await file.write(utf8ify(json2csv({ data: await labelize(debug, runtime, results), fields: fields })), true)
       } catch (ex) {
