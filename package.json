@@ -36,7 +36,7 @@
     "test-eyeshade": "ava test/eyeshade/*.test.js",
     "test-security": "nsp check",
     "test-transition": "echo 'no transition tests'",
-    "test-unit": "ava test/*.unit.test.js",
+    "test-unit": "ava ledger/*/*.test.js",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web",
     "docker-up-detached": "docker-compose up -d ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
