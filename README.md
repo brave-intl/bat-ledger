@@ -81,18 +81,22 @@ For linting we use StandardJS. It's recommended that you install the necessary I
 
 1. Copy example over: `cp .env.example .env`.
 2. Confirm .env vars match the contents of `.travis.yml` section env.global.
-2. Fill in the remaining `{CHANGE_ME}` .env vars appropriately; please consult your local BAT dev to find the answers.
+3. Fill in the remaining `{CHANGE_ME}` .env vars appropriately; please consult your local BAT dev to find the answers.
+
+### Build local servers
+
+```sh
+npm run docker-build
+```
 
 ### Start local servers
 
 ```sh
-docker-compose up ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web
-npm run create-surveyor
-npm run create-promotion
+npm run docker-up
 ```
 
 ### Run tests
 
 ```sh
-npm test
+npm run docker-test
 ```
