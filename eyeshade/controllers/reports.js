@@ -74,7 +74,7 @@ v1.publishers.referrals = {
       await runtime.queue.send(debug, 'report-publishers-referrals',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    { threshold: threshold }, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -89,6 +89,7 @@ v1.publishers.referrals = {
 
   validate: {
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       format: Joi.string().valid('json').optional().default('json').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       balance: Joi.boolean().optional().default(true).description('show balance due'),
@@ -138,6 +139,7 @@ v1.publisher.contributions = {
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report')
     }
@@ -164,7 +166,7 @@ v1.publishers.contributions = {
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    { threshold: threshold }, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -282,7 +284,6 @@ v1.publishers.settlements = {
    GET /v1/reports/publisher/{publisher}/statements
    GET /v1/reports/publishers/statements/{hash}
    GET /v2/reports/publishers/statements/{settlementId}
-   GET /v2/reports/publishers/statements
  */
 
 v1.publisher.statements = {
@@ -296,7 +297,7 @@ v1.publisher.statements = {
       await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -311,7 +312,9 @@ v1.publisher.statements = {
 
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
-    query: { summary: Joi.boolean().optional().default(true).description('summarize report') }
+    query: {
+      summary: Joi.boolean().optional().default(true).description('summarize report')
+    }
   },
 
   response: {
@@ -400,7 +403,9 @@ v3.publishers.statements = {
     }).unknown(true)
   }
 }
-
+/*
+  GET /v2/reports/publishers/statements
+*/
 v2.publishers.statements = {
   handler: (runtime) => {
     return async (request, reply) => {
@@ -412,7 +417,7 @@ v2.publishers.statements = {
       await runtime.queue.send(debug, 'report-publishers-statements',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -426,6 +431,7 @@ v2.publishers.statements = {
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object({ authorization: Joi.string().optional() }).unknown(),
     query: {
       rollup: Joi.boolean().optional().default(true).description('include all settlements for associated publishers'),
       summary: Joi.boolean().optional().default(false).description('summarize report')
@@ -434,7 +440,8 @@ v2.publishers.statements = {
 
   response: {
     schema: Joi.object().keys({
-      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
+      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report'),
+      reportId: Joi.string().optional().description('id of the report')
     }).unknown(true)
   }
 }
@@ -555,6 +562,7 @@ v1.surveyors.contributions = {
 
   validate: {
     query: {
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       excluded: Joi.boolean().optional().default(false).description('include only excluded votes in report')

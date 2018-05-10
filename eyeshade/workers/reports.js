@@ -962,7 +962,7 @@ const findEligPublishers = async (debug, runtime, publishers) => {
  * current balance owed to eligible publisher from referrals in the format expected
  * by our payment tooling
  **/
-const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi) => {
+const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi, includeUnpayable) => {
   const statements = await referralStatement(debug, runtime, undefined, true)
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
     return statements[publisher].balance.probi.greaterThan(thresholdProbi)
@@ -971,38 +971,50 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
 
   const payments = []
   for (let i = 0; i < eligPublishers.length; i++) {
-    const payment = statements[eligPublishers[i].publisher].balance
+    const publisher = eligPublishers[i].publisher
+    const payment = statements[publisher].balance
     payment.type = 'referral'
-    payment.fees = payment.probi.times(feePercent).truncated()
-    payment.probi = payment.probi.minus(payment.fees)
+    payment.fees = new BigNumber(0)
     payment.authority = authority
     payment.transactionId = reportId
 
     payment.owner = eligPublishers[i].owner
 
-    const entry = eligPublishers[i].ownerdata
+    const entries = eligPublishers[i].ownerdata
+    if (entries.length > 1) {
+      throw new Error(`Too many owners: ${entries.length} for a single channel: ${publisher}`)
+    }
+    const entry = entries[0]
     if ((!entry) || (!entry.provider) || (!entry.parameters)) {
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
       continue
     }
-
+    let wallet = null
     try {
-      const wallet = await runtime.wallet.status(entry)
-      if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
+      wallet = await runtime.wallet.status(entry)
+      if (validateWallet(wallet)) {
+        payment.address = wallet.address
+        payment.currency = wallet.defaultCurrency
+      } else {
         await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
-        continue
       }
-
-      payment.address = wallet.address
-      payment.currency = wallet.defaultCurrency
-
-      payments.push(payment)
     } catch (ex) {
+      debug('wallet not available', {
+        message: ex.message,
+        stack: ex.stack
+      })
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
+    }
+    if (includeUnpayable || validateWallet(wallet)) {
+      payments.push(payment)
     }
   }
 
   return payments
+}
+
+function validateWallet (wallet) {
+  return wallet && wallet.address && wallet.defaultCurrency
 }
 
 var exports = {}
@@ -1058,6 +1070,7 @@ exports.workers = {
       const summary = payload.summary
       const thresholdProbi = payload.threshold || 0
       const verified = payload.verified
+      const includeUnpayable = !!payload.includeUnpayable
 
       if ((!balance) || (!summary) || (!authorized) || (!verified)) {
         throw new Error('only summary && balance && authorized && verified is supported')
@@ -1067,8 +1080,8 @@ exports.workers = {
         throw new Error('formats other than json are not supported')
       }
 
-      const payments = await prepareReferralPayout(debug, runtime, authority, reportId, thresholdProbi)
-
+      const payments = await prepareReferralPayout(debug, runtime, authority, reportId, thresholdProbi, includeUnpayable)
+      debug('payload', payload)
       const file = await create(runtime, 'publishers-', payload)
 
       await file.write(utf8ify(payments), true)
@@ -1110,6 +1123,7 @@ exports.workers = {
       const summaryP = payload.summary
       const threshold = payload.threshold || 0
       const verified = payload.verified
+      const includeUnpayable = !!payload.includeUnpayable
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
@@ -1172,12 +1186,13 @@ exports.workers = {
       if (format === 'json') {
         entries = []
         for (let datum of data) {
-          let entry, props, provider, wallet
+          let entry, props, provider
 
           delete datum.currency
           delete datum.amount
           delete datum.fee
 
+          let wallet = null
           try {
             entry = await publishersC.findOne({ publisher: datum.publisher })
             if (!entry) continue
@@ -1193,21 +1208,22 @@ exports.workers = {
 
             entry = await owners.findOne({ owner: entry.owner })
             provider = entry && entry.provider
-            if (provider && entry.parameters) wallet = await runtime.wallet.status(entry)
-
-            if ((!wallet) || (!wallet.address) || (!wallet.defaultCurrency)) {
-              await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
-              continue
+            if (provider && entry.parameters) {
+              wallet = await runtime.wallet.status(entry)
             }
 
-            datum.address = wallet.address
-            datum.currency = wallet.defaultCurrency
-
-            datum.type = 'contribution'
-
-            entries.push(datum)
+            if (validateWallet(wallet)) {
+              datum.address = wallet.address
+              datum.currency = wallet.defaultCurrency
+              datum.type = 'contribution'
+            } else {
+              await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
+            }
           } catch (ex) {
             await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_invalid_wallet' })
+          }
+          if (includeUnpayable || validateWallet(wallet)) {
+            entries.push(datum)
           }
         }
         data = entries
