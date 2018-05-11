@@ -1095,6 +1095,7 @@ exports.workers = {
       , verified       :  true  | false | undefined
       , amount         : '...'    // ignored (converted to threshold probi)
       , currency       : '...'    //   ..
+      , includeNegative:  true  | false
       }
     }
  */
@@ -1110,6 +1111,7 @@ exports.workers = {
       const threshold = payload.threshold || 0
       const verified = payload.verified
       const includeUnpayable = !!payload.includeUnpayable
+      const includeNegative = payload.includeNegative
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
@@ -1153,13 +1155,13 @@ exports.workers = {
           if (typeof p === 'undefined') return
 
           p.probi = p.probi.minus(new BigNumber(entry.probi.toString()))
-          if (p.probi.isNegative()) {
+          if (p.probi.isNegative() && !includeNegative) {
             delete publishers[entry._id]
             return
           }
 
           p.fees = p.fees.minus(new BigNumber(entry.fees.toString()))
-          if (p.fees.isNegative()) p.fees = new BigNumber(0)
+          if (p.fees.isNegative() && !includeNegative) p.fees = new BigNumber(0)
         })
       }
 
@@ -1206,6 +1208,10 @@ exports.workers = {
               await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
             }
           } catch (ex) {
+            debug('wallet not available', {
+              message: ex.message,
+              stack: ex.stack
+            })
             await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_invalid_wallet' })
           }
           if (includeUnpayable || validateWallet(wallet)) {
