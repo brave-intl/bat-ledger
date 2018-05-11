@@ -495,7 +495,7 @@ const provision = async (debug, runtime, surveyorId, bump) => {
 v2.batch =
 { handler: (runtime) => {
   return async (request, reply) => {
-    const f = v2.phase2(runtime)
+    const f = v2.phase2.handler(runtime)
     const id = request.id
     const params = request.params
     const payload = request.payload
@@ -508,11 +508,14 @@ v2.batch =
         params: underscore.extend({ surveyorType: 'voting', surveyorId: item.surveyorId }, params),
         payload: { proof: item.proof }
       }, (response) => {
-        results.push({ surveyorId: item.surveyorId, response: response })
+        results.push({
+          surveyorId: item.surveyorId,
+          response: (response.isBoom && response.output && response.output.payload) || response
+        })
       })
     }
 
-    return results
+    return reply(results)
   }
 },
 
