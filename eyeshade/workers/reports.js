@@ -1129,6 +1129,7 @@ exports.workers = {
       const includeUnpayable = !!payload.includeUnpayable
       const includeNegative = payload.includeNegative
       const blacklistMe = !!payload.blacklisted
+      const includeNegative = !!payload.includeNegative
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
