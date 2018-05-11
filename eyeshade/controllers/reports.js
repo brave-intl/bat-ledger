@@ -187,7 +187,8 @@ v1.publishers.contributions = {
       authorized: Joi.boolean().optional().description('filter on authorization status'),
       verified: Joi.boolean().optional().description('filter on verification status'),
       amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+      includeNegative: braveJoi.boolean().optional().default(false).description('include negative balances')
     }
   },
 
