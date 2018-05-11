@@ -4,7 +4,6 @@ const dateformat = require('dateformat')
 const json2csv = require('json2csv')
 const moment = require('moment')
 const underscore = require('underscore')
-const uuid = require('uuid')
 
 const braveExtras = require('bat-utils').extras
 const braveHapi = braveExtras.hapi
@@ -165,7 +164,6 @@ const sanity = async (debug, runtime) => {
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
   const scratchpad = runtime.database.get('scratchpad', debug)
-  const tokens = runtime.database.get('tokens', debug)
   let collections, entries, info, next, now, page, results
 
   debug('sanity', 'running')
@@ -281,91 +279,7 @@ const sanity = async (debug, runtime) => {
       }
     }
 
-    entries = await tokens.find({})
-    for (let entry of entries) {
-      const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
-      let owner, publisher
-
-      if (!entry.token) {
-        debug('sanity', { message: 'remove', token: id })
-        await tokens.remove(id)
-        continue
-      }
-
-      owner = entry.owner && await owners.findOne({ owner: entry.owner })
-      if (!owner) {
-        debug('sanity', { message: 'remove', token: id, owner: entry.owner })
-        await tokens.remove(id)
-        continue
-      }
-
-      if (!entry.publisher) {
-        debug('sanity', { message: 'remove', token: id, publisher: entry.publisher })
-        await tokens.remove(id)
-        continue
-      }
-
-      publisher = await publishers.findOne({ publisher: entry.publisher })
-      if (!publisher) {
-        if (!entry.verified) continue
-
-        debug('sanity', { message: 'remove', token: id, publisher: entry.publisher })
-        await tokens.remove(id)
-        continue
-      }
-
-      if (publisher.verified === entry.verified) continue
-
-      if (entry.verified) {
-        debug('sanity', { message: 'update', token: id, verified: publisher.verified })
-        await tokens.update(id, { $set: { verified: false } })
-      }
-
-      debug('sanity', { message: 'remove', token: id, verified: publisher.verified })
-      await tokens.remove(id)
-    }
-
-    entries = await publishers.find({ verified: true })
-    for (let entry of entries) {
-      let foundP, records, state
-
-      records = await tokens.find({ publisher: entry.publisher })
-      for (let record of records) {
-        const id = underscore.pick(entry, [ 'verificationId', 'publisher' ])
-
-        if ((record.owner !== entry.owner) || (!record.verified) || (foundP)) {
-          debug('sanity', {
-            message: 'remove',
-            token: id,
-            owner: entry.owner,
-            publisher: entry.publisher,
-            verified: record.verified,
-            foundP: foundP
-          })
-          await tokens.remove(id)
-          continue
-        }
-
-        foundP = true
-      }
-      if (foundP) continue
-
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: {
-          token: uuid.v4().toLowerCase(),
-          verified: true,
-          authority: entry.owner,
-          owner: entry.owner,
-          visible: entry.visible,
-          info: entry.info,
-          method: 'sanity'
-        }
-      }
-      await tokens.update({ publisher: entry.publisher, verificationId: state.$set.token }, state, { upsert: true })
-    }
-
-    collections = [ 'owners', 'publishers', 'tokens' ]
+    collections = [ 'owners', 'publishers' ]
     for (let collection of collections) {
       let empties = []
       let misses = []
