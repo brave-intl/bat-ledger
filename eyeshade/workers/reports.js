@@ -1417,7 +1417,7 @@ exports.workers = {
 
       publishers = underscore.keys(contributions)
       if (owner) {
-        publishers.push(underscore.keys(referralTotals))
+        publishers.push(...underscore.keys(referralTotals))
         publishers = underscore.uniq(publishers)
       }
 
