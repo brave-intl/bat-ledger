@@ -1095,6 +1095,7 @@ exports.workers = {
       , verified       :  true  | false | undefined
       , amount         : '...'    // ignored (converted to threshold probi)
       , currency       : '...'    //   ..
+      , includeNegative:  true  | false
       }
     }
  */
