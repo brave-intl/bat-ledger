@@ -1095,21 +1095,22 @@ exports.workers = {
 /* sent by GET /v1/reports/publisher/{publisher}/contributions
            GET /v1/reports/publishers/contributions
 
-    { queue            : 'report-publishers-contributions'
-    , message          :
-      { reportId       : '...'
-      , reportURL      : '...'
-      , authorized     :  true  | false | undefined
-      , authority      : '...:...'
-      , format         : 'json' | 'csv'
-      , publisher      : '...'
-      , balance        :  true  | false
-      , summary        :  true  | false
-      , threshold      : probi
-      , verified       :  true  | false | undefined
-      , amount         : '...'    // ignored (converted to threshold probi)
-      , currency       : '...'    //   ..
-      , includeNegative:  true  | false
+    { queue             : 'report-publishers-contributions'
+    , message           :
+      { reportId        : '...'
+      , reportURL       : '...'
+      , authorized      :  true  | false | undefined
+      , authority       : '...:...'
+      , format          : 'json' | 'csv'
+      , publisher       : '...'
+      , balance         :  true  | false
+      , summary         :  true  | false
+      , threshold       : probi
+      , verified        :  true  | false | undefined
+      , amount          : '...'    // ignored (converted to threshold probi)
+      , currency        : '...'    //   ..
+      , includeNegative :  true  | false
+      , includeUnpayable:  true  | false
       }
     }
  */
@@ -1204,6 +1205,9 @@ exports.workers = {
               continue
             }
 
+            datum.owner = entry.owner
+            datum.type = 'contribution'
+
             props = getPublisherProps(datum.publisher)
             datum.name = entry.info && entry.info.name
             datum.URL = props && props.URL
@@ -1217,7 +1221,6 @@ exports.workers = {
             if (validateWallet(wallet)) {
               datum.address = wallet.address
               datum.currency = wallet.defaultCurrency
-              datum.type = 'contribution'
             } else {
               await notification(debug, runtime, entry.owner, datum.publisher, { type: 'verified_no_wallet' })
             }

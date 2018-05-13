@@ -188,7 +188,8 @@ v1.publishers.contributions = {
       verified: Joi.boolean().optional().description('filter on verification status'),
       amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
       currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
-      includeNegative: braveJoi.boolean().optional().default(false).description('include negative balances')
+      includeNegative: braveJoi.boolean().optional().default(false).description('include negative balances'),
+      includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
     }
   },
 
