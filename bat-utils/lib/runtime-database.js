@@ -1,3 +1,5 @@
+const url = require('url')
+
 const bson = require('bson')
 const mongodb = require('mongodb')
 const GridStore = mongodb.GridStore
@@ -14,13 +16,32 @@ const Database = function (config, runtime) {
 
   if (!config.database) return
 
-  if (config.database.mongo) config.database = config.database.mongo
-  this.config = config.database
+  this.config = config.database.mongo || config.database
+  this.properties = url.parse(this.config, true).query
   this.db = monk(this.config, (err, db) => {
-    if (!err) return
+    const props = {}
 
-    debug('database', { message: err.message })
-    throw err
+    if (err) {
+      debug('database', { database: this.config, message: err.message })
+      throw err
+    }
+
+    const accrue = (key, parts) => {
+      if (!props[key]) props[key] = parts[key]
+      else if (typeof props[key] === 'string') props[key] = [ props[key], parts[key] ]
+      else props[key].push(parts[key])
+    }
+
+    this.config.split(',').forEach((entry) => {
+      let parts
+
+      if (entry.indexOf('mongodb://') !== 0) entry = 'mongodb://' + entry
+      parts = url.parse(entry)
+      accrue('host', parts)
+      accrue('pathname', parts)
+    })
+    props.properties = this.properties
+    debug('database', props)
   })
 
   Logger.setCurrentLogger((msg, context) => {
