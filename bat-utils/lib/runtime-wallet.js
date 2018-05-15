@@ -43,6 +43,15 @@ const Wallet = function (config, runtime) {
   }
 }
 
+Wallet.prototype.createCard = async function () {
+  let f = Wallet.providers.mock.createCard
+  if (this.config.uphold) {
+    f = Wallet.providers.uphold.createCard
+  }
+  if (!f) return {}
+  return f.apply(this, arguments)
+}
+
 Wallet.prototype.create = async function (requestType, request) {
   let f = Wallet.providers.mock.create
   if (this.config.uphold) {
@@ -207,6 +216,20 @@ Wallet.prototype.purchaseBAT = async function (info, amount, currency, language)
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
+  createCard: async function ({
+    currency,
+    label,
+    options,
+    access_token
+  }) {
+    const headers = {
+      Authentication: `Bearer: ${access_token}`
+    }
+    return this.uphold.createCard(currency, label, Object.assign({
+      authenticate: true,
+      headers
+    }, options))
+  },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency

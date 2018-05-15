@@ -587,6 +587,50 @@ v1.getWallet = {
 }
 
 /*
+  POST /v3/owners/{owner}/wallet/card
+  {
+    currency    : 'BAT'
+  , description : '' // description of the card
+  }
+ */
+v3.createCard = {
+  handler: (runtime) => async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const { payload, params } = request
+    const { database, wallet } = runtime
+    const owners = database.get('owners', debug)
+    const { currency, label } = payload
+    const { owner } = params
+    const where = { owner }
+    debug('create card begin', { currency, owner })
+    const ownerData = await owners.findOne(where)
+    const { provider, parameters } = ownerData
+    if (!provider || !parameters || !parameters.access_token) {
+      return reply(boom.badData('owner not verified'))
+    }
+    const access_token = parameters.access_token
+    const cardCreated = await wallet.createCard({
+      label,
+      currency,
+      access_token
+    })
+    debug('card data', cardCreated)
+    reply(cardCreated)
+  },
+  description: 'Create a card for uphold',
+  tags: [ 'api' ],
+  validate: {
+    params: {
+      owner: Joi.string().required().description('owner identifier')
+    },
+    payload: {
+      label: Joi.string().optional().description('description of the card'),
+      currency: Joi.string().default('BAT').optional().description('currency of the card to create')
+    }
+  }
+}
+
+/*
    PUT /v1/owners/{owner}/wallet
        [ used by publishers ]
  */
@@ -850,6 +894,7 @@ module.exports.routes = [
 /*
   braveHapi.routes.async().post().path('/v3/owners').whitelist().config(v3.bulk),
  */
+  braveHapi.routes.async().post().path('/v3/owners/{owner}/wallet/card').config(v3.createCard),
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
   braveHapi.routes.async().patch().path('/v1/owners/{owner}/wallet').whitelist().config(v1.patchWallet),

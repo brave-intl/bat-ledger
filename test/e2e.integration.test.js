@@ -53,6 +53,43 @@ test('ledger: create a promotion', async t => {
   await ledgerAgent.post(url).send(data).expect(ok)
 })
 
+test('put to the wallet to finish tying to uphold', async t => {
+  t.plan(0)
+  const domain = process.env.BAT_EYESHADE_SERVER
+  const encodedOwner = encodeURIComponent(owner)
+  const putOptions = {
+    url: `/v1/owners/${encodedOwner}/wallet`,
+    method: 'put',
+    domain
+  }
+  const parameters = {
+    access_token: process.env.UPHOLD_ACCESS_TOKEN,
+    show_verification_status: false,
+    defaultCurrency: 'USD'
+  }
+  const data = {
+    provider: 'uphold',
+    parameters
+  }
+  await req(putOptions).send(data)
+})
+test('create a bat card', async t => {
+  const domain = process.env.BAT_EYESHADE_SERVER
+  const currency = 'BAT'
+  const data = { currency }
+  const encodedOwner = encodeURIComponent(owner)
+  const url = `/v3/owners/${encodedOwner}/wallet/card`
+  const options = {
+    url,
+    domain,
+    method: 'post',
+    expect: 200
+  }
+  const result = await req(options).send(data)
+  const cardBody = result.body
+  console.log(cardBody)
+  t.true(_.isObject(cardBody))
+})
 test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()

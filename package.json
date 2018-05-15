@@ -40,7 +40,7 @@
   },
   "config": {
     "docker": {
-      "services": "ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
+      "services": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
     }
   },
   "repository": {
