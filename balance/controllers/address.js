@@ -15,6 +15,42 @@ const debug = new SDebug('balance')
 const v2 = {}
 
 /*
+  POST /v2/card
+ */
+v2.createCard = {
+  handler: (runtime) => async (request, reply) => {
+    const {
+      body
+    } = request
+    const {
+      cardId,
+      ticker
+    } = body
+    const upholdbase = 'https://sandbox.uphold.com/'
+    const url = `${upholdbase}authorize/${cardId}`
+    let body = {}
+    const data = {}
+    try {
+      const response = await wreck.post(url, {
+        data
+      })
+      body = JSON.stringify(response.body)
+    } catch(e) {
+      //
+    }
+  },
+  description: 'Create a card for uphold',
+  tags: [ 'api' ],
+  validate: {
+    params: {
+      cardId: Joi.string().guid().required().description('identity of the card'),
+      ticker: Joi.string().required().description('ticker of the card to create')
+    }
+  },
+  response: {}
+}
+
+/*
    GET /v2/card/BAT/{cardId}/balance
  */
 
