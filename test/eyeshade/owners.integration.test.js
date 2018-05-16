@@ -143,7 +143,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(await t.context.owners.count(dbSelector), 1, 'can add owner')
   let owner = await t.context.owners.findOne(dbSelector)
   t.is(owner['parameters'], undefined, 'sanity')
-  t.is(owner['authorized'], false, 'sanity')
+  t.is(owner['authorized'], undefined, 'sanity')
 
   const dataOwnerWalletParams = {
     'provider': 'uphold',

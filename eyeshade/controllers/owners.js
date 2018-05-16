@@ -274,7 +274,6 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
     $currentDate: { timestamp: { $type: 'timestamp' } },
     $set: underscore.extend({
       visible: visible,
-      authorized: true,
       altcurrency: altcurrency,
       info: info
     }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
@@ -296,7 +295,6 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
 
     state.$set = underscore.extend(underscore.omit(channel, [ 'channelId' ]), {
       verified: true,
-      authorized: true,
       authority: owner,
       owner: owner,
       altcurrency: altcurrency,
