@@ -1,6 +1,7 @@
 'use strict'
 
 import test from 'ava'
+import _ from 'underscore'
 
 import {
   eyeshadeAgent,
@@ -116,4 +117,44 @@ test('eyeshade POST /v2/owners with site channels', async t => {
     .send(dataPublisherWithSite)
     .expect(200)
   t.is(await t.context.publishers.count(dbSelector), 1, 'does not double add the same channel')
+})
+
+test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
+  t.plan(6)
+
+  const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a'
+  const dataPublisherWithSite = {
+    'ownerId': OWNER,
+    'contactInfo': {
+      'name': 'Alice the Verified',
+      'phone': '+14159001421',
+      'email': 'alice@verified.org'
+    },
+    'channels': [{
+      'channelId': 'verified.org'
+    }]
+  }
+  const dbSelector = { 'owner': OWNER }
+
+  t.is(await t.context.owners.count(dbSelector), 0, 'sanity')
+  await eyeshadeAgent.post('/v2/owners')
+    .send(dataPublisherWithSite)
+    .expect(200)
+  t.is(await t.context.owners.count(dbSelector), 1, 'can add owner')
+  let owner = await t.context.owners.findOne(dbSelector)
+  t.is(owner['parameters'], undefined, 'sanity')
+  t.is(owner['authorized'], false, 'sanity')
+
+  const dataOwnerWalletParams = {
+    'provider': 'uphold',
+    'parameters': {
+    }
+  }
+  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(OWNER)}/wallet`)
+    .send(dataOwnerWalletParams)
+    .expect(200)
+
+  owner = await t.context.owners.findOne(dbSelector)
+  t.is(_.isObject(owner['parameters']), true, 'wallet has uphold parameters')
+  t.is(owner['authorized'], true, 'owner is authorized')
 })
