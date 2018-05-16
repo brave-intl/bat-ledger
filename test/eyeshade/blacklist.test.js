@@ -3,9 +3,6 @@ import {
 } from 'ava'
 import _ from 'underscore'
 import uuid from 'uuid'
-import {
-  isURL
-} from 'validator'
 import dotenv from 'dotenv'
 import querystring from 'querystring'
 import {
@@ -13,20 +10,17 @@ import {
   // only using eyeshade here
   eyeshade as domain,
   fetchReport,
-  req
-} from 'test/setup.test'
+  eyeshadeAgent,
+  ok,
+  status
+} from 'test/utils'
 dotenv.config()
 
 const channel = uniqueChannel()
-const expect = 200
 const posterURL = '/v2/publishers/blacklist/'
 test('blacklist > GET > retrieve all', async t => {
   t.plan(1)
-  const response = await req({
-    url: posterURL,
-    domain,
-    expect
-  })
+  const response = await eyeshadeAgent.get(posterURL).expect(ok)
   const {
     body
   } = response
@@ -37,31 +31,17 @@ test('blacklist > GET > does not find if not in blacklist', async t => {
   // creates unique
   const url = getterURL(channel)
   // should never find unique publisher channel
-  // const response =
-  await req({
-    url,
-    domain,
-    expect: 404
-  })
+  await eyeshadeAgent.get(url).expect(status(404))
 })
 test('blacklist > finds if has been added to blacklist', async t => {
   t.plan(1)
   // creates a new channel
   const publishers = [channel]
   // add to blacklist
-  await req({
-    url: posterURL,
-    method: 'post',
-    domain,
-    expect
-  }).send({
+  await eyeshadeAgent.post(posterURL).send({
     publishers
-  })
-  const checker = await req({
-    url: getterURL(channel),
-    domain,
-    expect
-  })
+  }).expect(ok)
+  const checker = await eyeshadeAgent.get(getterURL(channel)).expect(ok)
   const getBody = checker.body
   t.is(getBody.publisher, channel)
 })
@@ -70,81 +50,46 @@ test('blacklist > removes with the delete method', async t => {
   const channel = uniqueChannel()
   const publishers = [channel]
   // should never find unique publisher channel
-  await req({
-    url: posterURL,
-    method: 'post',
-    domain,
-    expect
-  }).send({
+  await eyeshadeAgent.post(posterURL).send({
     publishers
-  })
+  }).expect(ok)
   // the publisher is in the db
-  await req({
-    url: posterURL,
-    method: 'delete',
-    domain,
-    expect
-  }).send({
+  await eyeshadeAgent.del(posterURL).send({
     publishers
-  })
+  }).expect(ok)
   // the publisher is no longer in the db
-  const checkResponse = await req({
-    url: getterURL(channel),
-    expect: 404,
-    domain
-  })
+  const checkResponse = await eyeshadeAgent.get(getterURL(channel)).expect(status(404))
   const getBody = checkResponse.body
   t.true(_.isObject(getBody))
 })
 test('blacklist > report-publishers-contributions generation', async t => {
   t.plan(2)
-  const publishers = [publisher]
+  const publishers = [channel]
   // clear the db if it exists because of error or otherwise
-  await req({
-    url: posterURL,
-    method: 'delete',
-    expect,
-    domain
-  }).send({
+  console.log('publishers', publishers)
+  await eyeshadeAgent.del(posterURL).send({
     publishers
-  })
-  await req({
-    url: posterURL,
-    method: 'post',
-    expect,
-    domain
-  }).send({
+  }).expect(ok)
+  await eyeshadeAgent.post(posterURL).send({
     publishers
-  })
+  }).expect(ok)
   const blacklisted = true
   const query = querystring.stringify({
     blacklisted
   })
   const contributionUrl = `/v1/reports/publishers/contributions?${query}`
-  const contributionsReportResponse = await req({
-    url: contributionUrl,
-    expect,
-    domain
-  })
+  const contributionsReportResponse = await eyeshadeAgent.get(contributionUrl).expect(ok)
   const getBody = contributionsReportResponse.body
   const {
     reportURL,
     reportId
   } = getBody
-  t.true(isURL(reportURL))
-  const report = await fetchReport({
-    domain,
-    reportId
-  })
+  t.true(_.isString(reportURL))
+  const report = await fetchReport({ url: reportURL })
   const reportBody = report.body
-  await req({
-    url: posterURL,
-    method: 'delete',
-    expect,
-    domain
-  }).send({
+  await eyeshadeAgent.del(posterURL).send({
     publishers
-  })
+  }).expect(ok)
   t.true(_.isString(reportBody.reason))
 })
 
