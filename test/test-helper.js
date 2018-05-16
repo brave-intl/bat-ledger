@@ -10,7 +10,7 @@ const cleanMongoDb = async (db, collections) => {
 
 const setupEyeshadeDb = async (t) => {
   const dbUri = `${process.env.BAT_MONGODB_URI}/eyeshade`
-	t.context.db = await mongodb.MongoClient.connect(dbUri)
+  t.context.db = await mongodb.MongoClient.connect(dbUri)
   await cleanMongoDb(t.context.db, ['owners', 'publishers', 'tokens'])
   t.context.owners = await t.context.db.collection('owners')
   t.context.publishers = await t.context.db.collection('publishers')
@@ -18,7 +18,9 @@ const setupEyeshadeDb = async (t) => {
 }
 
 const assertChangeNumber = async (t, fnTestCase, fnGetValue, changeExpected, message) => {
-  if (!fnGetValue || !fnTestCase) { throw "fnGetValue and fnTestCase required" }
+  if (!fnGetValue || !fnTestCase) {
+    throw new Error('fnGetValue and fnTestCase required')
+  }
   const countBefore = await fnGetValue()
   await fnTestCase()
   const countAfter = await fnGetValue()

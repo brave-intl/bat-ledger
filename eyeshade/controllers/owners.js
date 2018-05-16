@@ -96,7 +96,6 @@ v2.bulk = {
   handler: (runtime) => {
     return async (request, reply) => {
       const channels = request.payload.channels || []
-      const nonWebChannels = []
 
       for (let channel of channels) {
         const props = getPublisherProps(channel.channelId)
