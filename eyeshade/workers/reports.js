@@ -1127,7 +1127,6 @@ exports.workers = {
       const threshold = payload.threshold || 0
       const verified = payload.verified
       const includeUnpayable = !!payload.includeUnpayable
-      const includeNegative = payload.includeNegative
       const blacklistMe = !!payload.blacklisted
       const includeNegative = !!payload.includeNegative
       const owners = runtime.database.get('owners', debug)
