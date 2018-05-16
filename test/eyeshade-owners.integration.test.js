@@ -5,17 +5,20 @@ import request from 'supertest'
 import dotenv from 'dotenv'
 dotenv.config()
 const SERVER_URL = process.env.BAT_EYESHADE_SERVER
+const SERVER_AUTH_TOKEN = process.env.TOKEN_LIST.split(',')[0]
 const TestHelper = require('./test-helper')
 
 test.before(async t => {
-  await TestHelper.setupEyeshadeDb(t)
+  await TestHelper.connectEyeshadeDb(t)
+})
+test.beforeEach(async t => {
+  await TestHelper.cleanEyeshadeDb(t)
 })
 
-test('eyeshade POST /v2/owners', async t => {
+test('eyeshade POST /v2/owners with YouTube channels', async t => {
+  t.plan(4)
+
   const PATH = '/v2/owners'
-
-  t.plan(7)
-
   const dataPublisherWithYouTube = {
     'ownerId': 'publishers#uuid:8eb1efca-a648-5e37-b328-b298f232d70f',
     'contactInfo': {
@@ -27,25 +30,30 @@ test('eyeshade POST /v2/owners', async t => {
       'channelId': 'youtube#channel:323541525412313421'
     }]
   }
+  const dbSelector = {
+    'publisher': dataPublisherWithYouTube['channels'][0]['channelId']
+  }
 
-  await TestHelper.assertChangeNumber(t,
-    async () => request(SERVER_URL).post(PATH)
-      .set('Authorization', 'Bearer foobarfoobar')
-      .send(dataPublisherWithYouTube)
-      .expect(200),
-    async () => t.context.publishers.count({'providerName': 'youtube'}),
-    1,
-    'can add YouTube channels')
+  t.is(await t.context.publishers.count(dbSelector), 0, 'sanity')
+  await request(SERVER_URL).post(PATH)
+    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+    .send(dataPublisherWithYouTube)
+    .expect(200)
+  t.is(await t.context.publishers.count(dbSelector), 1, 'can add channels')
+  const channel = await t.context.publishers.findOne(dbSelector)
+  t.is(channel['providerName'], 'youtube', 'sets channel provider to youtube')
 
-  await TestHelper.assertChangeNumber(t,
-    async () => request(SERVER_URL).post(PATH)
-      .set('Authorization', 'Bearer foobarfoobar')
-      .send(dataPublisherWithYouTube)
-      .expect(200),
-    async () => t.context.publishers.count({'providerName': 'youtube'}),
-    0,
-    'does not double add the same YouTube channel')
+  await request(SERVER_URL).post(PATH)
+    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+    .send(dataPublisherWithYouTube)
+    .expect(200)
+  t.is(await t.context.publishers.count(dbSelector), 1, 'does not double add the same channel')
+})
 
+test('eyeshade POST /v2/owners with Twitch channels', async t => {
+  t.plan(4)
+
+  const PATH = '/v2/owners'
   const dataPublisherWithTwitch = {
     'ownerId': 'publishers#uuid:20995cae-d0f7-50b9-aa42-05ea04ab28be',
     'contactInfo': {
@@ -58,25 +66,30 @@ test('eyeshade POST /v2/owners', async t => {
       'authorizerName': 'TwTwTw'
     }]
   }
+  const dbSelector = {
+    'publisher': dataPublisherWithTwitch['channels'][0]['channelId']
+  }
 
-  await TestHelper.assertChangeNumber(t,
-    async () => request(SERVER_URL).post(PATH)
-      .set('Authorization', 'Bearer foobarfoobar')
-      .send(dataPublisherWithTwitch)
-      .expect(200),
-    async () => t.context.publishers.count({'providerName': 'twitch'}),
-    1,
-    'can add Twitch channels')
+  t.is(await t.context.publishers.count(dbSelector), 0, 'sanity')
+  await request(SERVER_URL).post(PATH)
+    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+    .send(dataPublisherWithTwitch)
+    .expect(200)
+  t.is(await t.context.publishers.count(dbSelector), 1, 'can add channels')
+  const channel = await t.context.publishers.findOne(dbSelector)
+  t.is(channel['providerName'], 'twitch', 'sets channel provider to twitch')
 
-  await TestHelper.assertChangeNumber(t,
-    async () => request(SERVER_URL).post(PATH)
-      .set('Authorization', 'Bearer foobarfoobar')
-      .send(dataPublisherWithTwitch)
-      .expect(200),
-    async () => t.context.publishers.count({'providerName': 'twitch'}),
-    0,
-    'does not double add the same Twitch channel')
+  await request(SERVER_URL).post(PATH)
+    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+    .send(dataPublisherWithTwitch)
+    .expect(200)
+  t.is(await t.context.publishers.count(dbSelector), 1, 'does not double add the same channel')
+})
 
+test('eyeshade POST /v2/owners with site channels', async t => {
+  t.plan(4)
+
+  const PATH = '/v2/owners'
   const dataPublisherWithSite = {
     'ownerId': 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a',
     'contactInfo': {
@@ -88,27 +101,22 @@ test('eyeshade POST /v2/owners', async t => {
       'channelId': 'verified.org'
     }]
   }
-
-  await TestHelper.assertChangeNumber(t,
-    async () => request(SERVER_URL).post(PATH)
-      .set('Authorization', 'Bearer foobarfoobar')
-      .send(dataPublisherWithSite)
-      .expect(200),
-    async () => t.context.publishers.count(),
-    1,
-    'can add site channels')
-
-  const siteChannel = await t.context.publishers.findOne({
+  const dbSelector = {
     'publisher': dataPublisherWithSite['channels'][0]['channelId']
-  })
-  t.is(siteChannel['verified'], true, 'adds site channels in verified state')
+  }
 
-  await TestHelper.assertChangeNumber(t,
-    async () => request(SERVER_URL).post(PATH)
-      .set('Authorization', 'Bearer foobarfoobar')
-      .send(dataPublisherWithSite)
-      .expect(200),
-    async () => t.context.publishers.count(),
-    0,
-    'does not double add the same site channel')
+  t.is(await t.context.publishers.count(dbSelector), 0, 'sanity')
+  await request(SERVER_URL).post(PATH)
+    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+    .send(dataPublisherWithSite)
+    .expect(200)
+  t.is(await t.context.publishers.count(dbSelector), 1, 'can add channels')
+  const channel = await t.context.publishers.findOne(dbSelector)
+  t.is(channel['verified'], true, 'adds site channels in verified state')
+
+  await request(SERVER_URL).post(PATH)
+    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+    .send(dataPublisherWithSite)
+    .expect(200)
+  t.is(await t.context.publishers.count(dbSelector), 1, 'does not double add the same channel')
 })
