@@ -18,7 +18,13 @@ import {
 } from './setup.test'
 import dotenv from 'dotenv'
 dotenv.config()
+
+const voteExchangeRate = 1 // 1 BAT per vote
+const suggestedVotes = 12
+const numBatchVotes = 2
+
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
+
 const formURL = createFormURL({
   format: 'json',
   summary: true,
@@ -28,19 +34,26 @@ const formURL = createFormURL({
   currency: 'USD'
 })
 
-function uint8tohex (arr) {
+const uint8tohex = (arr) => {
   var strBuilder = []
   arr.forEach(function (b) { strBuilder.push(('00' + b.toString(16)).substr(-2)) })
   return strBuilder.join('')
 }
 
 const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
+
 const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
 
 test('create a surveyor', async t => {
   t.plan(0)
   const url = '/v2/surveyor/contribution'
-  const data = {'adFree': {'fee': {'USD': 5}, 'votes': 5, 'altcurrency': 'BAT', 'probi': '27116311373482831368'}}
+  const data = { 'adFree': {
+    'fee': { 'USD': 5 },
+    'votes': suggestedVotes,
+    'altcurrency': 'BAT',
+    'probi': new BigNumber(suggestedVotes * voteExchangeRate).times('1e18').toString()
+  }}
+
   await request(srv.listener).post(url).set('Authorization', 'Bearer foobarfoobar').send(data).expect(ok)
 })
 
@@ -467,8 +480,8 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   viewingCredential.finalize(response.body.verification)
 
-  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', publisher]
-  // const votes = ['basicattentiontoken.org']
+  const bulkSurveyorPayload = []
+  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
   for (var i = 0; i < surveyorIds.length; i++) {
     let id = surveyorIds[i]
     let publisher = votes[i % votes.length]
@@ -477,12 +490,26 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
       .expect(ok)
 
     const surveyor = new anonize.Surveyor(response.body)
-    response = await request(srv.listener)
-      .put('/v2/surveyor/voting/' + encodeURIComponent(id))
-      .send({'proof': viewingCredential.submit(surveyor, { publisher })})
-      .expect(ok)
+
+    if (i < surveyorIds.length - numBatchVotes) {
+      response = await request(srv.listener)
+        .put('/v2/surveyor/voting/' + encodeURIComponent(id))
+        .send({'proof': viewingCredential.submit(surveyor, { publisher })})
+        .expect(ok)
+    } else {
+      bulkSurveyorPayload.push({
+        'surveyorId': id,
+        'proof': viewingCredential.submit(surveyor, { publisher: 'basicattentiontoken.org' })
+      })
+    }
   }
+
+  response = await request(srv.listener)
+    .post('/v2/batch/surveyor/voting')
+    .send(bulkSurveyorPayload)
+    .expect(ok)
 })
+
 test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
   t.plan(4)
   const domain = process.env.BAT_EYESHADE_SERVER

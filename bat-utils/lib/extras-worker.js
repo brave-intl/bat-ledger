@@ -79,7 +79,7 @@ const Worker = async (options, runtime) => {
     names = []
   }
   for (let name of names) {
-    if ((name === 'index.js') || (path.extname(name) !== '.js')) continue
+    if ((name === 'index.js') || (name.indexOf('.test.js') !== -1) || (path.extname(name) !== '.js')) continue
 
     try {
       await router(name)
