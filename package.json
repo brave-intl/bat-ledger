@@ -69,7 +69,6 @@
     "bell": "8.7.0",
     "bignumber.js": "^4.0.4",
     "bitcoinjs-lib": "^3.2.0",
-    "blipp": "^3.0.0",
     "bluebird": "3.5.0",
     "boom": "5.2.0",
     "bs58check": "^2.0.2",
