@@ -1,18 +1,21 @@
 'use strict'
 
 import test from 'ava'
-import request from 'supertest'
+
+import {
+  eyeshadeAgent,
+  connectEyeshadeDb,
+  cleanEyeshadeDb
+} from '../utils'
+
 import dotenv from 'dotenv'
 dotenv.config()
-const SERVER_URL = process.env.BAT_EYESHADE_SERVER
-const SERVER_AUTH_TOKEN = process.env.TOKEN_LIST.split(',')[0]
-const TestHelper = require('./test-helper')
 
 test.before(async t => {
-  await TestHelper.connectEyeshadeDb(t)
+  await connectEyeshadeDb(t)
 })
 test.beforeEach(async t => {
-  await TestHelper.cleanEyeshadeDb(t)
+  await cleanEyeshadeDb(t)
 })
 
 test('eyeshade POST /v2/owners with YouTube channels', async t => {
@@ -35,16 +38,14 @@ test('eyeshade POST /v2/owners with YouTube channels', async t => {
   }
 
   t.is(await t.context.publishers.count(dbSelector), 0, 'sanity')
-  await request(SERVER_URL).post(PATH)
-    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+  await eyeshadeAgent.post(PATH)
     .send(dataPublisherWithYouTube)
     .expect(200)
   t.is(await t.context.publishers.count(dbSelector), 1, 'can add channels')
   const channel = await t.context.publishers.findOne(dbSelector)
   t.is(channel['providerName'], 'youtube', 'sets channel provider to youtube')
 
-  await request(SERVER_URL).post(PATH)
-    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+  await eyeshadeAgent.post(PATH)
     .send(dataPublisherWithYouTube)
     .expect(200)
   t.is(await t.context.publishers.count(dbSelector), 1, 'does not double add the same channel')
@@ -71,16 +72,14 @@ test('eyeshade POST /v2/owners with Twitch channels', async t => {
   }
 
   t.is(await t.context.publishers.count(dbSelector), 0, 'sanity')
-  await request(SERVER_URL).post(PATH)
-    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+  await eyeshadeAgent.post(PATH)
     .send(dataPublisherWithTwitch)
     .expect(200)
   t.is(await t.context.publishers.count(dbSelector), 1, 'can add channels')
   const channel = await t.context.publishers.findOne(dbSelector)
   t.is(channel['providerName'], 'twitch', 'sets channel provider to twitch')
 
-  await request(SERVER_URL).post(PATH)
-    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+  await eyeshadeAgent.post(PATH)
     .send(dataPublisherWithTwitch)
     .expect(200)
   t.is(await t.context.publishers.count(dbSelector), 1, 'does not double add the same channel')
@@ -106,16 +105,14 @@ test('eyeshade POST /v2/owners with site channels', async t => {
   }
 
   t.is(await t.context.publishers.count(dbSelector), 0, 'sanity')
-  await request(SERVER_URL).post(PATH)
-    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+  await eyeshadeAgent.post(PATH)
     .send(dataPublisherWithSite)
     .expect(200)
   t.is(await t.context.publishers.count(dbSelector), 1, 'can add channels')
   const channel = await t.context.publishers.findOne(dbSelector)
   t.is(channel['verified'], true, 'adds site channels in verified state')
 
-  await request(SERVER_URL).post(PATH)
-    .set('Authorization', `Bearer ${SERVER_AUTH_TOKEN}`)
+  await eyeshadeAgent.post(PATH)
     .send(dataPublisherWithSite)
     .expect(200)
   t.is(await t.context.publishers.count(dbSelector), 1, 'does not double add the same channel')
