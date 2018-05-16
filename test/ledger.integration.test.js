@@ -536,6 +536,6 @@ test('ensure referral balances are computed correctly', async t => {
   const amount = Number(contributions.amount)
 
   t.true(walletProbi > 0)
-  t.is(walletProbi, reportProbi)
+  t.is(walletProbi.toString(), reportProbi)
   assertWithinBounds(t, amount, 5.00, 0.25, 'USD value for a referral should be approx $5')
 })
