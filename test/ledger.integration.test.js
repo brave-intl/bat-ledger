@@ -464,12 +464,23 @@ test('eyeshade: create brave youtube channel and owner', async t => {
 test('ensure contribution balances are computed correctly', async t => {
   t.plan(4)
 
-  // FIXME run contributions report
+  let { body } = await eyeshadeAgent.get(formURL('/v1/reports/publishers/contributions', { includeUnpayable: true }))
+    .send().expect(ok)
+  const { reportURL } = body
 
-  const { body } = eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok)
-  const { contributions } = body
+  ;({ body } = await fetchReport({ url: reportURL }))
+  t.true(body.length > 0)
 
-  // FIXME assert value > 0
+  const singleEntry = _.findWhere(body, { publisher: braveYoutubePublisher })
+
+  const reportProbi = singleEntry.probi
+
+  t.true(Number(reportProbi) > 0)
+
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  let { contributions } = body
+
+  t.true(Number(contributions.probi) > 0)
 
   // settle completely
   await eyeshadeAgent.post('/v2/publishers/settlement').send([
@@ -487,7 +498,10 @@ test('ensure contribution balances are computed correctly', async t => {
     }
   ]).expect(ok)
 
-  // FIXME assert value is 0
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  ;({ contributions } = body)
+
+  t.true(Number(contributions.probi) === 0)
 })
 
 test('ensure referral balances are computed correctly', async t => {

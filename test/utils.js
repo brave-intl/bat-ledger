@@ -54,7 +54,7 @@ const tryAfterMany = async (ms, theDoBlock, theCatchBlock) => {
 
 const fetchReport = async ({ url, isCSV }) => {
   return tryAfterMany(5000,
-    () => agent().get(url).send(),
+    () => agent('').get(url).send(),
     (e, result) => {
       if (e) {
         throw e
