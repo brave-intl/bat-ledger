@@ -8,6 +8,8 @@ services:
   mongo:
     container_name: ledger-mongo
     image: mongo:latest
+    ports:
+      - "3010:27017"
     networks:
       - ledger
   redis:
