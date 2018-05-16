@@ -96,18 +96,14 @@ v2.bulk = {
   handler: (runtime) => {
     return async (request, reply) => {
       const channels = request.payload.channels || []
-      const nonWebChannels = []
 
       for (let channel of channels) {
         const props = getPublisherProps(channel.channelId)
 
         if (!props) return reply(boom.badData('invalid channel-identifier ' + channel.channelId))
-
-        // web channels don't have a publisherType, publishers is only responsible for verifying non-web
-        if (props.publisherType) nonWebChannels.push(channel)
       }
 
-      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, nonWebChannels)
+      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, channels)
     }
   },
   auth: {
@@ -318,6 +314,12 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
       info: info
     })
     await tokens.update({ publisher: channel.channelId, verificationId: channel.verificationId }, state, { upsert: true })
+
+    // Clear out other site channel tokens.
+    const isSiteChannel = !!channel.publisherType
+    if (isSiteChannel) {
+      await tokens.remove({ publisher: channel.channelId, verified: false }, { justOne: false })
+    }
 
     await runtime.queue.send(debug, 'publisher-report',
                              underscore.extend({ owner: owner, publisher: channel.channelId },
@@ -736,7 +738,7 @@ v1.getStatement = {
     return async (request, reply) => {
       const owner = request.params.owner
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       let entry

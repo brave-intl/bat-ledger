@@ -9,6 +9,8 @@ const debug = new SDebug('boot')
 const prefix = 'hapi-'
 
 glob.sync(prefix + '*.js', { cwd: cwd }).forEach((file) => {
+  if (file.indexOf('.test.js') !== -1) return
+
   let base = module.exports
   let key = path.basename(file.substring(prefix.length), '.js')
   let parent = ''

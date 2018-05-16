@@ -985,25 +985,25 @@ const prepareReferralPayout = async (debug, runtime, authority, reportId, thresh
       throw new Error(`Too many owners: ${entries.length} for a single channel: ${publisher}`)
     }
     const entry = entries[0]
+    let wallet = null
     if ((!entry) || (!entry.provider) || (!entry.parameters)) {
       await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
-      continue
-    }
-    let wallet = null
-    try {
-      wallet = await runtime.wallet.status(entry)
-      if (validateWallet(wallet)) {
-        payment.address = wallet.address
-        payment.currency = wallet.defaultCurrency
-      } else {
-        await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
+    } else {
+      try {
+        wallet = await runtime.wallet.status(entry)
+        if (validateWallet(wallet)) {
+          payment.address = wallet.address
+          payment.currency = wallet.defaultCurrency
+        } else {
+          await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_no_wallet' })
+        }
+      } catch (ex) {
+        debug('wallet not available', {
+          message: ex.message,
+          stack: ex.stack
+        })
+        await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
       }
-    } catch (ex) {
-      debug('wallet not available', {
-        message: ex.message,
-        stack: ex.stack
-      })
-      await notification(debug, runtime, payment.owner, payment.publisher, { type: 'verified_invalid_wallet' })
     }
     if (includeUnpayable || validateWallet(wallet)) {
       payments.push(payment)

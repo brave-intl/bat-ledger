@@ -3,48 +3,32 @@ import BigNumber from 'bignumber.js'
 import UpholdSDK from '@uphold/uphold-sdk-javascript'
 import anonize from 'node-anonize2-relic'
 import crypto from 'crypto'
-import request from 'supertest'
 import { serial as test } from 'ava'
 import tweetnacl from 'tweetnacl'
-import { stringify } from 'querystring'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
 import _ from 'underscore'
 import {
-  owner,
-  publisher,
-  req,
-  ok
-} from './setup.test'
+  assertWithinBounds,
+  eyeshadeAgent,
+  fetchReport,
+  formURL,
+  ledgerAgent,
+  ok,
+  timeout,
+  uint8tohex
+} from './utils'
 import dotenv from 'dotenv'
 dotenv.config()
+
+const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
+const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
 const voteExchangeRate = 1 // 1 BAT per vote
 const suggestedVotes = 12
 const numBatchVotes = 2
 
-const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
-
-const formURL = createFormURL({
-  format: 'json',
-  summary: true,
-  balance: true,
-  verified: true,
-  amount: 0,
-  currency: 'USD'
-})
-
-const uint8tohex = (arr) => {
-  var strBuilder = []
-  arr.forEach(function (b) { strBuilder.push(('00' + b.toString(16)).substr(-2)) })
-  return strBuilder.join('')
-}
-
-const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
-
-const srv = { listener: process.env.BAT_LEDGER_SERVER || 'https://ledger-staging.mercury.basicattentiontoken.org' }
-
-test('create a surveyor', async t => {
+test('ledger: create a surveyor', async t => {
   t.plan(0)
   const url = '/v2/surveyor/contribution'
   const data = { 'adFree': {
@@ -54,75 +38,24 @@ test('create a surveyor', async t => {
     'probi': new BigNumber(suggestedVotes * voteExchangeRate).times('1e18').toString()
   }}
 
-  await request(srv.listener).post(url).set('Authorization', 'Bearer foobarfoobar').send(data).expect(ok)
+  await ledgerAgent.post(url).send(data).expect(ok)
 })
 
-test('create a promotion', async t => {
+test('ledger: create a promotion', async t => {
   t.plan(0)
   const url = '/v1/grants'
-  const data = {'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ], 'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]}
-  await request(srv.listener).post(url).set('Authorization', 'Bearer foobarfoobar').send(data).expect(ok)
-})
-// FIXME assert has env vars set and is using uphold
-// NOTE this requires a contibution surveyor to have already been created
-
-test('create an owner', async t => {
-  t.plan(2)
-  const domain = process.env.BAT_EYESHADE_SERVER
-  const ownerName = 'venture'
-  const url = '/v1/owners'
-  const name = ownerName
-  const email = 'mmclaughlin@brave.com'
-  const phone = '+16122458588'
-  const ownerEmail = email
-  const authorizer = {
-    owner,
-    ownerEmail,
-    ownerName
-  }
-  const contactInfo = {
-    name,
-    email,
-    phone
-  }
-  const provider = {
-    publisher
-  }
-  const providers = [provider]
   const data = {
-    authorizer,
-    contactInfo,
-    providers
+    'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
+    'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]
   }
-  const options = {
-    url,
-    method: 'post',
-    domain
-  }
-  const result = await req(options).send(data)
-  const { status, body } = result
-  t.true(status === 200)
-  t.true(_.isObject(body))
+  await ledgerAgent.post(url).send(data).expect(ok)
 })
-test('tie owner to publisher', async t => {
-  t.plan(1)
-  const domain = process.env.BAT_EYESHADE_SERVER
-  const url = `/v1/owners/${encodeURIComponent(owner)}/wallet`
-  const method = 'put'
-  const options = { url, method, domain }
-  const provider = publisher
-  const parameters = {}
-  const defaultCurrency = 'BAT'
-  const data = { provider, parameters, defaultCurrency }
-  const result = await req(options).send(data)
-  const { status } = result
-  t.true(status === 200)
-})
-test('integration : v2 contribution workflow with uphold BAT wallet', async t => {
+
+test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
 
-  var response = await request(srv.listener).get('/v2/registrar/persona').expect(ok)
+  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -157,7 +90,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     },
     proof: personaCredential.request()
   }
-  response = await request(srv.listener).post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   t.true(response.body.hasOwnProperty('wallet'))
   const paymentId = response.body.wallet.paymentId
@@ -174,11 +107,11 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   personaCredential.finalize(response.body.verification)
 
-  response = await request(srv.listener).get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+  response = await ledgerAgent.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
     .expect(ok)
   t.true(response.body.paymentId === paymentId)
 
-  response = await request(srv.listener)
+  response = await ledgerAgent
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
 
@@ -191,7 +124,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
 
   do { // This depends on currency conversion rates being available, retry until then are available
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
@@ -224,7 +157,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   )
 
   do {
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await timeout(500)
@@ -266,7 +199,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .put('/v2/wallet/' + paymentId)
       .send(payload)
   } while (response.status === 503)
@@ -277,7 +210,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
 
-  response = await request(srv.listener)
+  response = await ledgerAgent
     .get('/v2/registrar/viewing')
     .expect(ok)
 
@@ -288,7 +221,7 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
       .send({ proof: viewingCredential.request() })
   } while (response.status === 503)
@@ -301,26 +234,26 @@ test('integration : v2 contribution workflow with uphold BAT wallet', async t =>
 
   viewingCredential.finalize(response.body.verification)
 
-  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', publisher]
+  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', braveYoutubePublisher]
   for (var i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
       .expect(ok)
 
     const surveyor = new anonize.Surveyor(response.body)
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
       .send({'proof': viewingCredential.submit(surveyor, { publisher: votes[i % votes.length] })})
       .expect(ok)
   }
 })
 
-test('integration : v2 grant contribution workflow with uphold BAT wallet', async t => {
+test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
 
-  var response = await request(srv.listener).get('/v2/registrar/persona').expect(ok)
+  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -355,7 +288,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     },
     proof: personaCredential.request()
   }
-  response = await request(srv.listener).post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   t.true(response.body.hasOwnProperty('wallet'))
   const paymentId = response.body.wallet.paymentId
@@ -371,7 +304,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
 
   personaCredential.finalize(response.body.verification)
 
-  response = await request(srv.listener)
+  response = await ledgerAgent
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
 
@@ -384,7 +317,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   // const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
 
   // get available grant
-  response = await request(srv.listener)
+  response = await ledgerAgent
     .get('/v1/grants')
     .expect(ok)
 
@@ -393,7 +326,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   const promotionId = response.body.promotionId
 
   // request grant
-  response = await request(srv.listener)
+  response = await ledgerAgent
       .put(`/v1/grants/${paymentId}`)
       .send({'promotionId': promotionId})
       .expect(ok)
@@ -404,13 +337,13 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   const desired = donateAmt.toString()
 
   // try re-claiming grant, should return ok
-  response = await request(srv.listener)
+  response = await ledgerAgent
       .put(`/v1/grants/${paymentId}`)
       .send({'promotionId': promotionId})
       .expect(ok)
 
   do {
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await timeout(500)
@@ -445,7 +378,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .put('/v2/wallet/' + paymentId)
       .send(payload)
   } while (response.status === 503)
@@ -456,7 +389,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
 
-  response = await request(srv.listener)
+  response = await ledgerAgent
     .get('/v2/registrar/viewing')
     .expect(ok)
 
@@ -467,7 +400,7 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
       .send({ proof: viewingCredential.request() })
   } while (response.status === 503)
@@ -485,14 +418,14 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
   for (var i = 0; i < surveyorIds.length; i++) {
     let id = surveyorIds[i]
     let publisher = votes[i % votes.length]
-    response = await request(srv.listener)
+    response = await ledgerAgent
       .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
       .expect(ok)
 
     const surveyor = new anonize.Surveyor(response.body)
 
     if (i < surveyorIds.length - numBatchVotes) {
-      response = await request(srv.listener)
+      response = await ledgerAgent
         .put('/v2/surveyor/voting/' + encodeURIComponent(id))
         .send({'proof': viewingCredential.submit(surveyor, { publisher })})
         .expect(ok)
@@ -504,170 +437,105 @@ test('integration : v2 grant contribution workflow with uphold BAT wallet', asyn
     }
   }
 
-  response = await request(srv.listener)
+  response = await ledgerAgent
     .post('/v2/batch/surveyor/voting')
     .send(bulkSurveyorPayload)
     .expect(ok)
 })
 
-test('ensure GET /v1/owners/{owner}/wallet computes correctly', async t => {
-  t.plan(4)
-  const domain = process.env.BAT_EYESHADE_SERVER
-  const wallet = `/v1/owners/${encodeURIComponent(owner)}/wallet`
-  const ownerOptions = {
-    url: wallet,
-    domain,
-    expect: true
-  }
-  const initWalletResults = await req(ownerOptions)
-  const initWalletBody = initWalletResults.body
-  const initContributions = initWalletBody.contributions
-  const initRates = initWalletBody.rates
-  const {
-    USD
-  } = initRates
-  const initWalletProbi = initContributions.probi
-  // settle half of the bat
-  const settlementURL = `/v2/publishers/settlement`
-  const method = 'post'
-  const altcurrency = 'BAT'
-  const probi = new BigNumber(initWalletProbi)
-  const bigUSD = new BigNumber(String(USD))
-  const halfUSD = probi.dividedBy(1e18).times(bigUSD)
-  const probiString = probi.toString()
-  const halfUSDString = halfUSD.toString()
-  const type = 'contribution'
-  const settlementOptions = {
-    url: settlementURL,
-    method,
-    domain,
-    expect: true
-  }
-  const datum = {
-    owner,
-    publisher,
-    altcurrency,
-    probi: probiString,
-    amount: halfUSDString,
-    type
-  }
-  const settlementDatum = contribution(datum)
-  const settlementData = [settlementDatum]
-  await req(settlementOptions).send(settlementData)
-  const referralTransactionID = uuid.v4()
-  const referralURL = `/v1/referrals/${referralTransactionID}`
-  const referralOptions = {
-    method: 'put',
-    url: referralURL,
-    domain
-  }
-  const referralDatum = {
-    channelId: publisher,
-    downloadId: uuid.v4(),
-    platform: '1234',
-    finalized: (new Date()).toISOString()
-  }
-  const referralData = [referralDatum]
-  await req(referralOptions).send(referralData)
-  const refPubPathname = '/v1/reports/publishers/referrals'
-  const includeUnpayable = true
-  const urlQuery = {
-    includeUnpayable
-  }
-  const refPubURL = formURL(refPubPathname, urlQuery)
-  const refPubOptions = {
-    url: refPubURL,
-    domain
-  }
-  const refPubResult = await req(refPubOptions)
-  const refPubBody = refPubResult.body
-  const refPubReportId = refPubBody.reportId
-  const refPubReportResult = await fetchReport({
-    reportId: refPubReportId,
-    domain
-  })
-  const refPubReportBody = refPubReportResult.body
-  t.true(refPubReportBody.length > 0)
-  const singleEntry = _.findWhere(refPubReportBody, {
-    publisher,
-    owner
-  })
-  const refProbi = singleEntry.probi
-  const refFees = singleEntry.fees
-  t.is(refFees, '0')
-  const finalWalletResults = await req(ownerOptions)
-  const finalWalletBody = finalWalletResults.body
-  const finalWalletContribs = finalWalletBody.contributions
-  const finalWalletProbi = finalWalletContribs.probi
-  const usdAmount = finalWalletContribs.amount
-  t.is(finalWalletProbi, refProbi)
-  t.is(usdAmount, '5.00')
-
-  function contribution (base) {
-    return _.extend({
-      address: uuid.v4(),
-      transactionId: uuid.v4(),
-      hash: uuid.v4()
-    }, base)
-  }
-})
-test('remove newly created owner', async t => {
+test('eyeshade: create brave youtube channel and owner', async t => {
   t.plan(1)
-  const domain = process.env.BAT_EYESHADE_SERVER
-  const encodedOwner = encodeURIComponent(owner)
-  const encodedPublisher = encodeURIComponent(publisher)
-  const url = `/v1/owners/${encodedOwner}/${encodedPublisher}`
-  const method = 'delete'
-  const options = { method, url, domain }
-  const result = await req(options)
-  const {
-    status
-  } = result
-  t.true(status === 200)
+
+  const { body } = await eyeshadeAgent.post('/v2/owners').send({
+    'ownerId': braveYoutubeOwner,
+    'contactInfo': {
+      'name': 'Brave',
+      'phone': '+12345678900',
+      'email': 'null@brave.com'
+    },
+    'channels': [{
+      'channelId': braveYoutubePublisher
+    }]
+  }).expect(ok)
+
+  t.true(_.isObject(body))
 })
 
-// write an abstraction for the do while loops
-async function tryAfterMany (ms, theDoBlock, theCatchBlock) {
-  let tryagain = null
-  let result = null
-  do {
-    tryagain = false
-    try {
-      result = await theDoBlock()
-      tryagain = theCatchBlock(null, result)
-    } catch (e) {
-      tryagain = theCatchBlock(e, result)
-    }
-    if (tryagain) {
-      await timeout(ms)
-    }
-  } while (tryagain)
-  return result
-}
+test('ensure contribution balances are computed correctly', async t => {
+  t.plan(4)
 
-async function fetchReport ({
-  domain,
-  reportId,
-  isCSV
-}) {
-  let url = `/v1/reports/file/${reportId}`
-  return tryAfterMany(5000,
-    () => req({ url, domain }),
-    (e, result) => {
-      if (e) {
-        throw e
-      }
-      const { statusCode, headers } = result
-      if (isCSV) {
-        return headers['content-type'].indexOf('text/csv') === -1
-      }
-      if (statusCode < 400) {
-        return false
-      }
-      const tryagain = statusCode === 404
-      if (!tryagain) {
-        throw result
-      }
-      return tryagain
-    })
-}
+  let { body } = await eyeshadeAgent.get(formURL('/v1/reports/publishers/contributions', { includeUnpayable: true }))
+    .send().expect(ok)
+  const { reportURL } = body
+
+  ;({ body } = await fetchReport({ url: reportURL }))
+  t.true(body.length > 0)
+
+  const singleEntry = _.findWhere(body, { publisher: braveYoutubePublisher })
+
+  const reportProbi = singleEntry.probi
+
+  t.true(Number(reportProbi) > 0)
+
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  let { contributions } = body
+
+  t.true(Number(contributions.probi) > 0)
+
+  // settle completely
+  await eyeshadeAgent.post('/v2/publishers/settlement').send([
+    {
+      owner: braveYoutubeOwner,
+      publisher: braveYoutubePublisher,
+      address: uuid.v4(),
+      altcurrency: 'BAT',
+      probi: contributions.probi,
+      currency: contributions.currency,
+      amount: contributions.amount,
+      transactionId: uuid.v4(),
+      type: 'contribution',
+      hash: uuid.v4()
+    }
+  ]).expect(ok)
+
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  ;({ contributions } = body)
+
+  t.true(Number(contributions.probi) === 0)
+})
+
+test('ensure referral balances are computed correctly', async t => {
+  t.plan(5)
+
+  await eyeshadeAgent.put('/v1/referrals/' + uuid.v4().toLowerCase()).send([
+    {
+      channelId: braveYoutubePublisher,
+      downloadId: uuid.v4(),
+      platform: 'android',
+      finalized: (new Date()).toISOString()
+    }
+  ]).expect(ok)
+
+  let { body } = await eyeshadeAgent.get(formURL('/v1/reports/publishers/referrals', { includeUnpayable: true }))
+    .send().expect(ok)
+  const { reportURL } = body
+
+  ;({ body } = await fetchReport({ url: reportURL }))
+  t.true(body.length > 0)
+
+  const singleEntry = _.findWhere(body, { publisher: braveYoutubePublisher })
+
+  const reportProbi = singleEntry.probi
+  const fees = singleEntry.fees
+  t.is(fees, '0')
+
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  const { contributions } = body
+
+  const walletProbi = new BigNumber(contributions.probi)
+  const amount = Number(contributions.amount)
+
+  t.true(walletProbi > 0)
+  t.is(walletProbi.toString(), reportProbi)
+  assertWithinBounds(t, amount, 5.00, 0.25, 'USD value for a referral should be approx $5')
+})

@@ -66,7 +66,7 @@ v1.publishers.referrals = {
       const authority = authorityProvider(request)
       const currency = request.query.currency.toUpperCase()
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       const threshold = runtime.currency.fiat2alt(currency, amount, altcurrency)
@@ -117,7 +117,7 @@ v1.publisher.contributions = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-contributions',
@@ -159,7 +159,7 @@ v1.publishers.contributions = {
       const authority = authorityProvider(request)
       const currency = request.query.currency.toUpperCase()
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
       const threshold = runtime.currency.fiat2alt(currency, amount, altcurrency)
 
@@ -210,7 +210,7 @@ v1.publisher.settlements = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-settlements',
@@ -249,7 +249,7 @@ v1.publishers.settlements = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-settlements',
@@ -293,7 +293,7 @@ v1.publisher.statements = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-statements',
@@ -332,7 +332,7 @@ v1.publishers.statements = {
       const authority = authorityProvider(request)
       const hash = request.params.hash
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-statements',
@@ -372,7 +372,7 @@ v3.publishers.statements = {
       const authority = authorityProvider(request)
       const settlementId = request.params.settlementId
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-statements',
@@ -413,7 +413,7 @@ v2.publishers.statements = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-statements',
@@ -458,7 +458,7 @@ v1.publishers.status = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-status',
@@ -498,7 +498,7 @@ v2.publishers.status = {
     return async (request, reply) => {
       const authority = 'automation'
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-status',
@@ -543,7 +543,7 @@ v1.surveyors.contributions = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-surveyors-contributions',
@@ -589,7 +589,7 @@ v1.grants.outstanding = {
     return async (request, reply) => {
       const authority = authorityProvider(request)
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-grants-outstanding',
