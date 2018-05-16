@@ -120,7 +120,7 @@ test('eyeshade POST /v2/owners with site channels', async t => {
 })
 
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(6)
+  t.plan(9)
 
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a'
   const dataPublisherWithSite = {
@@ -148,6 +148,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   const dataOwnerWalletParams = {
     'provider': 'uphold',
     'parameters': {
+      'access_token': process.env.UPHOLD_ACCESS_TOKEN
     }
   }
   await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(OWNER)}/wallet`)
@@ -157,4 +158,13 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   owner = await t.context.owners.findOne(dbSelector)
   t.is(_.isObject(owner['parameters']), true, 'wallet has uphold parameters')
   t.is(owner['authorized'], true, 'owner is authorized')
+
+  const { body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(OWNER)}/wallet`)
+    .send().expect(200)
+  const { wallet } = body
+
+  t.is(wallet['authorized'], true, 'sanity')
+  t.is(Array.isArray(wallet['availableCurrencies']), true, 'get wallet returns currencies we have a card for')
+  // since we're reusing the test ledger wallet, this should always be true
+  t.is(wallet['availableCurrencies'].indexOf('BAT') !== -1, true, 'wallet has a BAT card')
 })
