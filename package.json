@@ -31,13 +31,9 @@
     "db-reset": "npm run mongo-reset && npm run redis-flush",
     "lint": "standard",
     "lint-fix": "npm run lint -- --fix",
-    "test-api": "echo 'no api tests'",
     "test-integration": "ava test/*.integration.test.js",
-    "test-ledger-integration": "ava test/ledger.integration.test.js",
-    "test-eyeshade": "ava test/eyeshade/*.test.js",
     "test-security": "npm audit",
-    "test-transition": "echo 'no transition tests'",
-    "test-unit": "ava test/*.unit.test.js",
+    "test-unit": "ava -v",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_docker_services",
     "docker-up-detached": "docker-compose up -d $npm_package_config_docker_services"
@@ -132,7 +128,7 @@
     "ava": "^0.22.0",
     "babel-eslint": "^8.2.3",
     "standard": "^10.0.3",
-    "supertest": "^3.0.0",
+    "supertest": "github:brave-intl/supertest",
     "throng": "4.0.0"
   },
   "standard": {
@@ -141,5 +137,11 @@
       "bat-utils/config/config.*"
     ],
     "parser": "babel-eslint"
+  },
+  "ava": {
+    "files": [
+      "**/*.test.js",
+      "!test/**/*.test.js"
+    ]
   }
 }

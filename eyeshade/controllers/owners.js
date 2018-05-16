@@ -736,7 +736,7 @@ v1.getStatement = {
     return async (request, reply) => {
       const owner = request.params.owner
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       let entry

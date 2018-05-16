@@ -145,7 +145,10 @@ const ErrorInspect = (err) => {
 
 exports.error = { inspect: ErrorInspect }
 
-let wreckUA = process.npminfo.name + '/' + process.npminfo.version + ' wreck/' + process.npminfo.dependencies.wreck
+let wreckUA = ''
+if (process.npminfo) {
+  wreckUA += process.npminfo.name + '/' + process.npminfo.version + ' wreck/' + process.npminfo.dependencies.wreck
+}
 
 underscore.keys(process.versions).forEach((version) => { wreckUA += ' ' + version + '/' + process.versions[version] })
 

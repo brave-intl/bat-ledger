@@ -34,7 +34,7 @@ v1.bulk = {
       const payload = request.payload
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
       const tokens = runtime.database.get('tokens', debug)
@@ -616,7 +616,7 @@ v1.getStatements = {
   handler: (runtime) => {
     return async (request, reply) => {
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-statements',
@@ -656,7 +656,7 @@ v1.getStatement = {
     return async (request, reply) => {
       const publisher = request.params.publisher
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: request.connection.info.protocol })))
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
       let entry
