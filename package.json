@@ -31,7 +31,7 @@
     "db-reset": "npm run mongo-reset && npm run redis-flush",
     "lint": "standard",
     "lint-fix": "npm run lint -- --fix",
-    "test-integration": "ava -v test/*.integration.test.js",
+    "test-integration": "ava test/*.integration.test.js",
     "test-security": "npm audit",
     "test-unit": "ava -v",
     "docker-build": "docker-compose build",
@@ -128,7 +128,7 @@
     "ava": "^0.22.0",
     "babel-eslint": "^8.2.3",
     "standard": "^10.0.3",
-    "supertest": "^3.0.0",
+    "supertest": "github:brave-intl/supertest",
     "throng": "4.0.0"
   },
   "standard": {
@@ -139,9 +139,9 @@
     "parser": "babel-eslint"
   },
   "ava": {
-		"files": [
-			"**/*.test.js",
-			"!test/**/*.test.js"
-		]
+    "files": [
+      "**/*.test.js",
+      "!test/**/*.test.js"
+    ]
   }
 }

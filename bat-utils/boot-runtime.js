@@ -34,6 +34,8 @@ let Runtime = function (config) {
   })
 
   glob.sync(prefix + '*.js', { cwd: cwd }).forEach((file) => {
+    if (file.indexOf('.test.js') !== -1) return
+
     let key = path.basename(file.substring(prefix.length), '.js')
 
     if ((!config[key]) || (!process.batutil.enabled('runtime.' + key))) return
