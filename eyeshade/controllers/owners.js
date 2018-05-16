@@ -102,12 +102,9 @@ v2.bulk = {
         const props = getPublisherProps(channel.channelId)
 
         if (!props) return reply(boom.badData('invalid channel-identifier ' + channel.channelId))
-
-        // web channels don't have a publisherType, publishers is only responsible for verifying non-web
-        if (props.publisherType) nonWebChannels.push(channel)
       }
 
-      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, nonWebChannels)
+      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, channels)
     }
   },
   auth: {
@@ -318,6 +315,12 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
       info: info
     })
     await tokens.update({ publisher: channel.channelId, verificationId: channel.verificationId }, state, { upsert: true })
+
+    // Clear out other site channel tokens.
+    const isSiteChannel = !!channel.publisherType
+    if (isSiteChannel) {
+      await tokens.remove({ publisher: channel.channelId, verified: false }, { justOne: false })
+    }
 
     await runtime.queue.send(debug, 'publisher-report',
                              underscore.extend({ owner: owner, publisher: channel.channelId },
