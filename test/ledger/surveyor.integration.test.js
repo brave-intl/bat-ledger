@@ -1,5 +1,5 @@
 import test from 'ava'
-import { ledgerAgent } from './utils'
+import { ledgerAgent } from '../utils'
 
 function ok (res) {
   if (!res) return new Error('no response')

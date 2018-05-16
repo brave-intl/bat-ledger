@@ -8,6 +8,7 @@ import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
 import _ from 'underscore'
+
 import {
   assertWithinBounds,
   eyeshadeAgent,
@@ -18,6 +19,7 @@ import {
   timeout,
   uint8tohex
 } from './utils'
+
 import dotenv from 'dotenv'
 dotenv.config()
 
