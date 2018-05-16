@@ -58,6 +58,7 @@
   },
   "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
+    "@octokit/rest": "^15.5.1",
     "@uphold/uphold-sdk-javascript": "^2.0.4",
     "accept-language-parser": "1.4.1",
     "babel-cli": "^6.26.0",
@@ -68,7 +69,6 @@
     "bell": "8.7.0",
     "bignumber.js": "^4.0.4",
     "bitcoinjs-lib": "^3.2.0",
-    "blipp": "2.3.0",
     "bluebird": "3.5.0",
     "boom": "5.2.0",
     "bs58check": "^2.0.2",
@@ -83,7 +83,6 @@
     "ethereum-address": "0.0.4",
     "exposition": "^1.2.0",
     "faye-websocket": "0.11.1",
-    "github": "11.0.0",
     "glob": "^7.1.2",
     "gridfs-stream": "1.1.1",
     "hapi": "^16.6.3",
@@ -103,7 +102,7 @@
     "monk": "6.0.5",
     "monotonic-timestamp": "0.0.9",
     "netmask": "1.0.6",
-    "newrelic": "2.4.1",
+    "newrelic": "^4.1.1",
     "node-anonize2-relic": "0.1.6",
     "node-binance-api": "0.2.5",
     "node-cache": "4.1.1",
@@ -132,9 +131,7 @@
   "devDependencies": {
     "ava": "^0.22.0",
     "babel-eslint": "^8.2.3",
-    "bitgo": "^4.24.0",
-    "npm-check-updates": "^2.14.2",
-    "nsp": "^3.1.0",
+    "nsp": "^3.2.1",
     "standard": "^10.0.3",
     "supertest": "^3.0.0",
     "throng": "4.0.0"

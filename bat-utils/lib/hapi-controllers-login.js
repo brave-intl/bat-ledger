@@ -1,7 +1,7 @@
 const os = require('os')
 
 const boom = require('boom')
-const GitHub = require('github')
+const GitHub = require('@octokit/rest')
 const Joi = require('joi')
 const underscore = require('underscore')
 

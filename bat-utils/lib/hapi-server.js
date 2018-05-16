@@ -6,7 +6,6 @@ const authBearerToken = require('hapi-auth-bearer-token')
 const authCookie = require('hapi-auth-cookie')
 const cryptiles = require('cryptiles')
 const bell = require('bell')
-const blipp = require('blipp')
 const boom = require('boom')
 const epimetheus = require('epimetheus')
 const hapi = require('hapi')
@@ -62,7 +61,6 @@ const Server = async (options, runtime) => {
 
   server.register(
     [ bell,
-      blipp,
       asyncHandler,
       authBearerToken,
       authCookie,
