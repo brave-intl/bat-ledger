@@ -35,7 +35,7 @@
     "test-integration": "ava test/*.integration.test.js",
     "test-ledger-integration": "ava test/ledger.integration.test.js",
     "test-eyeshade": "ava test/eyeshade/*.test.js",
-    "test-security": "nsp check",
+    "test-security": "npm audit",
     "test-transition": "echo 'no transition tests'",
     "test-unit": "ava test/*.unit.test.js",
     "docker-build": "docker-compose build",
@@ -126,12 +126,11 @@
   },
   "engines": {
     "node": "8.9.2",
-    "npm": "5.8.0"
+    "npm": "5.10.0"
   },
   "devDependencies": {
     "ava": "^0.22.0",
     "babel-eslint": "^8.2.3",
-    "nsp": "^3.2.1",
     "standard": "^10.0.3",
     "supertest": "^3.0.0",
     "throng": "4.0.0"
