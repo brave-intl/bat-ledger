@@ -59,7 +59,7 @@
   "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
     "@octokit/rest": "^15.5.1",
-    "@uphold/uphold-sdk-javascript": "github:brave-intl/uphold-sdk-javascript",
+    "@uphold/uphold-sdk-javascript": "^2.2.1",
     "accept-language-parser": "1.4.1",
     "babel-cli": "^6.26.0",
     "babel-preset-stage-2": "^6.24.1",
