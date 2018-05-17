@@ -6,9 +6,6 @@ import uuid from 'uuid'
 import dotenv from 'dotenv'
 import querystring from 'querystring'
 import {
-  publisher,
-  // only using eyeshade here
-  eyeshade as domain,
   fetchReport,
   eyeshadeAgent,
   ok,
@@ -81,8 +78,7 @@ test('blacklist > report-publishers-contributions generation', async t => {
   const contributionsReportResponse = await eyeshadeAgent.get(contributionUrl).expect(ok)
   const getBody = contributionsReportResponse.body
   const {
-    reportURL,
-    reportId
+    reportURL
   } = getBody
   t.true(_.isString(reportURL))
   const report = await fetchReport({ url: reportURL })
