@@ -85,11 +85,12 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
     t.true((v2 - v1) <= tol, msg)
   }
 }
-
-const cleanMongoDb = async (db, collections) => {
-  await collections.forEach(async (collection) => {
-    await db.collection(collection).remove()
-  })
+const returnSelf = (collection) => collection
+const removeCollection = (collection) => collection.remove()
+const forEachCollection = async (db, collections, munge = returnSelf) => {
+  return Promise.all(collections.map((name) => {
+    return munge(db.collection(name), name)
+  }))
 }
 
 const connectEyeshadeDb = async (t) => {
@@ -98,10 +99,12 @@ const connectEyeshadeDb = async (t) => {
 }
 
 const cleanEyeshadeDb = async (t) => {
-  await cleanMongoDb(t.context.db, ['owners', 'publishers', 'tokens'])
-  t.context.owners = await t.context.db.collection('owners')
-  t.context.publishers = await t.context.db.collection('publishers')
-  t.context.tokens = await t.context.db.collection('tokens')
+  const collections = ['owners', 'publishers', 'tokens']
+  const db = t.context.db
+  await forEachCollection(db, collections, removeCollection)
+  await forEachCollection(db, collections, (collection, name) => {
+    t.context[name] = collection
+  })
 }
 
 module.exports = {
