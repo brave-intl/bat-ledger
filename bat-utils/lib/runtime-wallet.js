@@ -214,7 +214,7 @@ Wallet.prototype.createUpholdSDK = function (token) {
     clientSecret: this.config.uphold.clientSecret
   }
   const uphold = new UpholdSDK.default(options) // eslint-disable-line new-cap
-  uphold.storage.setItem('uphold.access_token', token)
+  uphold.storage.setItem(uphold.options.accessTokenKey, token)
   return uphold
 }
 
@@ -229,7 +229,7 @@ Wallet.providers.uphold = {
     const accessToken = info.parameters.access_token
     const uphold = this.createUpholdSDK(accessToken)
     return uphold.createCard(currency, label, Object.assign({
-      authorized: true
+      authenticate: true
     }, options))
   },
   create: async function (requestType, request) {
