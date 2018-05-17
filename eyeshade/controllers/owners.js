@@ -596,23 +596,39 @@ v1.getWallet = {
 v3.createCard = {
   handler: (runtime) => async (request, reply) => {
     const debug = braveHapi.debug(module, request)
-    const { payload, params } = request
-    const { database, wallet } = runtime
+    const {
+      payload,
+      params
+    } = request
+    const {
+      database,
+      wallet
+    } = runtime
+    const {
+      currency,
+      label
+    } = payload
+    const {
+      owner
+    } = params
+    const where = {
+      owner
+    }
+
     const owners = database.get('owners', debug)
-    const { currency, label } = payload
-    const { owner } = params
-    const where = { owner }
-    debug('create card begin', { currency, owner })
-    const ownerData = await owners.findOne(where)
-    const { provider, parameters } = ownerData
-    if (!provider || !parameters || !parameters.access_token) {
+
+    debug('create card begin', {
+      currency,
+      label,
+      owner
+    })
+    const info = await owners.findOne(where)
+    if (!ownerVerified(info)) {
       return reply(boom.badData('owner not verified'))
     }
-    const accessToken = parameters.access_token
-    await wallet.createCard({
-      label,
+    await wallet.createCard(info, {
       currency,
-      accessToken
+      label
     })
     debug('card data create successful')
     reply({})
@@ -632,6 +648,14 @@ v3.createCard = {
   response: {
     schema: Joi.object().keys({})
   }
+}
+
+function ownerVerified (info) {
+  const {
+    provider,
+    parameters
+  } = info
+  return provider && parameters && parameters.access_token
 }
 
 /*
