@@ -372,7 +372,8 @@ Wallet.providers.uphold = {
       provider: info.provider,
       authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
       defaultCurrency: info.defaultCurrency || currency,
-      availableCurrencies: currencies
+      availableCurrencies: currencies,
+      possibleCurrencies: user.currencies
     }
     if (result.authorized) {
       card = underscore.findWhere(cards, { currency: result.defaultCurrency })

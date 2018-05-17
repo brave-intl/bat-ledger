@@ -461,6 +461,11 @@ test('eyeshade: create brave youtube channel and owner', async t => {
   }).expect(ok)
 
   t.true(_.isObject(body))
+
+  // set authorized / uphold parameters
+  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
+    .send({ 'provider': 'uphold', 'parameters': {} })
+    .expect(ok)
 })
 
 test('ensure contribution balances are computed correctly', async t => {
