@@ -120,7 +120,7 @@ test('eyeshade POST /v2/owners with site channels', async t => {
 })
 
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(9)
+  t.plan(13)
 
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a'
   const dataPublisherWithSite = {
@@ -164,7 +164,14 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   const { wallet } = body
 
   t.is(wallet['authorized'], true, 'sanity')
+
   t.is(Array.isArray(wallet['availableCurrencies']), true, 'get wallet returns currencies we have a card for')
   // since we're reusing the test ledger wallet, this should always be true
   t.is(wallet['availableCurrencies'].indexOf('BAT') !== -1, true, 'wallet has a BAT card')
+  // hopefully no one creates a JPY card on the test ledger wallet :)
+  t.is(wallet['availableCurrencies'].indexOf('JPY'), -1, 'wallet does not have a JPY card')
+
+  t.is(Array.isArray(wallet['possibleCurrencies']), true, 'get wallet returns currencies we could create a card for')
+  t.is(wallet['possibleCurrencies'].indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
+  t.is(wallet['possibleCurrencies'].indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
 })
