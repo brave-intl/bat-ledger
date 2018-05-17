@@ -96,7 +96,8 @@ v1.publishers.referrals = {
       authorized: Joi.boolean().optional().default(true).description('filter on authorization status'),
       verified: Joi.boolean().optional().default(true).description('filter on verification status'),
       amount: Joi.number().integer().min(0).optional().description('the minimum amount in fiat currency'),
-      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
+      blacklisted: Joi.boolean().optional().default(false).description('trip the blacklist check in the worker')
     }
   },
 
@@ -109,7 +110,6 @@ v1.publishers.referrals = {
 
 /*
    GET /v1/reports/publisher/{publisher}/contributions
-   GET /v1/reports/publishers/contributions
  */
 
 v1.publisher.contributions = {
@@ -123,7 +123,7 @@ v1.publisher.contributions = {
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    request.params, request.query))
-      reply({ reportURL: reportURL })
+      reply({ reportURL, reportId })
     }
   },
 
@@ -152,6 +152,9 @@ v1.publisher.contributions = {
   }
 }
 
+/*
+  GET /v1/reports/publishers/contributions
+*/
 v1.publishers.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
@@ -181,6 +184,7 @@ v1.publishers.contributions = {
 
   validate: {
     query: {
+      blacklisted: Joi.boolean().optional().default(false).description('trip the blacklist check in the worker'),
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       balance: Joi.boolean().optional().default(true).description('show balance due'),
@@ -649,7 +653,7 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('report-grants-outstanding')
 }
 
-const authorityProvider = (request) => {
+function authorityProvider (request) {
   const { auth } = request
   const { credentials } = auth
   const { provider, profile } = credentials

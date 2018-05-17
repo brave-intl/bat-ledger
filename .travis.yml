@@ -39,7 +39,7 @@ cache:
   directories:
     - $HOME/.npm
 before_install:
-  - npm i --global npm@5.10.0
+  - npm install -g npm@5.10
   - npm --version
 sudo: required
 before_script:
