@@ -87,9 +87,9 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
 }
 
 const cleanMongoDb = async (db, collections) => {
-  await collections.forEach(async (collection) => {
-    await db.collection(collection).remove()
-  })
+  await Promise.all(collections.map((collection) => {
+    return db.collection(collection).remove()
+  }))
 }
 
 const connectEyeshadeDb = async (t) => {
