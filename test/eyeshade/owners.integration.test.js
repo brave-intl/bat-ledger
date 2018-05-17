@@ -6,7 +6,10 @@ import _ from 'underscore'
 import {
   eyeshadeAgent,
   connectEyeshadeDb,
-  cleanEyeshadeDb
+  cleanEyeshadeDb,
+  braveYoutubeOwner,
+  braveYoutubePublisher,
+  ok
 } from '../utils'
 
 import dotenv from 'dotenv'
@@ -186,7 +189,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
-  t.plan(1)
+  t.plan(0)
   const encodedOwner = encodeURIComponent(braveYoutubeOwner)
 
   const { body } = await eyeshadeAgent.post('/v2/owners').send({
@@ -200,13 +203,6 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
       'channelId': braveYoutubePublisher
     }]
   }).expect(ok)
-
-  t.true(_.isObject(body))
-
-  // set authorized / uphold parameters
-  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
-    .send({ 'provider': 'uphold', 'parameters': {} })
-    .expect(ok)
 
   const walletUrl = `/v1/owners/${encodedOwner}/wallet`
   const parameters = {

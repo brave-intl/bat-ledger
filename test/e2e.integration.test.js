@@ -17,14 +17,13 @@ import {
   ledgerAgent,
   ok,
   timeout,
-  uint8tohex
+  uint8tohex,
+  braveYoutubeOwner,
+  braveYoutubePublisher
 } from './utils'
 
 import dotenv from 'dotenv'
 dotenv.config()
-
-const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
-const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
 const voteExchangeRate = 1 // 1 BAT per vote
 const suggestedVotes = 12
@@ -468,29 +467,6 @@ test('eyeshade: create brave youtube channel and owner', async t => {
     .expect(ok)
 })
 
-test('put to the wallet to finish tying to uphold', async t => {
-  t.plan(0)
-  const encodedOwner = encodeURIComponent(braveYoutubeOwner)
-  const url = `/v1/owners/${encodedOwner}/wallet`
-  const parameters = {
-    access_token: process.env.UPHOLD_ACCESS_TOKEN,
-    show_verification_status: false,
-    defaultCurrency: 'USD'
-  }
-  const data = {
-    provider: 'uphold',
-    parameters
-  }
-  await eyeshadeAgent.put(url).send(data).expect(ok)
-})
-test('create a bat card', async t => {
-  t.plan(0)
-  const currency = 'BAT'
-  const data = { currency }
-  const encodedOwner = encodeURIComponent(braveYoutubeOwner)
-  const url = `/v3/owners/${encodedOwner}/wallet/card`
-  await eyeshadeAgent.post(url).send(data).expect(ok)
-})
 test('ensure contribution balances are computed correctly', async t => {
   t.plan(4)
 

@@ -228,7 +228,9 @@ Wallet.providers.uphold = {
   }) {
     const accessToken = info.parameters.access_token
     const uphold = this.createUpholdSDK(accessToken)
-    return uphold.createCard(currency, label, options)
+    return uphold.createCard(currency, label, Object.assign({
+      authorized: true
+    }, options))
   },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
