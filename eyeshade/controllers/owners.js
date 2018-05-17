@@ -276,7 +276,8 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
       visible: visible,
       altcurrency: altcurrency,
       info: info
-    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
+    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ])),
+    $setOnInsert: { authorized: false }
   }
   await owners.update({ owner: owner }, state, { upsert: true })
 

@@ -120,7 +120,7 @@ test('eyeshade POST /v2/owners with site channels', async t => {
 })
 
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(13)
+  t.plan(15)
 
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a'
   const dataPublisherWithSite = {
@@ -143,7 +143,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(await t.context.owners.count(dbSelector), 1, 'can add owner')
   let owner = await t.context.owners.findOne(dbSelector)
   t.is(owner['parameters'], undefined, 'sanity')
-  t.is(owner['authorized'], undefined, 'sanity')
+  t.is(owner['authorized'], false, 'sanity')
 
   const dataOwnerWalletParams = {
     'provider': 'uphold',
@@ -158,6 +158,15 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   owner = await t.context.owners.findOne(dbSelector)
   t.is(_.isObject(owner['parameters']), true, 'wallet has uphold parameters')
   t.is(owner['authorized'], true, 'owner is authorized')
+
+  // resend channel info
+  await eyeshadeAgent.post('/v2/owners')
+    .send(dataPublisherWithSite)
+    .expect(200)
+
+  owner = await t.context.owners.findOne(dbSelector)
+  t.is(_.isObject(owner['parameters']), true, 'wallet still has uphold parameters')
+  t.is(owner['authorized'], true, 'owner is still authorized')
 
   const { body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(OWNER)}/wallet`)
     .send().expect(200)
