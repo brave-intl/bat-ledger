@@ -614,12 +614,13 @@ v3.createCard = {
       currency,
       access_token
     })
-    debug('card data', cardCreated)
-    reply(cardCreated)
+    debug('card data create successful')
+    reply({})
   },
   description: 'Create a card for uphold',
   tags: [ 'api' ],
   validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
     params: {
       owner: Joi.string().required().description('owner identifier')
     },
@@ -627,6 +628,9 @@ v3.createCard = {
       label: Joi.string().optional().description('description of the card'),
       currency: Joi.string().default('BAT').optional().description('currency of the card to create')
     }
+  },
+  response: {
+    schema: Joi.object().keys({})
   }
 }
 

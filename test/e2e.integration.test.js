@@ -479,15 +479,12 @@ test('put to the wallet to finish tying to uphold', async t => {
   await eyeshadeAgent.put(url).send(data).expect(ok)
 })
 test('create a bat card', async t => {
-  t.plan(1)
+  t.plan(0)
   const currency = 'BAT'
   const data = { currency }
   const encodedOwner = encodeURIComponent(braveYoutubeOwner)
   const url = `/v3/owners/${encodedOwner}/wallet/card`
-  const result = await eyeshadeAgent.post(url).send(data).expect(ok)
-  const cardBody = result.body
-  console.log(cardBody)
-  t.true(_.isObject(cardBody))
+  await eyeshadeAgent.post(url).send(data).expect(ok)
 })
 test('ensure contribution balances are computed correctly', async t => {
   t.plan(4)
