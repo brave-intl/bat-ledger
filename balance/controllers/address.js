@@ -4,7 +4,6 @@ const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const boom = require('boom')
 const underscore = require('underscore')
 const SDebug = require('sdebug')
-const wreck = require('wreck')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi

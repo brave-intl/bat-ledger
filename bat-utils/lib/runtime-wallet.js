@@ -220,10 +220,10 @@ Wallet.providers.uphold = {
     currency,
     label,
     options,
-    access_token
+    accessToken
   }) {
     const headers = {
-      Authentication: `Bearer: ${access_token}`
+      Authentication: `Bearer: ${accessToken}`
     }
     return this.uphold.createCard(currency, label, Object.assign({
       authenticate: true,

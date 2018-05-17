@@ -608,11 +608,11 @@ v3.createCard = {
     if (!provider || !parameters || !parameters.access_token) {
       return reply(boom.badData('owner not verified'))
     }
-    const access_token = parameters.access_token
-    const cardCreated = await wallet.createCard({
+    const accessToken = parameters.access_token
+    await wallet.createCard({
       label,
       currency,
-      access_token
+      accessToken
     })
     debug('card data create successful')
     reply({})
