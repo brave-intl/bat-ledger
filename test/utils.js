@@ -103,7 +103,7 @@ const cleanEyeshadeDb = async (t) => {
   const db = t.context.db
   await forEachCollection(db, collections, removeCollection)
   await forEachCollection(db, collections, (collection, name) => {
-    t.context[name] = db.collection(name)
+    t.context[name] = collection
   })
 }
 
