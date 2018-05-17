@@ -184,3 +184,44 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(wallet['possibleCurrencies'].indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
   t.is(wallet['possibleCurrencies'].indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
 })
+
+test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
+  t.plan(1)
+  const encodedOwner = encodeURIComponent(braveYoutubeOwner)
+
+  const { body } = await eyeshadeAgent.post('/v2/owners').send({
+    'ownerId': braveYoutubeOwner,
+    'contactInfo': {
+      'name': 'Brave',
+      'phone': '+12345678900',
+      'email': 'null@brave.com'
+    },
+    'channels': [{
+      'channelId': braveYoutubePublisher
+    }]
+  }).expect(ok)
+
+  t.true(_.isObject(body))
+
+  // set authorized / uphold parameters
+  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
+    .send({ 'provider': 'uphold', 'parameters': {} })
+    .expect(ok)
+
+  const walletUrl = `/v1/owners/${encodedOwner}/wallet`
+  const parameters = {
+    access_token: process.env.UPHOLD_ACCESS_TOKEN,
+    show_verification_status: false,
+    defaultCurrency: 'USD'
+  }
+  const data = {
+    provider: 'uphold',
+    parameters
+  }
+  await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
+
+  const currency = 'BAT'
+  const createCardData = { currency }
+  const cardUrl = `/v3/owners/${encodedOwner}/wallet/card`
+  await eyeshadeAgent.post(cardUrl).send(createCardData).expect(ok)
+})
