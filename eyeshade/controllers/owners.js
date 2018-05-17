@@ -274,10 +274,10 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
     $currentDate: { timestamp: { $type: 'timestamp' } },
     $set: underscore.extend({
       visible: visible,
-      authorized: true,
       altcurrency: altcurrency,
       info: info
-    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
+    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ])),
+    $setOnInsert: { authorized: false }
   }
   await owners.update({ owner: owner }, state, { upsert: true })
 
@@ -296,7 +296,6 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
 
     state.$set = underscore.extend(underscore.omit(channel, [ 'channelId' ]), {
       verified: true,
-      authorized: true,
       authority: owner,
       owner: owner,
       altcurrency: altcurrency,
@@ -519,7 +518,7 @@ v1.getWallet = {
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
-          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
+          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies', 'possibleCurrencies' ])
           rates = result.rates
 
           underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
@@ -576,7 +575,8 @@ v1.getWallet = {
         provider: Joi.string().required().description('wallet provider'),
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
         defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
-        availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('available currencies')
+        availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('currencies the publisher has cards for'),
+        possibleCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('currencies the publisher could have cards for')
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
