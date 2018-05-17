@@ -241,8 +241,9 @@ const write = function (runtime, apiVersion) {
       return reply(boom.badData(ex.toString()))
     }
 
-    surveyor = await surveyors.findOne({ surveyorId: surveyorId })
+    surveyor = await surveyors.findOne({ surveyorId: surveyorId, surveyorType: 'contribution' })
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
+    if (!surveyor.active) return reply(boom.badData('cannot perform a contribution with an inactive surveyor'))
 
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support

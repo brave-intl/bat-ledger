@@ -30,8 +30,10 @@ const voteExchangeRate = 1 // 1 BAT per vote
 const suggestedVotes = 12
 const numBatchVotes = 2
 
+let prevSurveyorId
+
 test('ledger: create a surveyor', async t => {
-  t.plan(0)
+  t.plan(3)
   const url = '/v2/surveyor/contribution'
   const data = { 'adFree': {
     'fee': { 'USD': 5 },
@@ -41,6 +43,23 @@ test('ledger: create a surveyor', async t => {
   }}
 
   await ledgerAgent.post(url).send(data).expect(ok)
+
+  let response = await ledgerAgent
+    .get('/v2/surveyor/contribution/current')
+    .expect(ok)
+
+  t.true(response.body.hasOwnProperty('surveyorId'))
+  prevSurveyorId = response.body.surveyorId
+
+  // create new surveyor and verify the id changed
+  await ledgerAgent.post(url).send(data).expect(ok)
+
+  response = await ledgerAgent
+    .get('/v2/surveyor/contribution/current')
+    .expect(ok)
+
+  t.true(response.body.hasOwnProperty('surveyorId'))
+  t.true(prevSurveyorId !== response.body.surveyorId)
 })
 
 test('ledger: create a promotion', async t => {
@@ -193,9 +212,15 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
       headers: headers,
       octets: octets
     },
-    surveyorId: surveyorId,
+    surveyorId: prevSurveyorId,
     viewingId: viewingId
   }
+
+  // first post to an old contribution surveyor, this should fail
+  response = await ledgerAgent.put('/v2/wallet/' + paymentId).send(payload)
+  t.true(response.status === 422)
+
+  payload.surveyorId = surveyorId
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
