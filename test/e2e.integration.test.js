@@ -218,7 +218,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   // first post to an old contribution surveyor, this should fail
   response = await ledgerAgent.put('/v2/wallet/' + paymentId).send(payload)
-  t.true(response.status === 422)
+  t.true(response.status === 410)
 
   payload.surveyorId = surveyorId
 
