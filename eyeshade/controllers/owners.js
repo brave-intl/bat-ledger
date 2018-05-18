@@ -14,6 +14,7 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 let altcurrency
 
