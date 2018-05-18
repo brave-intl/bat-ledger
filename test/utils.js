@@ -2,6 +2,10 @@ const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
+const uuid = require('uuid')
+
+const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
+const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
 const tkn = process.env.TOKEN_LIST.split(',')[0]
 const token = `Bearer ${tkn}`
@@ -117,5 +121,7 @@ module.exports = {
   ledgerAgent,
   assertWithinBounds,
   connectEyeshadeDb,
-  cleanEyeshadeDb
+  cleanEyeshadeDb,
+  braveYoutubeOwner,
+  braveYoutubePublisher
 }

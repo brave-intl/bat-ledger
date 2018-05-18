@@ -6,7 +6,10 @@ import _ from 'underscore'
 import {
   eyeshadeAgent,
   connectEyeshadeDb,
-  cleanEyeshadeDb
+  cleanEyeshadeDb,
+  braveYoutubeOwner,
+  braveYoutubePublisher,
+  ok
 } from '../utils'
 
 import dotenv from 'dotenv'
@@ -183,4 +186,38 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(Array.isArray(wallet['possibleCurrencies']), true, 'get wallet returns currencies we could create a card for')
   t.is(wallet['possibleCurrencies'].indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
   t.is(wallet['possibleCurrencies'].indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
+})
+
+test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
+  t.plan(0)
+  const encodedOwner = encodeURIComponent(braveYoutubeOwner)
+
+  await eyeshadeAgent.post('/v2/owners').send({
+    'ownerId': braveYoutubeOwner,
+    'contactInfo': {
+      'name': 'Brave',
+      'phone': '+12345678900',
+      'email': 'null@brave.com'
+    },
+    'channels': [{
+      'channelId': braveYoutubePublisher
+    }]
+  }).expect(ok)
+
+  const walletUrl = `/v1/owners/${encodedOwner}/wallet`
+  const parameters = {
+    access_token: process.env.UPHOLD_ACCESS_TOKEN,
+    show_verification_status: false,
+    defaultCurrency: 'USD'
+  }
+  const data = {
+    provider: 'uphold',
+    parameters
+  }
+  await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
+
+  const currency = 'BAT'
+  const createCardData = { currency }
+  const cardUrl = `/v3/owners/${encodedOwner}/wallet/card`
+  await eyeshadeAgent.post(cardUrl).send(createCardData).expect(ok)
 })

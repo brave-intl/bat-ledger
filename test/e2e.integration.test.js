@@ -17,14 +17,13 @@ import {
   ledgerAgent,
   ok,
   timeout,
-  uint8tohex
+  uint8tohex,
+  braveYoutubeOwner,
+  braveYoutubePublisher
 } from './utils'
 
 import dotenv from 'dotenv'
 dotenv.config()
-
-const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
-const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
 const voteExchangeRate = 1 // 1 BAT per vote
 const suggestedVotes = 12

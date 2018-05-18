@@ -587,6 +587,78 @@ v1.getWallet = {
 }
 
 /*
+  POST /v3/owners/{owner}/wallet/card
+  {
+    currency    : 'BAT'
+  , description : '' // description of the card
+  }
+ */
+v3.createCard = {
+  handler: (runtime) => async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const {
+      payload,
+      params
+    } = request
+    const {
+      database,
+      wallet
+    } = runtime
+    const {
+      currency,
+      label
+    } = payload
+    const {
+      owner
+    } = params
+    const where = {
+      owner
+    }
+
+    const owners = database.get('owners', debug)
+
+    debug('create card begin', {
+      currency,
+      label,
+      owner
+    })
+    const info = await owners.findOne(where)
+    if (!ownerVerified(info)) {
+      return reply(boom.badData('owner not verified'))
+    }
+    await wallet.createCard(info, {
+      currency,
+      label
+    })
+    debug('card data create successful')
+    reply({})
+  },
+  description: 'Create a card for uphold',
+  tags: [ 'api' ],
+  validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    params: {
+      owner: Joi.string().required().description('owner identifier')
+    },
+    payload: {
+      label: Joi.string().optional().description('description of the card'),
+      currency: Joi.string().default('BAT').optional().description('currency of the card to create')
+    }
+  },
+  response: {
+    schema: Joi.object().keys({})
+  }
+}
+
+function ownerVerified (info) {
+  const {
+    provider,
+    parameters
+  } = info
+  return provider && parameters && parameters.access_token
+}
+
+/*
    PUT /v1/owners/{owner}/wallet
        [ used by publishers ]
  */
@@ -850,6 +922,7 @@ module.exports.routes = [
 /*
   braveHapi.routes.async().post().path('/v3/owners').whitelist().config(v3.bulk),
  */
+  braveHapi.routes.async().post().path('/v3/owners/{owner}/wallet/card').config(v3.createCard),
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
   braveHapi.routes.async().patch().path('/v1/owners/{owner}/wallet').whitelist().config(v1.patchWallet),

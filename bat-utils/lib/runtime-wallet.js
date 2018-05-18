@@ -29,18 +29,21 @@ const Wallet = function (config, runtime) {
   this.runtime = runtime
   if (config.wallet.uphold) {
     if ((process.env.FIXIE_URL) && (!process.env.HTTPS_PROXY)) process.env.HTTPS_PROXY = process.env.FIXIE_URL
-
-    this.uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
-      baseUrl: upholdBaseUrls[this.config.uphold.environment],
-      clientId: this.config.uphold.clientId,
-      clientSecret: this.config.uphold.clientSecret
-    })
-    this.uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
+    this.uphold = this.createUpholdSDK(this.config.uphold.accessToken)
   }
 
   if (config.currency) {
     this.currency = new Currency(config, runtime)
   }
+}
+
+Wallet.prototype.createCard = async function () {
+  let f = Wallet.providers.mock.createCard
+  if (this.config.uphold) {
+    f = Wallet.providers.uphold.createCard
+  }
+  if (!f) return {}
+  return f.apply(this, arguments)
 }
 
 Wallet.prototype.create = async function (requestType, request) {
@@ -204,9 +207,31 @@ Wallet.prototype.purchaseBAT = async function (info, amount, currency, language)
   return {}
 }
 
+Wallet.prototype.createUpholdSDK = function (token) {
+  const options = {
+    baseUrl: upholdBaseUrls[this.config.uphold.environment],
+    clientId: this.config.uphold.clientId,
+    clientSecret: this.config.uphold.clientSecret
+  }
+  const uphold = new UpholdSDK.default(options) // eslint-disable-line new-cap
+  uphold.storage.setItem(uphold.options.accessTokenKey, token)
+  return uphold
+}
+
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
+  createCard: async function (info, {
+    currency,
+    label,
+    options
+  }) {
+    const accessToken = info.parameters.access_token
+    const uphold = this.createUpholdSDK(accessToken)
+    return uphold.createCard(currency, label, Object.assign({
+      authenticate: true
+    }, options))
+  },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
@@ -343,13 +368,8 @@ Wallet.providers.uphold = {
     let card, cards, currency, currencies, result, uphold, user
 
     try {
-      uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
-        baseUrl: upholdBaseUrls[this.config.uphold.environment],
-        clientId: this.config.uphold.clientId,
-        clientSecret: this.config.uphold.clientSecret
-      })
-      uphold.storage.setItem('uphold.access_token', info.parameters.access_token)
-
+      uphold = this.createUpholdSDK(info.parameters.access_token)
+      debug('uphold api', uphold.api)
       user = await uphold.api('/me')
       if (user.status !== 'pending') cards = await uphold.api('/me/cards')
     } catch (ex) {
