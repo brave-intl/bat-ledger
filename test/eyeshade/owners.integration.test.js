@@ -192,7 +192,7 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
   t.plan(0)
   const encodedOwner = encodeURIComponent(braveYoutubeOwner)
 
-  const { body } = await eyeshadeAgent.post('/v2/owners').send({
+  await eyeshadeAgent.post('/v2/owners').send({
     'ownerId': braveYoutubeOwner,
     'contactInfo': {
       'name': 'Brave',
