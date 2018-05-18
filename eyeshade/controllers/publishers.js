@@ -610,14 +610,6 @@ module.exports.initialize = async (debug, runtime) => {
                 { timestamp: 1 } ]
     },
     {
-      category: runtime.database.get('restricted', debug),
-      name: 'restricted',
-      property: 'publisher',
-      empty: { publisher: '', tags: [], timestamp: bson.Timestamp.ZERO },
-      unique: [ { publisher: 1 } ],
-      others: [ { timestamp: 1 } ]
-    },
-    {
       category: runtime.database.get('settlements', debug),
       name: 'settlements',
       property: 'settlementId_1_publisher',
