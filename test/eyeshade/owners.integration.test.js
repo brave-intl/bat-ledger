@@ -123,9 +123,11 @@ test('eyeshade POST /v2/owners with site channels', async t => {
 })
 
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(15)
+  t.plan(16)
 
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a'
+  const SCOPE = 'cards:read user:read'
+
   const dataPublisherWithSite = {
     'ownerId': OWNER,
     'contactInfo': {
@@ -151,7 +153,8 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   const dataOwnerWalletParams = {
     'provider': 'uphold',
     'parameters': {
-      'access_token': process.env.UPHOLD_ACCESS_TOKEN
+      'access_token': process.env.UPHOLD_ACCESS_TOKEN,
+      'scope': SCOPE
     }
   }
   await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(OWNER)}/wallet`)
@@ -186,6 +189,8 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(Array.isArray(wallet['possibleCurrencies']), true, 'get wallet returns currencies we could create a card for')
   t.is(wallet['possibleCurrencies'].indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
   t.is(wallet['possibleCurrencies'].indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
+
+  t.is(wallet['scope'], SCOPE, 'get wallet returns authorization scope')
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
