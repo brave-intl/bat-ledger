@@ -10,6 +10,8 @@ import { sign } from 'http-request-signature'
 import _ from 'underscore'
 
 import {
+  cleanLedgerDb,
+  cleanEyeshadeDb,
   assertWithinBounds,
   eyeshadeAgent,
   fetchReport,
@@ -19,7 +21,8 @@ import {
   timeout,
   uint8tohex,
   braveYoutubeOwner,
-  braveYoutubePublisher
+  braveYoutubePublisher,
+  cleanRedisDb
 } from './utils'
 
 import dotenv from 'dotenv'
@@ -32,6 +35,7 @@ const numBatchVotes = 2
 let prevSurveyorId
 
 test('ledger: create a surveyor', async t => {
+  // need access to eyeshade db
   t.plan(3)
   const url = '/v2/surveyor/contribution'
   const data = { 'adFree': {
@@ -569,4 +573,32 @@ test('ensure referral balances are computed correctly', async t => {
   t.true(walletProbi > 0)
   t.is(walletProbi.toString(), reportProbi)
   assertWithinBounds(t, amount, 5.00, 0.25, 'USD value for a referral should be approx $5')
+})
+
+test.after(async () => {
+  await Promise.all([
+    cleanEyeshadeDb([
+      'grants',
+      'owners',
+      'restricted',
+      'publishers',
+      'tokens',
+      'referrals',
+      'surveyors',
+      'settlements'
+    ]),
+    cleanLedgerDb([
+      'owners',
+      'referrals',
+      'publishers',
+      'tokens',
+      'grants',
+      'surveyors',
+      'settlements',
+      'publishersV2',
+      'publishersX',
+      'restricted'
+    ]),
+    cleanRedisDb()
+  ])
 })

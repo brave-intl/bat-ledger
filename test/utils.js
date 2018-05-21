@@ -3,6 +3,7 @@ const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuid = require('uuid')
+const redis = require('redis')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -32,7 +33,8 @@ const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set('Authorization', token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set('Authorization', token)
 
-const ok = ({ status, body }) => {
+const ok = (res) => {
+  const { status, body } = res
   if (status !== 200) {
     return new Error(JSON.stringify(body, null, 2).replace(/\\n/g, '\n'))
   }
@@ -94,20 +96,37 @@ const removeCollection = (collection) => collection.remove()
 const forEachCollection = async (db, collections, munge = returnSelf) => {
   return Promise.all(collections.map((name) => {
     return munge(db.collection(name), name)
-  }))
+  })).then(() => db)
 }
 
-const connectEyeshadeDb = async (t) => {
-  const dbUri = `${process.env.BAT_MONGODB_URI}/eyeshade`
-  t.context.db = await mongodb.MongoClient.connect(dbUri)
+const connectToDb = async (key) => {
+  const dbUri = `${process.env.BAT_MONGODB_URI}/${key}`
+  return mongodb.MongoClient.connect(dbUri)
 }
 
-const cleanEyeshadeDb = async (t) => {
-  const collections = ['owners', 'publishers', 'tokens']
-  const db = t.context.db
-  await forEachCollection(db, collections, removeCollection)
-  await forEachCollection(db, collections, (collection, name) => {
-    t.context[name] = collection
+const resetTestContext = async (collections, fn) => {
+  const db = await cleanEyeshadeDb(collections)
+  await forEachCollection(db, collections, fn)
+}
+
+const cleanDb = async (key, collections) => {
+  return forEachCollection(await connectToDb(key), collections, removeCollection)
+}
+const cleanLedgerDb = async (collections) => cleanDb('admin', collections)
+const cleanEyeshadeDb = async (collections) => cleanDb('eyeshade', collections)
+
+const cleanRedisDb = async () => {
+  const host = 'grant-redis'
+  const client = redis.createClient({
+    host
+  })
+  await new Promise((resolve, reject) => {
+    client.on('ready', () => {
+      console.log('ready')
+      client.flushdb((err) => {
+        err ? reject(err) : resolve()
+      })
+    }).on('error', (err) => reject(err))
   })
 }
 
@@ -117,11 +136,15 @@ module.exports = {
   formURL,
   ok,
   timeout,
+  resetTestContext,
   eyeshadeAgent,
   ledgerAgent,
   assertWithinBounds,
-  connectEyeshadeDb,
+  connectToDb,
+  cleanDb,
+  cleanLedgerDb,
   cleanEyeshadeDb,
+  cleanRedisDb,
   braveYoutubeOwner,
   braveYoutubePublisher
 }
