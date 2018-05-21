@@ -123,6 +123,34 @@ Wallet.prototype.providers = function () {
   return underscore.keys(Wallet.providers)
 }
 
+Wallet.prototype.isGrantExpired = function (info, grant) {
+  const { token } = grant
+
+  const jws = braveUtils.extractJws(token)
+  const { expiryTime } = jws
+
+  return Date.now() > (expiryTime * 1000)
+}
+
+Wallet.prototype.expireGrant = async function (info, wallet, grant) {
+  const { runtime } = this
+  const { database } = runtime
+  const { paymentId } = wallet
+  const { token } = grant
+
+  const wallets = database.get('wallets', debug)
+
+  const $set = {
+    'grants.$.status': 'expired'
+  }
+  const state = { $set }
+  const where = {
+    paymentId,
+    'grant.$.token': token
+  }
+  await wallets.update(where, state)
+}
+
 Wallet.prototype.redeem = async function (info, txn, signature, request) {
   let balance, desired, grants, grantIds, payload, result
 
@@ -134,22 +162,27 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
   grants = info.grants.filter((grant) => grant.status === 'active')
   if (grants.length === 0) return
 
-  // TODO check claimTimestamp against validDuration - update to expired state & exclude from calc
-
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
   desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
   if (balance.greaterThanOrEqualTo(desired)) return
-
+  const infoKeys = [
+    'altcurrency', 'provider', 'providerId', 'paymentId'
+  ]
+  const wallet = underscore.extend(underscore.pick(info, infoKeys), { publicKey: info.httpSigningPubKey })
   payload = {
     grants: [],
     // TODO might need paymentId later
-    wallet: underscore.extend(underscore.pick(info, [ 'altcurrency', 'provider', 'providerId' ]), { publicKey: info.httpSigningPubKey }),
+    wallet,
     transaction: Buffer.from(JSON.stringify(underscore.pick(signature, [ 'headers', 'octets' ]))).toString('base64')
   }
   grantIds = []
   let grantTotal = new BigNumber(0)
   for (let grant of grants) {
+    if (this.isGrantExpired(info, grant)) {
+      await this.expireGrant(info, wallet, grant)
+      continue
+    }
     payload.grants.push(grant.token)
     grantIds.push(grant.grantId)
 

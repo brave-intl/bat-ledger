@@ -67,19 +67,20 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       if (wallet.grants) {
-        wallet.grants.forEach((grant) => {
-          if (grant.status === 'active') {
-            // TODO check claimTimestamp against validDuration - update to expired state & exclude from calc
-            const grantContent = braveUtils.extractJws(grant.token)
-            balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
-          }
-        })
+        let confirmed = balances.confirmed || '0'
+        let number = new BigNumber(confirmed)
+        let memo = Promise.resolve(number)
+        let ifGrantExpired = (grant) => runtime.wallet.isGrantExpired(info, grant)
+        let markAsExpired = (grant) => runtime.wallet.expireGrant(info, wallet, grant)
+        let reducer = sumActiveGrants(ifGrantExpired, markAsExpired)
+        balances.confirmed = await wallet.grants.reduce(reducer, memo)
       }
 
+      let altcurrencyScale = runtime.currency.alt2scale(wallet.altcurrency)
       underscore.extend(result, {
         probi: balances.confirmed.toString(),
-        balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
-        unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
+        balance: new BigNumber(balances.confirmed).dividedBy(altcurrencyScale).toFixed(4),
+        unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(altcurrencyScale).toFixed(4)
       })
     }
 
@@ -139,6 +140,26 @@ const read = function (runtime, apiVersion) {
 
     reply(result)
   }
+}
+const sumActiveGrants = (isExpired, updater) => async (memo, grant) => {
+  // WARNING memo is a promise because the fn is async
+  const {
+    token,
+    status
+  } = grant
+  if (status !== 'active') {
+    return memo
+  }
+  if (isExpired(grant)) {
+    await updater(grant)
+    return memo
+  }
+
+  const jws = braveUtils.extractJws(token)
+  const { probi } = jws
+  // resolves with a big number
+  const total = await memo
+  return total.plus(probi)
 }
 
 v1.read = { handler: (runtime) => { return read(runtime, 1) },
