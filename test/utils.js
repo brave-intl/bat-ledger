@@ -56,12 +56,13 @@ const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set('Authorization', token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set('Authorization', token)
 
-const ok = (res) => {
-  const { status, body } = res
-  if (status !== 200) {
+const status = (expectation) => ({ status, body }) => {
+  if (status !== expectation) {
     return new Error(JSON.stringify(body, null, 2).replace(/\\n/g, '\n'))
   }
 }
+
+const ok = (res) => status(200)(res)
 
 // write an abstraction for the do while loops
 const tryAfterMany = async (ms, theDoBlock, theCatchBlock) => {
@@ -151,6 +152,7 @@ module.exports = {
   fetchReport,
   formURL,
   ok,
+  status,
   timeout,
   eyeshadeAgent,
   ledgerAgent,

@@ -66,16 +66,9 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
-      if (wallet.grants) {
-        result.grants = []
-        wallet.grants.forEach((grant) => {
-          if (grant.status === 'active') {
-            // TODO check claimTimestamp against validDuration - update to expired state & exclude from calc
-            const grantContent = braveUtils.extractJws(grant.token)
-            balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
-            result.grants.push(underscore.pick(grantContent, ['altcurrency', 'expiryTime', 'probi']))
-          }
-        })
+      let { grants } = wallet
+      if (grants) {
+        balances.confirmed = await sumActiveGrants(runtime, null, wallet, grants)
       }
 
       underscore.extend(result, {
@@ -134,13 +127,29 @@ const read = function (runtime, apiVersion) {
 
       if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }
-
     if (apiVersion === 1) {
       result = underscore.omit(underscore.extend(result, { satoshis: Number(result.probi) }), ['altcurrency', 'probi', 'requestType'])
     }
 
     reply(result)
   }
+}
+
+async function sumActiveGrants (runtime, info, wallet, grants) {
+  let total = new BigNumber(0)
+  for (let grant of grants) {
+    let { token, status } = grant
+    if (status !== 'active') {
+      continue
+    }
+    if (await runtime.wallet.isGrantExpired(info, grant)) {
+      await runtime.wallet.expireGrant(info, wallet, grant)
+    } else {
+      let content = braveUtils.extractJws(token)
+      total = total.plus(content.probi)
+    }
+  }
+  return total
 }
 
 v1.read = { handler: (runtime) => { return read(runtime, 1) },

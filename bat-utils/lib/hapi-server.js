@@ -80,7 +80,6 @@ const Server = async (options, runtime) => {
             const ipaddr = whitelist.ipaddr(request)
             let authorization, parts, token, tokenlist
             let limit = 60
-
             if (ipaddr === '127.0.0.1') return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
 
             if ((graylist.authorizedAddrs) &&
