@@ -577,28 +577,8 @@ test('ensure referral balances are computed correctly', async t => {
 
 test.after(async () => {
   await Promise.all([
-    cleanEyeshadeDb([
-      'grants',
-      'owners',
-      'restricted',
-      'publishers',
-      'tokens',
-      'referrals',
-      'surveyors',
-      'settlements'
-    ]),
-    cleanLedgerDb([
-      'owners',
-      'referrals',
-      'publishers',
-      'tokens',
-      'grants',
-      'surveyors',
-      'settlements',
-      'publishersV2',
-      'publishersX',
-      'restricted'
-    ]),
+    cleanEyeshadeDb(),
+    cleanLedgerDb(),
     cleanRedisDb()
   ])
 })

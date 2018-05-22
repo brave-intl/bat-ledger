@@ -8,6 +8,29 @@ const redis = require('redis')
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
+const eyeshadeCollections = [
+  'grants',
+  'owners',
+  'restricted',
+  'publishers',
+  'tokens',
+  'referrals',
+  'surveyors',
+  'settlements'
+]
+const ledgerCollections = [
+  'owners',
+  'referrals',
+  'publishers',
+  'tokens',
+  'grants',
+  'surveyors',
+  'settlements',
+  'publishersV2',
+  'publishersX',
+  'restricted'
+]
+
 const tkn = process.env.TOKEN_LIST.split(',')[0]
 const token = `Bearer ${tkn}`
 
@@ -91,38 +114,31 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
     t.true((v2 - v1) <= tol, msg)
   }
 }
-const returnSelf = (collection) => collection
-const removeCollection = (collection) => collection.remove()
-const forEachCollection = async (db, collections, munge = returnSelf) => {
-  return Promise.all(collections.map((name) => {
-    return munge(db.collection(name), name)
-  })).then(() => db)
-}
 
 const connectToDb = async (key) => {
   const dbUri = `${process.env.BAT_MONGODB_URI}/${key}`
   return mongodb.MongoClient.connect(dbUri)
 }
 
-const resetTestContext = async (collections, fn) => {
-  const db = await cleanEyeshadeDb(collections)
-  await forEachCollection(db, collections, fn)
-}
-
 const cleanDb = async (key, collections) => {
-  return forEachCollection(await connectToDb(key), collections, removeCollection)
+  const db = await connectToDb(key)
+  await db.dropDatabase()
+  return db
 }
-const cleanLedgerDb = async (collections) => cleanDb('admin', collections)
-const cleanEyeshadeDb = async (collections) => cleanDb('eyeshade', collections)
+const cleanLedgerDb = async (collections) => {
+  return cleanDb('ledger', collections || ledgerCollections)
+}
+const cleanEyeshadeDb = async (collections) => {
+  return cleanDb('eyeshade', collections || eyeshadeCollections)
+}
 
 const cleanRedisDb = async () => {
-  const host = 'grant-redis'
+  const host = process.env.GRANT_REDIS_HOST || 'localhost'
   const client = redis.createClient({
     host
   })
   await new Promise((resolve, reject) => {
     client.on('ready', () => {
-      console.log('ready')
       client.flushdb((err) => {
         err ? reject(err) : resolve()
       })
@@ -136,7 +152,6 @@ module.exports = {
   formURL,
   ok,
   timeout,
-  resetTestContext,
   eyeshadeAgent,
   ledgerAgent,
   assertWithinBounds,
