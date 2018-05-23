@@ -49,6 +49,9 @@ exports.initialize = async (debug, runtime) => {
         probi: bson.Decimal128.POSITIVE_ZERO,
 
         timestamp: bson.Timestamp.ZERO,
+        frozen: false,
+        mature: false,
+        rejectedVotes: 0,
 
      // added during report runs...
         inputs: bson.Decimal128.POSITIVE_ZERO,
@@ -57,7 +60,7 @@ exports.initialize = async (debug, runtime) => {
       },
       unique: [ { surveyorId: 1 } ],
       others: [ { surveyorType: 1 }, { votes: 1 }, { counts: 1 }, { altcurrency: 1 }, { probi: 1 }, { timestamp: 1 },
-                { inputs: 1 }, { fee: 1 }, { quantum: 1 } ]
+                { inputs: 1 }, { fee: 1 }, { quantum: 1 }, { frozen: 1 }, { mature: 1 }, { rejectedVotes: 1 } ]
     },
     {
       category: runtime.database.get('contributions', debug),
@@ -75,6 +78,7 @@ exports.initialize = async (debug, runtime) => {
      // v2 and later
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
+        mature: false,
 
         fee: bson.Decimal128.POSITIVE_ZERO,
         votes: 0,
@@ -83,7 +87,8 @@ exports.initialize = async (debug, runtime) => {
       },
       unique: [ { viewingId: 1 } ],
       others: [ { paymentId: 1 }, { address: 1 }, { paymentStamp: 1 }, { surveyorId: 1 }, { altcurrency: 1 }, { probi: 1 },
-                { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 } ]
+                { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 },
+                { mature: 1 } ]
     },
     {
       category: voting,
@@ -189,14 +194,22 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const surveyorId = payload.surveyorId
       const surveyors = runtime.database.get('surveyors', debug)
-      let state
 
       payload.probi = bson.Decimal128.fromString(payload.probi.toString())
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend({ counts: 0 }, underscore.omit(payload, [ 'surveyorId' ]))
+      const $set = underscore.extend({
+        counts: 0
+      }, underscore.omit(payload, [ 'surveyorId' ]))
+      const $setOnInsert = {
+        mature: false,
+        frozen: false,
+        rejectedVotes: 0
       }
-      await surveyors.update({ surveyorId: surveyorId }, state, { upsert: true })
+      const state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set,
+        $setOnInsert
+      }
+      await surveyors.update({ surveyorId }, state, { upsert: true })
     },
 
 /* sent by PUT /v1/wallet/{paymentId}
@@ -256,17 +269,38 @@ exports.workers = {
       const publisher = payload.publisher
       const surveyorId = payload.surveyorId
       const cohort = payload.cohort || 'control'
-      const voting = runtime.database.get('voting', debug)
-      let state
+      const { database } = runtime
+      const voting = database.get('voting', debug)
+      const surveyors = database.get('surveyors', debug)
+      let state, where
 
       if (!publisher) throw new Error('no publisher specified')
 
+      where = {
+        surveyorId
+      }
+      const surveyor = await surveyors.findOne(where)
+      if (!surveyor) {
+        throw new Error('surveyor does not exist')
+      }
+      if (surveyor.frozen) {
+        state = {
+          $inc: { rejectedVotes: 1 }
+        }
+        await surveyors.update(where, state)
+      }
+
+      where = {
+        surveyorId,
+        publisher,
+        cohort
+      }
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $inc: { counts: 1 },
         $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
       }
-      await voting.update({ surveyorId: surveyorId, publisher: publisher, cohort: cohort }, state, { upsert: true })
+      await voting.update(where, state, { upsert: true })
     },
 
 /* sent when the wallet balance updates

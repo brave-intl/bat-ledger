@@ -1,9 +1,12 @@
+const dotenv = require('dotenv')
+dotenv.config()
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuid = require('uuid')
 const redis = require('redis')
+const BigNumber = require('bignumber.js')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -148,6 +151,8 @@ const cleanRedisDb = async () => {
 }
 
 module.exports = {
+  createSurveyor,
+  getSurveyor,
   uint8tohex,
   fetchReport,
   formURL,
@@ -159,9 +164,43 @@ module.exports = {
   assertWithinBounds,
   connectToDb,
   cleanDb,
+  cleanDbs,
   cleanLedgerDb,
   cleanEyeshadeDb,
   cleanRedisDb,
   braveYoutubeOwner,
   braveYoutubePublisher
+}
+
+function cleanDbs () {
+  return Promise.all([
+    cleanEyeshadeDb(),
+    cleanLedgerDb(),
+    cleanRedisDb()
+  ])
+}
+
+function getSurveyor (id) {
+  return ledgerAgent
+    .get(`/v2/surveyor/contribution/${id || 'current'}`)
+    .expect(ok)
+}
+
+function createSurveyor (options = {}) {
+  const {
+    votes = 1,
+    rate = 1,
+    // probi is optional
+    probi
+  } = options
+  const url = '/v2/surveyor/contribution'
+  const data = {
+    adFree: {
+      fee: { USD: 5 },
+      votes,
+      altcurrency: 'BAT',
+      probi: probi || new BigNumber(votes * rate).times('1e18').toString()
+    }
+  }
+  return ledgerAgent.post(url).send(data).expect(ok)
 }

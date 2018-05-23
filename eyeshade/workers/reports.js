@@ -9,7 +9,10 @@ const uuid = require('uuid')
 const braveExtras = require('bat-utils').extras
 const braveHapi = braveExtras.hapi
 const getPublisherProps = require('bat-publisher').getPublisherProps
-const utf8ify = braveExtras.utils.utf8ify
+const {
+  utf8ify,
+  documentOlderThan
+} = braveExtras.utils
 
 BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 
@@ -78,7 +81,8 @@ const notification = async (debug, runtime, owner, publisher, payload) => {
 }
 
 const daily = async (debug, runtime) => {
-  const publishers = runtime.database.get('publishers', debug)
+  const { database } = runtime
+  const publishers = database.get('publishers', debug)
   let entries, midnight, now, tomorrow
 
   debug('daily', 'running')
@@ -86,10 +90,10 @@ const daily = async (debug, runtime) => {
   now = underscore.now()
   midnight = new Date(now)
   midnight.setHours(0, 0, 0, 0)
-  midnight = Math.floor(midnight.getTime() / 1000)
+  midnight = midnight.getTime()
 
   try {
-    await runtime.database.purgeSince(debug, runtime, midnight * 1000)
+    await database.purgeSince(debug, runtime, midnight)
 
     entries = await publishers.find({})
     for (let entry of entries) {
@@ -98,6 +102,10 @@ const daily = async (debug, runtime) => {
       await runtime.queue.send(debug, 'publisher-report',
                                underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
     }
+
+    const surveyorsCollection = database.get('surveyors', debug)
+    const ageDays = process.env.FREEZE_SURVEYORS_AGE_DAYS
+    await freezeOldSurveyors(ageDays, midnight, surveyorsCollection)
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
@@ -107,6 +115,38 @@ const daily = async (debug, runtime) => {
   tomorrow.setHours(24, 0, 0, 0)
   setTimeout(() => { daily(debug, runtime) }, tomorrow - now)
   debug('daily', 'running again ' + moment(tomorrow).fromNow())
+}
+
+exports.freezeOldSurveyors = freezeOldSurveyors
+
+/*
+  olderThanDays: int
+  anchorTime: Date
+  surveyors: mongodb collection
+*/
+async function freezeOldSurveyors (olderThanDays, anchorTime, surveyors) {
+  if (underscore.isUndefined(olderThanDays)) {
+    return
+  }
+  // in seconds
+  const where = {
+    frozen: false,
+    surveyorType: 'contribution'
+  }
+  const data = {
+    $set: {
+      frozen: true
+    }
+  }
+  const nonFrozenSurveyors = await surveyors.find(where)
+  const updates = nonFrozenSurveyors.map(freezeSurveyor)
+  await Promise.all(updates).then(() => updates.length)
+
+  function freezeSurveyor ({ _id }) {
+    if (documentOlderThan(olderThanDays, anchorTime, _id)) {
+      return surveyors.update({ _id }, data)
+    }
+  }
 }
 
 const hourly = async (debug, runtime) => {

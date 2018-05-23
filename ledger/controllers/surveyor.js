@@ -458,6 +458,9 @@ const provision = async (debug, runtime, surveyorId, bump) => {
     contributionSurveyors = await surveyors.find({ surveyorType: 'contribution', available: true }, { limit: 1000, sort: { timestamp: -1 } })
   }
   if (!bump) bump = 0
+  if (!contributionSurveyors) {
+    return
+  }
 
   await Promise.all(contributionSurveyors.map(async (cSurveyor) => {
     const cohorts = process.env.VOTING_COHORTS ? process.env.VOTING_COHORTS.split(',') : ['control', 'grant']
