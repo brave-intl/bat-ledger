@@ -67,13 +67,16 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       if (wallet.grants) {
-        let confirmed = balances.confirmed || '0'
-        let number = new BigNumber(confirmed)
-        let memo = Promise.resolve(number)
-        let ifGrantExpired = (grant) => runtime.wallet.isGrantExpired(info, grant)
-        let markAsExpired = (grant) => runtime.wallet.expireGrant(info, wallet, grant)
-        let reducer = sumActiveGrants(ifGrantExpired, markAsExpired)
-        balances.confirmed = await wallet.grants.reduce(reducer, memo)
+        wallet.grants.forEach((grant) => {
+          if (grant.status === 'active') {
+            const grantContent = braveUtils.extractJws(grant.token)
+            if runtime.wallet.isGrantExpired(info, grant) {
+              await runtime.wallet.expireGrant(info, wallet, grant)
+            } else {
+              balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
+            }
+          }
+        })
       }
 
       let altcurrencyScale = runtime.currency.alt2scale(wallet.altcurrency)
@@ -140,26 +143,6 @@ const read = function (runtime, apiVersion) {
 
     reply(result)
   }
-}
-const sumActiveGrants = (isExpired, updater) => async (memo, grant) => {
-  // WARNING memo is a promise because the fn is async
-  const {
-    token,
-    status
-  } = grant
-  if (status !== 'active') {
-    return memo
-  }
-  if (isExpired(grant)) {
-    await updater(grant)
-    return memo
-  }
-
-  const jws = braveUtils.extractJws(token)
-  const { probi } = jws
-  // resolves with a big number
-  const total = await memo
-  return total.plus(probi)
 }
 
 v1.read = { handler: (runtime) => { return read(runtime, 1) },
