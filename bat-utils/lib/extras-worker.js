@@ -6,6 +6,8 @@ const path = require('path')
 const SDebug = require('sdebug')
 const underscore = require('underscore')
 
+const npminfo = require('../npminfo')
+
 const Worker = async (options, runtime) => {
   const debug = new SDebug('worker')
 
@@ -101,7 +103,7 @@ const Worker = async (options, runtime) => {
       env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ])
     })
   runtime.notify(debug, {
-    text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
+    text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +
       (process.env.DYNO || 'worker') + '/' + options.id
   })
 }

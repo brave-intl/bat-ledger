@@ -1,8 +1,12 @@
 let singleton
+const tldjs = require('tldjs')
+const os = require('os')
+const path = require('path')
 
-const Newrelic = function (config, runtime) {
-  if (!(this instanceof Newrelic)) return new Newrelic(config, runtime)
+module.exports = createNewrelic
+createNewrelic.setupNewrelic = setup
 
+function Newrelic (config, runtime) {
   let newrelic = {
     startBackgroundTransaction: (name, group, cb) => { return ((cb || group)()) },
     getTransaction: () => { return { end: () => {} } },
@@ -25,8 +29,25 @@ const Newrelic = function (config, runtime) {
   return require('newrelic')
 }
 
-module.exports = function (config, runtime) {
+function createNewrelic (config, runtime) {
   if (!singleton) singleton = new Newrelic(config, runtime)
 
   return singleton
+}
+
+function setup (config, fName) {
+  if (config.newrelic) {
+    if (!config.newrelic.appname) {
+      const appname = path.parse(fName).name
+
+      if (process.env.NODE_ENV === 'production') {
+        config.newrelic.appname = appname + '.' + tldjs.getSubdomain(process.env.HOST)
+      } else {
+        config.newrelic.appname = 'bat-' + process.env.SERVICE + '-' + appname + '@' + os.hostname()
+      }
+    }
+    process.env.NEW_RELIC_APP_NAME = config.newrelic.appname
+
+    createNewrelic(config)
+  }
 }

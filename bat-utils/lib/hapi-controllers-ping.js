@@ -2,6 +2,7 @@ const Joi = require('joi')
 const underscore = require('underscore')
 
 const braveHapi = require('./extras-hapi')
+const npminfo = require('../npminfo')
 
 const v1 = {}
 
@@ -12,7 +13,7 @@ const v1 = {}
 v1.ping = {
   handler: (runtime) => {
     return async (request, reply) => {
-      reply(underscore.omit(process.npminfo, [ 'dependencies' ]))
+      reply(underscore.omit(npminfo, [ 'dependencies' ]))
     }
   },
 

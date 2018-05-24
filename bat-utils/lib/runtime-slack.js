@@ -4,7 +4,11 @@ const tldjs = require('tldjs')
 const underscore = require('underscore')
 const validateIP = require('validate-ip-node')
 
-const Slack = function (config, runtime) {
+const npminfo = require('../npminfo')
+
+module.exports = Slack
+
+function Slack (config, runtime) {
   if (!(this instanceof Slack)) return new Slack(config, runtime)
 
   if (!config.slack) throw new Error('config.slack undefined')
@@ -13,7 +17,7 @@ const Slack = function (config, runtime) {
 
   this.slackjs = new SlackJS(runtime.config.slack.webhook)
 
-  let username = process.npminfo.name
+  let username = npminfo.name
   if (!validateIP(runtime.config.server.hostname)) username += '@' + tldjs.getSubdomain(runtime.config.server.hostname)
 
   runtime.notify = (debug, payload) => {
@@ -27,13 +31,12 @@ const Slack = function (config, runtime) {
       icon_url: params.icon_url,
       text: 'ping.'
     })
+
     this.slackjs.send(payload, (res, err, body) => {
-      if (err && err !== 'ok') { // seriously
+      if (err && err !== 'ok') {
         debug('notify', err)
         Raven.captureException(err)
       }
     })
   }
 }
-
-module.exports = Slack

@@ -1,48 +1,93 @@
+
 const path = require('path')
 
-const glob = require('glob')
 const SDebug = require('sdebug')
-const underscore = require('underscore')
+const _ = require('underscore')
 
-let Runtime = function (config) {
-  if (!(this instanceof Runtime)) return new Runtime(config)
+const cache = require('./lib/runtime-cache')
+const currency = require('./lib/runtime-currency')
+const database = require('./lib/runtime-database')
+const newrelic = require('./lib/runtime-newrelic')
+const prometheus = require('./lib/runtime-prometheus')
+const queue = require('./lib/runtime-queue')
+const sentry = require('./lib/runtime-sentry')
+const slack = require('./lib/runtime-slack')
+const wallet = require('./lib/runtime-wallet')
 
-  const cwd = path.join(__dirname, 'lib')
-  const debug = new SDebug('boot')
-  const prefix = 'runtime-'
+const hash = {
+  cache,
+  currency,
+  database,
+  newrelic,
+  prometheus,
+  queue,
+  sentry,
+  slack,
+  wallet
+}
 
-  if (!config) config = process.env.NODE_ENV || 'development'
-  if (typeof config === 'string') config = require(path.join(process.cwd(), 'config', 'config.' + config + '.js'))
+module.exports = Object.assign(Runtime, hash)
 
-  underscore.keys(config).forEach((key) => {
+Runtime.prototype = {
+  setup: function (config) {
+    const debug = new SDebug('boot')
+    _.assign(this, {
+      config: config,
+      login: config.login,
+      notify: (dbg, payload) => {
+        const debougie = dbg || debug
+        if (payload.text) {
+          debougie('notify', payload)
+        }
+      }
+    })
+    _.keys(hash).reduce(reduction(config), this)
+  }
+}
+
+function Runtime (config) {
+  if (!(this instanceof Runtime)) {
+    return new Runtime(config)
+  }
+
+  if (!config) {
+    config = process.env.NODE_ENV || 'development'
+  }
+  if (typeof config === 'string') {
+    config = require(path.join(process.cwd(), 'config', 'config.' + config + '.js'))
+  }
+
+  sanity(config)
+
+  this.setup(config)
+}
+
+function reduction (config) {
+  return (memo, key) => {
+    if (!config[key]) {
+      return memo
+    }
+    const Fn = hash[key]
+    memo[key] = new Fn(config, memo)
+    return memo
+  }
+}
+
+function sanity (config) {
+  _.keys(config).forEach((key) => {
     let m = config[key]
-    if (typeof m === 'undefined') return
+    if (typeof m === 'undefined') {
+      return
+    }
 
-    underscore.keys(m).forEach((k) => {
-      if (typeof m[k] === 'undefined') throw new Error('config.' + key + '.' + k + ': undefined')
+    _.keys(m).forEach((k) => {
+      if (typeof m[k] === 'undefined') {
+        throw new Error('config.' + key + '.' + k + ': undefined')
+      }
 
       if ((typeof m[k] !== 'number') && (typeof m[k] !== 'boolean') && (typeof m[k] !== 'object') && (!m[k])) {
         throw new Error('config.' + key + '.' + k + ': empty')
       }
     })
   })
-
-  underscore.defaults(this, {
-    config: config,
-    login: config.login,
-    notify: (debug, payload) => { if (payload.text) debug('notify', payload) }
-  })
-
-  glob.sync(prefix + '*.js', { cwd: cwd }).forEach((file) => {
-    if (file.indexOf('.test.js') !== -1) return
-
-    let key = path.basename(file.substring(prefix.length), '.js')
-
-    if ((!config[key]) || (!process.batutil.enabled('runtime.' + key))) return
-
-    this[key] = new (require(path.join(cwd, file)))(config, this)
-    debug('runtime', 'loaded ' + key)
-  })
 }
-
-module.exports = Runtime
