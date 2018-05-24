@@ -1,8 +1,6 @@
 const bson = require('bson')
 const underscore = require('underscore')
 
-var exports = {}
-
 exports.initialize = async (debug, runtime) => {
   const voting = runtime.database.get('voting', debug)
   let indices
@@ -344,5 +342,3 @@ exports.workers = {
       await grants.update({ grantId: { $in: grantIds } }, state, { upsert: true })
     }
 }
-
-module.exports = exports

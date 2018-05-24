@@ -3,8 +3,6 @@ const path = require('path')
 
 const underscore = require('underscore')
 
-var exports = {}
-
 exports.routes = async (debug, runtime, options) => {
   const entries = {}
   const parent = options.parent || path.join(process.cwd(), 'src/controllers')
@@ -71,5 +69,3 @@ exports.routes = async (debug, runtime, options) => {
 
   return routes
 }
-
-module.exports = exports

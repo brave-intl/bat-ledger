@@ -1,5 +1,3 @@
-var exports = {}
-
 // courtesy of https://stackoverflow.com/questions/33289726/combination-of-async-function-await-settimeout#33292942
 exports.timeout = (msec) => { return new Promise((resolve) => { setTimeout(resolve, msec) }) }
 
@@ -17,5 +15,3 @@ exports.utf8ify = (data) => {
     return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).substr(-4)
   })
 }
-
-module.exports = exports

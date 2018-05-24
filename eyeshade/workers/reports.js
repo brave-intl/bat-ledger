@@ -1017,8 +1017,6 @@ function validateWallet (wallet) {
   return wallet && wallet.address && wallet.defaultCurrency
 }
 
-var exports = {}
-
 exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
 
@@ -1973,5 +1971,3 @@ exports.workers = {
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-grants-outstanding completed' })
     }
 }
-
-module.exports = exports
