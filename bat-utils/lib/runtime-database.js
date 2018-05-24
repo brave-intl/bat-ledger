@@ -150,7 +150,7 @@ Database.prototype.checkIndices = async function (debug, entries) {
   const gather = this.gather.bind(this)
   const form = this.form.bind(this)
 
-  entries.forEach(async (entry) => {
+  await Promise.all(entries.map(async (entry) => {
     const category = entry.category
     let doneP, indices, status
 
@@ -167,22 +167,27 @@ Database.prototype.checkIndices = async function (debug, entries) {
 
     try {
       if (indices.length === 0) { await category.insert(entry.empty) }
-
-      (entry.unique || []).forEach(async (index) => {
+      const {
+        unique = [],
+        others = [],
+        raw = []
+      } = entry
+      const uniqueCreates = unique.map(async (index) => {
         if (indices.indexOf(form(index)) === -1) await category.createIndex(index, { unique: true })
-      });
+      })
 
-      (entry.others || []).forEach(async (index) => {
+      const othersCreates = others.map(async (index) => {
         if (indices.indexOf(form(index)) === -1) await category.createIndex(index, { unique: false })
-      });
+      })
 
-      (entry.raw || []).forEach(async (index) => {
+      const rawCreates = raw.map(async (index) => {
         if (indices.indexOf(form(index)) === -1) await category.createIndex(index)
       })
+      await Promise.all(uniqueCreates.concat(othersCreates, rawCreates))
     } catch (ex) {
       debug('unable to create ' + entry.name + ' ' + entry.property + ' index', ex)
     }
-  })
+  }))
 }
 
 module.exports = Database

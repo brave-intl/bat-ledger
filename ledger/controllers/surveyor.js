@@ -459,7 +459,7 @@ const provision = async (debug, runtime, surveyorId, bump) => {
   }
   if (!bump) bump = 0
 
-  contributionSurveyors.forEach(async (cSurveyor) => {
+  await Promise.all(contributionSurveyors.map(async (cSurveyor) => {
     const cohorts = process.env.VOTING_COHORTS ? process.env.VOTING_COHORTS.split(',') : ['control', 'grant']
     let count, vSurveyor
 
@@ -485,7 +485,7 @@ const provision = async (debug, runtime, surveyorId, bump) => {
     }
 
     await surveyors.update({ surveyorId: cSurveyor.surveyorId }, { $set: { cohorts: cSurveyor.cohorts } }, { upsert: true })
-  })
+  }))
 }
 
 /*
