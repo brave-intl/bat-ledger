@@ -174,11 +174,11 @@ Database.prototype.checkIndices = async function (debug, entries) {
       } = entry
       const uniqueCreates = unique.map(async (index) => {
         if (indices.indexOf(form(index)) === -1) await category.createIndex(index, { unique: true })
-      });
+      })
 
       const othersCreates = others.map(async (index) => {
         if (indices.indexOf(form(index)) === -1) await category.createIndex(index, { unique: false })
-      });
+      })
 
       const rawCreates = raw.map(async (index) => {
         if (indices.indexOf(form(index)) === -1) await category.createIndex(index)
