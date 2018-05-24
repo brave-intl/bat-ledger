@@ -110,7 +110,7 @@ v2.walletBalance =
       fresh = true
     }
 
-    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates', 'parameters'])
+    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants'])
 
     reply(balances)
 
@@ -136,7 +136,12 @@ v2.walletBalance =
       unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
       probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
-      parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters')
+      parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters'),
+      grants: Joi.array().optional().items(Joi.object().keys({
+        probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
+        altcurrency: Joi.string().optional().description('the grant currency'),
+        expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
+      }))
     })
   }
 }
