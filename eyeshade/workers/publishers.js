@@ -8,8 +8,6 @@ const utils = require('bat-utils').extras.utils
 const utf8ify = utils.utf8ify
 const timeout = utils.timeout
 
-var exports = {}
-
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('publisher-report')
   await runtime.queue.create('publishers-bulk-create')
@@ -83,5 +81,3 @@ exports.workers = {
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' publishers-bulk-create completed' })
     }
 }
-
-module.exports = exports

@@ -44,8 +44,6 @@ const daily = async (debug, runtime) => {
   debug('daily', 'running again ' + moment(next).fromNow())
 }
 
-var exports = {}
-
 exports.initialize = async (debug, runtime) => {
   let next, schedule
 
@@ -78,5 +76,3 @@ exports.initialize = async (debug, runtime) => {
 
 exports.workers = {
 }
-
-module.exports = exports
