@@ -35,13 +35,12 @@
     "test-security": "npm audit",
     "test-unit": "ava -v",
     "docker-build": "docker-compose build",
-    "docker-up": "docker-compose up $npm_package_config_docker_services",
-    "docker-up-detached": "docker-compose up -d $npm_package_config_docker_services"
+    "docker-up": "docker-compose up $npm_package_config_dockersvcs",
+    "docker-up-dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up $npm_package_config_dockersvcs",
+    "docker-up-detached": "docker-compose up -d $npm_package_config_dockersvcs"
   },
   "config": {
-    "docker": {
-      "services": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
-    }
+    "dockersvcs": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
   },
   "repository": {
     "type": "git",

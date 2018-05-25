@@ -1,0 +1,33 @@
+version: "2.1"
+
+services:
+  ledger-web:
+    volumes:
+      - "./bat-utils:/usr/src/app/bat-utils"
+      - "./ledger:/usr/src/app/ledger"
+    command: "npm run start-ledger"
+  ledger-worker:
+    volumes:
+      - "./bat-utils:/usr/src/app/bat-utils"
+      - "./ledger:/usr/src/app/ledger"
+    command: "npm run start-ledger-worker"
+  eyeshade-web:
+    volumes:
+      - "./bat-utils:/usr/src/app/bat-utils"
+      - "./eyeshade:/usr/src/app/eyeshade"
+    command: "npm run start-eyeshade"
+  eyeshade-worker:
+    volumes:
+      - "./bat-utils:/usr/src/app/bat-utils"
+      - "./eyeshade:/usr/src/app/eyeshade"
+    command: "npm run start-ledger-worker"
+  balance-web:
+    volumes:
+      - "./bat-utils:/usr/src/app/bat-utils"
+      - "./balance:/usr/src/app/balance"
+    command: "npm run start-balance"
+  helper-web:
+    volumes:
+      - "./bat-utils:/usr/src/app/bat-utils"
+      - "./helper:/usr/src/app/helper"
+    command: "npm run start-helper"

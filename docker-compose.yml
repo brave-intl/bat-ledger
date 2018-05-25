@@ -89,20 +89,6 @@ services:
       - redis
     networks:
       - ledger
-  helper-worker:
-    container_name: helper-worker
-    command: "npm run helper-worker"
-    extends:
-      file: base.yml
-      service: ledger
-    environment:
-      - "MONGODB_URI=mongodb://mongo/helper"
-      - "SERVICE=helper"
-    depends_on:
-      - mongo
-      - redis
-    networks:
-      - ledger
   helper-web:
     container_name: helper-web
     ports:

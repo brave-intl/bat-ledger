@@ -96,6 +96,7 @@ npm run docker-up
 ```
 
 ### Run tests
+best to do in another terminal
 
 ```sh
 npm run docker-test
