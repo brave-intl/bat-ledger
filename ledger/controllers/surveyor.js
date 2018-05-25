@@ -294,7 +294,7 @@ v2.phase1 =
       duration: underscore.now() - now
     })
 
-    var payload = surveyor.payload
+    const payload = surveyor.payload
 
     reply(underscore.extend({ signature: signature, payload: payload }, surveyor.publicInfo()))
   }

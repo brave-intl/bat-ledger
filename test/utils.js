@@ -11,7 +11,7 @@ const tkn = process.env.TOKEN_LIST.split(',')[0]
 const token = `Bearer ${tkn}`
 
 const uint8tohex = (arr) => {
-  var strBuilder = []
+  const strBuilder = []
   arr.forEach(function (b) { strBuilder.push(('00' + b.toString(16)).substr(-2)) })
   return strBuilder.join('')
 }

@@ -325,7 +325,7 @@ const write = function (runtime, apiVersion) {
     }
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
-    var picked = ['votes', 'probi', 'altcurrency']
+    const picked = ['votes', 'probi', 'altcurrency']
     result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
     if (apiVersion === 1) {
       reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))

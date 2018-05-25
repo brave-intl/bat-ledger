@@ -74,8 +74,9 @@ test('ledger: create a promotion', async t => {
 test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
+  let response, octets, headers, payload, err
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -91,8 +92,8 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
-  var octets = JSON.stringify(body)
-  var headers = {
+  octets = JSON.stringify(body)
+  headers = {
     digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
@@ -102,7 +103,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     secretKey: uint8tohex(keypair.secretKey)
   }, { algorithm: 'ed25519' })
 
-  var payload = { requestType: 'httpSignature',
+  payload = { requestType: 'httpSignature',
     request: {
       body: body,
       headers: headers,
@@ -148,7 +149,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
-  var err = ok(response)
+  err = ok(response)
   if (err) throw err
 
   t.true(response.body.hasOwnProperty('balance'))
@@ -261,7 +262,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   viewingCredential.finalize(response.body.verification)
 
   const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', braveYoutubePublisher]
-  for (var i = 0; i < surveyorIds.length; i++) {
+  for (let i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
     response = await ledgerAgent
       .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
@@ -278,8 +279,9 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
+  let response, octets, headers, payload, err
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -295,8 +297,8 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
-  var octets = JSON.stringify(body)
-  var headers = {
+  octets = JSON.stringify(body)
+  headers = {
     digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
@@ -306,7 +308,7 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
     secretKey: uint8tohex(keypair.secretKey)
   }, { algorithm: 'ed25519' })
 
-  var payload = { requestType: 'httpSignature',
+  payload = { requestType: 'httpSignature',
     request: {
       body: body,
       headers: headers,
@@ -374,7 +376,7 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await timeout(500)
   } while (response.status === 503 || response.body.balance === '0.0000')
-  var err = ok(response)
+  err = ok(response)
   if (err) throw err
 
   t.is(Number(response.body.unsignedTx.denomination.amount), Number(desired))
@@ -441,7 +443,7 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
 
   const bulkSurveyorPayload = []
   const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
-  for (var i = 0; i < surveyorIds.length; i++) {
+  for (let i = 0; i < surveyorIds.length; i++) {
     let id = surveyorIds[i]
     let publisher = votes[i % votes.length]
     response = await ledgerAgent

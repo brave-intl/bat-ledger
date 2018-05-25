@@ -1,8 +1,6 @@
 const tldjs = require('tldjs')
 const underscore = require('underscore')
 
-var exports = {}
-
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('publisher-report')
 }
@@ -41,5 +39,3 @@ exports.workers = {
       await publishers.update({ publisher: publisher }, state, { upsert: true })
     }
 }
-
-module.exports = exports
