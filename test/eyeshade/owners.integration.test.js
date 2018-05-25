@@ -5,7 +5,7 @@ import _ from 'underscore'
 
 import {
   eyeshadeAgent,
-  connectEyeshadeDb,
+  connectToDb,
   cleanEyeshadeDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
@@ -15,11 +15,14 @@ import {
 import dotenv from 'dotenv'
 dotenv.config()
 
-test.before(async t => {
-  await connectEyeshadeDb(t)
-})
-test.beforeEach(async t => {
-  await cleanEyeshadeDb(t)
+const collections = ['owners', 'publishers', 'tokens']
+
+test.before(async () => connectToDb('eyeshade'))
+test.beforeEach(async (t) => {
+  const db = await cleanEyeshadeDb(collections)
+  collections.forEach((name) => {
+    t.context[name] = db.collection(name)
+  })
 })
 
 test('eyeshade POST /v2/owners with YouTube channels', async t => {

@@ -3,9 +3,33 @@ const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuid = require('uuid')
+const redis = require('redis')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
+
+const eyeshadeCollections = [
+  'grants',
+  'owners',
+  'restricted',
+  'publishers',
+  'tokens',
+  'referrals',
+  'surveyors',
+  'settlements'
+]
+const ledgerCollections = [
+  'owners',
+  'referrals',
+  'publishers',
+  'tokens',
+  'grants',
+  'surveyors',
+  'settlements',
+  'publishersV2',
+  'publishersX',
+  'restricted'
+]
 
 const tkn = process.env.TOKEN_LIST.split(',')[0]
 const token = `Bearer ${tkn}`
@@ -32,7 +56,8 @@ const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set('Authorization', token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set('Authorization', token)
 
-const ok = ({ status, body }) => {
+const ok = (res) => {
+  const { status, body } = res
   if (status !== 200) {
     return new Error(JSON.stringify(body, null, 2).replace(/\\n/g, '\n'))
   }
@@ -89,25 +114,35 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
     t.true((v2 - v1) <= tol, msg)
   }
 }
-const returnSelf = (collection) => collection
-const removeCollection = (collection) => collection.remove()
-const forEachCollection = async (db, collections, munge = returnSelf) => {
-  return Promise.all(collections.map((name) => {
-    return munge(db.collection(name), name)
-  }))
+
+const connectToDb = async (key) => {
+  const dbUri = `${process.env.BAT_MONGODB_URI}/${key}`
+  return mongodb.MongoClient.connect(dbUri)
 }
 
-const connectEyeshadeDb = async (t) => {
-  const dbUri = `${process.env.BAT_MONGODB_URI}/eyeshade`
-  t.context.db = await mongodb.MongoClient.connect(dbUri)
+const cleanDb = async (key, collections) => {
+  const db = await connectToDb(key)
+  await db.dropDatabase()
+  return db
+}
+const cleanLedgerDb = async (collections) => {
+  return cleanDb('ledger', collections || ledgerCollections)
+}
+const cleanEyeshadeDb = async (collections) => {
+  return cleanDb('eyeshade', collections || eyeshadeCollections)
 }
 
-const cleanEyeshadeDb = async (t) => {
-  const collections = ['owners', 'publishers', 'tokens']
-  const db = t.context.db
-  await forEachCollection(db, collections, removeCollection)
-  await forEachCollection(db, collections, (collection, name) => {
-    t.context[name] = collection
+const cleanRedisDb = async () => {
+  const host = process.env.GRANT_REDIS_HOST || 'localhost'
+  const client = redis.createClient({
+    host
+  })
+  await new Promise((resolve, reject) => {
+    client.on('ready', () => {
+      client.flushdb((err) => {
+        err ? reject(err) : resolve()
+      })
+    }).on('error', (err) => reject(err))
   })
 }
 
@@ -120,8 +155,11 @@ module.exports = {
   eyeshadeAgent,
   ledgerAgent,
   assertWithinBounds,
-  connectEyeshadeDb,
+  connectToDb,
+  cleanDb,
+  cleanLedgerDb,
   cleanEyeshadeDb,
+  cleanRedisDb,
   braveYoutubeOwner,
   braveYoutubePublisher
 }
