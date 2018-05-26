@@ -14,7 +14,7 @@ const daily = async (debug, runtime) => {
   debug('daily', 'running')
 
   entries = await surveyors.find({ surveyorType: surveyorType, active: true }, { limit: 100, sort: { timestamp: -1 } })
-  entries.forEach(async (entry) => {
+  await Promise.all(entries.map(async (entry) => {
     let payload, surveyor, validity
 
     try {
@@ -37,14 +37,12 @@ const daily = async (debug, runtime) => {
       text: 'created ' + JSON.stringify(underscore.pick(surveyor, [ 'surveyorId', 'payload' ]))
     })
     debug('daily', 'created ' + surveyorType + ' surveyorID=' + surveyor.surveyorId)
-  })
+  }))
 
   next = interval.next().getTime()
   setTimeout(() => { daily(debug, runtime) }, next - underscore.now())
   debug('daily', 'running again ' + moment(next).fromNow())
 }
-
-var exports = {}
 
 exports.initialize = async (debug, runtime) => {
   let next, schedule
@@ -78,5 +76,3 @@ exports.initialize = async (debug, runtime) => {
 
 exports.workers = {
 }
-
-module.exports = exports

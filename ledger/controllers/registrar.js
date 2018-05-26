@@ -125,14 +125,14 @@ v2.update =
    POST /v2/registrar/persona/{uId}
    POST /v3/registrar/persona/{uId}
  */
-const createPersona = function (runtime) {
+const createPersona = function (runtime, apiVersion) {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
     const uId = request.params.uId.toLowerCase()
     const proof = request.payload.proof
-    var response = {}
+    const response = {}
     const credentials = runtime.database.get('credentials', debug)
-    let entry, registrar, state, verification, requestSchema, requestType
+    let entry, registrar, state, verification, requestSchema, requestType, validity
 
     registrar = runtime.registrars['persona']
     if (!registrar) return reply(boom.notFound('unknown registrar'))
@@ -157,7 +157,7 @@ const createPersona = function (runtime) {
         octets: Joi.string().optional().description('octet string that was signed and digested')
       }).required()
     }
-    var validity = Joi.validate(request.payload.request, requestSchema)
+    validity = Joi.validate(request.payload.request, requestSchema)
     if (validity.error) return reply(boom.badData(validity.error))
 
     if (requestType === 'httpSignature') {
@@ -226,7 +226,7 @@ const createViewing = function (runtime) {
     const debug = braveHapi.debug(module, request)
     const uId = request.params.uId.toLowerCase()
     const proof = request.payload.proof
-    var response = {}
+    const response = {}
     const credentials = runtime.database.get('credentials', debug)
     let entry, registrar, state, verification
 

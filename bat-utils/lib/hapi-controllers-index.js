@@ -3,8 +3,6 @@ const path = require('path')
 
 const underscore = require('underscore')
 
-var exports = {}
-
 exports.routes = async (debug, runtime, options) => {
   const entries = {}
   const parent = options.parent || path.join(process.cwd(), 'src/controllers')
@@ -55,7 +53,7 @@ exports.routes = async (debug, runtime, options) => {
     names = []
   }
   for (let name of names) {
-    if ((name === 'index.js') || (path.extname(name) !== '.js')) continue
+    if ((name === 'index.js') || (name.indexOf('.test.js') !== -1) || (path.extname(name) !== '.js')) continue
 
     try {
       const module = require(path.join(parent, name))
@@ -71,5 +69,3 @@ exports.routes = async (debug, runtime, options) => {
 
   return routes
 }
-
-module.exports = exports

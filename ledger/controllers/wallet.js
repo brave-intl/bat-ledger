@@ -297,12 +297,13 @@ const write = function (runtime, apiVersion) {
       return reply(boom.badData(ex.toString()))
     }
 
-    surveyor = await surveyors.findOne({ surveyorId: surveyorId })
+    surveyor = await surveyors.findOne({ surveyorId: surveyorId, surveyorType: 'contribution' })
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
+    if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
 
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support
-        return reply(boom.badData('cannot perform a contribution using a legacy surveyor'))
+        return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
       } else {
         // new contribution surveyor not yet populated with voting surveyors
         const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
@@ -380,7 +381,7 @@ const write = function (runtime, apiVersion) {
     }
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
-    var picked = ['votes', 'probi', 'altcurrency']
+    const picked = ['votes', 'probi', 'altcurrency']
     result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
     if (apiVersion === 1) {
       reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))

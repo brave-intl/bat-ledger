@@ -96,18 +96,14 @@ v2.bulk = {
   handler: (runtime) => {
     return async (request, reply) => {
       const channels = request.payload.channels || []
-      const nonWebChannels = []
 
       for (let channel of channels) {
         const props = getPublisherProps(channel.channelId)
 
         if (!props) return reply(boom.badData('invalid channel-identifier ' + channel.channelId))
-
-        // web channels don't have a publisherType, publishers is only responsible for verifying non-web
-        if (props.publisherType) nonWebChannels.push(channel)
       }
 
-      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, nonWebChannels)
+      bulk(request, reply, runtime, request.payload.ownerId, request.payload.contactInfo, request.payload.visible, channels)
     }
   },
   auth: {
@@ -278,10 +274,10 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
     $currentDate: { timestamp: { $type: 'timestamp' } },
     $set: underscore.extend({
       visible: visible,
-      authorized: true,
       altcurrency: altcurrency,
       info: info
-    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ]))
+    }, underscore.pick(props, [ 'providerName', 'providerSuffix', 'providerValue' ])),
+    $setOnInsert: { authorized: false }
   }
   await owners.update({ owner: owner }, state, { upsert: true })
 
@@ -300,7 +296,6 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
 
     state.$set = underscore.extend(underscore.omit(channel, [ 'channelId' ]), {
       verified: true,
-      authorized: true,
       authority: owner,
       owner: owner,
       altcurrency: altcurrency,
@@ -318,6 +313,12 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
       info: info
     })
     await tokens.update({ publisher: channel.channelId, verificationId: channel.verificationId }, state, { upsert: true })
+
+    // Clear out other site channel tokens.
+    const isSiteChannel = !!channel.publisherType
+    if (isSiteChannel) {
+      await tokens.remove({ publisher: channel.channelId, verified: false }, { justOne: false })
+    }
 
     await runtime.queue.send(debug, 'publisher-report',
                              underscore.extend({ owner: owner, publisher: channel.channelId },
@@ -517,7 +518,10 @@ v1.getWallet = {
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
-          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
+          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies', 'possibleCurrencies' ])
+          if (entry.parameters.scope) {
+            result.wallet.scope = entry.parameters.scope
+          }
           rates = result.rates
 
           underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
@@ -574,7 +578,9 @@ v1.getWallet = {
         provider: Joi.string().required().description('wallet provider'),
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
         defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
-        availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('available currencies')
+        availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('currencies the publisher has cards for'),
+        possibleCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('currencies the publisher could have cards for'),
+        scope: Joi.string().optional().description('scope of authorization with wallet provider')
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
@@ -582,6 +588,78 @@ v1.getWallet = {
       }).unknown(true).optional().description('publisher wallet status')
     })
   }
+}
+
+/*
+  POST /v3/owners/{owner}/wallet/card
+  {
+    currency    : 'BAT'
+  , description : '' // description of the card
+  }
+ */
+v3.createCard = {
+  handler: (runtime) => async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const {
+      payload,
+      params
+    } = request
+    const {
+      database,
+      wallet
+    } = runtime
+    const {
+      currency,
+      label
+    } = payload
+    const {
+      owner
+    } = params
+    const where = {
+      owner
+    }
+
+    const owners = database.get('owners', debug)
+
+    debug('create card begin', {
+      currency,
+      label,
+      owner
+    })
+    const info = await owners.findOne(where)
+    if (!ownerVerified(info)) {
+      return reply(boom.badData('owner not verified'))
+    }
+    await wallet.createCard(info, {
+      currency,
+      label
+    })
+    debug('card data create successful')
+    reply({})
+  },
+  description: 'Create a card for uphold',
+  tags: [ 'api' ],
+  validate: {
+    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    params: {
+      owner: Joi.string().required().description('owner identifier')
+    },
+    payload: {
+      label: Joi.string().optional().description('description of the card'),
+      currency: Joi.string().default('BAT').optional().description('currency of the card to create')
+    }
+  },
+  response: {
+    schema: Joi.object().keys({})
+  }
+}
+
+function ownerVerified (info) {
+  const {
+    provider,
+    parameters
+  } = info
+  return provider && parameters && parameters.access_token
 }
 
 /*
@@ -736,7 +814,7 @@ v1.getStatement = {
     return async (request, reply) => {
       const owner = request.params.owner
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, runtime.config.server))
+      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
       let entry
@@ -848,6 +926,7 @@ module.exports.routes = [
 /*
   braveHapi.routes.async().post().path('/v3/owners').whitelist().config(v3.bulk),
  */
+  braveHapi.routes.async().post().path('/v3/owners/{owner}/wallet/card').config(v3.createCard),
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
   braveHapi.routes.async().patch().path('/v1/owners/{owner}/wallet').whitelist().config(v1.patchWallet),

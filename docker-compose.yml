@@ -8,6 +8,8 @@ services:
   mongo:
     container_name: ledger-mongo
     image: mongo:latest
+    ports:
+      - "3010:27017"
     networks:
       - ledger
   redis:
@@ -84,20 +86,6 @@ services:
     environment:
       - "SERVICE=balance"
     depends_on:
-      - redis
-    networks:
-      - ledger
-  helper-worker:
-    container_name: helper-worker
-    command: "npm run helper-worker"
-    extends:
-      file: base.yml
-      service: ledger
-    environment:
-      - "MONGODB_URI=mongodb://mongo/helper"
-      - "SERVICE=helper"
-    depends_on:
-      - mongo
       - redis
     networks:
       - ledger

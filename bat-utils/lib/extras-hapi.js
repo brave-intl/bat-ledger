@@ -6,8 +6,6 @@ const wreck = require('wreck')
 
 const whitelist = require('./hapi-auth-whitelist')
 
-var exports = {}
-
 exports.debug = (info, request) => {
   const debug = new SDebug(info.id)
 
@@ -50,7 +48,7 @@ exports.isSimpleTokenValid = (tokenList, token) => {
     throw new TypeError('token must be a string')
   }
 
-  for (var i = 0; i < tokenList.length; i++) {
+  for (let i = 0; i < tokenList.length; i++) {
     if (constantTimeEquals(tokenList[i], token)) {
       return true
     }
@@ -145,7 +143,10 @@ const ErrorInspect = (err) => {
 
 exports.error = { inspect: ErrorInspect }
 
-let wreckUA = process.npminfo.name + '/' + process.npminfo.version + ' wreck/' + process.npminfo.dependencies.wreck
+let wreckUA = ''
+if (process.npminfo) {
+  wreckUA += process.npminfo.name + '/' + process.npminfo.version + ' wreck/' + process.npminfo.dependencies.wreck
+}
 
 underscore.keys(process.versions).forEach((version) => { wreckUA += ' ' + version + '/' + process.versions[version] })
 
@@ -200,5 +201,3 @@ const WreckDelete = async (server, opts) => {
 }
 
 exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
-
-module.exports = exports

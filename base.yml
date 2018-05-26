@@ -6,13 +6,16 @@ services:
     build: .
     restart: always
     environment:
-      - "MONGODB_URI=${MONGODB_URI-mongodb://mongo}"
+      - "BAT_EYESHADE_SERVER=${BAT_EYESHADE_SERVER-http://eyeshade-web:3002}"
+      - "BAT_GRANT_SERVER=${BAT_GRANT_SERVER-http://grant-web:3333}"
+      - "BAT_HELPER_SERVER=${BAT_HELPER_SERVER-http://helper-web:3004}"
+      - "BAT_LEDGER_SERVER=${BAT_LEDGER_SERVER-http://ledger-web:3001}"
+      - "BAT_MONGODB_URI=${BAT_MONGODB_URI-mongodb://mongo}"
+      - "DEBUG=${DEBUG-*,-babel,-eslint:*,-mongo:*,mongo:queries,-ava}"
+      - "MONGODB_URI=${MONGODB_URI-mongodb://mongo/ledger}"
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
-      - "BAT_LEDGER_SERVER=${BAT_LEDGER_SERVER-http://ledger-web:3001}"
-      - "BAT_EYESHADE_SERVER=${BAT_EYESHADE_SERVER-http://eyeshade-web:3002}"
-      - "BAT_HELPER_SERVER=${BAT_HELPER_SERVER-http://helper-web:3004}"
-      - "BAT_GRANT_SERVER=${BAT_GRANT_SERVER-http://grant-web:3333}"
+      - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN
       - BALANCE_URL
@@ -20,7 +23,6 @@ services:
       - BITCOIN_AVERAGE_PUBLIC_KEY
       - BITCOIN_AVERAGE_SECRET_KEY
       - COINBASE_WIDGET_CODE
-      - DEBUG
       - EYESHADE_GITHUB_CLIENT_ID
       - EYESHADE_GITHUB_CLIENT_SECRET
       - EYESHADE_SLACK_CHANNEL
