@@ -464,7 +464,7 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
     }
   })
 
-  response = await ledgerAgent
+  await ledgerAgent
     .post('/v2/batch/surveyor/voting')
     .send(bulkVotePayload)
     .expect(ok)
