@@ -30,7 +30,6 @@ dotenv.config()
 
 const voteExchangeRate = 1 // 1 BAT per vote
 const suggestedVotes = 12
-const numBatchVotes = 2
 
 let prevSurveyorId
 
@@ -445,33 +444,29 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
 
   viewingCredential.finalize(response.body.verification)
 
-  const bulkSurveyorPayload = []
-  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com']
-  for (let i = 0; i < surveyorIds.length; i++) {
-    let id = surveyorIds[i]
-    let publisher = votes[i % votes.length]
-    response = await ledgerAgent
-      .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
-      .expect(ok)
-
-    const surveyor = new anonize.Surveyor(response.body)
-
-    if (i < surveyorIds.length - numBatchVotes) {
-      response = await ledgerAgent
-        .put('/v2/surveyor/voting/' + encodeURIComponent(id))
-        .send({'proof': viewingCredential.submit(surveyor, { publisher })})
-        .expect(ok)
-    } else {
-      bulkSurveyorPayload.push({
-        'surveyorId': id,
-        'proof': viewingCredential.submit(surveyor, { publisher: 'basicattentiontoken.org' })
-      })
+  const bulkSurveyorPayload = surveyorIds.map(id => {
+    return {
+      surveyorId: id,
+      uId: viewingCredential.parameters.userId
     }
-  }
+  })
 
   response = await ledgerAgent
-    .post('/v2/batch/surveyor/voting')
+    .post('/v2/batch/surveyor')
     .send(bulkSurveyorPayload)
+    .expect(ok)
+
+  const bulkVotePayload = response.map(item => {
+    const surveyor = new anonize.Surveyor(item)
+    return {
+      surveyorId: item.surveyorId,
+      proof: viewingCredential.submit(surveyor, { publisher: 'basicattentiontoken.org' })
+    }
+  })
+
+  await ledgerAgent
+    .post('/v2/batch/surveyor/voting')
+    .send(bulkVotePayload)
     .expect(ok)
 })
 
