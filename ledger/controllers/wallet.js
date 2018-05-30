@@ -67,11 +67,13 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       if (wallet.grants) {
+        result.grants = []
         wallet.grants.forEach((grant) => {
           if (grant.status === 'active') {
             // TODO check claimTimestamp against validDuration - update to expired state & exclude from calc
             const grantContent = braveUtils.extractJws(grant.token)
             balances.confirmed = new BigNumber(balances.confirmed).plus(grantContent.probi)
+            result.grants.push(underscore.pick(grantContent, ['altcurrency', 'expiryTime', 'probi']))
           }
         })
       }
@@ -205,7 +207,12 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
         CARD_ID: Joi.string().guid().optional().description('Card id'),
         ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
-      })
+      }),
+      grants: Joi.array().optional().items(Joi.object().keys({
+        probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
+        altcurrency: Joi.string().optional().description('the grant currency'),
+        expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
+      }))
     }).unknown(true)
   }
 }
