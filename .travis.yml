@@ -48,8 +48,6 @@ before_script:
   - npm run lint
   # sometimes travis takes a while to bring up mongo
   - sleep 15
-  # build docker image
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   # pull the bat go layer
   - docker pull brave/bat-go:latest
   # build the docker compose file
