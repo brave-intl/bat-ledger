@@ -5,6 +5,7 @@ const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
 const uuid = require('uuid')
+const wreck = require('wreck')
 
 const utils = require('bat-utils')
 const braveJoi = utils.extras.joi
@@ -30,6 +31,11 @@ const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHI
 
 const claimRate = {
   limit: 10,
+  window: 24 * 60 * 60
+}
+
+const captchaRate = {
+  limit: 25,
   window: 24 * 60 * 60
 }
 
@@ -179,10 +185,18 @@ v1.read = { handler: (runtime) => {
    PUT /v1/grants/{paymentId}
  */
 
+const checkBounds = (v1, v2, tol) => {
+  if (v1 > v2) {
+    return (v1 - v2) <= tol
+  } else {
+    return (v2 - v1) <= tol
+  }
+}
+
 v1.write = { handler: (runtime) => {
   return async (request, reply) => {
     const paymentId = request.params.paymentId.toLowerCase()
-    const promotionId = request.payload.promotionId
+    const { promotionId, captchaResponse } = request.payload
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
@@ -197,6 +211,16 @@ v1.write = { handler: (runtime) => {
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+
+    if (runtime.config.captcha) {
+      if (!wallet.captcha) return reply(boom.forbidden('must first request captcha'))
+      if (!captchaResponse) return reply(boom.badData())
+
+      if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
+        await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $unset: { captcha: {} } })
+        return reply(boom.forbidden())
+      }
+    }
 
     if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
       // promotion already applied to wallet
@@ -288,7 +312,11 @@ v1.write = { handler: (runtime) => {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
 
     payload: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier')
+      promotionId: Joi.string().required().description('the promotion-identifier'),
+      captchaResponse: Joi.object().optional().keys({
+        x: Joi.number().required(),
+        y: Joi.number().required()
+      })
     }).required().description('promotion derails')
   },
 
@@ -474,13 +502,56 @@ v2.cohorts = { handler: (runtime) => {
   response: { schema: Joi.object().length(0) }
 }
 
+v1.getCaptcha = { handler: (runtime) => {
+  return async (request, reply) => {
+    const paymentId = request.params.paymentId.toLowerCase()
+    const debug = braveHapi.debug(module, request)
+    const wallets = runtime.database.get('wallets', debug)
+
+    if (!runtime.config.captcha) return reply(boom.notFound())
+    if (qaOnlyP(request)) return reply(boom.notFound())
+
+    const wallet = await wallets.findOne({ 'paymentId': paymentId })
+    if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+
+    const { res, payload } = await wreck.get(runtime.config.captcha.url + '/v1/captchas/target', {
+      headers: {
+        'Authorization': 'Bearer ' + runtime.config.captcha.access_token,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    const { headers } = res
+
+    const solution = JSON.parse(headers['captcha-solution'])
+    await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: solution } })
+
+    return reply(payload).header('Content-Type', headers['content-type'])
+  }
+},
+  description: 'Get a claim time captcha',
+  tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: {
+      enabled: rateLimitEnabled && !qalist.addresses,
+      rate: (request) => captchaRate
+    }
+  },
+
+  validate: {
+    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') }
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v1/grants').config(v1.read),
   braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.write),
   braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
   braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
-  braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts)
+  braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
+  braveHapi.routes.async().path('/v1/captchas/{paymentId}').config(v1.getCaptcha)
 ]
 
 module.exports.initialize = async (debug, runtime) => {

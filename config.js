@@ -15,7 +15,7 @@ const services = {
 
       if (process.env.REDEEMER_URL) {
         module.exports.redeemer =
-        { url               : process.env.REDEEMER_URL   || 'http://127.0.0.1:3004'
+        { url               : process.env.REDEEMER_URL   || 'http://127.0.0.1:3333'
         , access_token      : process.env.REDEEMER_TOKEN || '00000000-0000-4000-0000-000000000000'
         }
       }
@@ -29,6 +29,12 @@ const services = {
           { url                 : process.env.BALANCE_URL    || 'http://127.0.0.1:3000'
           , access_token        : process.env.BALANCE_TOKEN  || '00000000-0000-4000-0000-000000000000'
           }
+      }
+      if (process.env.CAPTCHA_URL) {
+        module.exports.captcha =
+        { url               : process.env.CAPTCHA_URL   || 'http://127.0.0.1:3334'
+        , access_token      : process.env.CAPTCHA_TOKEN || '00000000-0000-4000-0000-000000000000'
+        }
       }
 
       helper()
