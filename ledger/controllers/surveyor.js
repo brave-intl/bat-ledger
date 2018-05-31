@@ -568,20 +568,26 @@ v2.batchSurveyor =
     const results = []
 
     for (let item of payload) {
+      let { surveyorId } = item
       await f({
         id: id,
         params: underscore.extend(
           {
             surveyorType: 'voting',
-            surveyorId: item.surveyorId,
+            surveyorId,
             uId: item.uId
           },
           params
         )
       }, (response) => {
-        results.push((response.isBoom && response.output && response.output.payload) || response)
+        results.push({
+          surveyorId,
+          response: (response.isBoom && response.output && response.output.payload) || response
+        })
       })
     }
+
+    console.log('results', results)
 
     return reply(results)
   }
@@ -601,15 +607,24 @@ v2.batchSurveyor =
   },
 
   response: {
-    // schema: Joi.array().min(1).items(
-    //   Joi.object().keys({
-    //     surveyorId: Joi.string().required().description('identifier for the surveyor'),
-    //     surveyVK: Joi.string().required().description('public key for the surveyor'),
-    //     registrarVK: Joi.string().required().description('public key for the associated registrar'),
-    //     signature: Joi.string().required().description('initialization response for the surveyor'),
-    //     payload: Joi.object().optional().description('additional information')
-    //   })
-    // )
+    schema: Joi.array().items(
+      Joi.object().keys({
+        surveyorId: Joi.string().required().description('identifier for the surveyor'),
+        response: Joi.alternatives().try(
+          Joi.object().keys({
+            surveyVK: Joi.string().required().description('public key for the surveyor'),
+            registrarVK: Joi.string().required().description('public key for the associated registrar'),
+            signature: Joi.string().required().description('initialization response for the surveyor'),
+            payload: Joi.object().optional().description('additional information')
+          }),
+          Joi.object().keys({
+            statusCode: Joi.number().min(400).max(599).required(),
+            error: Joi.string().optional(),
+            message: Joi.string().optional()
+          }).description('boom result')
+        )
+      })
+    )
   }
 }
 
