@@ -601,15 +601,15 @@ v2.batchSurveyor =
   },
 
   response: {
-    schema: Joi.array().min(1).items(
-      Joi.object().keys({
-        surveyorId: Joi.string().required().description('identifier for the surveyor'),
-        surveyVK: Joi.string().required().description('public key for the surveyor'),
-        registrarVK: Joi.string().required().description('public key for the associated registrar'),
-        signature: Joi.string().required().description('initialization response for the surveyor'),
-        payload: Joi.object().optional().description('additional information')
-      })
-    )
+    // schema: Joi.array().min(1).items(
+    //   Joi.object().keys({
+    //     surveyorId: Joi.string().required().description('identifier for the surveyor'),
+    //     surveyVK: Joi.string().required().description('public key for the surveyor'),
+    //     registrarVK: Joi.string().required().description('public key for the associated registrar'),
+    //     signature: Joi.string().required().description('initialization response for the surveyor'),
+    //     payload: Joi.object().optional().description('additional information')
+    //   })
+    // )
   }
 }
 
