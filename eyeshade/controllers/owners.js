@@ -594,7 +594,7 @@ v1.getWallet = {
   POST /v3/owners/{owner}/wallet/card
   {
     currency    : 'BAT'
-  , description : '' // description of the card
+  , label       : '' // description of the card
   }
  */
 v3.createCard = {
@@ -645,7 +645,7 @@ v3.createCard = {
       owner: Joi.string().required().description('owner identifier')
     },
     payload: {
-      label: Joi.string().optional().description('description of the card'),
+      label: Joi.string().optional().default('').description('description of the card'),
       currency: Joi.string().default('BAT').optional().description('currency of the card to create')
     }
   },
