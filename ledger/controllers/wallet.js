@@ -69,7 +69,7 @@ const read = function (runtime, apiVersion) {
       let { grants } = wallet
       if (grants) {
         let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
-        balances.confirmed = total
+        balances.confirmed = new BigNumber(balances.confirmed).plus(total)
         result.grants = results
       }
 
