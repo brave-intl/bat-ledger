@@ -165,7 +165,7 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
   desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
-  if (balance.greaterThanOrEqualTo(desired)) return
+
   const infoKeys = [
     'altcurrency', 'provider', 'providerId', 'paymentId'
   ]
@@ -190,8 +190,10 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
     const probi = new BigNumber(grantContent.probi)
     balance = balance.plus(probi)
     grantTotal = grantTotal.plus(probi)
-    if (balance.greaterThanOrEqualTo(desired)) break
+    if (grantTotal.greaterThanOrEqualTo(desired)) break
   }
+
+  if (balance.lessThan(desired)) return
 
   if (info.cohort && this.runtime.config.testingCohorts.includes(info.cohort)) {
     return {
