@@ -594,7 +594,7 @@ v1.getWallet = {
   POST /v3/owners/{owner}/wallet/card
   {
     currency    : 'BAT'
-  , description : '' // description of the card
+  , label       : '' // description of the card
   }
  */
 v3.createCard = {
