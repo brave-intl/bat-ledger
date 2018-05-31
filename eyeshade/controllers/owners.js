@@ -645,7 +645,7 @@ v3.createCard = {
       owner: Joi.string().required().description('owner identifier')
     },
     payload: {
-      label: Joi.string().optional().default('').description('description of the card'),
+      label: Joi.string().optional().description('description of the card'),
       currency: Joi.string().default('BAT').optional().description('currency of the card to create')
     }
   },
