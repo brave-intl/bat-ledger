@@ -68,7 +68,9 @@ const read = function (runtime, apiVersion) {
     if (balances) {
       let { grants } = wallet
       if (grants) {
-        balances.confirmed = await sumActiveGrants(runtime, null, wallet, grants)
+        let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
+        balances.confirmed = total
+        result.grants = results
       }
 
       underscore.extend(result, {
@@ -137,6 +139,7 @@ const read = function (runtime, apiVersion) {
 
 async function sumActiveGrants (runtime, info, wallet, grants) {
   let total = new BigNumber(0)
+  const results = []
   for (let grant of grants) {
     let { token, status } = grant
     if (status !== 'active') {
@@ -147,9 +150,10 @@ async function sumActiveGrants (runtime, info, wallet, grants) {
     } else {
       let content = braveUtils.extractJws(token)
       total = total.plus(content.probi)
+      results.push(underscore.pick(content, ['altcurrency', 'expiryTime', 'probi']))
     }
   }
-  return total
+  return [total, results]
 }
 
 v1.read = { handler: (runtime) => { return read(runtime, 1) },
