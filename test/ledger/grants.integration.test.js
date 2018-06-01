@@ -1,4 +1,6 @@
-import test from 'ava'
+import {
+  serial as test
+} from 'ava'
 import BigNumber from 'bignumber.js'
 import crypto from 'crypto'
 import anonize from 'node-anonize2-relic'
@@ -11,6 +13,7 @@ import {
   timeout,
   ok
 } from '../utils'
+
 test('grants: add expired grant and make sure it does not add to wallet', async t => {
   t.plan(1)
   const url = '/v1/grants'

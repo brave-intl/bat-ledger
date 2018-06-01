@@ -1,13 +1,8 @@
-import test from 'ava'
-import { ledgerAgent } from '../utils'
-
-function ok (res) {
-  if (!res) return new Error('no response')
-
-  if (res.status !== 200) return new Error(JSON.stringify(res.body, null, 2).replace(/\\n/g, '\n'))
-
-  return res.body
-}
+import { serial as test } from 'ava'
+import {
+  ledgerAgent,
+  ok
+} from '../utils'
 
 test('verify voting batching endpoint does not error', async t => {
   const surveyorType = 'voting'

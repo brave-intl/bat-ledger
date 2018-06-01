@@ -16,6 +16,7 @@ services:
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
+      - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN
       - BALANCE_URL

@@ -10,8 +10,7 @@ import { sign } from 'http-request-signature'
 import _ from 'underscore'
 
 import {
-  cleanLedgerDb,
-  cleanEyeshadeDb,
+  cleanDbs,
   assertWithinBounds,
   eyeshadeAgent,
   fetchReport,
@@ -22,46 +21,37 @@ import {
   uint8tohex,
   braveYoutubeOwner,
   braveYoutubePublisher,
-  cleanRedisDb
+  createSurveyor
 } from './utils'
 
 import dotenv from 'dotenv'
 dotenv.config()
 
-const voteExchangeRate = 1 // 1 BAT per vote
-const suggestedVotes = 12
-
 let prevSurveyorId
+
+test.before(cleanDbs)
 
 test('ledger: create a surveyor', async t => {
   // need access to eyeshade db
-  t.plan(3)
-  const url = '/v2/surveyor/contribution'
-  const data = { 'adFree': {
-    'fee': { 'USD': 5 },
-    'votes': suggestedVotes,
-    'altcurrency': 'BAT',
-    'probi': new BigNumber(suggestedVotes * voteExchangeRate).times('1e18').toString()
-  }}
+  t.plan(5)
+  let response
+  const options = {
+    rate: 1,
+    votes: 12
+  }
 
-  await ledgerAgent.post(url).send(data).expect(ok)
+  response = await createSurveyor(options)
 
-  let response = await ledgerAgent
-    .get('/v2/surveyor/contribution/current')
-    .expect(ok)
-
-  t.true(response.body.hasOwnProperty('surveyorId'))
   prevSurveyorId = response.body.surveyorId
+  t.true(_.isString(prevSurveyorId))
+  t.true(!!prevSurveyorId)
 
   // create new surveyor and verify the id changed
-  await ledgerAgent.post(url).send(data).expect(ok)
-
-  response = await ledgerAgent
-    .get('/v2/surveyor/contribution/current')
-    .expect(ok)
-
-  t.true(response.body.hasOwnProperty('surveyorId'))
-  t.true(prevSurveyorId !== response.body.surveyorId)
+  response = await createSurveyor(options)
+  const { surveyorId } = response.body
+  t.true(_.isString(surveyorId))
+  t.true(!!surveyorId)
+  t.not(prevSurveyorId, surveyorId)
 })
 test('ledger: create promotion', async t => {
   t.plan(0)
@@ -338,7 +328,6 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
   response = await ledgerAgent
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
-
   t.true(response.body.hasOwnProperty('surveyorId'))
   const surveyorId = response.body.surveyorId
 
@@ -564,10 +553,4 @@ test('ensure referral balances are computed correctly', async t => {
   assertWithinBounds(t, amount, 5.00, 0.25, 'USD value for a referral should be approx $5')
 })
 
-test.after(async () => {
-  await Promise.all([
-    cleanEyeshadeDb(),
-    cleanLedgerDb(),
-    cleanRedisDb()
-  ])
-})
+test.after(cleanDbs)
