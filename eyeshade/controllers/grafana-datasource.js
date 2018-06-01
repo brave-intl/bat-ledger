@@ -8,7 +8,11 @@ const Joi = require('joi')
 const pluralize = require('pluralize')
 const underscore = require('underscore')
 
-const braveHapi = require('bat-utils').extras.hapi
+const braveExtras = require('bat-utils').extras
+const braveHapi = braveExtras.hapi
+const {
+  createdTimestamp
+} = braveExtras.utils
 const getPublisherProps = require('bat-publisher').getPublisherProps
 
 const v1 = {}
@@ -174,16 +178,12 @@ v1.annotations = {
     { schema: Joi.array().length(0) }
 }
 
-const id2dt = (id) => {
-  return new Date(parseInt(id.toHexString().substring(0, 8), 16) * 1000).getTime()
-}
-
 const updateTSDB = async (debug, runtime) => {
   const publishers = runtime.database.get('publishers', debug)
   let entries
 
   entries = await publishers.find(tsdb._id ? { _id: { $gt: tsdb._id } } : { }, { _id: true, publisher: true })
-  for (let entry of entries) { entry.timestamp = id2dt(entry._id) }
+  for (let entry of entries) { entry.timestamp = createdTimestamp(entry._id) }
 
   for (let entry of entries.sort((a, b) => { return (a.timestamp - b.timestamp) })) {
     let key, props, series

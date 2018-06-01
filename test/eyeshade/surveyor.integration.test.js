@@ -12,9 +12,12 @@ import {
 import {
   connectToDb,
   createSurveyor,
-  timeout,
+  dbUri,
   getSurveyor
 } from '../utils'
+import {
+  timeout
+} from 'bat-utils/lib/extras-utils'
 
 process.env.SERVICE = 'ledger'
 const config = require('../../config')
@@ -22,7 +25,7 @@ const config = require('../../config')
 const votingReportWorker = workers['voting-report']
 
 const debug = new SDebug('surveyor-test')
-const mongo = `${process.env.BAT_MONGODB_URI}/eyeshade`
+const mongo = dbUri('eyeshade')
 
 const database = new Database({
   database: {
