@@ -11,6 +11,9 @@ const BigNumber = require('bignumber.js')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
+const {
+  freezeOldSurveyors
+} = require('../eyeshade/workers/reports')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -165,7 +168,8 @@ module.exports = {
   cleanRedisDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
-  createRedisCache
+  createRedisCache,
+  freezeSurveyors
 }
 
 function cleanDbs () {
@@ -207,4 +211,17 @@ function createRedisCache () {
       redis: process.env.BAT_REDIS_URL
     }
   })
+}
+
+async function freezeSurveyors (dayShift) {
+  const surveyors = (surveyorsCollection) => ({
+    // use this proxy because of toArray
+    find: (query) => surveyorsCollection.find(query).toArray(),
+    update: (where, data) => surveyorsCollection.update(where, data)
+  })
+  const midnight = (new Date()).setHours(0, 0, 0, 0)
+  const eyeshade = await connectToDb('eyeshade')
+  const collection = eyeshade.collection('surveyors')
+  const surveyorsCollection = surveyors(collection)
+  await freezeOldSurveyors(dayShift, midnight, surveyorsCollection)
 }

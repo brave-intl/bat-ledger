@@ -34,6 +34,7 @@
     "test-integration": "ava -v test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
     "test-security": "npm audit",
     "test-unit": "ava -v",
+    "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockersvcs",
     "docker-up-dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up $npm_package_config_dockersvcs",

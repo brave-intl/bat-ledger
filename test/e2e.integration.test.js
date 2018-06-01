@@ -27,7 +27,8 @@ import {
   braveYoutubePublisher,
   createSurveyor,
   balanceAgent,
-  createRedisCache
+  createRedisCache,
+  freezeSurveyors
 } from './utils'
 
 import {
@@ -521,19 +522,17 @@ test('payments are cached and can be removed', async t => {
 })
 
 test('ensure contribution balances are computed correctly', async t => {
-  t.plan(4)
+  t.plan(6)
+  let reportProbi
+  let body
+  const url = formURL('/v1/reports/publishers/contributions', { includeUnpayable: true })
 
-  let { body } = await eyeshadeAgent.get(formURL('/v1/reports/publishers/contributions', { includeUnpayable: true }))
-    .send().expect(ok)
-  const { reportURL } = body
+  reportProbi = await run()
+  t.is(Number(reportProbi), 0)
 
-  ;({ body } = await fetchReport({ url: reportURL }))
-  t.true(body.length > 0)
+  freezeSurveyors(-1)
 
-  const singleEntry = _.findWhere(body, { publisher: braveYoutubePublisher })
-
-  const reportProbi = singleEntry.probi
-
+  reportProbi = await run()
   t.true(Number(reportProbi) > 0)
 
   ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
@@ -561,6 +560,21 @@ test('ensure contribution balances are computed correctly', async t => {
   ;({ contributions } = body)
 
   t.true(Number(contributions.probi) === 0)
+
+  async function run () {
+    let body
+    let reportURL
+
+    ;({ body } = await eyeshadeAgent.get(url).send().expect(ok))
+    ;({ reportURL } = body)
+
+    ;({ body } = await fetchReport({ url: reportURL }))
+    t.true(body.length > 0)
+
+    const singleEntry = _.findWhere(body, { publisher: braveYoutubePublisher })
+    const reportProbi = singleEntry.probi
+    return reportProbi
+  }
 })
 
 test('ensure referral balances are computed correctly', async t => {
