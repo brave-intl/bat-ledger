@@ -20,7 +20,7 @@ services:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
       - "./eyeshade:/usr/src/app/eyeshade"
-    command: "npm run start-ledger-worker"
+    command: "npm run start-eyeshade-worker"
   balance-web:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
