@@ -492,7 +492,7 @@ const provision = async (debug, runtime, surveyorId, bump) => {
    POST /{apiV}/batch/surveyor/voting
  */
 
-v2.batch =
+v2.batchVote =
 { handler: (runtime) => {
   return async (request, reply) => {
     const f = v2.phase2.handler(runtime)
@@ -554,13 +554,97 @@ v2.batch =
   }
 }
 
+/*
+   GET /{apiV}/batch/surveyor/voting/{uId}
+ */
+
+v2.batchSurveyor =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const surveyorType = 'voting'
+    const uId = request.params.uId.toLowerCase()
+    const credentials = runtime.database.get('credentials', debug)
+    let entry, registrar, signature
+
+    registrar = runtime.registrars[registrarType(surveyorType)]
+    if (!registrar) return reply(boom.badImplementation('unable to find registrar for ' + surveyorType))
+
+    entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
+
+    if (!entry) return reply(boom.notFound('viewingId not valid(1): ' + uId))
+
+    const viewings = runtime.database.get('viewings', debug)
+    const viewing = await viewings.findOne({ uId: uId })
+
+    if (!viewing) return reply(boom.notFound('viewingId not valid(2): ' + uId))
+
+    let surveyors = []
+    await Promise.all(viewing.surveyorIds.map(async (surveyorId) => {
+      const request = {
+        params: {
+          surveyorId,
+          surveyorType
+        }
+      }
+      surveyors.push(await server(request, reply, runtime))
+    }))
+
+    const now = underscore.now()
+
+    let payload = []
+    surveyors.forEach(surveyor => {
+      signature = surveyor.sign(uId)
+      runtime.newrelic.recordCustomEvent('sign', {
+        surveyorId: surveyor.surveyorId,
+        surveyorType: surveyor.surveyorType,
+        duration: underscore.now() - now
+      })
+      payload.push(underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo()))
+    })
+
+    reply(payload)
+  }
+},
+
+  description: 'Batch for initialization response for a surveyors',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      apiV: Joi.string().required().description('the api version'),
+      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
+    }
+  },
+
+  response: {
+    schema: Joi.alternatives().try(
+      Joi.array().items(
+        Joi.object().keys({
+          surveyorId: Joi.string().required().description('identifier for the surveyor'),
+          surveyVK: Joi.string().required().description('public key for the surveyor'),
+          registrarVK: Joi.string().required().description('public key for the associated registrar'),
+          signature: Joi.string().required().description('initialization response for the surveyor'),
+          payload: Joi.object().optional().description('additional information')
+        })
+      ),
+      Joi.object().keys({
+        statusCode: Joi.number().min(400).max(599).required(),
+        error: Joi.string().optional(),
+        message: Joi.string().optional()
+      }).description('boom result')
+    )
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.read),
   braveHapi.routes.async().post().path('/{apiV}/surveyor/{surveyorType}').config(v2.create),
   braveHapi.routes.async().patch().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.update),
   braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}/{uId}').config(v2.phase1),
   braveHapi.routes.async().put().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.phase2),
-  braveHapi.routes.async().post().path('/{apiV}/batch/surveyor/voting').config(v2.batch)
+  braveHapi.routes.async().post().path('/{apiV}/batch/surveyor/voting').config(v2.batchVote),
+  braveHapi.routes.async().path('/{apiV}/batch/surveyor/voting/{uId}').config(v2.batchSurveyor)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
