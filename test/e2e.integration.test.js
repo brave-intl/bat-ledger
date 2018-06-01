@@ -444,20 +444,12 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
 
   viewingCredential.finalize(response.body.verification)
 
-  const bulkSurveyorPayload = surveyorIds.map(id => {
-    return {
-      surveyorId: id,
-      uId: viewingCredential.parameters.userId
-    }
-  })
-
   response = await ledgerAgent
-    .post('/v2/batch/surveyor')
-    .send(bulkSurveyorPayload)
+    .get(`/v2/batch/surveyor/voting/${viewingCredential.parameters.userId}`)
     .expect(ok)
 
   const bulkVotePayload = response.body.map(item => {
-    const surveyor = new anonize.Surveyor(item.response)
+    const surveyor = new anonize.Surveyor(item)
     return {
       surveyorId: item.surveyorId,
       proof: viewingCredential.submit(surveyor, { publisher: 'basicattentiontoken.org' })

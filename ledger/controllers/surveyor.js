@@ -555,39 +555,55 @@ v2.batchVote =
 }
 
 /*
-   POST /{apiV}/batch/surveyor
+   GET /{apiV}/batch/surveyor/voting/{uId}
  */
 
 v2.batchSurveyor =
 { handler: (runtime) => {
   return async (request, reply) => {
-    const f = v2.phase1.handler(runtime)
-    const id = request.id
-    const params = request.params
-    const payload = request.payload
-    const results = []
+    const debug = braveHapi.debug(module, request)
+    const surveyorType = 'voting'
+    const uId = request.params.uId.toLowerCase()
+    const credentials = runtime.database.get('credentials', debug)
+    let entry, registrar, signature
 
-    for (let item of payload) {
-      const { surveyorId } = item
-      await f({
-        id: id,
-        params: underscore.extend(
-          {
-            surveyorType: 'voting',
-            surveyorId,
-            uId: item.uId
-          },
-              params
-            )
-      }, (response) => {
-        results.push({
+    registrar = runtime.registrars[registrarType(surveyorType)]
+    if (!registrar) return reply(boom.badImplementation('unable to find registrar for ' + surveyorType))
+
+    entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
+
+    if (!entry) return reply(boom.notFound('viewingId not valid(1): ' + uId))
+
+    const viewings = runtime.database.get('viewings', debug)
+    const viewing = await viewings.findOne({ uId: uId })
+
+    if (!viewing) return reply(boom.notFound('viewingId not valid(2): ' + uId))
+
+    let surveyors = []
+    await Promise.all(viewing.surveyorIds.map(async (surveyorId) => {
+      const request = {
+        params: {
           surveyorId,
-          response: (response.isBoom && response.output && response.output.payload) || response
-        })
-      })
-    }
+          surveyorType
+        }
+      }
+      surveyors.push(await server(request, reply, runtime))
+    }))
 
-    return reply(results)
+    const now = underscore.now()
+
+    let payload = []
+    surveyors.forEach(surveyor => {
+      signature = surveyor.sign(uId)
+      runtime.newrelic.recordCustomEvent('sign', {
+        surveyorId: surveyor.surveyorId,
+        surveyorType: surveyor.surveyorType,
+        duration: underscore.now() - now
+      })
+      payload.push(underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo()))
+    })
+
+    reply(payload)
   }
 },
 
@@ -595,35 +611,29 @@ v2.batchSurveyor =
   tags: [ 'api' ],
 
   validate: {
-    params: { apiV: Joi.string().required().description('the api version') },
-    payload: Joi.array().min(1).items(
-        Joi.object().keys({
-          surveyorId: Joi.string().required().description('the identity of the surveyor'),
-          uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
-        })
-      )
+    params: {
+      apiV: Joi.string().required().description('the api version'),
+      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
+    }
   },
 
   response: {
-    schema: Joi.array().items(
+    schema: Joi.alternatives().try(
+      Joi.array().items(
         Joi.object().keys({
           surveyorId: Joi.string().required().description('identifier for the surveyor'),
-          response: Joi.alternatives().try(
-            Joi.object().keys({
-              surveyorId: Joi.string().required().description('identifier for the surveyor'),
-              surveyVK: Joi.string().required().description('public key for the surveyor'),
-              registrarVK: Joi.string().required().description('public key for the associated registrar'),
-              signature: Joi.string().required().description('initialization response for the surveyor'),
-              payload: Joi.object().optional().description('additional information')
-            }),
-            Joi.object().keys({
-              statusCode: Joi.number().min(400).max(599).required(),
-              error: Joi.string().optional(),
-              message: Joi.string().optional()
-            }).description('boom result')
-          )
+          surveyVK: Joi.string().required().description('public key for the surveyor'),
+          registrarVK: Joi.string().required().description('public key for the associated registrar'),
+          signature: Joi.string().required().description('initialization response for the surveyor'),
+          payload: Joi.object().optional().description('additional information')
         })
-      )
+      ),
+      Joi.object().keys({
+        statusCode: Joi.number().min(400).max(599).required(),
+        error: Joi.string().optional(),
+        message: Joi.string().optional()
+      }).description('boom result')
+    )
   }
 }
 
@@ -634,7 +644,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}/{uId}').config(v2.phase1),
   braveHapi.routes.async().put().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.phase2),
   braveHapi.routes.async().post().path('/{apiV}/batch/surveyor/voting').config(v2.batchVote),
-  braveHapi.routes.async().post().path('/{apiV}/batch/surveyor').config(v2.batchSurveyor)
+  braveHapi.routes.async().path('/{apiV}/batch/surveyor/voting/{uId}').config(v2.batchSurveyor)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
