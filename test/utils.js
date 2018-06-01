@@ -7,6 +7,9 @@ const _ = require('underscore')
 const uuid = require('uuid')
 const redis = require('redis')
 const BigNumber = require('bignumber.js')
+const {
+  timeout
+} = require('bat-utils/lib/extras-utils')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -37,12 +40,6 @@ const ledgerCollections = [
 const tkn = process.env.TOKEN_LIST.split(',')[0]
 const token = `Bearer ${tkn}`
 
-const uint8tohex = (arr) => {
-  const strBuilder = []
-  arr.forEach(function (b) { strBuilder.push(('00' + b.toString(16)).substr(-2)) })
-  return strBuilder.join('')
-}
-
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 
 const formURL = createFormURL({
@@ -53,8 +50,6 @@ const formURL = createFormURL({
   amount: 0,
   currency: 'USD'
 })
-
-const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set('Authorization', token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set('Authorization', token)
@@ -118,11 +113,8 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
     t.true((v2 - v1) <= tol, msg)
   }
 }
-
-const connectToDb = async (key) => {
-  const dbUri = `${process.env.BAT_MONGODB_URI}/${key}`
-  return mongodb.MongoClient.connect(dbUri)
-}
+const dbUri = (db) => `${process.env.BAT_MONGODB_URI}/${db}`
+const connectToDb = async (key) => mongodb.MongoClient.connect(dbUri(key))
 
 const cleanDb = async (key, collections) => {
   const db = await connectToDb(key)
@@ -153,16 +145,15 @@ const cleanRedisDb = async () => {
 module.exports = {
   createSurveyor,
   getSurveyor,
-  uint8tohex,
   fetchReport,
   formURL,
   ok,
   status,
-  timeout,
   eyeshadeAgent,
   ledgerAgent,
   assertWithinBounds,
   connectToDb,
+  dbUri,
   cleanDb,
   cleanDbs,
   cleanLedgerDb,

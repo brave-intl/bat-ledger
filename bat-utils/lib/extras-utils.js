@@ -2,6 +2,7 @@ module.exports = {
   timeout,
   extractJws,
   utf8ify,
+  uint8tohex,
   createdTimestamp,
   documentOlderThan
 }
@@ -28,11 +29,13 @@ function utf8ify (data) {
 }
 
 function documentOlderThan (olderThanDays, anchorTime, _id) {
-  const nDaysInMS = DAY_MS * olderThanDays
-  const previousDate = anchorTime - nDaysInMS
-  return createdTimestamp(_id) < previousDate
+  return createdTimestamp(_id) < (anchorTime - (DAY_MS * olderThanDays))
 }
 
 function createdTimestamp (id) {
   return new Date(parseInt(id.toHexString().substring(0, 8), 16) * 1000).getTime()
+}
+
+function uint8tohex (arr) {
+  return [].slice.call(arr).map((b) => ('00' + b.toString(16)).substr(-2)).join('')
 }

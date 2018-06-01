@@ -8,7 +8,6 @@ import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
 import _ from 'underscore'
-
 import {
   cleanDbs,
   assertWithinBounds,
@@ -17,14 +16,17 @@ import {
   formURL,
   ledgerAgent,
   ok,
-  timeout,
-  uint8tohex,
   braveYoutubeOwner,
   braveYoutubePublisher,
   createSurveyor
 } from './utils'
-
 import dotenv from 'dotenv'
+
+import {
+  timeout,
+  uint8tohex
+} from 'bat-utils/lib/extras-utils'
+
 dotenv.config()
 
 let prevSurveyorId

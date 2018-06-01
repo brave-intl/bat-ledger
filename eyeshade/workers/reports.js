@@ -11,7 +11,8 @@ const braveHapi = braveExtras.hapi
 const getPublisherProps = require('bat-publisher').getPublisherProps
 const {
   utf8ify,
-  documentOlderThan
+  documentOlderThan,
+  createdTimestamp
 } = braveExtras.utils
 
 BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
@@ -427,7 +428,7 @@ const quanta = async (debug, runtime, qid) => {
 
     if (!surveyor) return debug('missing surveyor.surveyorId', { surveyorId: quantum._id })
 
-    quantum.created = new Date(parseInt(surveyor._id.toHexString().substring(0, 8), 16) * 1000).getTime()
+    quantum.created = createdTimestamp(surveyor._id)
     quantum.modified = (surveyor.timestamp.high_ * 1000) + (surveyor.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
 
     vote = underscore.find(votes, (entry) => { return (quantum._id === entry._id) })
@@ -757,7 +758,7 @@ const publisherSettlements = (runtime, entries, format, summaryP, spacingP) => {
     publishers[entry.publisher].commission = publishers[entry.publisher].commission.plus(new BigNumber(entry.commission))
     if (typeof publishers[entry.publisher].currency === 'undefined') publishers[entry.publisher].currency = entry.currency
     else if (publishers[entry.publisher].currency !== entry.currency) publishers[entry.publisher].currency = ''
-    entry.created = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
+    entry.created = createdTimestamp(entry._id)
     entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
     publishers[entry.publisher].txns.push(underscore.pick(entry, [
       'altcurrency', 'probi', 'currency', 'amount', 'fees', 'commission', 'settlementId', 'address', 'hash', 'created',
@@ -1635,7 +1636,7 @@ exports.workers = {
         }
 
         if (!results[publisher].history) results[publisher].history = []
-        entry.created = new Date(parseInt(entry._id.toHexString().substring(0, 8), 16) * 1000).getTime()
+        entry.created = createdTimestamp(entry._id)
         entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
         results[publisher].history.push(underscore.extend(underscore.omit(entry, [ 'publisher', 'timestamp', 'info' ]),
                                                           entry.info || {}))
@@ -1719,7 +1720,7 @@ exports.workers = {
 
         datum = await publishers.findOne({ publisher: publisher })
         if (datum) {
-          datum.created = new Date(parseInt(datum._id.toHexString().substring(0, 8), 16) * 1000).getTime()
+          datum.created = createdTimestamp(datum._id)
           datum.modified = (datum.timestamp.high_ * 1000) + (datum.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
           underscore.extend(results[publisher],
                             underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]), datum.info)
@@ -1902,7 +1903,7 @@ exports.workers = {
             probi: slice.probi.truncated().toString(),
             publisher: slice.publisher,
             votes: slice.counts,
-            created: new Date(parseInt(slice._id.toHexString().substring(0, 8), 16) * 1000).getTime(),
+            created: createdTimestamp(slice._id),
             modified: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
             cohort: slice.cohort || 'control'
           })
