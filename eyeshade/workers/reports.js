@@ -131,7 +131,7 @@ async function freezeOldSurveyors (olderThanDays, anchorTime, surveyors) {
   }
   // in seconds
   const where = {
-    frozen: false,
+    frozen: { $ne: true },
     surveyorType: 'contribution'
   }
   const data = {
