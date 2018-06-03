@@ -136,20 +136,64 @@ async function freezeOldSurveyors (surveyors, olderThanDays, anchorTime) {
     frozen: { $ne: true },
     surveyorType: 'contribution'
   }
+  const surveyors = database.get('surveyors', debug)
+  const nonFrozenSurveyors = await surveyors.find(where)
+  const mapper = freezeSurveyor(debug, runtime, olderThanDays, anchorTime)
+  const updates = nonFrozenSurveyors.map(mapper)
+  await Promise.all(updates).then(() => updates.length)
+}
+
+const freezeSurveyor = (debug, runtime, olderThanDays, anchorTime) => async ({
+  _id,
+  surveyorId,
+  probi
+}) => {
+  if (!documentOlderThan(olderThanDays, anchorTime, _id)) {
+    return
+  }
+  const { database } = runtime
   const data = {
     $set: {
       frozen: true
     }
   }
-  const nonFrozenSurveyors = await surveyors.find(where)
-  const updates = nonFrozenSurveyors.map(freezeSurveyor)
-  await Promise.all(updates).then(() => updates.length)
+  const surveyors = database.get('surveyors', debug)
+  const voting = database.get('voting', debug)
+  await surveyors.update({ surveyorId }, data)
+  const votes = await voting.find({
+    surveyorId
+  })
+  const createdAt = new Date()
+  // DOUBLE ENTRY
+  const mapper = insertVoteToPostgres(debug, runtime, {
+    surveyorId,
+    createdAt,
+    probi
+  })
+  await Promise.all(votes.map(mapper))
+}
 
-  function freezeSurveyor ({ _id }) {
-    if (documentOlderThan(olderThanDays, anchorTime, _id)) {
-      return surveyors.update({ _id }, data)
-    }
-  }
+const insertVoteToPostgres = (debug, {
+  postgres
+}, {
+  surveyorId,
+  createdAt,
+  probi
+}) => async ({
+  counts,
+  cohort,
+  publisher
+}) => {
+  console.log(probi.toString())
+  let transactions = postgres.transactionsFrom('vote', {
+    counts,
+    cohort,
+    probi,
+    publisher,
+    surveyorId,
+    createdAt
+  })
+  await postgres.insertTransactions(transactions)
 }
 
 const hourly = async (debug, runtime) => {

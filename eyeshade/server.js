@@ -34,5 +34,9 @@ const options = {
 }
 
 config.cache = false
+config.postgres = {
+  schemaVersion: require('./migrations/current'),
+  settings: {}
+}
 
 module.exports = utils.hapi.server(options, new utils.Runtime(config))

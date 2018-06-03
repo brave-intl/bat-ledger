@@ -19,6 +19,16 @@ services:
       - "3011:6379"
     networks:
       - ledger
+  eyeshade-postgres:
+    container_name: eyeshade-postgres
+    image: postgres:10.4
+    ports:
+      - "5433:5432"
+    networks:
+      - ledger
+    environment:
+      - "POSTGRES_USER=eyeshade"
+      - "POSTGRES_PASSWORD=password"
   eyeshade-worker:
     container_name: eyeshade-worker
     command: "npm run eyeshade-worker"
@@ -26,11 +36,15 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "POSTGRES_HOST=eyeshade-postgres"
+      - "POSTGRES_PORT=5432"
+      - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
     depends_on:
       - mongo
       - redis
+      - eyeshade-postgres
     networks:
       - ledger
   eyeshade-web:
@@ -42,6 +56,9 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "POSTGRES_HOST=eyeshade-postgres"
+      - "POSTGRES_PORT=5432"
+      - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
     depends_on:
@@ -57,6 +74,8 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
+      - "POSTGRES_HOST=eyeshade-postgres"
+      - "POSTGRES_PORT=5432"
     depends_on:
       - mongo
       - redis
@@ -73,6 +92,8 @@ services:
     environment:
       - "SERVICE=ledger"
       - PUBLISHERS_TAKEOVER
+      - "POSTGRES_HOST=eyeshade-postgres"
+      - "POSTGRES_PORT=5432"
     depends_on:
       - mongo
       - redis
@@ -88,6 +109,8 @@ services:
       service: ledger
     environment:
       - "SERVICE=balance"
+      - "POSTGRES_HOST=eyeshade-postgres"
+      - "POSTGRES_PORT=5432"
     depends_on:
       - redis
     networks:
@@ -103,6 +126,8 @@ services:
     environment:
       - "MONGODB_URI=mongodb://mongo/helper"
       - "SERVICE=helper"
+      - "POSTGRES_HOST=eyeshade-postgres"
+      - "POSTGRES_PORT=5432"
     depends_on:
       - mongo
       - redis

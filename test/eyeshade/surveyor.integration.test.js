@@ -2,6 +2,7 @@ import {
   serial as test
 } from 'ava'
 import Database from 'bat-utils/lib/runtime-database'
+import Postgres from 'bat-utils/lib/runtime-postgres'
 import SDebug from 'sdebug'
 import {
   workers
@@ -9,12 +10,11 @@ import {
 import {
   connectToDb,
   createSurveyor,
-  dbUri,
-  getSurveyor,
-  freezeSurveyors
+  getSurveyor
 } from '../utils'
 import {
-  timeout
+  timeout,
+  mongoUri
 } from 'bat-utils/lib/extras-utils'
 
 process.env.SERVICE = 'ledger'
@@ -23,17 +23,23 @@ const config = require('../../config')
 const votingReportWorker = workers['voting-report']
 
 const debug = new SDebug('surveyor-test')
-const mongo = dbUri('eyeshade')
+const mongo = mongoUri('eyeshade')
 
 const database = new Database({
   database: {
     mongo
   }
 })
+const postgres = new Postgres({
+  postgres: {
+    settings: {}
+  }
+})
 
 const runtime = {
   database,
-  config
+  config,
+  postgres
 }
 
 test('verify frozen occurs when daily is run', async t => {

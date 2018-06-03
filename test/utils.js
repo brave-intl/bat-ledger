@@ -9,7 +9,8 @@ const uuid = require('uuid')
 const redis = require('redis')
 const BigNumber = require('bignumber.js')
 const {
-  timeout
+  timeout,
+  mongoUri
 } = require('bat-utils/lib/extras-utils')
 const {
   freezeOldSurveyors
@@ -119,8 +120,8 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
     t.true((v2 - v1) <= tol, msg)
   }
 }
-const dbUri = (db) => `${process.env.BAT_MONGODB_URI}/${db}`
-const connectToDb = async (key) => mongodb.MongoClient.connect(dbUri(key))
+
+const connectToDb = async (key) => mongodb.MongoClient.connect(mongoUri(key))
 
 const cleanDb = async (key, collections) => {
   const db = await connectToDb(key)
@@ -160,7 +161,6 @@ module.exports = {
   balanceAgent,
   assertWithinBounds,
   connectToDb,
-  dbUri,
   cleanDb,
   cleanDbs,
   cleanLedgerDb,
