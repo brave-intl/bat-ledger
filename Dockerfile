@@ -16,6 +16,6 @@ RUN npm install -g npm@5.10
 
 COPY package.json /usr/src/app/
 COPY bat-utils/package.json /usr/src/app/bat-utils/
-RUN npm install
+RUN npm ci
 COPY . /usr/src/app
 RUN npm run build
