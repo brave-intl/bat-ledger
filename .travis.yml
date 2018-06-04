@@ -38,10 +38,12 @@ services:
   - docker
 cache:
   directories:
-    - $HOME/.npm
+  - $HOME/.npm
 before_install:
   - npm i --global npm@5.10.0
   - npm --version
+install:
+- npm ci
 sudo: required
 before_script:
   # lint the files (fail early)
