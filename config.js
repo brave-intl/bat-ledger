@@ -36,7 +36,7 @@ const services = {
         , access_token      : process.env.CAPTCHA_TOKEN || '00000000-0000-4000-0000-000000000000'
         }
       }
-
+      publishers()
       helper()
       uphold()
     }
@@ -46,17 +46,12 @@ const services = {
     portno: 3002,
 
     f: () => {
-      if (process.env.PUBLISHERS_URL) {
-        module.exports.publishers =
-          { url                 : process.env.PUBLISHERS_URL    || 'http://127.0.0.1:3000'
-          , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
-          }
-      }
       module.exports.referrals =
         { currency              : process.env.REFERRALS_CURRENCY || 'USD'
         , amount                : process.env.REFERRALS_AMOUNT || 5
         }
 
+      publishers()
       helper()
       uphold()
     }
@@ -77,6 +72,18 @@ const services = {
 
   helper: {
     portno: 3004
+  }
+}
+
+const publishers = () => {
+  module.exports.publishers = {}
+  if (process.env.PUBLISHERS_URL) {
+    const takeover = process.env.PUBLISHERS_TAKEOVER
+    module.exports.publishers =
+      { url                 : process.env.PUBLISHERS_URL    || 'http://127.0.0.1:3000'
+      , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
+      , takeover            : takeover ? ({ true: true, false: false })[takeover] : false
+      }
   }
 }
 
