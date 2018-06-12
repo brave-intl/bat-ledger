@@ -97,7 +97,9 @@ const identity = async (debug, runtime, result) => {
 
 v3.identity =
 { handler: (runtime) => {
-  return process.env.PUBLISHERS_TAKEOVER === 'true' ? publishersHandleIdentity : handleIdentityInternally
+  const pubs = runtime.config.publishers
+  const { takeover } = pubs
+  return takeover ? publishersHandleIdentity : handleIdentityInternally
 
   async function handleIdentityInternally (request, reply) {
     const publisher = request.query.publisher
@@ -147,7 +149,6 @@ v3.identity =
       query
     } = request
     const stringified = querystring.stringify(query)
-    const pubs = runtime.config.publishers
     const baseUrl = pubs.url
     const token = pubs.access_token
     const Authorization = `Token token=${token}`
@@ -210,8 +211,9 @@ v3.identity =
 
 v3.timestamp =
 { handler: (runtime) => {
-  // return process.env.PUBLISHERS_TAKEOVER === 'true' ? publishersHandleTimestamp : handleTimestampInternally
-  return handleTimestampInternally
+  const pubs = runtime.config.publishers
+  const { takeover } = pubs
+  return takeover ? publishersHandleTimestamp : handleTimestampInternally
 
   async function handleTimestampInternally (request, reply) {
     const debug = braveHapi.debug(module, request)
@@ -237,7 +239,6 @@ v3.timestamp =
   /*eslint-disable*/
   async function publishersHandleTimestamp (request, reply) {
     const debug = braveHapi.debug(module, request)
-    const pubs = runtime.config.publishers
     const baseUrl = pubs.url
     const token = pubs.access_token
     const url = `/api/public/channels/timestamp`

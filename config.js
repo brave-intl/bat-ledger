@@ -47,9 +47,11 @@ const services = {
 
     f: () => {
       if (process.env.PUBLISHERS_URL) {
+        const takeover = process.env.PUBLISHERS_TAKEOVER
         module.exports.publishers =
           { url                 : process.env.PUBLISHERS_URL    || 'http://127.0.0.1:3000'
           , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
+          , takeover:           : takeover ? ({ true: true, false: false })[takeover] : false
           }
       }
       module.exports.referrals =
