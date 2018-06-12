@@ -46,6 +46,7 @@ const services = {
     portno: 3002,
 
     f: () => {
+      module.exports.publishers = {}
       if (process.env.PUBLISHERS_URL) {
         const takeover = process.env.PUBLISHERS_TAKEOVER
         module.exports.publishers =
