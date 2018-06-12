@@ -9,16 +9,6 @@ const services = {
       { BAT : process.env.BAT_SETTLEMENT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
       }
 
-      module.exports.publishers = {}
-      if (process.env.PUBLISHERS_URL) {
-        const takeover = process.env.PUBLISHERS_TAKEOVER
-        module.exports.publishers =
-          { url                 : process.env.PUBLISHERS_URL    || 'http://127.0.0.1:3000'
-          , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
-          , takeover            : takeover ? ({ true: true, false: false })[takeover] : false
-          }
-      }
-
       if (process.env.COINBASE_WIDGET_CODE) {
         module.exports.wallet.coinbase = { widgetCode : process.env.COINBASE_WIDGET_CODE }
       }
@@ -46,7 +36,7 @@ const services = {
         , access_token      : process.env.CAPTCHA_TOKEN || '00000000-0000-4000-0000-000000000000'
         }
       }
-
+      publishers()
       helper()
       uphold()
     }
@@ -61,6 +51,7 @@ const services = {
         , amount                : process.env.REFERRALS_AMOUNT || 5
         }
 
+      publishers()
       helper()
       uphold()
     }
@@ -81,6 +72,18 @@ const services = {
 
   helper: {
     portno: 3004
+  }
+}
+
+const publishers = () => {
+  module.exports.publishers = {}
+  if (process.env.PUBLISHERS_URL) {
+    const takeover = process.env.PUBLISHERS_TAKEOVER
+    module.exports.publishers =
+      { url                 : process.env.PUBLISHERS_URL    || 'http://127.0.0.1:3000'
+      , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
+      , takeover            : takeover ? ({ true: true, false: false })[takeover] : false
+      }
   }
 }
 
