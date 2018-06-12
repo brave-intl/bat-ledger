@@ -70,6 +70,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
+      - PUBLISHERS_TAKEOVER
     depends_on:
       - mongo
       - redis
