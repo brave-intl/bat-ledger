@@ -98,9 +98,6 @@ const identity = async (debug, runtime, result) => {
 v3.identity =
 { handler: (runtime) => {
   const pubs = runtime.config.publishers
-  if (!pubs) {
-    return handleIdentityInternally
-  }
   const { takeover } = pubs
   return takeover ? publishersHandleIdentity : handleIdentityInternally
 
@@ -215,9 +212,6 @@ v3.identity =
 v3.timestamp =
 { handler: (runtime) => {
   const pubs = runtime.config.publishers
-  if (!pubs) {
-    return handleTimestampInternally
-  }
   const { takeover } = pubs
   return takeover ? publishersHandleTimestamp : handleTimestampInternally
 
