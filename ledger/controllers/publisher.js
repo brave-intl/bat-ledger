@@ -192,6 +192,7 @@ v3.identity =
     { query: { publisher: braveJoi.string().publisher().required().description('the publisher identity') } },
 
   response: {
+    /*
     schema: Joi.object().keys({
       SLD: Joi.string().description('entry value'),
       RLD: Joi.string().description('entry value'),
@@ -206,6 +207,7 @@ v3.identity =
         timestamp: Joi.string().description('when the publisher was last updated')
       })
     }).description('the publisher identity')
+    */
   }
 }
 
