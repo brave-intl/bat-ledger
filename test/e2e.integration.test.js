@@ -8,6 +8,13 @@ import tweetnacl from 'tweetnacl'
 import uuid from 'uuid'
 import { sign } from 'http-request-signature'
 import _ from 'underscore'
+import dotenv from 'dotenv'
+
+import {
+  timeout,
+  uint8tohex
+} from 'bat-utils/lib/extras-utils'
+
 import {
   cleanDbs,
   assertWithinBounds,
@@ -18,20 +25,29 @@ import {
   ok,
   braveYoutubeOwner,
   braveYoutubePublisher,
-  createSurveyor
+  createSurveyor,
+  balanceAgent,
+  createRedisCache
 } from './utils'
-import dotenv from 'dotenv'
 
 import {
-  timeout,
-  uint8tohex
-} from 'bat-utils/lib/extras-utils'
+  accessCardId,
+  configuration
+} from '../balance/controllers/address'
 
 dotenv.config()
 
+const balanceCacheConfig = configuration.cache
+
 let prevSurveyorId
+let paymentId
+
+const cache = createRedisCache()
+
+const cardDeleteUrl = `/v2/card`
 
 test.before(cleanDbs)
+test.after(cleanDbs)
 
 test('ledger: create a surveyor', async t => {
   // need access to eyeshade db
@@ -109,7 +125,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   t.true(response.body.hasOwnProperty('wallet'))
-  const paymentId = response.body.wallet.paymentId
+  paymentId = response.body.wallet.paymentId
   t.true(response.body.wallet.hasOwnProperty('paymentId'))
   t.true(response.body.wallet.hasOwnProperty('addresses'))
   t.true(response.body.hasOwnProperty('verification'))
@@ -476,6 +492,42 @@ test('eyeshade: create brave youtube channel and owner', async t => {
     .expect(ok)
 })
 
+test('payments are cached and can be removed', async t => {
+  t.plan(8)
+  let cached
+  const walletBalanceUrl = `/v2/wallet/${paymentId}/balance`
+
+  t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
+
+  await balanceAgent.get(walletBalanceUrl).expect(ok)
+  cached = await getCached(paymentId, balanceCacheConfig.wallet)
+  t.true(_.isObject(cached))
+
+  const cardId = accessCardId(cached)
+  cached = await getCached(cardId, balanceCacheConfig.link)
+  t.is(cached, paymentId)
+
+  await balanceAgent.get(walletBalanceUrl).expect(ok)
+  cached = await getCached(cardId, balanceCacheConfig.link)
+  t.is(cached, paymentId)
+
+  await balanceAgent.del(walletBalanceUrl).expect(ok)
+  t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
+  cached = getCached(cardId, balanceCacheConfig.link)
+
+  await balanceAgent.get(walletBalanceUrl).expect(ok)
+  cached = await getCached(cardId, balanceCacheConfig.link)
+  t.is(cached, paymentId)
+
+  await balanceAgent.post(cardDeleteUrl).send({
+    payload: {
+      id: cardId
+    }
+  }).expect(ok)
+  t.is(await getCached(cardId, balanceCacheConfig.link), null)
+  t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
+})
+
 test('ensure contribution balances are computed correctly', async t => {
   t.plan(4)
 
@@ -555,4 +607,8 @@ test('ensure referral balances are computed correctly', async t => {
   assertWithinBounds(t, amount, 5.00, 0.25, 'USD value for a referral should be approx $5')
 })
 
-test.after(cleanDbs)
+async function getCached (id, group) {
+  const card = await cache.get(id, group)
+  const couldBeJSON = card && card[0] === '{'
+  return couldBeJSON ? JSON.parse(card) : card
+}
