@@ -79,3 +79,11 @@ best to do in another terminal
 ```sh
 npm run docker-test
 ```
+
+## Testing contribution
+
+If you are testing contributions locally (not with e2e automated tests) you need to add surveyors manually.
+You can do this by running bellow command when ledger service is running.
+```
+curl -X POST --header 'Authorization: Bearer foobarfoobar' --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"adFree":{"fee":{"USD":5},"votes":50,"altcurrency":"BAT","probi":"27116311373482831368"}}' 'http://127.0.0.1:3001/v2/surveyor/contribution'
+```
