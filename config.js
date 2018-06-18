@@ -61,8 +61,8 @@ const services = {
     portno: 3003,
 
     f: () => {
-      if (process.env.LEDGER_URL) {
-        module.exports.ledger = { url : process.env.LEDGER_URL  || 'http://127.0.0.1:3001' }
+      module.exports.ledger = {
+        url : process.env.LEDGER_URL  || 'http://127.0.0.1:3001'
       }
 
       helper()

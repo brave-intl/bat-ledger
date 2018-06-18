@@ -1,5 +1,6 @@
 const dotenv = require('dotenv')
 dotenv.config()
+const Cache = require('bat-utils/lib/runtime-cache')
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
@@ -51,8 +52,10 @@ const formURL = createFormURL({
   currency: 'USD'
 })
 
-const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set('Authorization', token)
-const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set('Authorization', token)
+const AUTH_KEY = 'Authorization'
+const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
+const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
+const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
 
 const status = (expectation) => ({ status, body }) => {
   if (status !== expectation) {
@@ -151,6 +154,7 @@ module.exports = {
   status,
   eyeshadeAgent,
   ledgerAgent,
+  balanceAgent,
   assertWithinBounds,
   connectToDb,
   dbUri,
@@ -160,7 +164,8 @@ module.exports = {
   cleanEyeshadeDb,
   cleanRedisDb,
   braveYoutubeOwner,
-  braveYoutubePublisher
+  braveYoutubePublisher,
+  createRedisCache
 }
 
 function cleanDbs () {
@@ -194,4 +199,12 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
+}
+
+function createRedisCache () {
+  return new Cache({
+    cache: {
+      redis: process.env.BAT_REDIS_URL
+    }
+  })
 }
