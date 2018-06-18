@@ -170,9 +170,7 @@ v3.identity =
         Authorization
       }, headers)
     }
-    const {
-      payload
-    } = await braveHapi.wreck.get(url, options)
+    const payload = await braveHapi.wreck.get(url, options)
     const {
       errors
     } = payload
@@ -265,9 +263,7 @@ v3.timestamp =
         Authorization
       }, headers)
     }
-    const {
-      payload
-    } = await braveHapi.wreck.get(url, options)
+    const payload = await braveHapi.wreck.get(url, options)
     const {
       errors
     } = payload
