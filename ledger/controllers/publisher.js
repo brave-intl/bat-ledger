@@ -6,7 +6,6 @@ const Joi = require('joi')
 const batPublisher = require('bat-publisher')
 const underscore = require('underscore')
 const querystring = require('querystring')
-const wreck = require('wreck')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -173,7 +172,7 @@ v3.identity =
     }
     const {
       payload
-    } = await wreck.get(url, options)
+    } = await braveHapi.wreck.get(url, options)
     const {
       errors
     } = payload
@@ -268,7 +267,7 @@ v3.timestamp =
     }
     const {
       payload
-    } = await wreck.get(url, options)
+    } = await braveHapi.wreck.get(url, options)
     const {
       errors
     } = payload
