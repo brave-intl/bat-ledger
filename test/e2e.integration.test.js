@@ -493,7 +493,7 @@ test('eyeshade: create brave youtube channel and owner', async t => {
 })
 
 test('payments are cached and can be removed', async t => {
-  t.plan(8)
+  t.plan(6)
   let cached
   const walletBalanceUrl = `/v2/wallet/${paymentId}/balance`
 
@@ -506,14 +506,6 @@ test('payments are cached and can be removed', async t => {
   const cardId = accessCardId(cached)
   cached = await getCached(cardId, balanceCacheConfig.link)
   t.is(cached, paymentId)
-
-  await balanceAgent.get(walletBalanceUrl).expect(ok)
-  cached = await getCached(cardId, balanceCacheConfig.link)
-  t.is(cached, paymentId)
-
-  await balanceAgent.del(walletBalanceUrl).expect(ok)
-  t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
-  cached = await getCached(cardId, balanceCacheConfig.link)
 
   await balanceAgent.get(walletBalanceUrl).expect(ok)
   cached = await getCached(cardId, balanceCacheConfig.link)
