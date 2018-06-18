@@ -513,7 +513,7 @@ test('payments are cached and can be removed', async t => {
 
   await balanceAgent.del(walletBalanceUrl).expect(ok)
   t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
-  cached = getCached(cardId, balanceCacheConfig.link)
+  cached = await getCached(cardId, balanceCacheConfig.link)
 
   await balanceAgent.get(walletBalanceUrl).expect(ok)
   cached = await getCached(cardId, balanceCacheConfig.link)
