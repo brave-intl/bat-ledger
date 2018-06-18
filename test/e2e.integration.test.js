@@ -524,7 +524,7 @@ test('payments are cached and can be removed', async t => {
       id: cardId
     }
   }).expect(ok)
-  t.is(await getCached(cardId, balanceCacheConfig.link), null)
+  t.is(await getCached(cardId, balanceCacheConfig.link), paymentId)
   t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
 })
 
