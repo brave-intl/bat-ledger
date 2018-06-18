@@ -160,10 +160,12 @@ v3.identity =
     const options = isDev ? {
       rejectUnauthorized: false,
       json: true,
+      useProxyP: true,
       baseUrl,
       headers
     } : {
       baseUrl,
+      useProxyP: true,
       json: true,
       headers: Object.assign({
         Authorization
@@ -254,9 +256,11 @@ v3.timestamp =
       rejectUnauthorized: false,
       json: true,
       baseUrl,
+      useProxyP: true,
       headers
     } : {
       baseUrl,
+      useProxyP: true,
       json: true,
       headers: Object.assign({
         Authorization
