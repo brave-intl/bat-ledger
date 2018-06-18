@@ -36,8 +36,9 @@ v2.walletBalance =
   return async (request, reply) => {
     const paymentId = request.params.paymentId
     let fresh = false
+    const { wallet, link } = cacheConfig
 
-    let walletInfo = await runtime.cache.get(paymentId, cacheConfig.wallet)
+    let walletInfo = await runtime.cache.get(paymentId, wallet)
     if (walletInfo) {
       walletInfo = JSON.parse(walletInfo)
     } else {
@@ -62,8 +63,8 @@ v2.walletBalance =
 
     if (fresh) {
       let cardId = accessCardId(walletInfo)
-      runtime.cache.set(cardId, paymentId, {}, cacheConfig.link)
-      runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, cacheConfig.wallet)
+      runtime.cache.set(cardId, paymentId, {}, link)
+      runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
     }
   }
 },
@@ -133,11 +134,13 @@ v2.invalidateCardBalance =
     const cardId = upholdPayload.id
     const { cache } = runtime
 
-    const paymentId = await cache.get(cardId, cacheConfig.link)
+    const { link, wallet } = cacheConfig
+
+    const paymentId = await cache.get(cardId, link)
 
     await Promise.all([
-      cache.del(cardId, cacheConfig.link),
-      cache.del(paymentId, cacheConfig.wallet)
+      cache.del(cardId, link),
+      paymentId && cache.del(paymentId, wallet)
     ])
 
     reply({})
