@@ -138,10 +138,12 @@ v2.invalidateCardBalance =
 
     const paymentId = await cache.get(cardId, link)
 
-    await Promise.all([
-      cache.del(cardId, link),
-      paymentId && cache.del(paymentId, wallet)
-    ])
+    if (paymentId) {
+      await Promise.all([
+        cache.del(cardId, link),
+        cache.del(paymentId, wallet)
+      ])
+    }
 
     reply({})
   }
