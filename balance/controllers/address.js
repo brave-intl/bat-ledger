@@ -1,6 +1,5 @@
 const BigNumber = require('bignumber.js')
 const Joi = require('joi')
-const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const boom = require('boom')
 const underscore = require('underscore')
 const SDebug = require('sdebug')
@@ -10,74 +9,22 @@ const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
 BigNumber.config({ EXPONENTIAL_AT: 28 })
+const expireIn = process.env.BALANCE_CACHE_TTL_S || 60 // 1 minute default
+const expireSettings = {
+  EX: expireIn
+}
 
 const debug = new SDebug('balance')
 const v2 = {}
 
-/*
-   GET /v2/card/BAT/{cardId}/balance
- */
+const cacheConfig = {
+  link: 'ledgerBalance:walletByCardId',
+  card: 'ledgerBalance:cardInfo',
+  wallet: 'ledgerBalance:walletInfo'
+}
 
-v2.batBalance =
-{ handler: (runtime) => {
-  return async (request, reply) => {
-    const cardId = request.params.cardId
-    let fresh = false
-    let expireIn = process.env.BALANCE_CACHE_TTL_S || 60 // 1 minute default
-
-    let cardInfo = await runtime.cache.get(cardId, 'ledgerBalance:cardInfo')
-    if (cardInfo) {
-      cardInfo = JSON.parse(cardInfo)
-    } else {
-      try {
-        cardInfo = await runtime.wallet.uphold.getCard(cardId)
-      } catch (ex) {
-        if (ex instanceof UpholdSDK.NotFoundError) {
-          return reply(boom.notFound('no such cardId: ' + cardId))
-        }
-        throw ex
-      }
-      fresh = true
-    }
-
-    const altcurrency = cardInfo.currency
-    const balanceProbi = new BigNumber(cardInfo.balance).times(runtime.currency.alt2scale(altcurrency))
-    const spendableProbi = new BigNumber(cardInfo.available).times(runtime.currency.alt2scale(altcurrency))
-
-    const balances = {
-      altcurrency: altcurrency,
-      probi: spendableProbi.toString(),
-      balance: spendableProbi.dividedBy(runtime.currency.alt2scale(altcurrency)).toFixed(4),
-      unconfirmed: balanceProbi.minus(spendableProbi).dividedBy(runtime.currency.alt2scale(altcurrency)).toFixed(4),
-      rates: runtime.currency.rates[altcurrency]
-    }
-
-    reply(balances)
-
-    if (fresh) {
-      runtime.cache.set(cardId, JSON.stringify(cardInfo), { EX: expireIn }, 'ledgerBalance:cardInfo')
-    }
-  }
-},
-
-  description: 'Get the balance of a BAT card',
-  tags: [ 'api' ],
-
-  validate: {
-    params: {
-      cardId: Joi.string().guid().required().description('identity of the card')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      altcurrency: Joi.string().required().description('the wallet currency'),
-      balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
-      unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
-      rates: Joi.object().optional().description('current exchange rates to various currencies'),
-      probi: braveJoi.string().numeric().required().description('the wallet balance in probi')
-    })
-  }
+module.exports.configuration = {
+  cache: cacheConfig
 }
 
 /*
@@ -89,9 +36,9 @@ v2.walletBalance =
   return async (request, reply) => {
     const paymentId = request.params.paymentId
     let fresh = false
-    let expireIn = process.env.BALANCE_CACHE_TTL_S || 60 // 1 minute default
+    const { wallet, link } = cacheConfig
 
-    let walletInfo = await runtime.cache.get(paymentId, 'ledgerBalance:walletInfo')
+    let walletInfo = await runtime.cache.get(paymentId, wallet)
     if (walletInfo) {
       walletInfo = JSON.parse(walletInfo)
     } else {
@@ -115,7 +62,9 @@ v2.walletBalance =
     reply(balances)
 
     if (fresh) {
-      runtime.cache.set(paymentId, JSON.stringify(walletInfo), { EX: expireIn }, 'ledgerBalance:walletInfo')
+      let cardId = accessCardId(walletInfo)
+      runtime.cache.set(cardId, paymentId, {}, link)
+      runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
     }
   }
 },
@@ -155,7 +104,7 @@ v2.invalidateWalletBalance =
   return async (request, reply) => {
     const paymentId = request.params.paymentId
 
-    await runtime.cache.del(paymentId, 'ledgerBalance:walletInfo')
+    await runtime.cache.del(paymentId, cacheConfig.wallet)
 
     reply({})
   }
@@ -177,8 +126,52 @@ v2.invalidateWalletBalance =
   response: { schema: Joi.object().length(0) }
 }
 
+v2.invalidateCardBalance =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const hapiPayload = request.payload
+    const upholdPayload = hapiPayload.payload
+    const cardId = upholdPayload.id
+    const { cache } = runtime
+
+    const { link, wallet } = cacheConfig
+
+    const paymentId = await cache.get(cardId, link)
+
+    if (paymentId) {
+      await cache.del(paymentId, wallet)
+    }
+
+    reply({})
+  }
+},
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Invalidate the cached balance of a ledger wallet',
+  tags: [ 'api' ],
+
+  validate: {
+    payload: {
+      payload: Joi.object().keys({
+        id: Joi.string().guid().required().description('identity of the card')
+      })
+    }
+  },
+
+  response: { schema: Joi.object().length(0) }
+}
+
 module.exports.routes = [
-  braveHapi.routes.async().path('/v2/card/BAT/{cardId}/balance').config(v2.batBalance),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/balance').config(v2.walletBalance),
-  braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance)
+  braveHapi.routes.async().delete().path('/v2/wallet/{paymentId}/balance').config(v2.invalidateWalletBalance),
+  braveHapi.routes.async().post().path('/v2/card').config(v2.invalidateCardBalance)
 ]
+
+module.exports.accessCardId = accessCardId
+
+function accessCardId (wallet) {
+  return wallet && wallet.addresses && wallet.addresses.CARD_ID
+}

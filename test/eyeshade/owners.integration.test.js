@@ -1,6 +1,6 @@
 'use strict'
 
-import test from 'ava'
+import { serial as test } from 'ava'
 import _ from 'underscore'
 
 import {
