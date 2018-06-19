@@ -145,11 +145,6 @@ v2.invalidateCardBalance =
     reply({})
   }
 },
-  auth: {
-    strategy: 'simple',
-    mode: 'required'
-  },
-
   description: 'Invalidate the cached balance of a ledger wallet',
   tags: [ 'api' ],
 
