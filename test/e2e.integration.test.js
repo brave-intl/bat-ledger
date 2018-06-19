@@ -546,7 +546,7 @@ test('ensure contribution balances are computed correctly', async t => {
     {
       owner: braveYoutubeOwner,
       publisher: braveYoutubePublisher,
-      address: uuid.v4(),
+      address: process.env.UPHOLD_DONOR_CARD_ID,
       altcurrency: 'BAT',
       probi: contributions.probi,
       currency: contributions.currency,
