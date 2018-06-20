@@ -136,9 +136,11 @@ v2.invalidateCardBalance =
 
     const { link, wallet } = cacheConfig
 
+    debug(`accessing cardId: ${cardId}`)
     const paymentId = await cache.get(cardId, link)
 
     if (paymentId) {
+      debug(`removing paymentId: ${paymentId}`)
       await cache.del(paymentId, wallet)
     }
 
@@ -149,11 +151,11 @@ v2.invalidateCardBalance =
   tags: [ 'api' ],
 
   validate: {
-    payload: {
+    payload: Joi.object({
       payload: Joi.object().keys({
         id: Joi.string().guid().required().description('identity of the card')
       })
-    }
+    }).unknown(true)
   },
 
   response: { schema: Joi.object().length(0) }
