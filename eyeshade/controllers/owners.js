@@ -518,7 +518,7 @@ v1.getWallet = {
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
-          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies', 'possibleCurrencies' ])
+          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies', 'possibleCurrencies', 'address' ])
           if (entry.parameters.scope) {
             result.wallet.scope = entry.parameters.scope
           }
@@ -580,7 +580,8 @@ v1.getWallet = {
         defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
         availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('currencies the publisher has cards for'),
         possibleCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('currencies the publisher could have cards for'),
-        scope: Joi.string().optional().description('scope of authorization with wallet provider')
+        scope: Joi.string().optional().description('scope of authorization with wallet provider'),
+        address: Joi.string().guid().optional().description('address (id) for default currency card')
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
