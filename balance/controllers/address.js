@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const Joi = require('joi')
 const boom = require('boom')
 const underscore = require('underscore')
@@ -8,7 +7,6 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
-BigNumber.config({ EXPONENTIAL_AT: 28 })
 const expireIn = process.env.BALANCE_CACHE_TTL_S || 60 // 1 minute default
 const expireSettings = {
   EX: expireIn

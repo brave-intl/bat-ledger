@@ -18,8 +18,6 @@ const upholdBaseUrls = {
   sandbox: 'https://api-sandbox.uphold.com'
 }
 
-BigNumber.config({ EXPONENTIAL_AT: 28, DECIMAL_PLACES: 18 })
-
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
 
