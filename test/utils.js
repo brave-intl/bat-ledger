@@ -1,6 +1,5 @@
 const dotenv = require('dotenv')
 dotenv.config()
-const Cache = require('bat-utils/lib/runtime-cache')
 const Database = require('bat-utils/lib/runtime-database')
 const Queue = require('bat-utils/lib/runtime-queue')
 const agent = require('supertest').agent
@@ -65,7 +64,11 @@ const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
 const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
 
-const status = (expectation) => ({ status, body }) => {
+const status = (expectation) => (res) => {
+  if (!res) {
+    return new Error('no response object given')
+  }
+  const { status, body } = res
   if (status !== expectation) {
     return new Error(JSON.stringify(body, null, 2).replace(/\\n/g, '\n'))
   }
@@ -171,7 +174,6 @@ module.exports = {
   cleanRedisDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
-  createRedisCache,
   freezeSurveyors
 }
 
@@ -206,14 +208,6 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
-}
-
-function createRedisCache () {
-  return new Cache({
-    cache: {
-      redis: process.env.BAT_REDIS_URL
-    }
-  })
 }
 
 async function freezeSurveyors (dayShift) {
