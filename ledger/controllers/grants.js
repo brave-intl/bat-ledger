@@ -59,52 +59,81 @@ const qaOnlyP = (request) => {
 
 /*
    GET /v1/promotions
+   GET /v2/promotions
  */
 
-v1.all = { handler: (runtime) => {
-  return async (request, reply) => {
-    const debug = braveHapi.debug(module, request)
-    const promotions = runtime.database.get('promotions', debug)
-    let entries, results
+const getPromotions = (protocolVersion) => (runtime) => async (request, reply) => {
+  const debug = braveHapi.debug(module, request)
+  const promotions = runtime.database.get('promotions', debug)
+  let entries, where, projection
 
-    if (qaOnlyP(request)) return reply(boom.notFound())
-
-    entries = await promotions.find({}, { sort: { priority: 1 } })
-
-    results = []
-    entries.forEach((entry) => {
-      if (entry.promotionId === '') return
-
-      results.push(underscore.omit(entry, [ '_id', 'batchId', 'timestamp' ]))
-    })
-    reply(results)
+  if (qaOnlyP(request)) {
+    return reply(boom.notFound())
   }
-},
-  description: 'See if a promotion is available',
+
+  where = {
+    protocolVersion,
+    promotionId: { $ne: '' }
+  }
+
+  projection = {
+    sort: { priority: 1 },
+    fields: {
+      _id: 0,
+      batchId: 0,
+      timestamp: 0
+    }
+  }
+  entries = await promotions.find(where, projection)
+
+  reply(entries)
+}
+
+const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
+  promotionId: Joi.string().required().description('the promotion-identifier')
+}).unknown(true).description('promotion properties'))
+
+v1.all = {
+  handler: getPromotions(1),
+  description: 'See if a v1 promotion is available',
   tags: [ 'api' ],
 
   validate: { query: {} },
 
   response: {
-    schema: Joi.array().min(0).items(Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier')
-    }).unknown(true).description('promotion properties'))
+    schema: promotionsGetResponseSchema
+  }
+}
+
+v2.all = {
+  handler: getPromotions(2),
+  description: 'See if a v2 promotion is available',
+  tags: [ 'api' ],
+
+  validate: { query: {} },
+
+  response: {
+    schema: promotionsGetResponseSchema
   }
 }
 
 /*
    GET /v1/grants
+   GET /v2/grants
  */
 
 // from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
 const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/g
-
-v1.read = { handler: (runtime) => {
+const getGrant = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
     const lang = request.query.lang
     const paymentId = request.query.paymentId
     const languages = l10nparser.parse(lang)
-    const query = { active: true, count: { $gt: 0 } }
+    const query = {
+      active: true,
+      count: { $gt: 0 },
+      protocolVersion
+    }
     const debug = braveHapi.debug(module, request)
     const wallets = runtime.database.get('wallets', debug)
     const promotions = runtime.database.get('promotions', debug)
@@ -163,8 +192,29 @@ v1.read = { handler: (runtime) => {
 
     reply(underscore.omit(promotion, [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]))
   }
-},
-  description: 'See if a promotion is available',
+}
+v1.read = {
+  handler: getGrant(1),
+  description: 'See if a v1 promotion is available',
+  tags: [ 'api' ],
+
+  validate: {
+    query: {
+      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
+      paymentId: Joi.string().guid().optional().description('identity of the wallet')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).unknown(true).description('promotion properties')
+  }
+}
+
+v2.read = {
+  handler: getGrant(2),
+  description: 'See if a v2 promotion is available',
   tags: [ 'api' ],
 
   validate: {
@@ -330,8 +380,8 @@ v1.write = { handler: (runtime) => {
 
 const grantsUploadSchema = {
   grants: Joi.array().min(0).items(
-      Joi.string().required().description('the jws encoded grant')
-    ).description('grants for bulk upload'),
+    Joi.string().required().description('the jws encoded grant')
+  ).description('grants for bulk upload'),
   promotions: Joi.array().min(0).items(Joi.object().keys({
     promotionId: Joi.string().required().description('the promotion-identifier'),
     priority: Joi.number().integer().min(0).required().description('the promotion priority (lower is better)'),
@@ -380,12 +430,19 @@ const uploadGrants = function (runtime) {
     await grants.insert(grantsToInsert)
 
     for (let entry of payload.promotions) {
+      let protocolVersion = 1
+      let $set = underscore.assign({
+        protocolVersion
+      }, underscore.omit(entry, ['promotionId']))
       state = {
+        $set,
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.omit(entry, ['promotionId']),
         $inc: { count: promotionCounts[entry.promotionId] }
       }
-      await promotions.update({ promotionId: entry.promotionId }, state, { upsert: true })
+      await promotions.update({
+        promotionId: entry.promotionId,
+        protocolVersion
+      }, state, { upsert: true })
     }
 
     reply({})
@@ -546,7 +603,9 @@ v1.getCaptcha = { handler: (runtime) => {
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/promotions').config(v1.all),
+  braveHapi.routes.async().path('/v2/promotions').config(v2.all),
   braveHapi.routes.async().path('/v1/grants').config(v1.read),
+  braveHapi.routes.async().path('/v2/grants').config(v2.read),
   braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.write),
   braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
   braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
@@ -590,11 +649,14 @@ module.exports.initialize = async (debug, runtime) => {
         count: 0,
 
         batchId: '',
-        timestamp: bson.Timestamp.ZERO
+        timestamp: bson.Timestamp.ZERO,
+
+        protocolVersion: 1
       },
       unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
-                { batchId: 1 }, { timestamp: 1 } ]
+                { batchId: 1 }, { timestamp: 1 },
+                { version: 1 } ]
     }
   ])
 
