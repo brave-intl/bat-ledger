@@ -527,60 +527,116 @@ const quanta = async (debug, runtime, qid) => {
 
 const mixer = async (debug, runtime, filter, qid) => {
   const publishers = {}
-  let results
-
-  const slicer = async (quantum) => {
-    const voting = runtime.database.get('voting', debug)
-    let fees, probi, query, slices, state
+  const results = await quanta(debug, runtime, qid)
+  for (let result of results) {
+    await slicer(result)
+  }
+  return publishers
 
     // current is always defined
-    const equals = (previous, current) => {
-      return previous && previous.dividedBy(1e11).round().equals(current.dividedBy(1e11).round())
+  function equals (previous, current) {
+    return previous && previous.dividedBy(1e11).round().equals(current.dividedBy(1e11).round())
+  }
+
+  async function slicer ({
+    quantum,
+    surveyorId
+  }) {
+    const { database } = runtime
+    const { fromString } = bson.Decimal128
+
+    const voting = database.get('voting', debug)
+    const surveyors = database.get('surveyors', debug)
+
+    // Treat voting documents with a missing surveyor document as if they are not yet frozen
+    let notYetFrozen = true
+    const surveyor = await surveyors.findOne({ surveyorId })
+    if (surveyor) {
+      const { frozen } = surveyor
+      notYetFrozen = !frozen
+    } else {
+      runtime.captureException(new Error('no surveyor document matching surveyorId from voting document'), { extra: { surveyorId } })
     }
 
-    query = { surveyorId: quantum.surveyorId, exclude: false }
+    let query = { surveyorId, exclude: false }
     if (qid) query._id = qid
-    slices = await voting.find(query)
+    let slices = await voting.find(query)
     for (let slice of slices) {
-      fees = new BigNumber(quantum.quantum.toString()).times(slice.counts).times(feePercent)
-      probi = new BigNumber(quantum.quantum.toString()).times(slice.counts).minus(fees)
-      if ((filter) && (filter.indexOf(slice.publisher) === -1)) continue
+      let pub
+      let where
+      let fees
+      let sumProbi
+      let backupProbi
+      let backupFees
+      let quantumCounts
+      let {
+        counts,
+        publisher,
+        timestamp,
+        probi,
+        cohort = 'control'
+      } = slice
+      quantumCounts = new BigNumber(quantum.toString()).times(counts)
+      fees = quantumCounts.times(feePercent)
+      sumProbi = quantumCounts.minus(fees)
+      backupFees = fees
+      backupProbi = sumProbi
+      if (filter && filter.indexOf(publisher) === -1) {
+        continue
+      }
 
-      if (!publishers[slice.publisher]) {
-        publishers[slice.publisher] = {
+      pub = publishers[publisher]
+      if (!pub) {
+        pub = {
           altcurrency: altcurrency,
           probi: new BigNumber(0),
           fees: new BigNumber(0),
           votes: []
         }
+        publishers[publisher] = pub
       }
-      publishers[slice.publisher].probi = publishers[slice.publisher].probi.plus(probi)
-      publishers[slice.publisher].fees = publishers[slice.publisher].fees.plus(fees)
-      publishers[slice.publisher].votes.push({
-        surveyorId: quantum.surveyorId,
-        timestamp: (slice.timestamp.high_ * 1000) + (slice.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
-        counts: slice.counts,
-        altcurrency: altcurrency,
-        probi: probi,
-        fees: fees,
-        cohort: slice.cohort || 'control'
+      if (notYetFrozen) {
+        sumProbi = new BigNumber(0)
+        fees = new BigNumber(0)
+      }
+      pub.probi = pub.probi.plus(sumProbi)
+      pub.fees = pub.fees.plus(fees)
+      pub.votes.push({
+        timestamp: (timestamp.high_ * 1000) + (timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_),
+        probi: sumProbi,
+        surveyorId,
+        counts,
+        altcurrency,
+        fees,
+        cohort
       })
-      if (equals(slice.probi && new BigNumber(slice.probi.toString()), probi)) continue
 
-      state = {
-        $set: {
-          altcurrency: altcurrency,
-          probi: bson.Decimal128.fromString(probi.toString()),
-          fees: bson.Decimal128.fromString(fees.toString())
+      let isEqual = equals(probi && new BigNumber(probi.toString()), sumProbi)
+      let state = {}
+      if (isEqual) {
+        continue
+      } else if (notYetFrozen) {
+        state.$unset = {
+          altcurrency,
+          fees: null,
+          probi: null
+        }
+      } else {
+        state.$set = {
+          altcurrency,
+          probi: fromString(backupProbi.toString()),
+          fees: fromString(backupFees.toString())
         }
       }
-      await voting.update({ surveyorId: quantum.surveyorId, publisher: slice.publisher, cohort: slice.cohort || 'control' }, state, { upsert: true })
+
+      where = {
+        surveyorId,
+        publisher,
+        cohort
+      }
+      await voting.update(where, state, { upsert: true })
     }
   }
-
-  results = await quanta(debug, runtime, qid)
-  for (let result of results) await slicer(result)
-  return publishers
 }
 
 const publisherCompare = (a, b) => {

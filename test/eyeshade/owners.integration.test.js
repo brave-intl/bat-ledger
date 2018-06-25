@@ -135,7 +135,7 @@ test('eyeshade POST /v2/owners with site channels', async t => {
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
   t.plan(16)
   const { owners } = t.context
-  const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a'
+  const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33b'
   const SCOPE = 'cards:read user:read'
 
   const dataPublisherWithSite = {

@@ -4,16 +4,14 @@ import {
 import Database from 'bat-utils/lib/runtime-database'
 import SDebug from 'sdebug'
 import {
-  freezeOldSurveyors
-} from '../../eyeshade/workers/reports'
-import {
   workers
 } from '../../eyeshade/workers/wallet'
 import {
   connectToDb,
   createSurveyor,
   dbUri,
-  getSurveyor
+  getSurveyor,
+  freezeSurveyors
 } from '../utils'
 import {
   timeout
@@ -43,14 +41,6 @@ test('verify frozen occurs when daily is run', async t => {
   let body
   const eyeshade = await connectToDb('eyeshade')
 
-  const surveyors = (surveyorsCollection) => ({
-    // use this proxy because of toArray
-    find: (query) => surveyorsCollection.find(query).toArray(),
-    update: (where, data) => surveyorsCollection.update(where, data)
-  })
-
-  const midnight = (new Date()).setHours(0, 0, 0, 0)
-
   await createSurveyor()
   // just made value
   ;({ body } = await getSurveyor())
@@ -77,9 +67,7 @@ test('verify frozen occurs when daily is run', async t => {
   }
 
   async function tryFreeze (dayShift, expect) {
-    const collection = eyeshade.collection('surveyors')
-    const surveyorsCollection = surveyors(collection)
-    await freezeOldSurveyors(dayShift, midnight, surveyorsCollection)
+    await freezeSurveyors(dayShift)
     // beware of cursor
     const surveyor = await querySurveyor()
     t.is(surveyor.frozen, expect)
