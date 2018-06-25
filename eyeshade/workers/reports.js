@@ -528,7 +528,9 @@ const quanta = async (debug, runtime, qid) => {
 const mixer = async (debug, runtime, filter, qid) => {
   const publishers = {}
   const results = await quanta(debug, runtime, qid)
-  for (let result of results) await slicer(result)
+  for (let result of results) {
+    await slicer(result)
+  }
   return publishers
 
     // current is always defined

@@ -202,7 +202,8 @@ exports.workers = {
       const $setOnInsert = {
         mature: false,
         frozen: false,
-        rejectedVotes: 0
+        rejectedVotes: 0,
+        surveyorId
       }
       const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
