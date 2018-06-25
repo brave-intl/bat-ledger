@@ -541,12 +541,19 @@ const mixer = async (debug, runtime, filter, qid) => {
     surveyorId
   }) {
     const { database } = runtime
+    const { fromString } = bson.Decimal128
+
     const voting = database.get('voting', debug)
     const surveyors = database.get('surveyors', debug)
+
+    // Treat voting documents with a missing surveyor document as if they are not yet frozen
+    let notYetFrozen = true
     const surveyor = await surveyors.findOne({ surveyorId })
-    const { frozen } = surveyor
-    const notYetFrozen = !frozen
-    const { fromString } = bson.Decimal128
+    if (surveyor) {
+      const { frozen } = surveyor
+      notYetFrozen = !frozen
+    }
+
     let query = { surveyorId, exclude: false }
     if (qid) query._id = qid
     let slices = await voting.find(query)
