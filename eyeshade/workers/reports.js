@@ -552,6 +552,8 @@ const mixer = async (debug, runtime, filter, qid) => {
     if (surveyor) {
       const { frozen } = surveyor
       notYetFrozen = !frozen
+    } else {
+      runtime.captureException(new Error('no surveyor document matching surveyorId from voting document'), { extra: { surveyorId } })
     }
 
     let query = { surveyorId, exclude: false }
