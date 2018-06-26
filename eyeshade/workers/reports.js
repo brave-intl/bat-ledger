@@ -17,6 +17,8 @@ const {
 
 BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
 
+const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
+
 let altcurrency
 
 const datefmt = 'yyyymmdd-HHMMss'
@@ -84,19 +86,16 @@ const notification = async (debug, runtime, owner, publisher, payload) => {
 const daily = async (debug, runtime) => {
   const { database } = runtime
   const publishers = database.get('publishers', debug)
-  let entries, midnight, now, tomorrow
+  const surveyors = database.get('surveyors', debug)
 
   debug('daily', 'running')
 
-  now = underscore.now()
-  midnight = new Date(now)
-  midnight.setHours(0, 0, 0, 0)
-  midnight = midnight.getTime()
-
   try {
+    const midnight = new Date()
+    midnight.setHours(0, 0, 0, 0)
     await database.purgeSince(debug, runtime, midnight)
 
-    entries = await publishers.find({})
+    const entries = await publishers.find({})
     for (let entry of entries) {
       if ((!entry.owner) || (!entry.publisher)) continue
 
@@ -104,17 +103,15 @@ const daily = async (debug, runtime) => {
                                underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
     }
 
-    const surveyorsCollection = database.get('surveyors', debug)
-    const ageDays = process.env.FREEZE_SURVEYORS_AGE_DAYS
-    await freezeOldSurveyors(ageDays, midnight, surveyorsCollection)
+    await freezeOldSurveyors(surveyors)
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
   }
 
-  tomorrow = new Date(now)
+  const tomorrow = new Date()
   tomorrow.setHours(24, 0, 0, 0)
-  setTimeout(() => { daily(debug, runtime) }, tomorrow - now)
+  setTimeout(() => { daily(debug, runtime) }, tomorrow - new Date())
   debug('daily', 'running again ' + moment(tomorrow).fromNow())
 }
 
@@ -125,10 +122,15 @@ exports.freezeOldSurveyors = freezeOldSurveyors
   anchorTime: Date
   surveyors: mongodb collection
 */
-async function freezeOldSurveyors (olderThanDays, anchorTime, surveyors) {
-  if (underscore.isUndefined(olderThanDays)) {
-    return
+async function freezeOldSurveyors (surveyors, olderThanDays, anchorTime) {
+  if (typeof olderThanDays === 'undefined') {
+    olderThanDays = freezeInterval
   }
+
+  if (typeof anchorTime === 'undefined') {
+    anchorTime = (new Date()).setHours(0, 0, 0, 0)
+  }
+
   // in seconds
   const where = {
     frozen: { $ne: true },
@@ -1129,6 +1131,10 @@ exports.initialize = async (debug, runtime) => {
     }
   ])
 
+  if (typeof freezeInterval === 'undefined' || isNaN(parseFloat(freezeInterval))) {
+    throw new Error('FREEZE_SURVEYORS_AGE_DAYS is not set or not numeric')
+  }
+
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
     setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
@@ -1225,8 +1231,11 @@ exports.workers = {
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
+      const surveyors = runtime.database.get('surveyors', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
+
+      await freezeOldSurveyors(surveyors)
 
       publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
 

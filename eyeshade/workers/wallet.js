@@ -289,19 +289,19 @@ exports.workers = {
           $inc: { rejectedVotes: 1 }
         }
         await surveyors.update(where, state)
+      } else {
+        where = {
+          surveyorId,
+          publisher,
+          cohort
+        }
+        state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $inc: { counts: 1 },
+          $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
+        }
+        await voting.update(where, state, { upsert: true })
       }
-
-      where = {
-        surveyorId,
-        publisher,
-        cohort
-      }
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $inc: { counts: 1 },
-        $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
-      }
-      await voting.update(where, state, { upsert: true })
     },
 
 /* sent when the wallet balance updates
