@@ -1,5 +1,7 @@
 const bluebird = require('bluebird')
 const redis = require('redis')
+const SDebug = require('sdebug')
+const debug = new SDebug('queue')
 const ONE_HOUR = 1000 * 60 * 60
 const MAX_RECONNECT_TIMEOUT = 10000
 const MAX_RECONNECT_ATTEMPTS = 100
@@ -24,13 +26,13 @@ Cache.prototype = {
     if (connectedPromise) {
       return connectedPromise
     }
-    console.log(`connecting to ${options.url}`, options)
     cache = redis.createClient(options.url, options)
     this.cache = cache
     connectedPromise = new Promise((resolve, reject) => {
       cache.on('ready', resolve)
       cache.on('error', (err) => {
-        console.error('redis error', err)
+        debug('redis error', err)
+        this.runtime.captureException(err)
         reject(err)
       })
     })
