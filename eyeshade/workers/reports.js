@@ -87,14 +87,15 @@ const daily = async (debug, runtime) => {
   const { database } = runtime
   const publishers = database.get('publishers', debug)
   const surveyors = database.get('surveyors', debug)
-  let entries, midnight, now, tomorrow
 
   debug('daily', 'running')
 
   try {
+    const midnight = new Date()
+    midnight.setHours(0, 0, 0, 0)
     await database.purgeSince(debug, runtime, midnight)
 
-    entries = await publishers.find({})
+    const entries = await publishers.find({})
     for (let entry of entries) {
       if ((!entry.owner) || (!entry.publisher)) continue
 
@@ -108,9 +109,9 @@ const daily = async (debug, runtime) => {
     debug('daily', { reason: ex.toString(), stack: ex.stack })
   }
 
-  tomorrow = new Date()
+  const tomorrow = new Date()
   tomorrow.setHours(24, 0, 0, 0)
-  setTimeout(() => { daily(debug, runtime) }, tomorrow - now)
+  setTimeout(() => { daily(debug, runtime) }, tomorrow - new Date())
   debug('daily', 'running again ' + moment(tomorrow).fromNow())
 }
 
@@ -127,9 +128,7 @@ async function freezeOldSurveyors (surveyors, olderThanDays, anchorTime) {
   }
 
   if (typeof anchorTime === 'undefined') {
-    const midnight = new Date()
-    midnight.setHours(0, 0, 0, 0)
-    anchorTime = midnight.getTime()
+    anchorTime = (new Date()).setHours(0, 0, 0, 0)
   }
 
   // in seconds
@@ -1132,7 +1131,7 @@ exports.initialize = async (debug, runtime) => {
     }
   ])
 
-  if (typeof freezeInterval === 'undefined' || freezeInterval === '' || isNaN(freezeInterval)) {
+  if (typeof freezeInterval === 'undefined' || isNaN(parseFloat(freezeInterval))) {
     throw new Error('FREEZE_SURVEYORS_AGE_DAYS is not set or not numeric')
   }
 
