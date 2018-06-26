@@ -248,7 +248,7 @@ exports.workers = {
       payload.fee = bson.Decimal128.fromString(payload.fee.toString())
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.omit(payload, [ 'viewingId' ])
+        $set: underscore.omit(payload, [ 'viewingId', 'triggerSurveyorFreeze' ])
       }
       await contributions.update({ viewingId: viewingId }, state, { upsert: true })
 
@@ -289,19 +289,19 @@ exports.workers = {
           $inc: { rejectedVotes: 1 }
         }
         await surveyors.update(where, state)
+      } else {
+        where = {
+          surveyorId,
+          publisher,
+          cohort
+        }
+        state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $inc: { counts: 1 },
+          $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
+        }
+        await voting.update(where, state, { upsert: true })
       }
-
-      where = {
-        surveyorId,
-        publisher,
-        cohort
-      }
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $inc: { counts: 1 },
-        $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
-      }
-      await voting.update(where, state, { upsert: true })
     },
 
 /* sent when the wallet balance updates

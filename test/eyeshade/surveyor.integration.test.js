@@ -37,7 +37,7 @@ const runtime = {
 }
 
 test('verify frozen occurs when daily is run', async t => {
-  t.plan(5)
+  t.plan(6)
   let body
   const eyeshade = await connectToDb('eyeshade')
 
@@ -45,6 +45,7 @@ test('verify frozen occurs when daily is run', async t => {
   // just made value
   ;({ body } = await getSurveyor())
   const { surveyorId } = body
+  await t.throws(freezeSurveyors(null), Error)
   await waitUntilPropagated(querySurveyor)
   // does not freeze if midnight is before creation date
   // vote on surveyor, no rejectedVotes yet
