@@ -219,9 +219,11 @@ async function freezeSurveyors (dayShift) {
     find: (query) => surveyorsCollection.find(query).toArray(),
     update: (where, data) => surveyorsCollection.update(where, data)
   })
-  const midnight = (new Date()).setHours(0, 0, 0, 0)
   const eyeshade = await connectToDb('eyeshade')
   const collection = eyeshade.collection('surveyors')
   const surveyorsCollection = surveyors(collection)
-  await freezeOldSurveyors(dayShift, midnight, surveyorsCollection)
+  await freezeOldSurveyors({
+    surveyors: surveyorsCollection,
+    dayShift
+  })
 }

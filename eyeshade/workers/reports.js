@@ -106,7 +106,11 @@ const daily = async (debug, runtime) => {
 
     const surveyorsCollection = database.get('surveyors', debug)
     const ageDays = process.env.FREEZE_SURVEYORS_AGE_DAYS
-    await freezeOldSurveyors(ageDays, midnight, surveyorsCollection)
+    await freezeOldSurveyors({
+      surveyors: surveyorsCollection,
+      dayShift: +ageDays,
+      anchorTime: midnight
+    })
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
@@ -120,14 +124,28 @@ const daily = async (debug, runtime) => {
 
 exports.freezeOldSurveyors = freezeOldSurveyors
 
+function midnight () {
+  const midnight = new Date()
+  midnight.setHours(0, 0, 0, 0)
+  return midnight.getTime()
+}
 /*
   olderThanDays: int
   anchorTime: Date
   surveyors: mongodb collection
 */
-async function freezeOldSurveyors (olderThanDays, anchorTime, surveyors) {
-  if (underscore.isUndefined(olderThanDays)) {
-    return
+async function freezeOldSurveyors (options) {
+  const {
+    surveyors,
+    dayShift = 7,
+    anchorTime = midnight()
+  } = options
+  const zeroTime = +(new Date(anchorTime))
+  if (!underscore.isNumber(zeroTime)) {
+    throw new Error(`invalid anchorTime given to freeze old surveyors: ${zeroTime}`)
+  }
+  if (!underscore.isNumber(dayShift) || underscore.isNaN(dayShift)) {
+    throw new Error(`missing env var FREEZE_SURVEYORS_AGE_DAYS. currently set to: ${dayShift}`)
   }
   // in seconds
   const where = {
@@ -144,7 +162,7 @@ async function freezeOldSurveyors (olderThanDays, anchorTime, surveyors) {
   await Promise.all(updates).then(() => updates.length)
 
   function freezeSurveyor ({ _id }) {
-    if (documentOlderThan(olderThanDays, anchorTime, _id)) {
+    if (documentOlderThan(dayShift, zeroTime, _id)) {
       return surveyors.update({ _id }, data)
     }
   }
@@ -1225,8 +1243,15 @@ exports.workers = {
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
+      const surveyors = runtime.database.get('surveyors', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
+
+      if (payload.surveyorFreeze) {
+        await freezeOldSurveyors(Object.assign({
+          surveyors
+        }, payload.surveyorFreeze))
+      }
 
       publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
 
