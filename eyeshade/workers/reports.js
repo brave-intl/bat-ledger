@@ -103,7 +103,11 @@ const daily = async (debug, runtime) => {
                                underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
     }
 
-    await freezeOldSurveyors(surveyors)
+    const ageDays = process.env.FREEZE_SURVEYORS_AGE_DAYS
+    await freezeOldSurveyors({
+      surveyors,
+      dayShift: +ageDays
+    })
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
@@ -117,20 +121,30 @@ const daily = async (debug, runtime) => {
 
 exports.freezeOldSurveyors = freezeOldSurveyors
 
+function midnight () {
+  const midnight = new Date()
+  midnight.setHours(0, 0, 0, 0)
+  return midnight.getTime()
+}
+
 /*
-  olderThanDays: int
+  dayShift: int
   anchorTime: Date
   surveyors: mongodb collection
 */
-async function freezeOldSurveyors (surveyors, olderThanDays, anchorTime) {
-  if (typeof olderThanDays === 'undefined') {
-    olderThanDays = freezeInterval
+async function freezeOldSurveyors (options) {
+  const {
+    surveyors,
+    dayShift = 7,
+    anchorTime = midnight()
+  } = options
+  const zeroTime = +(new Date(anchorTime))
+  if (!underscore.isNumber(zeroTime)) {
+    throw new Error(`invalid anchorTime given to freeze old surveyors: ${zeroTime}`)
   }
-
-  if (typeof anchorTime === 'undefined') {
-    anchorTime = (new Date()).setHours(0, 0, 0, 0)
+  if (!underscore.isNumber(dayShift) || underscore.isNaN(dayShift)) {
+    throw new Error(`missing env var FREEZE_SURVEYORS_AGE_DAYS. currently set to: ${dayShift}`)
   }
-
   // in seconds
   const where = {
     frozen: { $ne: true },
@@ -146,7 +160,7 @@ async function freezeOldSurveyors (surveyors, olderThanDays, anchorTime) {
   await Promise.all(updates).then(() => updates.length)
 
   function freezeSurveyor ({ _id }) {
-    if (documentOlderThan(olderThanDays, anchorTime, _id)) {
+    if (documentOlderThan(dayShift, zeroTime, _id)) {
       return surveyors.update({ _id }, data)
     }
   }
@@ -1212,6 +1226,11 @@ exports.workers = {
       , currency        : '...'    //   ..
       , includeNegative :  true  | false
       , includeUnpayable:  true  | false
+      , surveyorFreeze  :
+        { dayShift      : number
+        , anchorTime    : date (number)
+
+        }
       }
     }
  */
@@ -1226,6 +1245,7 @@ exports.workers = {
       const summaryP = payload.summary
       const threshold = payload.threshold || 0
       const verified = payload.verified
+      const surveyorFreeze = payload.surveyorFreeze || {}
       const includeUnpayable = !!payload.includeUnpayable
       const includeNegative = payload.includeNegative
       const owners = runtime.database.get('owners', debug)
@@ -1235,7 +1255,9 @@ exports.workers = {
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
 
-      await freezeOldSurveyors(surveyors)
+      await freezeOldSurveyors(Object.assign({
+        surveyors
+      }, surveyorFreeze))
 
       publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
 
