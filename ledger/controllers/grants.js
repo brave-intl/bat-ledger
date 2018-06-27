@@ -434,14 +434,14 @@ const uploadGrants = function (runtime) {
       let $set = underscore.assign({
         protocolVersion
       }, underscore.omit(entry, ['promotionId']))
+      let { promotionId } = entry
       state = {
         $set,
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $inc: { count: promotionCounts[entry.promotionId] }
+        $inc: { count: promotionCounts[promotionId] }
       }
       await promotions.update({
-        promotionId: entry.promotionId,
-        protocolVersion
+        promotionId
       }, state, { upsert: true })
     }
 
