@@ -7,10 +7,12 @@ const publish = reports.publish
 const utils = require('bat-utils').extras.utils
 const utf8ify = utils.utf8ify
 const timeout = utils.timeout
+const { insertFromSettlement, updateBalances } = require('../lib/transaction.js')
 
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('publisher-report')
   await runtime.queue.create('publishers-bulk-create')
+  await runtime.queue.create('settlement-report')
 }
 
 exports.workers = {
@@ -79,5 +81,37 @@ exports.workers = {
         }
       }
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' publishers-bulk-create completed' })
+    },
+/* sent by POST /v1/publishers/settlement
+
+    { queue            : 'settlement-report'
+    , message          :
+      { settlementId   : '...' }
+    }
+*/
+  'settlement-report':
+    async (debug, runtime, payload) => {
+      const settlements = runtime.database.get('settlements', debug)
+      const { settlementId } = payload
+      const docs = await settlements.find({ settlementId, owner: { $exists: true } })
+
+      const client = await runtime.postgres.pool.connect()
+      try {
+        await client.query('BEGIN')
+        try {
+          for (let doc of docs) {
+            await insertFromSettlement(runtime, client, doc)
+          }
+        } catch (e) {
+          await client.query('ROLLBACK')
+          runtime.captureException(e, { extra: { report: 'settlement-report', settlementId } })
+          throw e
+        }
+
+        await updateBalances(runtime, client)
+        await client.query('COMMIT')
+      } finally {
+        client.release()
+      }
     }
 }

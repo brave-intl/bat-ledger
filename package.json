@@ -7,7 +7,7 @@
     "balance-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/balance/server.js",
     "build": "npm run build-utils && npm run build-ledger && npm run build-eyeshade && npm run build-balance && npm run build-helper && cp config.js dist/config.js",
     "build-balance": "babel balance --ignore **/*.test.js -d dist/balance",
-    "build-eyeshade": "babel eyeshade --ignore **/*.test.js -d dist/eyeshade",
+    "build-eyeshade": "babel eyeshade --ignore **/*.test.js -d dist/eyeshade && cp -R eyeshade/migrations/* dist/eyeshade/migrations/",
     "build-helper": "babel helper --ignore **/*.test.js -d dist/helper",
     "build-ledger": "babel ledger --ignore **/*.test.js -d dist/ledger",
     "build-utils": "babel bat-utils --ignore **/*.test.js -d dist/bat-utils && cp bat-utils/package.json dist/bat-utils/package.json",
@@ -38,7 +38,9 @@
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockersvcs",
     "docker-up-dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up $npm_package_config_dockersvcs",
-    "docker-up-detached": "docker-compose up -d $npm_package_config_dockersvcs"
+    "docker-up-detached": "docker-compose up -d $npm_package_config_dockersvcs",
+    "docker-migrate-up": "docker-compose run --rm -w /usr/src/app/eyeshade eyeshade-worker ./bin/migrate-up.sh",
+    "docker-migrate-down": "docker-compose run --rm -w /usr/src/app/eyeshade eyeshade-worker ./bin/migrate-down.sh"
   },
   "config": {
     "dockersvcs": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
@@ -104,6 +106,7 @@
     "node-cache": "4.1.1",
     "node-slack": "0.0.7",
     "oxr": "1.0.2",
+    "pg": "^7.4.3",
     "pluralize": "^7.0.0",
     "prom-client": "10.2.2",
     "proxy-agent": "^2.3.1",
