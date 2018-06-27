@@ -106,7 +106,7 @@ const daily = async (debug, runtime) => {
     const ageDays = process.env.FREEZE_SURVEYORS_AGE_DAYS
     await freezeOldSurveyors({
       surveyors,
-      dayShift: +ageDays
+      dayShift: parseFloat(ageDays)
     })
   } catch (ex) {
     runtime.captureException(ex)
