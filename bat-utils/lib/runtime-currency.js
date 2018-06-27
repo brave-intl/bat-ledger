@@ -9,7 +9,6 @@ const currencyCodes = require('currency-codes')
 const debug = new SDebug('currency')
 const oxr = require('oxr')
 const underscore = require('underscore')
-const BigNumber = require('bignumber.js')
 
 const braveHapi = require('./extras-hapi')
 
