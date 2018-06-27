@@ -1,7 +1,7 @@
 const bluebird = require('bluebird')
 const redis = require('redis')
 const SDebug = require('sdebug')
-const debug = new SDebug('queue')
+const debug = new SDebug('cache')
 const ONE_HOUR = 1000 * 60 * 60
 const MAX_RECONNECT_TIMEOUT = 10000
 const MAX_RECONNECT_ATTEMPTS = 100
