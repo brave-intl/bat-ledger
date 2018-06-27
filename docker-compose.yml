@@ -74,8 +74,6 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
-      - "POSTGRES_HOST=eyeshade-postgres"
-      - "POSTGRES_PORT=5432"
     depends_on:
       - mongo
       - redis
@@ -92,8 +90,6 @@ services:
     environment:
       - "SERVICE=ledger"
       - PUBLISHERS_TAKEOVER
-      - "POSTGRES_HOST=eyeshade-postgres"
-      - "POSTGRES_PORT=5432"
     depends_on:
       - mongo
       - redis
@@ -109,8 +105,6 @@ services:
       service: ledger
     environment:
       - "SERVICE=balance"
-      - "POSTGRES_HOST=eyeshade-postgres"
-      - "POSTGRES_PORT=5432"
     depends_on:
       - redis
     networks:
@@ -126,8 +120,6 @@ services:
     environment:
       - "MONGODB_URI=mongodb://mongo/helper"
       - "SERVICE=helper"
-      - "POSTGRES_HOST=eyeshade-postgres"
-      - "POSTGRES_PORT=5432"
     depends_on:
       - mongo
       - redis
