@@ -222,5 +222,8 @@ async function freezeSurveyors (dayShift) {
   const eyeshade = await connectToDb('eyeshade')
   const collection = eyeshade.collection('surveyors')
   const surveyorsCollection = surveyors(collection)
-  await freezeOldSurveyors(surveyorsCollection, dayShift)
+  await freezeOldSurveyors({
+    surveyors: surveyorsCollection,
+    dayShift
+  })
 }

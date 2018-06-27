@@ -111,7 +111,7 @@ v1.publishers.referrals = {
    GET /v1/reports/publisher/{publisher}/contributions
    GET /v1/reports/publishers/contributions
  */
-
+const surveyorFreezeSchema = Joi.object().optional().default(null).description('triggers a surveyor freeze in "contribution-report"')
 v1.publisher.contributions = {
   handler: (runtime) => {
     return async (request, reply) => {
@@ -139,6 +139,7 @@ v1.publisher.contributions = {
   validate: {
     params: { publisher: braveJoi.string().publisher().required().description('the publisher identity') },
     query: {
+      surveyorFreeze: surveyorFreezeSchema,
       includeUnpayable: Joi.boolean().optional().default(false).description('include wallets that do not have an associated address'),
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report')
@@ -181,6 +182,7 @@ v1.publishers.contributions = {
 
   validate: {
     query: {
+      surveyorFreeze: surveyorFreezeSchema,
       format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the report'),
       summary: Joi.boolean().optional().default(true).description('summarize report'),
       balance: Joi.boolean().optional().default(true).description('show balance due'),
