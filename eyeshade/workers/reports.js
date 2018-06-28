@@ -15,10 +15,7 @@ const {
   createdTimestamp
 } = braveExtras.utils
 
-BigNumber.config({ EXPONENTIAL_AT: 1e+9 })
-
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
-
 let altcurrency
 
 const datefmt = 'yyyymmdd-HHMMss'

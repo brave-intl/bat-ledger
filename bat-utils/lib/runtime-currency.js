@@ -14,6 +14,11 @@ const braveHapi = require('./extras-hapi')
 
 const fiats = [ 'USD', 'EUR' ]
 
+BigNumber.config({
+  EXPONENTIAL_AT: 28,
+  DECIMAL_PLACES: 18
+})
+
 const msecs = {
   day: 24 * 60 * 60 * 1000,
   hour: 60 * 60 * 1000,
