@@ -656,7 +656,7 @@ module.exports.initialize = async (debug, runtime) => {
       unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
                 { batchId: 1 }, { timestamp: 1 },
-                { version: 1 } ]
+                { protocolVersion: 1 } ]
     }
   ])
 
