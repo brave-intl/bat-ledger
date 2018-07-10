@@ -196,6 +196,9 @@ const Server = async (options, runtime) => {
             if ([ 'authorization', 'cookie' ].indexOf(key) !== -1) return true
             return /^x-forwarded-/i.test(key)
           })
+    const query = underscore.omit(request.url.query, (value, key, object) => {
+      return ([ 'publisher' ].indexOf(key) !== -1)
+    })
     const remote = options.remoteP &&
           { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
 
@@ -207,7 +210,7 @@ const Server = async (options, runtime) => {
           method: request.method.toUpperCase(),
           pathname: request.url.pathname
         },
-        query: request.url.query,
+        query: query,
         params: request.url.params,
         headers: headers,
         remote: remote

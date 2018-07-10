@@ -58,7 +58,7 @@ const rulesetEntryV2 = async (request, runtime) => {
 }
 
 const identity = async (debug, runtime, result) => {
-  const publishers = runtime.database.get('publishersV2', debug)
+  const publishers = runtime.database.get('publishersV2', debug, { log: false })
   let entry
 
   const re = (value, entries) => {
@@ -104,7 +104,7 @@ v3.identity =
     const publisher = request.query.publisher
     const location = 'https://' + publisher
     const debug = braveHapi.debug(module, request)
-    const publishers = runtime.database.get('publishersX', debug)
+    const publishers = runtime.database.get('publishersX', debug, { log: false })
     let result, timestamp
     let entry = await rulesetEntryV2(request, runtime)
 

@@ -115,12 +115,17 @@ Database.prototype.source = function (options) {
   return GridStream(this.db._db, mongodb).createReadStream(options)
 }
 
-Database.prototype.get = function (collection, debug) {
+Database.prototype.get = function (collection, debug, options) {
   const ndebug = new SDebug('monk:queries')
   const result = this.db.get(collection, { cache: false })
 
-  ndebug.initial = debug.initial
-  result._debug = ndebug
+  if ((options && options.log) !== false) {
+    ndebug.initial = debug.initial
+    result._debug = ndebug
+  } else {
+    // empty logger
+    result._debug = () => {}
+  }
 
   return result
 }
