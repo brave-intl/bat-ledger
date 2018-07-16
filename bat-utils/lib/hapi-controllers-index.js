@@ -1,11 +1,8 @@
-const fs = require('fs')
-const path = require('path')
 
 const underscore = require('underscore')
 
 exports.routes = async (debug, runtime, options) => {
   const entries = {}
-  const parent = options.parent || path.join(process.cwd(), 'src/controllers')
   const routes = [
     { method: 'GET',
       path: '/',
@@ -44,25 +41,8 @@ exports.routes = async (debug, runtime, options) => {
     }
   }
 
-  try {
-    names = fs.readdirSync(parent)
-  } catch (ex) {
-    if (ex.code !== 'ENOENT') throw ex
-
-    debug('no controllers directory to scan')
-    names = []
-  }
-  for (let name of names) {
-    if ((name === 'index.js') || (name.indexOf('.test.js') !== -1) || (path.extname(name) !== '.js')) continue
-
-    try {
-      const module = require(path.join(parent, name))
-      await router(module)
-    } catch (ex) {
-      errP = true
-      debug('error loading routes for module controller ' + name + ': ' + ex.toString())
-      console.log(ex.stack)
-    }
+  for (let mod of options.parentModules) {
+    await router(mod)
   }
 
   if (errP) process.exit(1)

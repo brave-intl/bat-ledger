@@ -1,14 +1,20 @@
 require('dotenv').config()
-if (!process.env.BATUTIL_SPACES) process.env.BATUTIL_SPACES = '*,-extras.worker'
-const path = require('path')
+if (!process.env.BATUTIL_SPACES) {
+  process.env.BATUTIL_SPACES = '*,-extras.worker'
+}
 const { Runtime, hapi } = require('bat-utils')
+const ratesController = require('./controllers/rates')
 const { controllers, server } = hapi
 
 const config = require('../config.js')
 Runtime.newrelic.setupNewrelic(config, __filename)
 
+const parentModules = [
+  ratesController
+]
+
 const options = {
-  parent: path.join(__dirname, 'controllers'),
+  parentModules,
   routes: controllers.index,
   controllers: controllers,
   module: module,

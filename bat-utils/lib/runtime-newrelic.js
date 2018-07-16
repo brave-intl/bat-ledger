@@ -4,6 +4,7 @@ const os = require('os')
 const path = require('path')
 
 module.exports = createNewrelic
+
 createNewrelic.setupNewrelic = setup
 
 function Newrelic (config, runtime) {

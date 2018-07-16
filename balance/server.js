@@ -1,7 +1,8 @@
 const dotenv = require('dotenv')
-const { join } = require('path')
 const config = require('../config.js')
 const utils = require('../bat-utils')
+
+const addressControllers = require('./controllers/address')
 
 const {
   hapi,
@@ -17,8 +18,12 @@ const {
   server: hapiServer
 } = hapi
 
+const parentModules = [
+  addressControllers
+]
+
 const options = {
-  parent: join(__dirname, 'controllers'),
+  parentModules,
   routes: controllers.index,
   controllers: controllers,
   module: module
