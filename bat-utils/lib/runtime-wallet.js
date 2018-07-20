@@ -176,6 +176,10 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
   }
   grantIds = []
   let grantTotal = new BigNumber(0)
+  // sort sorting munges grants
+  grants.sort((a, b) => {
+    return a.minimumReconcileTimestamp > b.minimumReconcileTimestamp ? 1 : -1
+  })
   for (let grant of grants) {
     if (this.isGrantExpired(info, grant)) {
       await this.expireGrant(info, wallet, grant)
