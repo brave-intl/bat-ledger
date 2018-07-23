@@ -477,8 +477,7 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { paymentId: 1 } ],
       others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 },
-        { providerId: 1 },
-        { 'grants.promotionId': 1 }
+        { providerId: 1, 'grants.promotionId': 1 }
       ]
     },
     {
