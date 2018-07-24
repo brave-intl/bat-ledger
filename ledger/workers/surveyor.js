@@ -44,6 +44,7 @@ const daily = async (debug, runtime) => {
   debug('daily', 'running again ' + moment(next).fromNow())
 }
 
+exports.name = 'surveyor'
 exports.initialize = async (debug, runtime) => {
   let next, schedule
 

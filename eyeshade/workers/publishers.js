@@ -9,6 +9,7 @@ const utf8ify = utils.utf8ify
 const timeout = utils.timeout
 const { insertFromSettlement, updateBalances } = require('../lib/transaction.js')
 
+exports.name = 'publishers'
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('publishers-bulk-create')
   await runtime.queue.create('settlement-report')

@@ -1,7 +1,5 @@
 const dns = require('dns')
-const fs = require('fs')
 const os = require('os')
-const path = require('path')
 
 const SDebug = require('sdebug')
 const underscore = require('underscore')
@@ -29,13 +27,14 @@ const Worker = async (options, runtime) => {
 
   const entries = {}
   const listeners = {}
-  const parent = options.parent || path.join(process.cwd(), 'src/workers')
-  let errP, names
+  let errP
   let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
 
-  const router = async (name) => {
-    const module = require(path.join(parent, name))
-    let working = module.workers
+  const router = async (module) => {
+    let {
+      workers,
+      name
+    } = module
 
     const register = async (queue) => {
       if (entries[queue]) return debug('duplicate worker ' + queue)
@@ -53,7 +52,7 @@ const Worker = async (options, runtime) => {
           const transaction = runtime.newrelic.getTransaction()
 
           setTimeout(async () => {
-            try { await working[queue](debug, runtime, payload) } catch (ex) {
+            try { await workers[queue](debug, runtime, payload) } catch (ex) {
               debug(queue, { payload: payload, err: ex, stack: ex.stack })
               runtime.newrelic.noticeError(ex, payload)
             }
@@ -65,29 +64,18 @@ const Worker = async (options, runtime) => {
       listeners[name].push(queue)
     }
 
-    if (typeof module.initialize === 'function') working = (await module.initialize(debug, runtime)) || working
-    name = path.basename(name, '.js')
+    if (typeof module.initialize === 'function') workers = (await module.initialize(debug, runtime)) || workers
     listeners[name] = []
 
-    for (let queue of underscore.keys(working)) { await register(queue) }
+    for (let queue of underscore.keys(workers)) { await register(queue) }
   }
 
-  try {
-    names = fs.readdirSync(parent)
-  } catch (ex) {
-    if (ex.code !== 'ENOENT') throw ex
-
-    debug('no workers directory to scan')
-    names = []
-  }
-  for (let name of names) {
-    if ((name === 'index.js') || (name.indexOf('.test.js') !== -1) || (path.extname(name) !== '.js')) continue
-
+  for (let mod of options.parentModules) {
     try {
-      await router(name)
+      await router(mod)
     } catch (ex) {
       errP = true
-      debug('error loading workers for ' + name + ': ' + ex.toString())
+      debug('error loading workers for ' + mod.name + ': ' + ex.toString())
       console.log(ex.stack)
     }
   }

@@ -1,8 +1,11 @@
 const dotenv = require('dotenv')
-const { join } = require('path')
 const utils = require('bat-utils')
 
 const config = require('../config.js')
+
+const publisherWorker = require('./workers/publisher')
+const rulesetsWorker = require('./workers/rulesets')
+const surveyorWorker = require('./workers/surveyor')
 
 const {
   Runtime,
@@ -17,8 +20,14 @@ if (!process.env.BATUTIL_SPACES) {
 
 Runtime.newrelic.setupNewrelic(config, __filename)
 
+const parentModules = [
+  publisherWorker,
+  rulesetsWorker,
+  surveyorWorker
+]
+
 const options = {
-  parent: join(__dirname, 'workers'),
+  parentModules,
   module: module
 }
 
