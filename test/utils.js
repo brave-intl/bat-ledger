@@ -59,6 +59,7 @@ const AUTH_KEY = 'Authorization'
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
 const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
+const grantAgent = agent(process.env.BAT_GRANT_SERVER).set(AUTH_KEY, token)
 
 const status = (expectation) => ({ status, body }) => {
   if (status !== expectation) {
@@ -158,6 +159,7 @@ module.exports = {
   eyeshadeAgent,
   ledgerAgent,
   balanceAgent,
+  grantAgent,
   assertWithinBounds,
   connectToDb,
   dbUri,

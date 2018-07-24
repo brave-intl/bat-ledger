@@ -24,6 +24,7 @@ const server = async (request, reply, runtime) => {
   } else {
     entry = await surveyors.findOne({ surveyorId: surveyorId })
   }
+  if (!entry) console.log(await surveyors.find({surveyorType: surveyorType}))
   if (!entry) reply(boom.notFound('surveyor does not exist: ' + surveyorId))
   else if (entry.surveyorType !== surveyorType) reply(boom.badData('surveyorType mismatch for: ' + surveyorId))
   else {
