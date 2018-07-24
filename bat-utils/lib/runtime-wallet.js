@@ -149,15 +149,16 @@ Wallet.prototype.expireGrant = async function (info, wallet, grant) {
   await wallets.update(where, state)
 }
 
+Wallet.selectGrants = selectGrants
+
 Wallet.prototype.redeem = async function (info, txn, signature, request) {
   let balance, desired, grants, grantIds, payload, result
 
   if (!this.runtime.config.redeemer) return
 
-  if (!info.grants) return
-
-  // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
-  grants = info.grants.filter((grant) => grant.status === 'active')
+  grants = info.grants
+  if (!grants) return
+  grants = selectGrants(grants)
   if (grants.length === 0) return
 
   if (!info.balances) info.balances = await this.balances(info)
@@ -176,15 +177,6 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
   }
   grantIds = []
   let grantTotal = new BigNumber(0)
-  // sort sorting munges grants
-  grants.sort((a, b) => {
-    let expiryTimestampA = extractExpiryTime(a)
-    let expiryTimestampB = extractExpiryTime(b)
-    return expiryTimestampA > expiryTimestampB ? 1 : -1
-  })
-  function extractExpiryTime (grant) {
-    return braveUtils.extractJws(grant.token).expiryTime
-  }
 
   for (let grant of grants) {
     if (this.isGrantExpired(info, grant)) {
@@ -504,3 +496,21 @@ Wallet.providers.mock = {
 Wallet.providers.mockHttpSignature = Wallet.providers.mock
 
 module.exports = Wallet
+
+function selectGrants (grants_ = []) {
+  // we could try to optimize the determination of which grant to use, but there's probably going to be only one...
+  const grants = grants_.filter((grant) => grant.status === 'active')
+
+  // sorting munges grants
+  grants.sort((a, b) => {
+    let expiryTimestampA = extractExpiryTime(a)
+    let expiryTimestampB = extractExpiryTime(b)
+    return expiryTimestampA > expiryTimestampB ? 1 : -1
+  })
+
+  return grants
+
+  function extractExpiryTime (grant) {
+    return braveUtils.extractJws(grant.token).expiryTime
+  }
+}
