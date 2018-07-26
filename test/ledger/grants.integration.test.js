@@ -9,12 +9,15 @@ import { sign } from 'http-request-signature'
 import tweetnacl from 'tweetnacl'
 import {
   ledgerAgent,
-  ok
+  ok,
+  cleanDbs
 } from '../utils'
 import {
   timeout,
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
+
+test.afterEach(cleanDbs)
 
 test('grants: add expired grant and make sure it does not add to wallet', async t => {
   t.plan(1)
