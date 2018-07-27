@@ -307,10 +307,17 @@ const write = function (runtime, apiVersion) {
       result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx, request)
     } catch (err) {
       let payload = err.data.payload
-      payload = JSON.parse(payload.toString())
-      await markGrantsAsRedeemed(payload.data.redeemedIDs)
+      payload = payload.toString()
+      if (payload[0] === '{') {
+        payload = JSON.parse(payload)
+        let payloadData = payload.data
+        if (payloadData) {
+          await markGrantsAsRedeemed(payloadData.redeemedIDs)
+        }
+      }
       return reply(err)
     }
+
     if (!result) {
       result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
     }

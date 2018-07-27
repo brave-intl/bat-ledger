@@ -23,14 +23,31 @@ import {
 import _ from 'underscore'
 import whitelist from 'bat-utils/lib/hapi-auth-whitelist'
 import Runtime from 'bat-utils/boot-runtime'
-const config = require('../../config')
-const runtime = new Runtime(config)
+
+const runtime = new Runtime({
+  wallet: {
+    uphold: {
+      accessToken: process.env.UPHOLD_ACCESS_TOKEN || 'none',
+      clientId: process.env.UPHOLD_CLIENT_ID || 'none',
+      clientSecret: process.env.UPHOLD_CLIENT_SECRET || 'none',
+      environment: process.env.UPHOLD_ENVIRONMENT || 'sandbox'
+    }
+  },
+  redeemer: {
+    url: process.env.BAT_GRANT_SERVER,
+    access_token: process.env.REDEEMER_TOKEN
+  },
+  currency: {
+    url: process.env.HELPER_URL,
+    access_token: process.env.HELPER_TOKEN
+  }
+})
 
 test.after(cleanDbs)
 
 test('wallet: make sure out of sync grants are rejected on ledger', async t => {
   t.plan(0)
-  var paymentId, walletInfo
+  var paymentId
   const ledger = await connectToDb('ledger')
   const url = '/v1/grants'
   var { surveyorId } = await createSurveyor({
@@ -77,6 +94,7 @@ test('wallet: make sure out of sync grants are rejected on ledger', async t => {
   response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   paymentId = response.body.wallet.paymentId
+
   const userCardId = response.body.wallet.addresses.CARD_ID
 
   personaCredential.finalize(response.body.verification)
@@ -96,7 +114,7 @@ test('wallet: make sure out of sync grants are rejected on ledger', async t => {
 
   do { // This depends on currency conversion rates being available, retry until then are available
     response = await ledgerAgent
-      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&currency=USD`)
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=1&currency=USD`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
   err = ok(response)
@@ -120,6 +138,8 @@ test('wallet: make sure out of sync grants are rejected on ledger', async t => {
     {'amount': desired, 'currency': 'BAT', 'destination': userCardId},
     true // commit tx in one swoop
   )
+
+  await ledgerAgent.put(`${url}/${paymentId}`).send({ promotionId }).expect(ok)
 
   do {
     response = await ledgerAgent
@@ -163,12 +183,8 @@ test('wallet: make sure out of sync grants are rejected on ledger', async t => {
     }
   }
 
-  response = await ledgerAgent.put(`${url}/${paymentId}`).send({ promotionId }).expect(ok)
-  ;({
-    body: walletInfo
-  } = response)
+  var walletInfo = await tieWalletToGrants()
 
-  walletInfo = await tieWalletToGrants()
   await runtime.wallet.redeem(walletInfo, walletInfo.unsignedTx, signedTx, request)
 
   response = await ledgerAgent
@@ -179,7 +195,7 @@ test('wallet: make sure out of sync grants are rejected on ledger', async t => {
   response = await ledgerAgent
     .put('/v2/wallet/' + paymentId)
     .send(payload)
-    .expect(ok)
+    .expect(status(400))
 
   async function tieWalletToGrants () {
     const grants = ledger.collection('grants')
@@ -194,11 +210,13 @@ test('wallet: make sure out of sync grants are rejected on ledger', async t => {
     )
 
     // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
-    query = { 'paymentId': paymentId, 'grants.promotionId': { '$ne': promotionId } }
+    query = { paymentId }
     await wallets.findOneAndUpdate(query,
                             { $push: { grants: grantInfo } }
     )
+
     const wallet = await wallets.findOne({ paymentId })
+
     wallet.requestType = 'httpSignature'
     return wallet
   }
