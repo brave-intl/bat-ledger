@@ -30,5 +30,9 @@ const options = {
 }
 
 config.cache = false
+config.postgres = {
+  schemaVersion: require('./migrations/current'),
+  settings: {}
+}
 
 utils.extras.worker(options, new utils.Runtime(config))

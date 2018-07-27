@@ -38,10 +38,13 @@
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockersvcs",
     "docker-up-dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up $npm_package_config_dockersvcs",
-    "docker-up-detached": "docker-compose up -d $npm_package_config_dockersvcs"
+    "docker-up-detached": "docker-compose up -d $npm_package_config_dockersvcs",
+    "docker-migrate-up": "docker-compose -f docker-compose.yml -f docker-compose.migrate.yml run eyeshade-postgres-migrate-up",
+    "docker-migrate-down": "docker-compose -f docker-compose.yml -f docker-compose.migrate.yml run eyeshade-postgres-migrate-down",
+    "transfer-to-psql": "docker-compose run --rm -v $(pwd)/test:/usr/src/app/test ledger-web node ./eyeshade/transfer/index.js"
   },
   "config": {
-    "dockersvcs": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
+    "dockersvcs": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web eyeshade-postgres"
   },
   "repository": {
     "type": "git",
@@ -104,6 +107,7 @@
     "node-cache": "4.1.1",
     "node-slack": "0.0.7",
     "oxr": "1.0.2",
+    "pg": "^7.4.3",
     "pluralize": "^7.0.0",
     "prom-client": "10.2.2",
     "proxy-agent": "^2.3.1",

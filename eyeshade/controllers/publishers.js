@@ -6,7 +6,7 @@ const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
-const underscore = require('underscore')
+const _ = require('underscore')
 const uuid = require('uuid')
 
 const batPublisher = require('bat-publisher')
@@ -34,7 +34,7 @@ v1.bulk = {
       const payload = request.payload
       const authority = request.auth.credentials.provider + ':' + request.auth.credentials.profile.username
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
+      const reportURL = url.format(_.defaults({ pathname: '/v1/reports/file/' + reportId }, _.extend(request.info, { protocol: runtime.config.server.protocol })))
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
       const tokens = runtime.database.get('tokens', debug)
@@ -51,12 +51,12 @@ v1.bulk = {
       }
       for (let entry of payload) {
         entry.verificationId = uuid.v4().toLowerCase()
-        underscore.extend(state.$set, { token: entry.verificationId })
+        _.extend(state.$set, { token: entry.verificationId })
         await tokens.update({ publisher: entry.publisher, verificationId: entry.verificationId }, state, { upsert: true })
       }
 
       await runtime.queue.send(debug, 'publishers-bulk-create',
-                               underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
+                               _.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
                                                    { publishers: payload }, request.query))
       reply({ reportURL: reportURL })
     }
@@ -97,34 +97,50 @@ v2.settlement = {
     return async (request, reply) => {
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
-      const settlements = runtime.database.get('settlements', debug)
+      const { database, postgres } = runtime
+      const owners = database.get('owners', debug)
+      const publishers = database.get('publishers', debug)
+      const settlements = database.get('settlements', debug)
       const fields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
-      let owner, publisher, state
+      const alternativeCurrency = altcurrency
 
       for (let entry of payload) {
-        if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
-
-        publisher = await publishers.findOne({ publisher: entry.publisher })
-        if (!publisher) return reply(boom.badData('no such entry: ' + entry.publisher))
+        let { altcurrency, publisher, owner } = entry
+        if (altcurrency !== alternativeCurrency) {
+          return reply(boom.badData('altcurrency should be ' + altcurrency))
+        }
+        // publisher
+        let publisherDoc = await publishers.findOne({ publisher })
+        if (!publisherDoc) {
+          return reply(boom.badData('no such entry: ' + publisher))
+        }
 
         // The owner at the time of uploading could be different
-        owner = await owners.findOne({ owner: entry.owner })
-        if (!owner) return reply(boom.badData('no such owner ' + publisher.owner + ' for entry: ' + entry.publisher))
+        let ownerDoc = await owners.findOne({ owner })
+        if (!ownerDoc) {
+          return reply(boom.badData('no such owner ' + publisherDoc.owner + ' for entry: ' + publisher))
+        }
       }
-
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: {}
-      }
+      const now = _.now()
       for (let entry of payload) {
+        let $set = {}
+        let state = {
+          $currentDate: { timestamp: { $type: 'timestamp' } },
+          $set
+        }
         entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
-        fields.forEach((field) => { state.$set[field] = bson.Decimal128.fromString(entry[field].toString()) })
-        underscore.extend(state.$set,
-                          underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner' ]))
+        fields.forEach((field) => { $set[field] = bson.Decimal128.fromString(entry[field].toString()) })
+        _.extend($set,
+                          _.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner' ]))
 
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
+
+        // DOUBLE ENTRY
+        let transactions = postgres.transactionsFrom('settlement', Object.assign({
+          publisher: entry.publisher,
+          createdAt: now
+        }, $set))
+        await postgres.insertTransactions(transactions)
       }
 
       reply({})
@@ -356,7 +372,7 @@ v2.getWallet = {
       entries = await settlements.find({ publisher: publisher }, { sort: { timestamp: -1 }, limit: 1 })
       entry = entries && entries[0]
       if (entry) {
-        result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
+        result.lastSettlement = _.extend(_.pick(entry, [ 'altcurrency', 'currency' ]), {
           probi: entry.probi.toString(),
           amount: entry.amount.toString(),
           timestamp: (entry.timestamp.high_ * 1000) +
@@ -369,10 +385,10 @@ v2.getWallet = {
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
-          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
+          result.wallet = _.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
           rates = result.rates
 
-          underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
+          _.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
             const fxrates = runtime.currency.fxrates
 
             if ((rates[currency]) || (!rates[fxrates.base]) || (!fxrates.rates[currency])) return
@@ -463,7 +479,7 @@ v2.putWallet = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
+        $set: _.extend(_.pick(payload, [ 'provider', 'parameters' ]), {
           defaultCurrency: payload.defaultCurrency,
           visible: payload.show_verification_status,
           verified: true,
@@ -526,7 +542,7 @@ v1.identity =
 
       if (!result.publisherType) {
         result.publisher = getPublisher(url, ruleset)
-        if (result.publisher) underscore.extend(result, await identity(debug, runtime, result))
+        if (result.publisher) _.extend(result, await identity(debug, runtime, result))
       }
 
       reply(result)
@@ -580,7 +596,7 @@ const identity = async (debug, runtime, result) => {
       let regexp
 
       if ((entry) ||
-          (underscore.intersection(reEntry.publisher.split(''),
+          (_.intersection(reEntry.publisher.split(''),
                                 [ '^', '$', '*', '+', '?', '[', '(', '{', '|' ]).length === 0)) return
 
       try {
@@ -603,7 +619,7 @@ const identity = async (debug, runtime, result) => {
   if (!entry) return {}
 
   return {
-    properties: underscore.omit(entry, [ '_id', 'publisher', 'timestamp' ]),
+    properties: _.omit(entry, [ '_id', 'publisher', 'timestamp' ]),
     timestamp: entry.timestamp.toString()
   }
 }
@@ -616,11 +632,11 @@ v1.getStatements = {
   handler: (runtime) => {
     return async (request, reply) => {
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
+      const reportURL = url.format(_.defaults({ pathname: '/v1/reports/file/' + reportId }, _.extend(request.info, { protocol: runtime.config.server.protocol })))
       const debug = braveHapi.debug(module, request)
 
       await runtime.queue.send(debug, 'report-publishers-statements',
-                               underscore.defaults({ reportId: reportId, reportURL: reportURL },
+                               _.defaults({ reportId: reportId, reportURL: reportURL },
                                                    request.query,
                                                    { authority: 'automated', summary: true }))
       reply({ reportURL: reportURL })
@@ -656,7 +672,7 @@ v1.getStatement = {
     return async (request, reply) => {
       const publisher = request.params.publisher
       const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
+      const reportURL = url.format(_.defaults({ pathname: '/v1/reports/file/' + reportId }, _.extend(request.info, { protocol: runtime.config.server.protocol })))
       const debug = braveHapi.debug(module, request)
       const publishers = runtime.database.get('publishers', debug)
       let entry
@@ -665,7 +681,7 @@ v1.getStatement = {
       if (!entry) return reply(boom.notFound('no such entry: ' + publisher))
 
       await runtime.queue.send(debug, 'report-publishers-statements',
-                               underscore.defaults({ reportId: reportId, reportURL: reportURL, publisher: publisher },
+                               _.defaults({ reportId: reportId, reportURL: reportURL, publisher: publisher },
                                                    request.query,
                                                    { authority: 'automated', summary: true }))
       reply({ reportURL: reportURL })
@@ -775,7 +791,7 @@ v2.patchPublisher = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(payload, { authority: authority })
+        $set: _.extend(payload, { authority: authority })
       }
       await publishers.update({ publisher: publisher }, state, { upsert: true })
 
@@ -821,7 +837,7 @@ v1.deletePublisher = {
       entries = await tokens.find({ publisher: publisher })
       if (entries.length === 0) return reply(boom.notFound('no such entry: ' + publisher))
 
-      if (underscore.findWhere(entries, { verified: true })) {
+      if (_.findWhere(entries, { verified: true })) {
         return reply(boom.badData('publisher is already verified: ' + publisher))
       }
 
@@ -886,7 +902,7 @@ const getToken = async (request, reply, runtime, owner, publisher, backgroundP) 
   for (let entry of entries) {
     if (entry.verified) {
       await runtime.queue.send(debug, 'publisher-report',
-                               underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
+                               _.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
       return reply({ status: 'success', verificationId: entry.verificationId })
     }
   }
@@ -894,14 +910,14 @@ const getToken = async (request, reply, runtime, owner, publisher, backgroundP) 
   try { rrset = await dnsTxtResolver(publisher) } catch (ex) {
     reason = ex.toString()
     if (reason.indexOf('ENODATA') === -1) {
-      debug('dnsTxtResolver', underscore.extend({ publisher: publisher, reason: reason }))
+      debug('dnsTxtResolver', _.extend({ publisher: publisher, reason: reason }))
     }
     rrset = []
   }
   for (i = 0; i < rrset.length; i++) { rrset[i] = rrset[i].join('') }
 
   const loser = async (entry, reason) => {
-    debug('verify', underscore.extend(info, { reason: reason }))
+    debug('verify', _.extend(info, { reason: reason }))
     await verified(request, reply, runtime, entry, false, backgroundP, reason)
   }
 
@@ -966,7 +982,7 @@ const hints = {
   standard: '/.well-known/brave-payments-verification.txt',
   root: '/'
 }
-const hintsK = underscore.keys(hints)
+const hintsK = _.keys(hints)
 
 const dnsTxtResolver = async (domain) => {
   return new Promise((resolve, reject) => {
@@ -1000,7 +1016,7 @@ const webResolver = async (debug, runtime, publisher, path) => {
 }
 
 const verified = async (request, reply, runtime, entry, verified, backgroundP, reason) => {
-  const indices = underscore.pick(entry, [ 'verificationId', 'publisher' ])
+  const indices = _.pick(entry, [ 'verificationId', 'publisher' ])
   const debug = braveHapi.debug(module, request)
   const owners = runtime.database.get('owners', debug)
   const publishers = runtime.database.get('publishers', debug)
@@ -1015,7 +1031,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
     reason = 'restricted'
   }
 
-  message = underscore.extend(underscore.clone(indices), { verified: verified, reason: reason })
+  message = _.extend(_.clone(indices), { verified: verified, reason: reason })
   debug('verified', message)
   if ((verified) || (restrictedP)) {
     if (result) message.tags = result.tags
@@ -1037,13 +1053,13 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   if (restrictedP) return
 
   reason = reason || (verified ? 'ok' : 'unknown')
-  payload = underscore.extend(underscore.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
+  payload = _.extend(_.pick(entry, [ 'verificationId', 'token', 'verified' ]), { status: reason })
   await publish(debug, runtime, 'patch', entry.owner, entry.publisher, '/verifications', payload)
   if (!verified) return
 
   state = {
     $currentDate: { timestamp: { $type: 'timestamp' } },
-    $set: underscore.pick(entry, [ 'owner', 'verified', 'visible', 'info' ])
+    $set: _.pick(entry, [ 'owner', 'verified', 'visible', 'info' ])
   }
   await publishers.update({ publisher: entry.publisher }, state, { upsert: true })
 
@@ -1054,12 +1070,12 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
 
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: underscore.pick(props || {}, [ 'providerName', 'providerSuffix', 'providerValue' ])
+      $set: _.pick(props || {}, [ 'providerName', 'providerSuffix', 'providerValue' ])
     }
     await owners.update({ owner: entry.owner }, state, { upsert: true })
   }
 
-  await runtime.queue.send(debug, 'publisher-report', underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
+  await runtime.queue.send(debug, 'publisher-report', _.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
   reply({ status: 'success', verificationId: entry.verificationId })
 
   if (entry.info) return
@@ -1070,7 +1086,7 @@ const verified = async (request, reply, runtime, entry, verified, backgroundP, r
   visible = result.show_verification_status
   visibleP = (typeof visible !== 'undefined')
   method = result.verification_method
-  info = underscore.pick(result, [ 'name', 'email' ])
+  info = _.pick(result, [ 'name', 'email' ])
   if (result.phone_normalized) info.phone = result.phone_normalized
 
   state = {

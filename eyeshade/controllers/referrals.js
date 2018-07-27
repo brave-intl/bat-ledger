@@ -69,11 +69,12 @@ v1.findReferrals = {
 v1.createReferrals = {
   handler: (runtime) => {
     return async (request, reply) => {
+      const { postgres, database } = runtime
       const transactionId = request.params.transactionId
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
-      const publishers = runtime.database.get('publishers', debug)
-      const referrals = runtime.database.get('referrals', debug)
+      const publishers = database.get('publishers', debug)
+      const referrals = database.get('referrals', debug)
       let entries, matches, probi, query
 
       entries = await referrals.find({ transactionId: transactionId })
@@ -97,19 +98,34 @@ v1.createReferrals = {
                                   matches.join(', ')))
       }
 
+      const createdAt = new Date()
+
       for (let referral of payload) {
         let state
+        let $set
+
+        $set = underscore.extend({
+          transactionId: transactionId,
+          publisher: referral.channelId,
+          finalized: new Date(referral.finalized),
+          exclude: false
+        }, underscore.pick(referral, [ 'owner', 'platform', 'altcurrency', 'probi' ]))
 
         state = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
-          $set: underscore.extend({
-            transactionId: transactionId,
-            publisher: referral.channelId,
-            finalized: new Date(referral.finalized),
-            exclude: false
-          }, underscore.pick(referral, [ 'owner', 'platform', 'altcurrency', 'probi' ]))
+          $set
         }
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
+
+        // DOUBLE ENTRY
+        let transactions = postgres.transactionsFrom('referral', {
+          probi: $set.probi,
+          transactionId,
+          publisher: referral.channelId,
+          owner: referral.owner,
+          createdAt
+        })
+        await postgres.insertTransactions(transactions)
       }
 
       reply({})

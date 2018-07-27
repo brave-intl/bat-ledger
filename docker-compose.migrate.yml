@@ -1,0 +1,21 @@
+version: "2.1"
+
+services:
+  eyeshade-postgres-migrate-up:
+    extends:
+      service: eyeshade-postgres
+    volumes:
+      - "./eyeshade/migrations:/migrations"
+    command: "sh -c 'cat /migrations/*/up.sql | PGPASSWORD=password psql -h eyeshade-postgres -U eyeshade --single-transaction -v ON_ERROR_STOP=1'"
+    depends_on:
+      - eyeshade-postgres
+  eyeshade-postgres-migrate-down:
+    extends:
+      service: eyeshade-postgres
+    volumes:
+      - "./eyeshade/migrations:/migrations"
+    environment:
+      - "PGPASSWORD=password"
+    entrypoint: "psql -h eyeshade-postgres -U eyeshade -f"
+    depends_on:
+      - eyeshade-postgres
