@@ -572,7 +572,11 @@ const normalize = (rates, config, runtime) => {
       })
     })
   })
-
+  rates = underscore.mapObject(rates, (sub) => {
+    return underscore.mapObject(sub, (value) => {
+      return +value
+    })
+  })
   return underscore.omit(rates, fiats)
 }
 
