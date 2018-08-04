@@ -11,7 +11,7 @@ services:
       - "BAT_GRANT_SERVER=http://grant-web:3333"
       - "BAT_HELPER_SERVER=http://helper-web:3004"
       - "BAT_LEDGER_SERVER=http://ledger-web:3001"
-      - "BAT_MONGODB_URI=mongodb://mongo"
+      - "BAT_MONGODB_URI=${BAT_MONGODB_URI-mongodb://mongo}"
       - "BAT_REDIS_URL=redis://redis:6379"
       - "DEBUG=${DEBUG-*,-babel,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
@@ -38,6 +38,8 @@ services:
       - GITHUB_LOGIN_BYE
       - GITHUB_LOGIN_WORLD
       - GITHUB_ORG
+      - HELPER_TOKEN
+      - HELPER_URL
       - IP_GRAYLIST
       - LEDGER_GITHUB_CLIENT_ID
       - LEDGER_GITHUB_CLIENT_SECRET

@@ -303,7 +303,21 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx, request)
+    try {
+      result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx, request)
+    } catch (err) {
+      let payload = err.data.payload
+      payload = payload.toString()
+      if (payload[0] === '{') {
+        payload = JSON.parse(payload)
+        let payloadData = payload.data
+        if (payloadData) {
+          await markGrantsAsRedeemed(payloadData.redeemedIDs)
+        }
+      }
+      return reply(err)
+    }
+
     if (!result) {
       result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
     }
@@ -312,15 +326,10 @@ const write = function (runtime, apiVersion) {
 
     cohort = 'control'
 
-    if (result.grantIds) {
+    const grantIds = result.grantIds
+    if (grantIds) {
       cohort = wallet.cohort || 'grant'
-
-      // oh mongo
-      result.grantIds.forEach((grantId) => {
-        wallets.update({ 'paymentId': paymentId, 'grants.grantId': grantId }, { $set: { 'grants.$.status': 'completed' } })
-      })
-
-      await runtime.queue.send(debug, 'redeem-report', underscore.extend({ grantIds: result.grantIds }, { redeemed: true }))
+      await markGrantsAsRedeemed(grantIds)
       result = underscore.omit(result, ['grantIds'])
     }
 
@@ -362,6 +371,23 @@ const write = function (runtime, apiVersion) {
       votes: votes,
       cohort: cohort
     }, result))
+
+    async function markGrantsAsRedeemed (grantIds) {
+      await Promise.all(grantIds.map((grantId) => {
+        const data = {
+          $set: { 'grants.$.status': 'completed' }
+        }
+        const query = {
+          paymentId,
+          'grants.grantId': grantId
+        }
+        return wallets.update(query, data)
+      }))
+      await runtime.queue.send(debug, 'redeem-report', {
+        grantIds,
+        redeemed: true
+      })
+    }
   }
 }
 

@@ -28,7 +28,8 @@ import {
   createSurveyor,
   balanceAgent,
   createRedisCache,
-  freezeSurveyors
+  freezeSurveyors,
+  connectToDb
 } from './utils'
 
 import {
@@ -72,18 +73,21 @@ test('ledger: create a surveyor', async t => {
   t.true(!!surveyorId)
   t.not(prevSurveyorId, surveyorId)
 })
+
+const grants = {
+  'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
+  'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]
+}
+const promotionId = grants.promotions[0].promotionId
+
 test('ledger: create promotion', async t => {
   t.plan(0)
   const url = '/v1/grants'
   // valid grant
-  const valid = {
-    'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
-    'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]
-  }
-  await ledgerAgent.post(url).send(valid).expect(ok)
+  await ledgerAgent.post(url).send(grants).expect(ok)
 })
 
-test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
+test('ledger: v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
   let response, octets, headers, payload, err
@@ -296,7 +300,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   }
 })
 
-test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t => {
+test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
   let response, octets, headers, payload, err
@@ -370,7 +374,7 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
 
   t.true(response.body.hasOwnProperty('promotionId'))
 
-  const promotionId = response.body.promotionId
+  t.is(response.body.promotionId, promotionId)
 
   // request grant
   response = await ledgerAgent
@@ -476,6 +480,60 @@ test('ledger : v2 grant contribution workflow with uphold BAT wallet', async t =
     .post('/v2/batch/surveyor/voting')
     .send(bulkVotePayload)
     .expect(ok)
+
+  do {
+    response = await ledgerAgent
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+  } while (response.status === 503)
+  err = ok(response)
+  if (err) throw err
+
+  t.true(response.body.grants.length === 0)
+
+  // unsync grant state between ledger and the grant server
+  const ledger = await connectToDb('ledger')
+  const wallets = ledger.collection('wallets')
+
+  const data = {
+    $set: { 'grants.$.status': 'active' }
+  }
+  const query = {
+    'grants.promotionId': promotionId
+  }
+  await wallets.findOneAndUpdate(query, data)
+
+  do {
+    response = await ledgerAgent
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+    else if (response.body.balance === '0.0000') await timeout(500)
+  } while (response.status === 503 || response.body.balance === '0.0000')
+  err = ok(response)
+  if (err) throw err
+
+  t.true(response.body.grants.length > 0)
+
+  do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
+    if (response.status === 503) {
+      await timeout(response.headers['retry-after'] * 1000)
+    }
+    response = await ledgerAgent
+       .put('/v2/wallet/' + paymentId)
+       .send(payload)
+  } while (response.status === 503)
+
+  t.is(response.status, 410)
+
+  do {
+    response = await ledgerAgent
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+  } while (response.status === 503)
+  err = ok(response)
+  if (err) throw err
+
+  t.true(response.body.grants.length === 0)
 })
 
 test('eyeshade: create brave youtube channel and owner', async t => {
