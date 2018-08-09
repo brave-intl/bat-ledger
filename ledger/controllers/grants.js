@@ -271,11 +271,11 @@ v1.claimGrant = { handler: (runtime) => {
 
       if (wallet.captcha.version) {
         if (wallet.captcha.version !== promotion.protocolVersion) {
-          reply(boom.forbidden('must first request correct captcha version'))
+          return reply(boom.forbidden('must first request correct captcha version'))
         }
       } else {
         if (promotion.protocolVersion !== 1) {
-          reply(boom.forbidden('must first request correct captcha version'))
+          return reply(boom.forbidden('must first request correct captcha version'))
         }
       }
 
@@ -613,7 +613,7 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const { headers } = res
 
     const solution = JSON.parse(headers['captcha-solution'])
-    await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: underscore.extend(solution, {version: 2}) } })
+    await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: underscore.extend(solution, {version: protocolVersion}) } })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
   }
