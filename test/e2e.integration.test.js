@@ -77,11 +77,13 @@ test('ledger: create a surveyor', async t => {
   t.not(prevSurveyorId, surveyorId)
 })
 
+const minimumReconcileTimestamp = 1533935426702
+const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
+
 const grants = {
   'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
-  'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]
+  'promotions': [{'active': true, 'priority': 0, promotionId, minimumReconcileTimestamp}]
 }
-const promotionId = grants.promotions[0].promotionId
 
 test('ledger: create promotion', async t => {
   t.plan(0)
@@ -457,6 +459,7 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
   if (err) throw err
 
   t.is(Number(response.body.unsignedTx.denomination.amount), Number(desired))
+  t.is(response.body.grants[0].minimumReconcileTimestamp, 0)
 
   octets = JSON.stringify(response.body.unsignedTx)
   headers = {

@@ -706,12 +706,15 @@ module.exports.initialize = async (debug, runtime) => {
         batchId: '',
         timestamp: bson.Timestamp.ZERO,
 
-        protocolVersion: 1
+        protocolVersion: 1,
+
+        minimumReconcileTimestamp: 0
       },
       unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
                 { batchId: 1 }, { timestamp: 1 },
-                { protocolVersion: 1 } ]
+                { protocolVersion: 1 },
+                { minimumReconcileTimestamp: 1 } ]
     }
   ])
 
