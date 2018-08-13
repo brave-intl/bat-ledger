@@ -340,7 +340,7 @@ v1.write = { handler: (runtime) => {
 
     const grantContent = braveUtils.extractJws(grant.token)
 
-    result = underscore.extend(underscore.pick(grantContent, [ 'altcurrency', 'probi' ]))
+    result = underscore.pick(grantContent, [ 'altcurrency', 'probi', 'expiryTime' ])
     await runtime.queue.send(debug, 'grant-report', underscore.extend({
       grantId: grantContent.grantId,
       paymentId: paymentId,
