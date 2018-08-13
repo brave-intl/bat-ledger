@@ -362,9 +362,9 @@ v1.write = { handler: (runtime) => {
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-    headers: {
+    headers: Joi.object().keys({
       'bypass-captcha': Joi.string().optional().description('a secret token to allow trusted servers to bypass the captcha')
-    },
+    }).unknown(true).description('headers'),
     payload: Joi.object().keys({
       promotionId: Joi.string().required().description('the promotion-identifier'),
       captchaResponse: Joi.object().optional().keys({
