@@ -262,7 +262,8 @@ v1.write = { handler: (runtime) => {
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    if (runtime.config.captcha) {
+    const configCaptcha = runtime.config.captcha
+    if (configCaptcha && request.headers['bypass-captcha'] !== configCaptcha.bypass) {
       if (!wallet.captcha) return reply(boom.forbidden('must first request captcha'))
       if (!captchaResponse) return reply(boom.badData())
 
@@ -360,7 +361,9 @@ v1.write = { handler: (runtime) => {
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-
+    headers: {
+      bypassCaptcha: Joi.string().optional().description('a token to allow trusted servers to bypass the captcha')
+    },
     payload: Joi.object().keys({
       promotionId: Joi.string().required().description('the promotion-identifier'),
       captchaResponse: Joi.object().optional().keys({
