@@ -377,6 +377,7 @@ v1.write = { handler: (runtime) => {
   response: {
     schema: Joi.object().keys({
       altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+      expiryTime: braveJoi.number().required().description('the expiration time of the grant'),
       probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
     }).unknown(true).description('grant properties')
   }
