@@ -262,7 +262,9 @@ v1.write = { handler: (runtime) => {
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    if (runtime.config.captcha) {
+    const configCaptcha = runtime.config.captcha
+    const bypassCaptcha = request.headers['bypass-captcha']
+    if (configCaptcha && bypassCaptcha !== configCaptcha.bypass) {
       if (!wallet.captcha) return reply(boom.forbidden('must first request captcha'))
       if (!captchaResponse) return reply(boom.badData())
 
@@ -338,7 +340,7 @@ v1.write = { handler: (runtime) => {
 
     const grantContent = braveUtils.extractJws(grant.token)
 
-    result = underscore.extend(underscore.pick(grantContent, [ 'altcurrency', 'probi' ]))
+    result = underscore.pick(grantContent, [ 'altcurrency', 'probi', 'expiryTime' ])
     await runtime.queue.send(debug, 'grant-report', underscore.extend({
       grantId: grantContent.grantId,
       paymentId: paymentId,
@@ -360,7 +362,9 @@ v1.write = { handler: (runtime) => {
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-
+    headers: Joi.object().keys({
+      'bypass-captcha': Joi.string().optional().description('a secret token to allow trusted servers to bypass the captcha')
+    }).unknown(true).description('headers'),
     payload: Joi.object().keys({
       promotionId: Joi.string().required().description('the promotion-identifier'),
       captchaResponse: Joi.object().optional().keys({
@@ -373,6 +377,7 @@ v1.write = { handler: (runtime) => {
   response: {
     schema: Joi.object().keys({
       altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+      expiryTime: Joi.number().optional().description('the expiration time of the grant'),
       probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
     }).unknown(true).description('grant properties')
   }
