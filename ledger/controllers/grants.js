@@ -264,7 +264,7 @@ v1.write = { handler: (runtime) => {
 
     const configCaptcha = runtime.config.captcha
     const bypassCaptcha = request.headers['bypass-captcha']
-    if (configCaptcha && bypassCaptcha !== configCaptcha.bypass) {
+    if (configCaptcha && (process.env.NODE_ENV === 'production' || bypassCaptcha !== configCaptcha.bypass)) {
       if (!wallet.captcha) return reply(boom.forbidden('must first request captcha'))
       if (!captchaResponse) return reply(boom.badData())
 
