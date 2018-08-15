@@ -269,6 +269,8 @@ v1.claimGrant = { handler: (runtime) => {
       if (!wallet.captcha) return reply(boom.forbidden('must first request captcha'))
       if (!captchaResponse) return reply(boom.badData())
 
+      await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $unset: { captcha: {} } })
+
       if (wallet.captcha.version) {
         if (wallet.captcha.version !== promotion.protocolVersion) {
           return reply(boom.forbidden('must first request correct captcha version'))
@@ -280,7 +282,6 @@ v1.claimGrant = { handler: (runtime) => {
       }
 
       if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
-        await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $unset: { captcha: {} } })
         return reply(boom.forbidden())
       }
     }
