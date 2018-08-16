@@ -495,7 +495,7 @@ v1.getStats =
           $cond: {
             if: {
               $gt: [
-                "$paymentStamp",
+                '$paymentStamp',
                 0
               ]
             },
@@ -507,7 +507,7 @@ v1.getStats =
           $cond: {
             if: {
               $size: {
-                $ifNull: ["$grants", []]
+                $ifNull: ['$grants', []]
               }
             },
             then: 1,
@@ -541,7 +541,7 @@ v1.getStats =
           }
         },
         selfFunded: {
-          $sum: "$selfFunded"
+          $sum: '$selfFunded'
         },
         funded: {
           $sum: '$funded'

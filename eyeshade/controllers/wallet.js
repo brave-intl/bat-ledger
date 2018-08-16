@@ -103,9 +103,9 @@ v1.getStats = {
       $finalProject
     ])
 
-     reply(result)
+    reply(result)
 
-     function count (cohort) {
+    function count (cohort) {
       return {
         $sum: {
           $cond: {
@@ -118,7 +118,7 @@ v1.getStats = {
         }
       }
     }
-     function matcher (query) {
+    function matcher (query) {
       return underscore.assign({
         probi: {
           $gt: 0
@@ -129,14 +129,14 @@ v1.getStats = {
       }, query)
     }
   },
-   auth: {
+  auth: {
     strategy: 'session',
     scope: [ 'ledger', 'QA' ],
     mode: 'required'
   },
-   description: 'Retrieves information about funded wallets',
+  description: 'Retrieves information about funded wallets',
   tags: [ 'api' ],
-   response: {
+  response: {
     schema: Joi.array().items(
       Joi.object().keys({
         created: Joi.string(),

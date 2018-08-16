@@ -1,9 +1,9 @@
 const getPublisherProps = require('bat-publisher').getPublisherProps
 // this can be abstracted elsewhere as soon as we finish #274
 const BigNumber = require('bignumber.js')
- const dotenv = require('dotenv')
- dotenv.config()
- BigNumber.config({
+const dotenv = require('dotenv')
+dotenv.config()
+BigNumber.config({
   EXPONENTIAL_AT: 28,
   DECIMAL_PLACES: 18
 })
