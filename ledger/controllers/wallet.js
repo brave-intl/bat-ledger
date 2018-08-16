@@ -468,12 +468,156 @@ v2.lookup = { handler: (runtime) => {
   }
 }
 
+/*
+   GET /v1/wallet/stats
+ */
+
+v1.getStats =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const wallets = runtime.database.get('wallets', debug)
+
+    let values = await wallets.aggregate([{
+      $match: {
+        paymentId: {
+          $nin: ['', null]
+        }
+      }
+    }, {
+      $project: {
+        _id: 0,
+        balance: '$balances.balance',
+        created: {
+          $dateToString: { format: '%Y-%m-%d', date: '$_id' }
+        },
+        selfFunded: {
+          $cond: {
+            if: {
+              $gt: [
+                "$paymentStamp",
+                0
+              ]
+            },
+            then: 1,
+            else: 0
+          }
+        },
+        virtual: {
+          $cond: {
+            if: {
+              $size: {
+                $ifNull: ["$grants", []]
+              }
+            },
+            then: 1,
+            else: 0
+          }
+        },
+        funded: {
+          $cond: {
+            if: {
+              $ne: ['$balances.confirmed', '0']
+            },
+            then: 1,
+            else: 0
+          }
+        }
+      }
+    }, {
+      $group: {
+        _id: '$created',
+        // unable to sum / convert strings
+        balance: {
+          $push: '$balance'
+        },
+        virtual: {
+          $sum: {
+            $cond: {
+              if: '$virtual',
+              then: 1,
+              else: 0
+            }
+          }
+        },
+        selfFunded: {
+          $sum: "$selfFunded"
+        },
+        funded: {
+          $sum: '$funded'
+        },
+        wallets: {
+          $sum: 1
+        }
+      }
+    }, {
+      $project: {
+        created: '$_id',
+        wallets: 1,
+        selfFunded: 1,
+        balance: 1,
+        virtual: 1,
+        funded: 1,
+        _id: 0
+      }
+    }])
+
+    values = values.map(({
+      selfFunded,
+      created,
+      balance,
+      wallets,
+      virtual,
+      funded
+    }) => ({
+      selfFunded,
+      balance: add(balance),
+      created,
+      wallets,
+      virtual,
+      funded
+    }))
+
+    reply(values)
+
+    function add (numbers) {
+      return numbers.reduce((memo, number) => {
+        return memo.plus(new BigNumber(number || 0))
+      }, new BigNumber('0')).toNumber()
+    }
+  }
+},
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger', 'QA' ],
+    mode: 'required'
+  },
+
+  description: 'Retrieves information about wallets',
+  tags: [ 'api' ],
+
+  response: {
+    schema: Joi.array().items(
+      Joi.object().keys({
+        selfFunded: Joi.number().required().description('the number of wallets created on this date that have been self funded'),
+        created: Joi.string().required().description('date the wallets in this cohort were created'),
+        balance: Joi.number().required().description('the balances of the wallets created on this day'),
+        wallets: Joi.number().required().description('the number of wallets created on this date'),
+        virtual: Joi.number().required().description('the number of wallets created on this date that have a claimed grant that has not yet been redeemed'),
+        funded: Joi.number().required().description('the number of wallets that are currently funded')
+      })
+    )
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
-  braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
+  braveHapi.routes.async().path('/v2/wallet').config(v2.lookup),
+  braveHapi.routes.async().path('/v1/wallet/stats').whitelist().config(v1.getStats)
 ]
 
 module.exports.initialize = async (debug, runtime) => {

@@ -1,4 +1,12 @@
 const getPublisherProps = require('bat-publisher').getPublisherProps
+// this can be abstracted elsewhere as soon as we finish #274
+const BigNumber = require('bignumber.js')
+ const dotenv = require('dotenv')
+ dotenv.config()
+ BigNumber.config({
+  EXPONENTIAL_AT: 28,
+  DECIMAL_PLACES: 18
+})
 
 module.exports = {
   timeout,
@@ -8,7 +16,8 @@ module.exports = {
   createdTimestamp,
   documentOlderThan,
   isYoutubeChannelId,
-  normalizeChannel
+  normalizeChannel,
+  justDate
 }
 
 const DAY_MS = 60 * 60 * 24 * 1000
@@ -61,4 +70,8 @@ function normalizeChannel (channel) {
     }
   }
   return channel
+}
+
+function justDate (date) {
+  return (new Date(date)).toISOString().split('T')[0]
 }

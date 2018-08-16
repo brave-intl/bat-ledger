@@ -31,7 +31,7 @@
     "db-reset": "npm run mongo-reset && npm run redis-flush",
     "lint": "standard",
     "lint-fix": "npm run lint -- --fix",
-    "test-integration": "ava -v test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
+    "test-integration": "ava -v -s test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
     "test-security": "npm audit",
     "test-unit": "ava -v",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
