@@ -148,18 +148,40 @@ services:
       - grant-redis
     networks:
       - ledger
+
+
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     container_name: prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention=200h'
+      - '--web.enable-lifecycle'
     restart: unless-stopped
-    network_mode: host
+    expose:
+      - 9090
+    ports:
+      - "9090:9090"
+    networks:
+      - ledger
+
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
-    network_mode: host
+    expose:
+      - 3000
     ports:
-      - "3000:3000"
+      - 3000:3000
+    networks:
+      - ledger
     environment:
-      - "GF_SECURITY_ADMIN_PASSWORD=secret"
+      - "GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER-admin}"
+      - "GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD-admin}"
+      - "GF_USERS_ALLOW_SIGN_UP=false"
       - "GF_INSTALL_PLUGINS=grafana-worldmap-panel"
