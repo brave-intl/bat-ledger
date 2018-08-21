@@ -43,7 +43,7 @@
     "docker-migrate-down": "docker-compose run --rm -w /usr/src/app/eyeshade eyeshade-worker ./bin/migrate-down.sh"
   },
   "config": {
-    "dockersvcs": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
+    "dockersvcs": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web prometheus grafana"
   },
   "repository": {
     "type": "git",
