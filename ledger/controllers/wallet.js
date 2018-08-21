@@ -504,7 +504,7 @@ v1.getStats =
           }
         },
         grants: {
-          $ifNull: ["$grants", []]
+          $ifNull: ['$grants', []]
         },
         walletProviderFunded: {
           $cond: {
@@ -529,7 +529,7 @@ v1.getStats =
             else: 0,
             if: {
               $or: [{
-                $gt: ["$walletProviderBalance", 0]
+                $gt: ['$walletProviderBalance', 0]
               }, {
                 $cond: {
                   then: 1,
@@ -537,10 +537,10 @@ v1.getStats =
                   if: {
                     $size: {
                       $filter: {
-                        input: "$grants",
-                        as: "item",
+                        input: '$grants',
+                        as: 'item',
                         cond: {
-                          $eq: ["$$item.status", "active"]
+                          $eq: ['$$item.status', 'active']
                         }
                       }
                     }
@@ -562,10 +562,10 @@ v1.getStats =
               if: {
                 $size: {
                   $filter: {
-                    input: "$grants",
-                    as: "item",
+                    input: '$grants',
+                    as: 'item',
                     cond: {
-                      $eq: ["$$item.status", "active"]
+                      $eq: ['$$item.status', 'active']
                     }
                   }
                 }
@@ -577,7 +577,7 @@ v1.getStats =
           $push: '$walletProviderBalance'
         },
         anyFunds: {
-          $sum: "$anyFunds"
+          $sum: '$anyFunds'
         },
         contributed: {
           $sum: '$contributed'
