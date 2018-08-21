@@ -487,64 +487,103 @@ v1.getStats =
     }, {
       $project: {
         _id: 0,
-        balance: '$balances.balance',
+        walletProviderBalance: '$balances.balance',
         created: {
-          $dateToString: { format: '%Y-%m-%d', date: '$_id' }
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: '$_id'
+          }
         },
-        selfFunded: {
+        contributed: {
           $cond: {
             if: {
-              $gt: [
-                '$paymentStamp',
-                0
-              ]
+              $gt: ['$paymentStamp', 0]
             },
             then: 1,
             else: 0
           }
         },
-        virtual: {
-          $cond: {
-            if: {
-              $size: {
-                $ifNull: ['$grants', []]
-              }
-            },
-            then: 1,
-            else: 0
-          }
+        grants: {
+          $ifNull: ["$grants", []]
         },
-        funded: {
+        walletProviderFunded: {
           $cond: {
+            then: 1,
+            else: 0,
             if: {
               $ne: ['$balances.confirmed', '0']
-            },
+            }
+          }
+        }
+      }
+    }, {
+      $project: {
+        walletProviderBalance: 1,
+        created: 1,
+        contributed: 1,
+        grants: 1,
+        walletProviderFunded: 1,
+        anyFunds: {
+          $cond: {
             then: 1,
-            else: 0
+            else: 0,
+            if: {
+              $or: [{
+                $gt: ["$walletProviderBalance", 0]
+              }, {
+                $cond: {
+                  then: 1,
+                  else: 0,
+                  if: {
+                    $size: {
+                      $filter: {
+                        input: "$grants",
+                        as: "item",
+                        cond: {
+                          $eq: ["$$item.status", "active"]
+                        }
+                      }
+                    }
+                  }
+                }
+              }]
+            }
           }
         }
       }
     }, {
       $group: {
         _id: '$created',
-        // unable to sum / convert strings
-        balance: {
-          $push: '$balance'
-        },
-        virtual: {
+        activeGrant: {
           $sum: {
             $cond: {
-              if: '$virtual',
               then: 1,
-              else: 0
+              else: 0,
+              if: {
+                $size: {
+                  $filter: {
+                    input: "$grants",
+                    as: "item",
+                    cond: {
+                      $eq: ["$$item.status", "active"]
+                    }
+                  }
+                }
+              }
             }
           }
         },
-        selfFunded: {
-          $sum: '$selfFunded'
+        walletProviderBalance: {
+          $push: '$walletProviderBalance'
         },
-        funded: {
-          $sum: '$funded'
+        anyFunds: {
+          $sum: "$anyFunds"
+        },
+        contributed: {
+          $sum: '$contributed'
+        },
+        walletProviderFunded: {
+          $sum: '$walletProviderFunded'
         },
         wallets: {
           $sum: 1
@@ -554,28 +593,31 @@ v1.getStats =
       $project: {
         created: '$_id',
         wallets: 1,
-        selfFunded: 1,
-        balance: 1,
-        virtual: 1,
-        funded: 1,
+        contributed: 1,
+        walletProviderBalance: 1,
+        anyFunds: 1,
+        activeGrant: 1,
+        walletProviderFunded: 1,
         _id: 0
       }
     }])
 
     values = values.map(({
-      selfFunded,
       created,
-      balance,
       wallets,
-      virtual,
-      funded
+      contributed,
+      walletProviderBalance,
+      anyFunds,
+      activeGrant,
+      walletProviderFunded
     }) => ({
-      selfFunded,
-      balance: add(balance),
       created,
       wallets,
-      virtual,
-      funded
+      contributed,
+      walletProviderBalance: add(walletProviderBalance),
+      anyFunds,
+      activeGrant,
+      walletProviderFunded
     }))
 
     reply(values)
@@ -600,12 +642,13 @@ v1.getStats =
   response: {
     schema: Joi.array().items(
       Joi.object().keys({
-        selfFunded: Joi.number().required().description('the number of wallets created on this date that have been self funded'),
         created: Joi.string().required().description('date the wallets in this cohort were created'),
-        balance: Joi.number().required().description('the balances of the wallets created on this day'),
         wallets: Joi.number().required().description('the number of wallets created on this date'),
-        virtual: Joi.number().required().description('the number of wallets created on this date that have a claimed grant that has not yet been redeemed'),
-        funded: Joi.number().required().description('the number of wallets that are currently funded')
+        contributed: Joi.number().required().description('the number of wallets created on this date that have a claimed grant that has not yet been redeemed'),
+        walletProviderBalance: Joi.number().required().description('the balances of the wallets created on this day'),
+        anyFunds: Joi.number().required().description('the number of wallets created on this date that have either an unredeemed grant or a wallet provider balance'),
+        activeGrant: Joi.number().required().description('the number of wallets created on this date that have an active grant'),
+        walletProviderFunded: Joi.number().required().description('the number of wallets that are currently funded')
       })
     )
   }

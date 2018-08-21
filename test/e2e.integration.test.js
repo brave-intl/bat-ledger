@@ -49,6 +49,7 @@ const cache = createRedisCache()
 
 const cardDeleteUrl = `/v2/card`
 const statsURL = '/v1/wallet/stats'
+const probi12 = (new BigNumber(12)).times(1e18).toNumber()
 
 test.before(cleanDbs)
 // test.after(cleanDbs)
@@ -90,11 +91,9 @@ test('ledger: create promotion', async t => {
 })
 
 test('check stats endpoint before wallets add', async t => {
-  t.plan(2)
+  t.plan(1)
   let body
   ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
-  t.deepEqual(body, [])
-  ;({ body } = await eyeshadeAgent.get(statsURL).expect(ok))
   t.deepEqual(body, [])
 })
 
@@ -173,11 +172,12 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   response = await ledgerAgent.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
+    activeGrant: 0,
+    anyFunds: 0,
     created: justDate(new Date()),
-    balance: 0,
-    selfFunded: 0,
-    funded: 1,
-    virtual: 0,
+    walletProviderBalance: 0,
+    walletProviderFunded: 1,
+    contributed: 0,
     wallets: 1
   }])
 
@@ -196,11 +196,12 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   response = await ledgerAgent.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
+    activeGrant: 0,
+    anyFunds: 1,
+    contributed: 0,
     created: justDate(new Date()),
-    balance: 0,
-    funded: 0,
-    selfFunded: 0,
-    virtual: 0,
+    walletProviderBalance: 0,
+    walletProviderFunded: 0,
     wallets: 1
   }])
 
@@ -294,11 +295,12 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   response = await ledgerAgent.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
+    activeGrant: 0,
+    anyFunds: 1,
+    contributed: 1,
     created: justDate(new Date()),
-    balance: (new BigNumber(12)).times(1e18).toNumber(),
-    selfFunded: 1,
-    funded: 1,
-    virtual: 0,
+    walletProviderBalance: probi12,
+    walletProviderFunded: 1,
     wallets: 1
   }])
 
@@ -430,11 +432,12 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
 
   response = await ledgerAgent.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
+    activeGrant: 1,
+    anyFunds: 2,
+    contributed: 1,
     created: justDate(new Date()),
-    balance: (new BigNumber(12)).times(1e18).toNumber(),
-    selfFunded: 1,
-    funded: 2,
-    virtual: 1,
+    walletProviderBalance: probi12,
+    walletProviderFunded: 2,
     wallets: 2
   }])
 
@@ -611,22 +614,18 @@ test('eyeshade: create brave youtube channel and owner', async t => {
 })
 
 test('check stats endpoint', async t => {
-  t.plan(2)
+  t.plan(1)
   let body
   ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
   const created = justDate(new Date())
   t.deepEqual(body, [{
+    activeGrant: 0,
+    anyFunds: 2,
+    contributed: 2,
     created,
-    balance: (new BigNumber(12)).times(1e18).toNumber(),
-    selfFunded: 2,
-    funded: 1,
-    virtual: 1,
+    walletProviderBalance: probi12,
+    walletProviderFunded: 1,
     wallets: 2
-  }])
-  ;({ body } = await eyeshadeAgent.get(statsURL).expect(ok))
-  t.deepEqual(body, [{
-    created,
-    funded: 1
   }])
 })
 
@@ -774,22 +773,18 @@ test('ensure referral balances are computed correctly', async t => {
 })
 
 test('check stats endpoint after funds move', async t => {
-  t.plan(2)
+  t.plan(1)
   const created = justDate(new Date())
   let body
   ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
   t.deepEqual(body, [{
+    activeGrant: 0,
+    anyFunds: 2,
+    contributed: 2,
     created,
-    balance: 0,
-    funded: 0,
-    selfFunded: 2,
-    virtual: 1,
+    walletProviderBalance: 0,
+    walletProviderFunded: 0,
     wallets: 2
-  }])
-  ;({ body } = await eyeshadeAgent.get(statsURL).expect(ok))
-  t.deepEqual(body, [{
-    created,
-    funded: 1
   }])
 })
 
