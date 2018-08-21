@@ -158,6 +158,8 @@ services:
     container_name: grafana
     restart: unless-stopped
     network_mode: host
+    ports:
+      - "3000:3000"
     environment:
       - "GF_SECURITY_ADMIN_PASSWORD=secret"
       - "GF_INSTALL_PLUGINS=grafana-worldmap-panel"
