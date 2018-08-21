@@ -503,8 +503,24 @@ v1.getStats =
             else: 0
           }
         },
-        grants: {
-          $ifNull: ['$grants', []]
+        activeGrant: {
+          $cond: {
+            then: 1,
+            else: 0,
+            if: {
+              $size: {
+                $filter: {
+                  input: {
+                    $ifNull: ['$grants', []]
+                  },
+                  as: 'grant',
+                  cond: {
+                    $eq: ['$$grant.status', 'active']
+                  }
+                }
+              }
+            }
+          }
         },
         walletProviderFunded: {
           $cond: {
@@ -521,7 +537,7 @@ v1.getStats =
         walletProviderBalance: 1,
         created: 1,
         contributed: 1,
-        grants: 1,
+        activeGrant: 1,
         walletProviderFunded: 1,
         anyFunds: {
           $cond: {
@@ -531,21 +547,7 @@ v1.getStats =
               $or: [{
                 $gt: ['$walletProviderBalance', 0]
               }, {
-                $cond: {
-                  then: 1,
-                  else: 0,
-                  if: {
-                    $size: {
-                      $filter: {
-                        input: '$grants',
-                        as: 'item',
-                        cond: {
-                          $eq: ['$$item.status', 'active']
-                        }
-                      }
-                    }
-                  }
-                }
+                $gt: ['$activeGrant', 0]
               }]
             }
           }
@@ -554,36 +556,20 @@ v1.getStats =
     }, {
       $group: {
         _id: '$created',
-        activeGrant: {
-          $sum: {
-            $cond: {
-              then: 1,
-              else: 0,
-              if: {
-                $size: {
-                  $filter: {
-                    input: '$grants',
-                    as: 'item',
-                    cond: {
-                      $eq: ['$$item.status', 'active']
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
         walletProviderBalance: {
           $push: '$walletProviderBalance'
-        },
-        anyFunds: {
-          $sum: '$anyFunds'
         },
         contributed: {
           $sum: '$contributed'
         },
         walletProviderFunded: {
           $sum: '$walletProviderFunded'
+        },
+        anyFunds: {
+          $sum: '$anyFunds'
+        },
+        activeGrant: {
+          $sum: '$activeGrant'
         },
         wallets: {
           $sum: 1

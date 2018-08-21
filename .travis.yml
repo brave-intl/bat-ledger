@@ -20,7 +20,6 @@ env:
     - "FREEZE_SURVEYORS_AGE_DAYS=7"
     - "GRANT_SIGNATOR_PUBLIC_KEY=bbe028009e744422bfc39b0e226633324d8c5fe0744c87c1018b88a488bc5899"
     - "GRANT_WALLET_CARD_ID=f042845f-fa62-4022-8117-a476ec583a7b"
-    - "MONGODB_URI=mongodb://mongo/ledger"
     - "NODE_ENV=development"
     - "NODE_PATH=."
     - "REDEEMER_TOKEN=foobarfoobar"
