@@ -86,13 +86,13 @@ exports.workers = {
 
     { queue            : 'settlement-report'
     , message          :
-      { settlementId   : '...' }
+      { settlementId   : '...', shouldUpdateBalances: false }
     }
 */
   'settlement-report':
     async (debug, runtime, payload) => {
       const settlements = runtime.database.get('settlements', debug)
-      const { settlementId } = payload
+      const { settlementId, shouldUpdateBalances } = payload
       const docs = await settlements.find({ settlementId, owner: { $exists: true } })
 
       const client = await runtime.postgres.pool.connect()
@@ -108,7 +108,9 @@ exports.workers = {
           throw e
         }
 
-        await updateBalances(runtime, client)
+        if (shouldUpdateBalances) {
+          await updateBalances(runtime, client)
+        }
         await client.query('COMMIT')
       } finally {
         client.release()

@@ -13,6 +13,7 @@ exports.workers = {
     , message          :
       { surveyorId  : '...'
       , mix         : false
+      , shouldUpdateBalances: false
       }
     }
 */
@@ -20,7 +21,7 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const voting = runtime.database.get('voting', debug)
       const surveyors = runtime.database.get('surveyors', debug)
-      const { mix, surveyorId } = payload
+      const { mix, surveyorId, shouldUpdateBalances } = payload
 
       const surveyor = await surveyors.findOne({ surveyorId })
 
@@ -54,7 +55,9 @@ exports.workers = {
           throw e
         }
 
-        await updateBalances(runtime, client)
+        if (shouldUpdateBalances) {
+          await updateBalances(runtime, client)
+        }
         await client.query('COMMIT')
       } finally {
         client.release()

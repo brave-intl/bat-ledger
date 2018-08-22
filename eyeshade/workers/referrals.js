@@ -9,14 +9,14 @@ exports.workers = {
 
     { queue            : 'referral-report'
     , message          :
-      { transactionId  : '...' }
+      { transactionId  : '...', shouldUpdateBalances: false }
     }
 */
   'referral-report':
     async (debug, runtime, payload) => {
       const referrals = runtime.database.get('referrals', debug)
       const publishers = runtime.database.get('publishers', debug)
-      const { transactionId } = payload
+      const { transactionId, shouldUpdateBalances } = payload
       const docs = await referrals.aggregate([
         {
           $match: { transactionId }
@@ -53,7 +53,9 @@ exports.workers = {
           throw e
         }
 
-        await updateBalances(runtime, client)
+        if (shouldUpdateBalances) {
+          await updateBalances(runtime, client)
+        }
         await client.query('COMMIT')
       } finally {
         client.release()
