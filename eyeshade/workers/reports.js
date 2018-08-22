@@ -138,7 +138,7 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays, anchorTime) {
     const { _id, surveyorId } = surveyor
     if (documentOlderThan(olderThanDays, anchorTime, _id)) {
       await surveyors.update({ _id }, data)
-      await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
+      await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true, shouldUpdateBalances: true })
     }
   }
 }

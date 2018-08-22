@@ -127,7 +127,7 @@ v2.settlement = {
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
 
-      await runtime.queue.send(debug, 'settlement-report', { settlementId: entry.transactionId })
+      await runtime.queue.send(debug, 'settlement-report', { settlementId: entry.transactionId, shouldUpdateBalances: true })
 
       reply({})
     }
