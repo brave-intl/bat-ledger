@@ -82,8 +82,6 @@ const notification = async (debug, runtime, owner, publisher, payload) => {
 
 const daily = async (debug, runtime) => {
   const { database } = runtime
-  const publishers = database.get('publishers', debug)
-  const surveyors = database.get('surveyors', debug)
 
   debug('daily', 'running')
 
@@ -92,15 +90,7 @@ const daily = async (debug, runtime) => {
     midnight.setHours(0, 0, 0, 0)
     await database.purgeSince(debug, runtime, midnight)
 
-    const entries = await publishers.find({})
-    for (let entry of entries) {
-      if ((!entry.owner) || (!entry.publisher)) continue
-
-      await runtime.queue.send(debug, 'publisher-report',
-                               underscore.pick(entry, [ 'owner', 'publisher', 'verified', 'visible' ]))
-    }
-
-    await freezeOldSurveyors(surveyors)
+    await freezeOldSurveyors(debug, runtime)
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
@@ -119,7 +109,9 @@ exports.freezeOldSurveyors = freezeOldSurveyors
   anchorTime: Date
   surveyors: mongodb collection
 */
-async function freezeOldSurveyors (surveyors, olderThanDays, anchorTime) {
+async function freezeOldSurveyors (debug, runtime, olderThanDays, anchorTime) {
+  const surveyors = runtime.database.get('surveyors', debug)
+
   if (typeof olderThanDays === 'undefined') {
     olderThanDays = freezeInterval
   }
@@ -142,9 +134,11 @@ async function freezeOldSurveyors (surveyors, olderThanDays, anchorTime) {
   const updates = nonFrozenSurveyors.map(freezeSurveyor)
   await Promise.all(updates).then(() => updates.length)
 
-  function freezeSurveyor ({ _id }) {
+  async function freezeSurveyor (surveyor) {
+    const { _id, surveyorId } = surveyor
     if (documentOlderThan(olderThanDays, anchorTime, _id)) {
-      return surveyors.update({ _id }, data)
+      await surveyors.update({ _id }, data)
+      await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
     }
   }
 }
@@ -637,6 +631,8 @@ const mixer = async (debug, runtime, filter, qid) => {
     }
   }
 }
+
+exports.mixer = mixer
 
 const publisherCompare = (a, b) => {
   const aProps = getPublisherProps(a.publisher)
@@ -1228,11 +1224,10 @@ exports.workers = {
       const owners = runtime.database.get('owners', debug)
       const publishersC = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
-      const surveyors = runtime.database.get('surveyors', debug)
       const scale = new BigNumber(runtime.currency.alt2scale(altcurrency) || 1)
       let data, entries, file, info, previous, publishers, usd
 
-      await freezeOldSurveyors(surveyors)
+      await freezeOldSurveyors(debug, runtime)
 
       publishers = await mixer(debug, runtime, publisher && [ publisher ], undefined)
 

@@ -1,10 +1,14 @@
+const getPublisherProps = require('bat-publisher').getPublisherProps
+
 module.exports = {
   timeout,
   extractJws,
   utf8ify,
   uint8tohex,
   createdTimestamp,
-  documentOlderThan
+  documentOlderThan,
+  isYoutubeChannelId,
+  normalizeChannel
 }
 
 const DAY_MS = 60 * 60 * 24 * 1000
@@ -38,4 +42,23 @@ function createdTimestamp (id) {
 
 function uint8tohex (arr) {
   return [].slice.call(arr).map((b) => ('00' + b.toString(16)).substr(-2)).join('')
+}
+
+function isYoutubeChannelId (channelId) {
+  const yt = new RegExp(/^UC[0-9A-Za-z_-]{21}[AQgw]$/i)
+  return yt.test(channelId)
+}
+
+function normalizeChannel (channel) {
+  const props = getPublisherProps(channel)
+  if (props.providerName) {
+    if (props.providerName === 'twitch') {
+      return `${props.providerName}#author:${props.providerValue}`
+    } else if (props.providerName === 'youtube') {
+      if (!isYoutubeChannelId(props.providerValue)) {
+        return `${props.providerName}#user:${props.providerValue}`
+      }
+    }
+  }
+  return channel
 }

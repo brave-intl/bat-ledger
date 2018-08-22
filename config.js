@@ -5,10 +5,6 @@ const services = {
     portno: 3001,
 
     f: () => {
-      module.exports.wallet.settlementAddress =
-      { BAT : process.env.BAT_SETTLEMENT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
-      }
-
       if (process.env.COINBASE_WIDGET_CODE) {
         module.exports.wallet.coinbase = { widgetCode : process.env.COINBASE_WIDGET_CODE }
       }
@@ -50,6 +46,10 @@ const services = {
       module.exports.referrals =
         { currency              : process.env.REFERRALS_CURRENCY || 'USD'
         , amount                : process.env.REFERRALS_AMOUNT || 5
+        }
+      module.exports.postgres = 
+        { url                   : process.env.DATABASE_URL || 'postgres://localhost/test'
+        , schemaVersionCheck    : true
         }
 
       publishers()
@@ -146,6 +146,11 @@ if (process.env.NODE_ENV === 'production') {
   module.exports.server = require('url').parse('https://' + process.env.HOST)
 } else {
   module.exports.server = require('url').parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
+}
+
+if (process.env.BAT_SETTLEMENT_ADDRESS) {
+  module.exports.wallet.settlementAddress =
+  { BAT : process.env.BAT_SETTLEMENT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
 }
 
 if (process.env.OXR_APP_ID) {

@@ -6,7 +6,9 @@ import {
 import {
   createdTimestamp,
   timeout,
-  documentOlderThan
+  documentOlderThan,
+  isYoutubeChannelId,
+  normalizeChannel
 } from './extras-utils'
 
 import dotenv from 'dotenv'
@@ -44,4 +46,19 @@ test('documentOlderThan', (t) => {
   t.false(documentOlderThan(1, objectDate, objectId))
   // lt not lte
   t.false(documentOlderThan(0, objectDate, objectId))
+})
+
+test('isYoutubeChannelId', (t) => {
+  t.plan(3)
+  t.true(isYoutubeChannelId('UCFNTTISby1c_H-rm5Ww5rZg'))
+  t.false(isYoutubeChannelId('UCFNTTISby1c_H-rm5Ww5rZ'))
+  t.false(isYoutubeChannelId('Brave'))
+})
+
+test('normalizeChannel', (t) => {
+  t.plan(4)
+  t.is(normalizeChannel('youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg'), 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg')
+  t.is(normalizeChannel('youtube#channel:Brave'), 'youtube#user:Brave')
+  t.is(normalizeChannel('twitch#channel:Brave'), 'twitch#author:Brave')
+  t.is(normalizeChannel('www.brave.com'), 'www.brave.com')
 })

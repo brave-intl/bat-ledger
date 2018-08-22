@@ -8,15 +8,16 @@ env:
   global:
     - "BAT_BALANCE_SERVER=http://localhost:3003"
     - "BAT_EYESHADE_SERVER=http://localhost:3002"
+    - "BAT_GRANT_REDIS_URL=redis://localhost:3013"
     - "BAT_GRANT_SERVER=http://localhost:3333"
     - "BAT_HELPER_SERVER=http://localhost:3004"
     - "BAT_LEDGER_SERVER=http://localhost:3001"
     - "BAT_MONGODB_URI=mongodb://localhost:3010"
+    - "BAT_POSTGRES_URL=postgres://eyeshade:password@localhost:3012/eyeshade"
     - "BAT_REDIS_URL=redis://localhost:3011"
     - "BAT_SETTLEMENT_ADDRESS=6654ecb0-6079-4f6c-ba58-791cc890a561"
     - "DEBUG=*,-babel,-eslint:*,-mongo:*,mongo:queries"
     - "FREEZE_SURVEYORS_AGE_DAYS=7"
-    - "GRANT_REDIS_HOST=localhost"
     - "GRANT_SIGNATOR_PUBLIC_KEY=bbe028009e744422bfc39b0e226633324d8c5fe0744c87c1018b88a488bc5899"
     - "GRANT_WALLET_CARD_ID=f042845f-fa62-4022-8117-a476ec583a7b"
     - "NODE_ENV=development"
@@ -33,8 +34,6 @@ env:
     - secure: "vFqXh+FeAYsgtSyvEozHOcQgTdqxZpHFZ+AUH9JYe1X5cYWI+Yi4vhfL+BGirDLufuGyx6xfMTuacB3fNt6wl4oMdH8UJ/Kj7FYtNFeiWL7F81w9ux7HvQo1KA6YQb+O4xKfjUgRbSdvpVIWBpmSBdZMHc7l3e9eLGUzh5Xkr/KAFeg3FT+9/VVHvVmir0mmPxzw8dbk3PcK6lSb6aY4Q9shIVLST46v2MilduYIxIjzSq7MhrwZkek8RSarWrXIX614UDBhYYh/UbfuzGtobovLSqjgO5JdskTWHagE/MER0fmB2s7BE57OfH6wgRaFeUy6YrLtDl2BkYRWXxHGCALnuJcDQfKEdPRayIzLOAsSXMbTI5gxj/6izzkRyTaomi2wjk0ZZxJIZYmnK5IKG3an6SlCTb2HnlT8tAlJRvh9c+Kh1TQY4hzmJUj74pmCe4gxkCRuOi75gAT8eJIfZO/jTuDxXb7MumHowOZOOberBOQXVkffWdsE8bv7AaMhTRTqYmv751HmMBj++m33nP4Ex7Zvm9lZrcPyw7M1IMVTvVn4dNI/a2oUxkvUJvn/BM2YSnl6ez2GFyi/lPErlfs651DmU2juOcznISP06G0wXWC2TWB+5YGlv11ST7VKUlp2FtG7mUNlU3ptpZxThf9EB5wT5jYuL4YRa0NzfhY="
     - secure: "RmguZ8icDfLYIhPka3bCgAW+w7WoGhNiZRZmSkSo/gDZstSwMHGe/Vsoxfx0gyYZLkgB1PHS/8ZVtopxeXMdI7PDeeidpzQ+aM9nlK4LNktvGORlBSIaXBcZM+lFHEfOThMO969rT2xmIntuVd+bzaXa29ayG83x7vuREl7/VdSI/qdBKL0jldshwAXRU+3I5EgF/KK/r4Wi322Lh7/6BWGWN8OISAhv+IszfvfdDtCd71EzhJ+O78dOiDsdfVif0nQrGwQ6QgnGwxa4RlHnseUBnTVl9Uh/mS2PreZRb0SnJ3Tybsq1ZGG0zop1zyI0epc4b96pi9s4LmyQ3HeMP6fGfDmf7VJTRWJXAk+Jidh/dT89668IMnbvEu+cRTnyM8Q/ZsAtlZy61jRJLRqPw/KE/959mmTew2CMZDmF+RtisxMqFhGV/CV8WtWcm3D17uw1Ug89BddB1zB7ZVCACsi4OxX5DGPhoLHDM+gS6QhBms2mNBdybHuDrOlGLwFrZKTos+a78A4L5eCjqxjDHdcGoZKq/M+sxa5bCH44A3mQINT1jzGR5C2/suJR62sknIrdxp1gqimsf4C0iCuoU/Q4aU03/0O81PqrmGnJJY5Z0Q5EENQ/qLeAlXGMSfBVfEycYO9X24dZX586fjzFCW2ZeWlfDEA8uxGW/1a3sqg="
 services:
-  - mongodb
-  - redis-server
   - docker
 cache:
   directories:
@@ -48,12 +47,13 @@ sudo: required
 before_script:
   # lint the files (fail early)
   - npm run lint
-  # sometimes travis takes a while to bring up mongo
-  - sleep 15
   # pull the bat go layer
   - docker pull brave/bat-go:latest
   # build the docker compose file
   - npm run docker-build
+  - docker-compose up -d eyeshade-postgres
+  - sleep 3
+  - npm run docker-migrate-up
   # bring up the relevant services
   - npm run docker-up-detached
   # let the detached up command start up

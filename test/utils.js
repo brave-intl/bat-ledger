@@ -1,6 +1,8 @@
 const dotenv = require('dotenv')
 dotenv.config()
 const Cache = require('bat-utils/lib/runtime-cache')
+const Database = require('bat-utils/lib/runtime-database')
+const Queue = require('bat-utils/lib/runtime-queue')
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
@@ -14,6 +16,9 @@ const {
 const {
   freezeOldSurveyors
 } = require('../eyeshade/workers/reports')
+
+const SDebug = require('sdebug')
+const debug = new SDebug('tests')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -135,10 +140,8 @@ const cleanEyeshadeDb = async (collections) => {
 }
 
 const cleanRedisDb = async () => {
-  const host = process.env.GRANT_REDIS_HOST || 'localhost'
-  const client = redis.createClient({
-    host
-  })
+  const url = process.env.BAT_GRANT_REDIS_URL
+  const client = redis.createClient(url)
   await new Promise((resolve, reject) => {
     client.on('ready', () => {
       client.flushdb((err) => {
@@ -214,13 +217,10 @@ function createRedisCache () {
 }
 
 async function freezeSurveyors (dayShift) {
-  const surveyors = (surveyorsCollection) => ({
-    // use this proxy because of toArray
-    find: (query) => surveyorsCollection.find(query).toArray(),
-    update: (where, data) => surveyorsCollection.update(where, data)
-  })
-  const eyeshade = await connectToDb('eyeshade')
-  const collection = eyeshade.collection('surveyors')
-  const surveyorsCollection = surveyors(collection)
-  await freezeOldSurveyors(surveyorsCollection, dayShift)
+  const runtime = {
+    database: new Database({ database: dbUri('eyeshade') }),
+    queue: new Queue({ queue: process.env.BAT_REDIS_URL })
+  }
+
+  await freezeOldSurveyors(debug, runtime, dayShift)
 }

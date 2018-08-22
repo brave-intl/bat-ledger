@@ -101,9 +101,9 @@ v2.settlement = {
       const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const fields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
-      let owner, publisher, state
+      let entry, owner, publisher, state
 
-      for (let entry of payload) {
+      for (entry of payload) {
         if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
 
         publisher = await publishers.findOne({ publisher: entry.publisher })
@@ -118,7 +118,7 @@ v2.settlement = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: {}
       }
-      for (let entry of payload) {
+      for (entry of payload) {
         entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
         fields.forEach((field) => { state.$set[field] = bson.Decimal128.fromString(entry[field].toString()) })
         underscore.extend(state.$set,
@@ -126,6 +126,8 @@ v2.settlement = {
 
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
+
+      await runtime.queue.send(debug, 'settlement-report', { settlementId: entry.transactionId })
 
       reply({})
     }
