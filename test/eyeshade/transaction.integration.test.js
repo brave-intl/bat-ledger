@@ -63,96 +63,131 @@ const referralSettlement = {
 test('contribution settlement transaction', async t => {
   t.plan(12)
 
-  await runtime.postgres.pool.query('BEGIN')
-  await insertFromSettlement(runtime, contributionSettlement)
-  await runtime.postgres.pool.query('COMMIT')
+  const client = await runtime.postgres.pool.connect()
+  try {
+    await client.query('BEGIN')
+    await insertFromSettlement(runtime, client, contributionSettlement)
+    await client.query('COMMIT')
 
-  const txns = await runtime.postgres.pool.query('select * from transactions order by created_at;')
+    const txns = await client.query('select * from transactions order by created_at;')
 
-  t.true(txns.rows.length === 3)
-  // first the contribution enters the owner account
-  t.true(txns.rows[0].transaction_type === 'contribution')
-  // next fees are removed
-  t.true(txns.rows[1].transaction_type === 'fees')
-  // finally payout to uphold occurs
-  t.true(txns.rows[2].transaction_type === 'contribution_settlement')
+    t.true(txns.rows.length === 3)
+    // first the contribution enters the owner account
+    t.true(txns.rows[0].transaction_type === 'contribution')
+    // next fees are removed
+    t.true(txns.rows[1].transaction_type === 'fees')
+    // finally payout to uphold occurs
+    t.true(txns.rows[2].transaction_type === 'contribution_settlement')
 
-  await updateBalances(runtime)
+    await updateBalances(runtime, client)
 
-  const upholdBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'uphold';`)
-  t.true(upholdBalance.rows.length === 1)
-  t.true(Number(upholdBalance.rows[0].balance) === 9.5)
+    const upholdBalance = await client.query(`select * from account_balances where account_type = 'uphold';`)
+    t.true(upholdBalance.rows.length === 1)
+    t.true(Number(upholdBalance.rows[0].balance) === 9.5)
 
-  const ownerBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'owner';`)
-  t.true(ownerBalance.rows.length === 1)
-  t.true(Number(ownerBalance.rows[0].balance) === 0.0)
+    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    t.true(ownerBalance.rows.length === 1)
+    t.true(Number(ownerBalance.rows[0].balance) === 0.0)
 
-  const channelBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'channel';`)
-  t.true(channelBalance.rows.length === 1)
-  t.true(Number(channelBalance.rows[0].balance) === -10.0)
+    const channelBalance = await client.query(`select * from account_balances where account_type = 'channel';`)
+    t.true(channelBalance.rows.length === 1)
+    t.true(Number(channelBalance.rows[0].balance) === -10.0)
 
-  const feesBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'internal';`)
-  t.true(feesBalance.rows.length === 1)
-  t.true(Number(feesBalance.rows[0].balance) === 0.5)
+    const feesBalance = await client.query(`select * from account_balances where account_type = 'internal';`)
+    t.true(feesBalance.rows.length === 1)
+    t.true(Number(feesBalance.rows[0].balance) === 0.5)
+  } finally {
+    client.release()
+  }
 })
 
 test('referral settlement transaction', async t => {
   t.plan(6)
 
-  await runtime.postgres.pool.query('BEGIN')
-  await insertFromSettlement(runtime, referralSettlement)
-  await runtime.postgres.pool.query('COMMIT')
+  const client = await runtime.postgres.pool.connect()
+  try {
+    await client.query('BEGIN')
+    await insertFromSettlement(runtime, client, referralSettlement)
+    await client.query('COMMIT')
 
-  const txns = await runtime.postgres.pool.query('select * from transactions order by created_at;')
+    const txns = await client.query('select * from transactions order by created_at;')
 
-  t.true(txns.rows.length === 1)
-  // payout to uphold occurs
-  t.true(txns.rows[0].transaction_type === 'referral_settlement')
+    t.true(txns.rows.length === 1)
+    // payout to uphold occurs
+    t.true(txns.rows[0].transaction_type === 'referral_settlement')
 
-  await updateBalances(runtime)
+    await updateBalances(runtime, client)
 
-  const upholdBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'uphold';`)
-  t.true(upholdBalance.rows.length === 1)
-  t.true(Number(upholdBalance.rows[0].balance) === 10.0)
+    const upholdBalance = await client.query(`select * from account_balances where account_type = 'uphold';`)
+    t.true(upholdBalance.rows.length === 1)
+    t.true(Number(upholdBalance.rows[0].balance) === 10.0)
 
-  const ownerBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'owner';`)
-  t.true(ownerBalance.rows.length === 1)
-  t.true(Number(ownerBalance.rows[0].balance) === -10.0)
+    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    t.true(ownerBalance.rows.length === 1)
+    t.true(Number(ownerBalance.rows[0].balance) === -10.0)
+  } finally {
+    client.release()
+  }
 })
 
 test('settlement transaction throws on invalid altcurrency', async t => {
   t.plan(1)
-  const settlement = _.clone(contributionSettlement)
-  settlement.altcurrency = 'ETH'
-  await t.throws(insertFromSettlement(runtime, settlement))
+  const client = await runtime.postgres.pool.connect()
+  try {
+    const settlement = _.clone(contributionSettlement)
+    settlement.altcurrency = 'ETH'
+    await t.throws(insertFromSettlement(runtime, client, settlement))
+  } finally {
+    client.release()
+  }
 })
 
 test('settlement transaction throws on missing probi', async t => {
   t.plan(1)
-  const settlement = _.clone(contributionSettlement)
-  delete settlement.probi
-  await t.throws(insertFromSettlement(runtime, settlement))
+  const client = await runtime.postgres.pool.connect()
+  try {
+    const settlement = _.clone(contributionSettlement)
+    delete settlement.probi
+    await t.throws(insertFromSettlement(runtime, client, settlement))
+  } finally {
+    client.release()
+  }
 })
 
 test('settlement transaction throws on 0 probi', async t => {
   t.plan(1)
-  const settlement = _.clone(contributionSettlement)
-  settlement.probi = '0'
-  await t.throws(insertFromSettlement(runtime, settlement))
+  const client = await runtime.postgres.pool.connect()
+  try {
+    const settlement = _.clone(contributionSettlement)
+    settlement.probi = '0'
+    await t.throws(insertFromSettlement(runtime, client, settlement))
+  } finally {
+    client.release()
+  }
 })
 
 test('settlement transaction throws on negative probi', async t => {
   t.plan(1)
-  const settlement = _.clone(contributionSettlement)
-  settlement.probi = '-1'
-  await t.throws(insertFromSettlement(runtime, settlement))
+  const client = await runtime.postgres.pool.connect()
+  try {
+    const settlement = _.clone(contributionSettlement)
+    settlement.probi = '-1'
+    await t.throws(insertFromSettlement(runtime, client, settlement))
+  } finally {
+    client.release()
+  }
 })
 
 test('settlement transaction throws on missing owner', async t => {
   t.plan(1)
-  const settlement = _.clone(contributionSettlement)
-  delete settlement.owner
-  await t.throws(insertFromSettlement(runtime, settlement))
+  const client = await runtime.postgres.pool.connect()
+  try {
+    const settlement = _.clone(contributionSettlement)
+    delete settlement.owner
+    await t.throws(insertFromSettlement(runtime, client, settlement))
+  } finally {
+    client.release()
+  }
 })
 
 const voting = {
@@ -168,47 +203,57 @@ const voting = {
 test('voting transaction', async t => {
   t.plan(6)
 
-  await runtime.postgres.pool.query('BEGIN')
-  await insertFromVoting(runtime, voting, createdTimestamp(docId))
-  await runtime.postgres.pool.query('COMMIT')
+  const client = await runtime.postgres.pool.connect()
+  try {
+    await client.query('BEGIN')
+    await insertFromVoting(runtime, client, voting, createdTimestamp(docId))
+    await client.query('COMMIT')
 
-  const txns = await runtime.postgres.pool.query('select * from transactions order by created_at;')
+    const txns = await client.query('select * from transactions order by created_at;')
 
-  t.true(txns.rows.length === 1)
+    t.true(txns.rows.length === 1)
   // payout to uphold occurs
-  t.true(txns.rows[0].transaction_type === 'contribution')
+    t.true(txns.rows[0].transaction_type === 'contribution')
 
-  await updateBalances(runtime)
+    await updateBalances(runtime, client)
 
-  const settlementBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'uphold';`)
-  t.true(settlementBalance.rows.length === 1)
-  t.true(Number(settlementBalance.rows[0].balance) === -10.0)
+    const settlementBalance = await client.query(`select * from account_balances where account_type = 'uphold';`)
+    t.true(settlementBalance.rows.length === 1)
+    t.true(Number(settlementBalance.rows[0].balance) === -10.0)
 
-  const channelBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'channel';`)
-  t.true(channelBalance.rows.length === 1)
-  t.true(Number(channelBalance.rows[0].balance) === 10.0)
+    const channelBalance = await client.query(`select * from account_balances where account_type = 'channel';`)
+    t.true(channelBalance.rows.length === 1)
+    t.true(Number(channelBalance.rows[0].balance) === 10.0)
+  } finally {
+    client.release()
+  }
 })
 
 test('voting and contribution settlement transaction', async t => {
   t.plan(5)
 
-  runtime.postgres.pool.query('BEGIN')
-  await insertFromVoting(runtime, voting, createdTimestamp(docId))
-  await insertFromSettlement(runtime, contributionSettlement)
-  runtime.postgres.pool.query('COMMIT')
+  const client = await runtime.postgres.pool.connect()
+  try {
+    await client.query('BEGIN')
+    await insertFromVoting(runtime, client, voting, createdTimestamp(docId))
+    await insertFromSettlement(runtime, client, contributionSettlement)
+    await client.query('COMMIT')
 
-  const txns = await runtime.postgres.pool.query('select * from transactions order by created_at;')
-  t.true(txns.rows.length === 4)
+    const txns = await client.query('select * from transactions order by created_at;')
+    t.true(txns.rows.length === 4)
 
-  await updateBalances(runtime)
+    await updateBalances(runtime, client)
 
-  const channelBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'channel';`)
-  t.true(channelBalance.rows.length === 1)
-  t.true(Number(channelBalance.rows[0].balance) === 0.0)
+    const channelBalance = await client.query(`select * from account_balances where account_type = 'channel';`)
+    t.true(channelBalance.rows.length === 1)
+    t.true(Number(channelBalance.rows[0].balance) === 0.0)
 
-  const ownerBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'owner';`)
-  t.true(ownerBalance.rows.length === 1)
-  t.true(Number(ownerBalance.rows[0].balance) === 0.0)
+    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    t.true(ownerBalance.rows.length === 1)
+    t.true(Number(ownerBalance.rows[0].balance) === 0.0)
+  } finally {
+    client.release()
+  }
 })
 
 const referrals = {
@@ -225,37 +270,47 @@ const referrals = {
 test('referral transaction', async t => {
   t.plan(4)
 
-  await runtime.postgres.pool.query('BEGIN')
-  await insertFromReferrals(runtime, referrals)
-  await runtime.postgres.pool.query('COMMIT')
+  const client = await runtime.postgres.pool.connect()
+  try {
+    await client.query('BEGIN')
+    await insertFromReferrals(runtime, client, referrals)
+    await client.query('COMMIT')
 
-  const txns = await runtime.postgres.pool.query('select * from transactions order by created_at;')
+    const txns = await client.query('select * from transactions order by created_at;')
 
-  t.true(txns.rows.length === 1)
+    t.true(txns.rows.length === 1)
   // payout to uphold occurs
-  t.true(txns.rows[0].transaction_type === 'referral')
+    t.true(txns.rows[0].transaction_type === 'referral')
 
-  await updateBalances(runtime)
+    await updateBalances(runtime, client)
 
-  const ownerBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'owner';`)
-  t.true(ownerBalance.rows.length === 1)
-  t.true(Number(ownerBalance.rows[0].balance) === 10.0)
+    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    t.true(ownerBalance.rows.length === 1)
+    t.true(Number(ownerBalance.rows[0].balance) === 10.0)
+  } finally {
+    client.release()
+  }
 })
 
 test('referral and referral settlement transaction', async t => {
   t.plan(3)
 
-  runtime.postgres.pool.query('BEGIN')
-  await insertFromReferrals(runtime, referrals)
-  await insertFromSettlement(runtime, referralSettlement)
-  runtime.postgres.pool.query('COMMIT')
+  const client = await runtime.postgres.pool.connect()
+  try {
+    await client.query('BEGIN')
+    await insertFromReferrals(runtime, client, referrals)
+    await insertFromSettlement(runtime, client, referralSettlement)
+    await client.query('COMMIT')
 
-  const txns = await runtime.postgres.pool.query('select * from transactions order by created_at;')
-  t.true(txns.rows.length === 2)
+    const txns = await client.query('select * from transactions order by created_at;')
+    t.true(txns.rows.length === 2)
 
-  await updateBalances(runtime)
+    await updateBalances(runtime, client)
 
-  const ownerBalance = await runtime.postgres.pool.query(`select * from account_balances where account_type = 'owner';`)
-  t.true(ownerBalance.rows.length === 1)
-  t.true(Number(ownerBalance.rows[0].balance) === 0.0)
+    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    t.true(ownerBalance.rows.length === 1)
+    t.true(Number(ownerBalance.rows[0].balance) === 0.0)
+  } finally {
+    client.release()
+  }
 })
