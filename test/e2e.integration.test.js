@@ -12,7 +12,8 @@ import dotenv from 'dotenv'
 
 import {
   timeout,
-  uint8tohex
+  uint8tohex,
+  justDate
 } from 'bat-utils/lib/extras-utils'
 
 import {
@@ -47,6 +48,8 @@ let paymentId
 const cache = createRedisCache()
 
 const cardDeleteUrl = `/v2/card`
+const statsURL = '/v1/wallet/stats'
+const probi12 = (new BigNumber(12)).times(1e18).toNumber()
 
 test.before(cleanDbs)
 // test.after(cleanDbs)
@@ -87,7 +90,14 @@ test('ledger: create promotion', async t => {
   await ledgerAgent.post(url).send(grants).expect(ok)
 })
 
-test('ledger: v2 contribution workflow with uphold BAT wallet', async t => {
+test('check stats endpoint before wallets add', async t => {
+  t.plan(1)
+  let body
+  ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
+  t.deepEqual(body, [])
+})
+
+test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   const personaId = uuid.v4().toLowerCase()
   const viewingId = uuid.v4().toLowerCase()
   let response, octets, headers, payload, err
@@ -160,6 +170,17 @@ test('ledger: v2 contribution workflow with uphold BAT wallet', async t => {
   t.true(response.body.payload.adFree.hasOwnProperty('probi'))
   const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
 
+  response = await ledgerAgent.get(statsURL).expect(ok)
+  t.deepEqual(response.body, [{
+    activeGrant: 0,
+    anyFunds: 0,
+    created: justDate(new Date()),
+    walletProviderBalance: 0,
+    walletProviderFunded: 1,
+    contributed: 0,
+    wallets: 1
+  }])
+
   do { // This depends on currency conversion rates being available, retry until then are available
     response = await ledgerAgent
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
@@ -172,6 +193,17 @@ test('ledger: v2 contribution workflow with uphold BAT wallet', async t => {
   t.is(response.body.balance, '0.0000')
 
   const desired = donateAmt.toFixed(4).toString()
+
+  response = await ledgerAgent.get(statsURL).expect(ok)
+  t.deepEqual(response.body, [{
+    activeGrant: 0,
+    anyFunds: 1,
+    contributed: 0,
+    created: justDate(new Date()),
+    walletProviderBalance: 0,
+    walletProviderFunded: 0,
+    wallets: 1
+  }])
 
   const upholdBaseUrls = {
     'prod': 'https://api.uphold.com',
@@ -260,6 +292,17 @@ test('ledger: v2 contribution workflow with uphold BAT wallet', async t => {
   t.false(response.body.hasOwnProperty('satoshis'))
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
+
+  response = await ledgerAgent.get(statsURL).expect(ok)
+  t.deepEqual(response.body, [{
+    activeGrant: 0,
+    anyFunds: 1,
+    contributed: 1,
+    created: justDate(new Date()),
+    walletProviderBalance: probi12,
+    walletProviderFunded: 1,
+    wallets: 1
+  }])
 
   response = await ledgerAgent
     .get('/v2/registrar/viewing')
@@ -386,6 +429,17 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
 
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
   const desired = donateAmt.toString()
+
+  response = await ledgerAgent.get(statsURL).expect(ok)
+  t.deepEqual(response.body, [{
+    activeGrant: 1,
+    anyFunds: 2,
+    contributed: 1,
+    created: justDate(new Date()),
+    walletProviderBalance: probi12,
+    walletProviderFunded: 2,
+    wallets: 2
+  }])
 
   // try re-claiming grant, should return ok
   response = await ledgerAgent
@@ -559,6 +613,22 @@ test('eyeshade: create brave youtube channel and owner', async t => {
     .expect(ok)
 })
 
+test('check stats endpoint', async t => {
+  t.plan(1)
+  let body
+  ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
+  const created = justDate(new Date())
+  t.deepEqual(body, [{
+    activeGrant: 0,
+    anyFunds: 2,
+    contributed: 2,
+    created,
+    walletProviderBalance: probi12,
+    walletProviderFunded: 1,
+    wallets: 2
+  }])
+})
+
 test('payments are cached and can be removed', async t => {
   t.plan(6)
   let cached
@@ -700,6 +770,22 @@ test('ensure referral balances are computed correctly', async t => {
   ;({ contributions } = body)
 
   t.true(Number(contributions.probi) === 0)
+})
+
+test('check stats endpoint after funds move', async t => {
+  t.plan(1)
+  const created = justDate(new Date())
+  let body
+  ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
+  t.deepEqual(body, [{
+    activeGrant: 0,
+    anyFunds: 2,
+    contributed: 2,
+    created,
+    walletProviderBalance: 0,
+    walletProviderFunded: 0,
+    wallets: 2
+  }])
 })
 
 async function getCached (id, group) {
