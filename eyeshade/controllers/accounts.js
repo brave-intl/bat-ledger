@@ -25,7 +25,7 @@ v1.getTransactions =
   settlement_destination_type,
   settlement_destination,
   transaction_type
-from account_transactions 
+from account_transactions
 where account_id = $1
 ORDER BY created_at
 `
@@ -78,7 +78,7 @@ v1.getBalances =
 { handler: (runtime) => {
   return async (request, reply) => {
     let accounts = request.query.account
-    if (!accounts) return reply(boom.badData)
+    if (!accounts) return reply(boom.badData())
 
     if (!Array.isArray(accounts)) {
       accounts = [accounts]
