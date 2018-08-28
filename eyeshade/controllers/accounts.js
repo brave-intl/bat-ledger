@@ -5,6 +5,8 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const queries = require('../lib/queries')
+
 const v1 = {}
 
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
@@ -32,7 +34,7 @@ where account_id = $1
 ORDER BY created_at
 `
 
-    const result = await runtime.postgres.pool.query(query1, [ account ])
+    const result = await runtime.postgres.query(query1, [ account ])
     const transactions = result.rows
 
     transactions.forEach((transaction) => {
@@ -88,7 +90,7 @@ v1.getBalances =
 
     const query1 = `select * from account_balances where account_id = any($1::text[])`
 
-    const transactions = await runtime.postgres.pool.query(query1, [ accounts ])
+    const transactions = await runtime.postgres.query(query1, [ accounts ])
     reply(transactions.rows)
   }
 },
@@ -121,7 +123,7 @@ v1.getBalances =
 }
 
 /*
-   GET /v1/accounts/earnings/{type}/contributions
+   GET /v1/accounts/earnings/{type}/total
 */
 
 v1.getEarningsTotals =
@@ -141,18 +143,11 @@ v1.getEarningsTotals =
       return reply(boom.badData('type must be contributions or referrals'))
     }
 
-    const query1 = `
- select
-   channel,
-   coalesce(sum(amount), 0.0) as earnings,
-   account_id
- from account_transactions
- where account_type = 'owner' and transaction_type = $1
- group by (account_id, channel)
- order by earnings $2
- limit $3;`
+    const query1 = queries.earnings({
+      asc: order === 'asc'
+    })
 
-    const amounts = await runtime.postgres.pool.query(query1, [type, order.toLowerCase(), limit])
+    const amounts = await runtime.postgres.query(query1, [type, limit])
     reply(amounts.rows)
   }
 },
@@ -208,18 +203,11 @@ v1.getPaidTotals =
       return reply(boom.badData('type must be contributions or referrals'))
     }
 
-    const query1 = `
- select
-   channel,
-   coalesce(sum(-amount), 0.0) as paid,
-   account_id
- from account_transactions
- where account_type = 'owner' and transaction_type = $1
- group by (account_id, channel)
- order by paid $2
- limit $3;`
+    const query1 = queries.settlements({
+      asc: order === 'asc'
+    })
 
-    const amounts = await runtime.postgres.pool.query(query1, [type, order.toLowerCase(), limit])
+    const amounts = await runtime.postgres.query(query1, [type, limit])
     reply(amounts.rows)
   }
 },

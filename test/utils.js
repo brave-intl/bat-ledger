@@ -166,6 +166,7 @@ module.exports = {
   dbUri,
   cleanDb,
   cleanDbs,
+  cleanPgDb,
   cleanLedgerDb,
   cleanEyeshadeDb,
   cleanRedisDb,
@@ -181,6 +182,10 @@ function cleanDbs () {
     cleanLedgerDb(),
     cleanRedisDb()
   ])
+}
+
+function cleanPgDb (client) {
+  return () => client.query('DELETE from transactions;')
 }
 
 function getSurveyor (id) {
