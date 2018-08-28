@@ -7,6 +7,8 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 
+const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
+
 /*
    GET /v1/accounts/{account}/transactions
 */
@@ -25,7 +27,7 @@ v1.getTransactions =
   settlement_destination_type,
   settlement_destination,
   transaction_type
-from account_transactions 
+from account_transactions
 where account_id = $1
 ORDER BY created_at
 `
@@ -126,7 +128,10 @@ v1.getEarningsTotals =
 { handler: (runtime) => {
   return async (request, reply) => {
     let { type } = request.params
-    let { limit } = request.query
+    let {
+      order,
+      limit
+    } = request.query
 
     if (type === 'contributions') {
       type = 'contribution'
@@ -144,10 +149,10 @@ v1.getEarningsTotals =
  from account_transactions
  where account_type = 'owner' and transaction_type = $1
  group by (account_id, channel)
- order by earnings desc
- limit $2;`
+ order by earnings $2
+ limit $3;`
 
-    const amounts = await runtime.postgres.pool.query(query1, [type, limit])
+    const amounts = await runtime.postgres.pool.query(query1, [type, order.toLowerCase(), limit])
     reply(amounts.rows)
   }
 },
@@ -167,7 +172,7 @@ v1.getEarningsTotals =
     },
     query: {
       limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
-      order: Joi.string().valid('desc').optional().default('desc').description('order ')
+      order: orderParam
     }
   },
 
@@ -190,7 +195,10 @@ v1.getPaidTotals =
 { handler: (runtime) => {
   return async (request, reply) => {
     let { type } = request.params
-    let { limit } = request.query
+    let {
+      order,
+      limit
+    } = request.query
 
     if (type === 'contributions') {
       type = 'contribution_settlement'
@@ -208,10 +216,10 @@ v1.getPaidTotals =
  from account_transactions
  where account_type = 'owner' and transaction_type = $1
  group by (account_id, channel)
- order by paid desc
- limit $2;`
+ order by paid $2
+ limit $3;`
 
-    const amounts = await runtime.postgres.pool.query(query1, [type, limit])
+    const amounts = await runtime.postgres.pool.query(query1, [type, order.toLowerCase(), limit])
     reply(amounts.rows)
   }
 },
@@ -231,7 +239,7 @@ v1.getPaidTotals =
     },
     query: {
       limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
-      order: Joi.string().valid('desc').optional().default('desc').description('order ')
+      order: orderParam
     }
   },
 
