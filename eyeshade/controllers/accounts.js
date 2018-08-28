@@ -77,7 +77,6 @@ ORDER BY created_at
 v1.getBalances =
 { handler: (runtime) => {
   return async (request, reply) => {
-    const debug = braveHapi.debug(module, request)
     let accounts = request.query.account
     if (!accounts) return reply(boom.badData())
 
@@ -86,7 +85,7 @@ v1.getBalances =
     }
 
     const query1 = `select * from account_balances where account_id = any($1::text[])`
-    debug('get all accounts matching', accounts)
+
     const transactions = await runtime.postgres.pool.query(query1, [ accounts ])
     reply(transactions.rows)
   }
