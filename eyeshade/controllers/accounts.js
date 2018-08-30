@@ -1,5 +1,4 @@
 const Joi = require('joi')
-const boom = require('boom')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
