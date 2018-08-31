@@ -6,9 +6,7 @@ const underscore = require('underscore')
 
 const debug = new SDebug('sentry')
 
-const {
-  version
-} = require('../../package.json')
+const release = process.env.HEROKU_SLUG_COMMIT || 'test'
 
 const Sentry = function (config, runtime) {
   if (!(this instanceof Sentry)) return new Sentry(config, runtime)
@@ -24,7 +22,7 @@ const Sentry = function (config, runtime) {
   // NOTE If sentry dsn if falsey, events will be consumed without error
   //      with no attempt to send them
   Raven.config(config.sentry.dsn, {
-    release: version,
+    release,
     captureUnhandledRejections: true
   }).install()
 
