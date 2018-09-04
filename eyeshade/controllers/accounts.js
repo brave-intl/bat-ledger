@@ -77,6 +77,7 @@ v1.getBalances =
 { handler: (runtime) => {
   return async (request, reply) => {
     let accounts = request.query.account
+    if (!accounts) return reply(boom.badData())
 
     if (!Array.isArray(accounts)) {
       accounts = [accounts]
