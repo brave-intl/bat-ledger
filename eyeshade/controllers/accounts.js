@@ -7,6 +7,8 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 
+const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
+
 /*
    GET /v1/accounts/{account}/transactions
 */
@@ -25,7 +27,7 @@ v1.getTransactions =
   settlement_destination_type,
   settlement_destination,
   transaction_type
-from account_transactions 
+from account_transactions
 where account_id = $1
 ORDER BY created_at
 `
@@ -71,7 +73,7 @@ ORDER BY created_at
 }
 
 /*
-   GET /v1/balances
+   GET /v1/accounts/balances
 */
 
 v1.getBalances =
@@ -118,7 +120,143 @@ v1.getBalances =
   }
 }
 
+/*
+   GET /v1/accounts/earnings/{type}/contributions
+*/
+
+v1.getEarningsTotals =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    let { type } = request.params
+    let {
+      order,
+      limit
+    } = request.query
+
+    if (type === 'contributions') {
+      type = 'contribution'
+    } else if (type === 'referrals') {
+      type = 'referral'
+    } else {
+      return reply(boom.badData('type must be contributions or referrals'))
+    }
+
+    const query1 = `
+ select
+   channel,
+   coalesce(sum(amount), 0.0) as earnings,
+   account_id
+ from account_transactions
+ where account_type = 'owner' and transaction_type = $1
+ group by (account_id, channel)
+ order by earnings $2
+ limit $3;`
+
+    const amounts = await runtime.postgres.pool.query(query1, [type, order.toLowerCase(), limit])
+    reply(amounts.rows)
+  }
+},
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Used by publishers for retrieving a list of top channel earnings',
+
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    params: {
+      type: Joi.string().valid('contributions', 'referrals').required().description('type of earnings')
+    },
+    query: {
+      limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
+      order: orderParam
+    }
+  },
+
+  response: {
+    schema: Joi.array().items(
+       Joi.object().keys({
+         channel: Joi.string(),
+         earnings: Joi.number().description('earnings in BAT'),
+         account_id: Joi.string()
+       })
+     )
+  }
+}
+
+/*
+   GET /v1/accounts/settlements/{type}/total
+*/
+
+v1.getPaidTotals =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    let { type } = request.params
+    let {
+      order,
+      limit
+    } = request.query
+
+    if (type === 'contributions') {
+      type = 'contribution_settlement'
+    } else if (type === 'referrals') {
+      type = 'referral_settlement'
+    } else {
+      return reply(boom.badData('type must be contributions or referrals'))
+    }
+
+    const query1 = `
+ select
+   channel,
+   coalesce(sum(-amount), 0.0) as paid,
+   account_id
+ from account_transactions
+ where account_type = 'owner' and transaction_type = $1
+ group by (account_id, channel)
+ order by paid $2
+ limit $3;`
+
+    const amounts = await runtime.postgres.pool.query(query1, [type, order.toLowerCase(), limit])
+    reply(amounts.rows)
+  }
+},
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Used by publishers for retrieving a list of top channels paid out',
+
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    params: {
+      type: Joi.string().valid('contributions', 'referrals').required().description('type of payout')
+    },
+    query: {
+      limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
+      order: orderParam
+    }
+  },
+
+  response: {
+    schema: Joi.array().items(
+       Joi.object().keys({
+         channel: Joi.string(),
+         paid: Joi.number().description('amount paid out in BAT'),
+         account_id: Joi.string()
+       })
+     )
+  }
+}
+
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions),
-  braveHapi.routes.async().path('/v1/balances').whitelist().config(v1.getBalances)
+  braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
+  braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
+  braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances),
+  braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
 ]
