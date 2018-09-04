@@ -24,11 +24,11 @@ scrape_configs:
     # scheme defaults to 'http'.
 
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['prometheus:9090']
 
   - job_name: 'docker'
          # metrics_path defaults to '/metrics'
          # scheme defaults to 'http'.
 
     static_configs:
-      - targets: ['host.internal:9323']
+      - targets: ['ledger-web:3001', 'eyeshade-web:3002', 'balance-web:3003', 'helper-web:3004']
