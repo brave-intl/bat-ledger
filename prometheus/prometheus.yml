@@ -19,16 +19,16 @@ rule_files:
 scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
   - job_name: 'prometheus'
-
     # metrics_path defaults to '/metrics'
     # scheme defaults to 'http'.
-
     static_configs:
       - targets: ['prometheus:9090']
-
-  - job_name: 'docker'
-         # metrics_path defaults to '/metrics'
-         # scheme defaults to 'http'.
-
+  - job_name: 'ledger'
     static_configs:
-      - targets: ['ledger-web:3001', 'eyeshade-web:3002', 'balance-web:3003', 'helper-web:3004']
+      - targets: ['ledger-web:3001']
+  - job_name: 'eyeshade'
+    static_configs:
+      - targets: ['eyeshade-web:3002']
+  - job_name: 'balance'
+    static_configs:
+      - targets: ['balance-web:3003']
