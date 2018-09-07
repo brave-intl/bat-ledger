@@ -420,7 +420,6 @@ Wallet.providers.uphold = {
                 : ((a === currency) || (a < b)) ? (-1)
                 : (a > b) ? 1 : 0)
       })
-      if (currencies.indexOf(currency) === -1) currencies.unshift(currency)
     } else currency = undefined
 
     result = {
