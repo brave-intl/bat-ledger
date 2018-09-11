@@ -23,7 +23,12 @@ const runtime = {
       }
     }
   },
-  currency: new Currency({ currency: { static: true } }),
+  currency: new Currency({
+    currency: {
+      url: process.env.BAT_RATIOS_URL,
+      access_token: process.env.BAT_RATIOS_TOKEN
+    }
+  }),
   postgres
 }
 
