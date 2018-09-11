@@ -17,7 +17,8 @@ module.exports = {
   documentOlderThan,
   isYoutubeChannelId,
   normalizeChannel,
-  justDate
+  justDate,
+  BigNumber
 }
 
 const DAY_MS = 60 * 60 * 24 * 1000

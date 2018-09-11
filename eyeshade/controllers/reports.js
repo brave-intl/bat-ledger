@@ -69,7 +69,7 @@ v1.publishers.referrals = {
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
       const debug = braveHapi.debug(module, request)
 
-      const threshold = runtime.currency.fiat2alt(currency, amount, altcurrency)
+      const threshold = await runtime.currency.fiat2alt(currency, amount, altcurrency)
 
       await runtime.queue.send(debug, 'report-publishers-referrals',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
@@ -161,7 +161,7 @@ v1.publishers.contributions = {
       const reportId = uuid.v4().toLowerCase()
       const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
       const debug = braveHapi.debug(module, request)
-      const threshold = runtime.currency.fiat2alt(currency, amount, altcurrency)
+      const threshold = await runtime.currency.fiat2alt(currency, amount, altcurrency)
 
       await runtime.queue.send(debug, 'report-publishers-contributions',
                                underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },

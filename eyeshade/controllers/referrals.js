@@ -79,7 +79,7 @@ v1.createReferrals = {
       entries = await referrals.find({ transactionId: transactionId })
       if (entries.length > 0) return reply(boom.badData('existing transaction-identifier: ' + transactionId))
 
-      probi = runtime.currency.fiat2alt(runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
+      probi = await runtime.currency.fiat2alt(runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
       probi = bson.Decimal128.fromString(probi.toString())
       query = { $or: [] }
       for (let referral of payload) {

@@ -165,9 +165,10 @@ v2.getBalance = {
       if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
       if (probi.lessThan(0)) probi = new BigNumber(0)
 
-      amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
+      amount = await runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
+      const rates = await runtime.currency.rates(altcurrency)
       reply({
-        rates: runtime.currency.rates[altcurrency],
+        rates,
         altcurrency: altcurrency,
         probi: probi.truncated().toString(),
         amount: amount,
@@ -275,9 +276,10 @@ v2.getWallet = {
         probi = new BigNumber(0)
       }
 
-      amount = runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
+      amount = await runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
+      rates = await runtime.currency.rates(altcurrency)
       result = {
-        rates: runtime.currency.rates[altcurrency],
+        rates,
         contributions: {
           amount: amount,
           currency: currency,
@@ -305,12 +307,11 @@ v2.getWallet = {
           result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies' ])
           rates = result.rates
 
+          const fxrates = runtime.currency.all()
           underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
-            const fxrates = runtime.currency.fxrates
+            if ((rates[currency]) || (!rates[fxrates.base]) || (!fxrates[currency])) return
 
-            if ((rates[currency]) || (!rates[fxrates.base]) || (!fxrates.rates[currency])) return
-
-            rates[currency] = rates[fxrates.base] * fxrates.rates[currency]
+            rates[currency] = rates[fxrates.base] * fxrates[currency]
           })
         }
       } catch (ex) {

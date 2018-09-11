@@ -152,7 +152,7 @@ v1.getEarningsTotals =
  order by earnings $2
  limit $3;`
 
-    const amounts = await runtime.postgres.pool.query(query1, [type, order.toLowerCase(), limit])
+    const amounts = await runtime.postgres.pool.query(query1, [type, order.toUpperCase(), limit])
     reply(amounts.rows)
   }
 },

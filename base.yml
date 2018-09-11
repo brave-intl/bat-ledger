@@ -15,6 +15,7 @@ services:
       - "BAT_MONGODB_URI=mongodb://mongo"
       - "BAT_POSTGRES_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "BAT_REDIS_URL=redis://redis:6379"
+      - "BAT_RATIOS_URL=https://bat-ratio.herokuapp.com"
       - "DEBUG=${DEBUG-*,-babel,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
@@ -23,6 +24,7 @@ services:
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDEEMER_URL=${REDEEMER_URL-http://grant-web:3333}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
+      - BAT_RATIOS_TOKEN
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN
       - BALANCE_URL

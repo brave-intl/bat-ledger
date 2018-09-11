@@ -90,11 +90,12 @@ v2.balance =
       await runtime.queue.send(debug, 'wallet-report', underscore.extend({ paymentId: paymentId }, state.$set))
     }
 
+    const rates = await runtime.currency.rates(altcurrency)
     reply({
       probi: balances.confirmed.toString(),
       balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
       unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
-      rates: runtime.currency.rates[altcurrency]
+      rates
     })
   }
 },

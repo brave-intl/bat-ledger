@@ -1190,7 +1190,7 @@ exports.workers = {
         })
       }
 
-      usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || new BigNumber(0)
+      usd = await runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || new BigNumber(0)
       info = publisherContributions(runtime, publishers, authority, authorized, verified, format, reportId, summaryP,
                                     threshold, usd)
       data = info.data
@@ -1440,7 +1440,7 @@ exports.workers = {
         publishers = underscore.uniq(publishers)
       }
 
-      usd = runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || new BigNumber(0)
+      usd = await runtime.currency.alt2fiat(altcurrency, 1, 'USD', true) || new BigNumber(0)
       data = []
       data1 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
       data2 = { altcurrency: altcurrency, probi: new BigNumber(0), fees: new BigNumber(0) }
@@ -1556,7 +1556,223 @@ exports.workers = {
       }
       runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-statements completed' })
     },
+/* sent by GET /v1/reports/publishers/status
+               /v2/reports/publishers/status
 
+    { queue            : 'report-publishers-status'
+    , message          :
+      { reportId       : '...'
+      , reportURL      : '...'
+      , authority      : '...:...'
+      , format         : 'json' | 'csv'
+      , elide          :  true  | false
+      , summary        :  true  | false
+      , verified       :  true  | false | undefined
+      }
+    }
+ */
+  'report-publishers-status':
+    async (debug, runtime, payload) => {
+      const authority = payload.authority
+      const format = payload.format || 'csv'
+      const elideP = payload.elide
+      const summaryP = payload.summary
+      const verified = payload.verified
+      const owners = runtime.database.get('owners', debug)
+      const publishers = runtime.database.get('publishers', debug)
+      const referrals = runtime.database.get('referrals', debug)
+      const settlements = runtime.database.get('settlements', debug)
+      const tokens = runtime.database.get('tokens', debug)
+      const voting = runtime.database.get('voting', debug)
+      const probi = {}
+      let data, entries, f, fields, file, keys, now, results, summary
+
+      const daysago = (timestamp) => {
+        return Math.round((now - timestamp) / (86400 * 1000))
+      }
+
+      now = underscore.now()
+      results = {}
+      entries = await tokens.find()
+      entries.forEach((entry) => {
+        let publisher
+
+        publisher = entry.publisher
+        if (!publisher) return
+
+        if (!results[publisher]) results[publisher] = underscore.pick(entry, [ 'publisher', 'verified' ])
+        if (entry.verified) {
+          underscore.extend(results[publisher], underscore.pick(entry, [ 'verified', 'verificationId', 'token', 'reason' ]))
+        }
+
+        if (!results[publisher].history) results[publisher].history = []
+        entry.created = createdTimestamp(entry._id)
+        entry.modified = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+        results[publisher].history.push(underscore.extend(underscore.omit(entry, [ 'publisher', 'timestamp', 'info' ]),
+                                                          entry.info || {}))
+      })
+      if (typeof verified === 'boolean') {
+        underscore.keys(results).forEach((publisher) => {
+          if (results[publisher].verified !== verified) delete results[publisher]
+        })
+      }
+
+      summary = await voting.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      summary.forEach((entry) => { probi[entry._id] = new BigNumber(entry.probi.toString()) })
+
+      summary = await referrals.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            altcurrency: { $eq: altcurrency },
+            exclude: false
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      summary.forEach((entry) => {
+        if (!probi[entry._id]) probi[entry._id] = new BigNumber(0)
+        probi[entry._id] = probi[entry._id].plus(new BigNumber(entry.probi.toString()))
+      })
+
+      summary = await settlements.aggregate([
+        {
+          $match: {
+            probi: { $gt: 0 },
+            altcurrency: { $eq: altcurrency }
+          }
+        },
+        {
+          $group: {
+            _id: '$publisher',
+            probi: { $sum: '$probi' }
+          }
+        }
+      ])
+      summary.forEach((entry) => {
+        if (typeof probi[entry._id] !== 'undefined') {
+          probi[entry._id] = new BigNumber(probi[entry._id].toString()).minus(entry.probi)
+        }
+      })
+
+      f = async (publisher) => {
+        let datum, owner
+
+        results[publisher].probi = probi[publisher] || new BigNumber(0)
+        results[publisher].USD = await runtime.currency.alt2fiat(altcurrency, results[publisher].probi, 'USD')
+        results[publisher].probi = results[publisher].probi.truncated().toString()
+
+        if (results[publisher].history) {
+          results[publisher].history = underscore.sortBy(results[publisher].history, (record) => {
+            return (record.verified ? Number.POSITIVE_INFINITY : record.modified)
+          })
+          if (!results[publisher].verified) results[publisher].reason = underscore.last(results[publisher].history).reason
+        }
+
+        datum = await publishers.findOne({ publisher: publisher })
+        if (datum) {
+          datum.created = createdTimestamp(datum._id)
+          datum.modified = (datum.timestamp.high_ * 1000) + (datum.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
+          underscore.extend(results[publisher],
+                            underscore.omit(datum, [ '_id', 'publisher', 'timestamp', 'verified', 'info' ]), datum.info)
+
+          owner = (datum.owner) && (await owners.findOne({ owner: datum.owner }))
+          if (owner) {
+            if (!owner.info) owner.info = {}
+
+            results[publisher].owner = owner.info && owner.info.name
+            if (!datum.provider) results[publisher].provider = owner.provider
+
+            if (!results[publisher].name) results[publisher].name = owner.info.name
+            if (!results[publisher].email) results[publisher].email = owner.info.email
+            if (!results[publisher].phone) results[publisher].phone = owner.info.phone
+          }
+        }
+
+        if (elideP) {
+          if (results[publisher].email) results[publisher].email = 'yes'
+          if (results[publisher].phone) results[publisher].phone = 'yes'
+          if (results[publisher].verificationId) results[publisher].verificationId = 'yes'
+          if (results[publisher].token) results[publisher].token = 'yes'
+        }
+
+        data.push(results[publisher])
+      }
+      data = []
+      keys = underscore.keys(results)
+      for (let key of keys) await f(key)
+      results = data.sort(publisherCompare)
+
+      file = await create(runtime, 'publishers-status-', payload)
+      if (format === 'json') {
+        await file.write(utf8ify(data), true)
+        return runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-status completed' })
+      }
+
+      data = []
+      results.forEach((result) => {
+        const props = getPublisherProps(result.publisher)
+        const publisher = result.publisher
+
+        if ((props) && (props.URL)) result.publisher = props.URL
+        if (!result.created) {
+          underscore.extend(result, underscore.pick(underscore.last(result.history), [ 'created', 'modified' ]))
+        }
+        result = underscore.extend(underscore.omit(result, [ 'history' ]), {
+          created: dateformat(result.created, datefmt),
+          modified: dateformat(result.modified, datefmt)
+        })
+        if (result.reason !== 'bulk loaded') result.daysInQueue = daysago(result.created)
+        data.push(result)
+
+        if ((!summaryP) && (result.history)) {
+          result.history.forEach((record) => {
+            if (elideP) {
+              if (record.email) record.email = 'yes'
+              if (record.phone) record.phone = 'yes'
+              if (record.verificationId) record.verificationId = 'yes'
+              if (record.token) record.token = 'yes'
+            }
+            data.push(underscore.extend({ publisher: publisher }, record,
+              { created: dateformat(record.created, datefmt),
+                modified: dateformat(record.modified, datefmt),
+                daysInQueue: daysago(record.created)
+              }))
+          })
+        }
+      })
+
+      fields = [ 'owner', 'publisher', 'USD', 'probi',
+        'verified', 'authorized', 'authority',
+        'name', 'email', 'phone', 'provider', 'altcurrency', 'visible',
+        'verificationId', 'reason',
+        'daysInQueue', 'created', 'modified' ]
+      if (!summaryP) fields.push('token')
+      try { await file.write(utf8ify(json2csv({ data: data, fields: fields })), true) } catch (ex) {
+        debug('reports', { report: 'report-publishers-status', reason: ex.toString() })
+        file.close()
+      }
+      runtime.notify(debug, { channel: '#publishers-bot', text: authority + ' report-publishers-status completed' })
+    },
 /* sent by GET /v1/reports/surveyors-contributions
 
     { queue            : 'report-surveyors-contributions'
