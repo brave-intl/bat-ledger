@@ -31,8 +31,6 @@ const read = function (runtime, apiVersion) {
 
     let currency = request.query.currency
     let balances, info, result, state, wallet, wallet2
-    let total
-    let results
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -70,7 +68,7 @@ const read = function (runtime, apiVersion) {
     if (balances) {
       let { grants } = wallet
       if (grants) {
-        ;([total, results] = await sumActiveGrants(runtime, debug, null, wallet, grants))
+        let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
         balances.confirmed = new BigNumber(balances.confirmed).plus(total)
         result.grants = results
       }
@@ -100,25 +98,17 @@ const read = function (runtime, apiVersion) {
           return reply(boom.badData('must pass at least one of currency or altcurrency'))
         }
         result = underscore.extend(result, await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed))
-        let {
-          unsignedTx,
-          requestType
-        } = result
-        if (unsignedTx) {
-          if (requestType === 'bitcoinMultisig') {
-            unsignedTx = unsignedTx.transactionHex
-          }
-          if (unsignedTx.denomination.amount < total) {
-            result.grants.forEach((grant) => {
-              grant.minimumReconcileTimestamp = 0
-            })
-          }
-          state = {
-            $currentDate: {
-              timestamp: { $type: 'timestamp' }
-            },
-            $set: {
-              unsignedTx
+
+        if (result.unsignedTx) {
+          if (result.requestType === 'bitcoinMultisig') {
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: { unsignedTx: result.unsignedTx.transactionHex }
+            }
+          } else {
+            state = {
+              $currentDate: { timestamp: { $type: 'timestamp' } },
+              $set: { unsignedTx: result.unsignedTx }
             }
           }
         }
@@ -147,38 +137,22 @@ const read = function (runtime, apiVersion) {
   }
 }
 
-async function sumActiveGrants (runtime, debug, info, walletObject, grants) {
-  const {
-    database,
-    wallet
-  } = runtime
-  const promotions = database.get('promotions', debug)
-  const results = []
+async function sumActiveGrants (runtime, info, wallet, grants) {
   let total = new BigNumber(0)
-  // just mapping the promises from async fn
-  await Promise.all(grants.map(async (grant) => {
+  const results = []
+  for (let grant of grants) {
     let { token, status } = grant
     if (status !== 'active') {
-      return
+      continue
     }
-    if (await wallet.isGrantExpired(info, grant)) {
-      await wallet.expireGrant(info, walletObject, grant)
+    if (await runtime.wallet.isGrantExpired(info, grant)) {
+      await runtime.wallet.expireGrant(info, wallet, grant)
     } else {
       let content = braveUtils.extractJws(token)
       total = total.plus(content.probi)
-      let result = underscore.pick(content, [
-        'altcurrency',
-        'expiryTime',
-        'probi'
-      ])
-      const { promotionId } = grant
-      const promotion = await promotions.findOne({
-        promotionId
-      })
-      result.minimumReconcileTimestamp = promotion.minimumReconcileTimestamp
-      results.push(result)
+      results.push(underscore.pick(content, ['altcurrency', 'expiryTime', 'probi']))
     }
-  }))
+  }
   return [total, results]
 }
 
@@ -250,8 +224,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
       grants: Joi.array().optional().items(Joi.object().keys({
         probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
         altcurrency: Joi.string().optional().description('the grant currency'),
-        expiryTime: Joi.number().optional().description('unix timestamp when the grant expires'),
-        minimumReconcileTimestamp: Joi.number().optional().description('the unix time that must be passed before this grant can be redeemed')
+        expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
       }))
     }).unknown(true)
   }

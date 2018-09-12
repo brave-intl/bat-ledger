@@ -459,7 +459,6 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
   if (err) throw err
 
   t.is(Number(response.body.unsignedTx.denomination.amount), Number(desired))
-  t.is(response.body.grants[0].minimumReconcileTimestamp, 0)
 
   octets = JSON.stringify(response.body.unsignedTx)
   headers = {
