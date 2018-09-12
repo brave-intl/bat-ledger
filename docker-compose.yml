@@ -7,7 +7,7 @@ networks:
 services:
   mongo:
     container_name: ledger-mongo
-    image: mongo:latest
+    image: mongo:3.6.7
     ports:
       - "3010:27017"
     networks:
