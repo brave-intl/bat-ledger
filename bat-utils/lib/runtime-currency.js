@@ -87,6 +87,9 @@ Currency.prototype = {
 
   alt2fiat: async function (altcurrency, probi, currency, floatP) {
     let rate = await singleton.ratio(altcurrency, currency)
+    if (!rate) {
+      return
+    }
     const entry = currencyCodes.code(currency)
     const scale = singleton.alt2scale(altcurrency)
     let amount
@@ -121,6 +124,10 @@ Currency.prototype = {
     }
 
     let rate = await singleton.ratio(altcurrency, currency)
+    if (!rate) {
+      return
+    }
+
     const scale = singleton.alt2scale(altcurrency)
     let probi
 
