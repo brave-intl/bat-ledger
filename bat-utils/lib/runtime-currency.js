@@ -151,9 +151,5 @@ function Currency (config, runtime) {
     throw new Error('currency ratios url is required')
   }
   context.config = conf
-  console.log({
-    access_token: conf.access_token.length,
-    url: conf.url
-  })
   context.runtime = runtime
 }
