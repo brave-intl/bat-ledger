@@ -264,8 +264,7 @@ v1.claimGrant = { handler: (runtime) => {
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
     const configCaptcha = runtime.config.captcha
-    const bypassCaptcha = request.headers['bypass-captcha']
-    if (configCaptcha && (process.env.NODE_ENV === 'production' || bypassCaptcha !== configCaptcha.bypass)) {
+    if (configCaptcha) {
       if (!wallet.captcha) return reply(boom.forbidden('must first request captcha'))
       if (!captchaResponse) return reply(boom.badData())
 
@@ -374,9 +373,6 @@ v1.claimGrant = { handler: (runtime) => {
 
   validate: {
     params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-    headers: Joi.object().keys({
-      'bypass-captcha': Joi.string().optional().description('a secret token to allow trusted servers to bypass the captcha')
-    }).unknown(true).description('headers'),
     payload: Joi.object().keys({
       promotionId: Joi.string().required().description('the promotion-identifier'),
       captchaResponse: Joi.object().optional().keys({
@@ -594,14 +590,25 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const wallet = await wallets.findOne({ 'paymentId': paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    const captchaEndpoints = {
-      1: '/v1/captchas/target',
-      2: '/v1/captchas/colortarget'
+    const productEndpoints = {
+      'browser-laptop': {
+        1: '/v1/captchas/target',
+        2: '/v1/captchas/colortarget'
+      },
+      'brave-core': {
+        2: '/v2/captchas/colortarget'
+      }
+    }
+
+    const braveProduct = request.headers['brave-product'] || 'browser-laptop'
+    const captchaEndpoints = productEndpoints[braveProduct]
+    if (!captchaEndpoints) {
+      return reply(boom.notFound('no captcha endpoints'))
     }
 
     const endpoint = captchaEndpoints[protocolVersion]
     if (!endpoint) {
-      return reply(boom.notFound())
+      return reply(boom.notFound('no protocol version'))
     }
 
     const { res, payload } = await wreck.get(runtime.config.captcha.url + endpoint, {
@@ -650,7 +657,10 @@ v2.getCaptcha = {
   },
 
   validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') }
+    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
+    headers: Joi.object().keys({
+      'brave-product': Joi.string().valid(['browser-laptop', 'brave-core']).default('browser-laptop').optional().description('the brave product requesting the captcha')
+    }).unknown(true).description('headers')
   }
 }
 

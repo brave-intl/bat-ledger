@@ -1,0 +1,15 @@
+version: "2.1"
+
+services:
+  captcha-web:
+    container_name: captcha-web
+    image: bat-captcha:latest
+    ports:
+      - "3334:3334"
+    environment:
+      - TOKEN_LIST
+    networks:
+      - ledger
+  ledger-web:
+    environment:
+      - "CAPTCHA_URL=${CAPTCHA_URL-http://captcha-web:3334}"
