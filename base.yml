@@ -22,7 +22,6 @@ services:
       - "MONGODB_URI=${MONGODB_URI-mongodb://mongo/ledger}"
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDEEMER_URL=${REDEEMER_URL-http://grant-web:3333}"
-      - "CAPTCHA_URL=${CAPTCHA_URL-http://captcha-web:3334}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN

@@ -10,3 +10,6 @@ services:
       - TOKEN_LIST
     networks:
       - ledger
+  ledger-web:
+    environment:
+      - "CAPTCHA_URL=${CAPTCHA_URL-http://captcha-web:3334}"
