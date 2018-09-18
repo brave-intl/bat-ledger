@@ -449,90 +449,6 @@ v2.publishers.statements = {
 }
 
 /*
-   GET /v1/reports/publishers/status
-   GET /v2/reports/publishers/status
- */
-
-v1.publishers.status = {
-  handler: (runtime) => {
-    return async (request, reply) => {
-      const authority = authorityProvider(request)
-      const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
-      const debug = braveHapi.debug(module, request)
-
-      await runtime.queue.send(debug, 'report-publishers-status',
-                               underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
-                                                   request.query))
-      reply({ reportURL: reportURL })
-    }
-  },
-
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger', 'QA' ],
-    mode: 'required'
-  },
-
-  description: 'Returns information about publisher status',
-  tags: [ 'api' ],
-
-  validate: {
-    query: {
-      format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the response'),
-      elide: Joi.boolean().optional().default(true).description('elide contact information'),
-      summary: Joi.boolean().optional().default(true).description('summarize report'),
-      verified: Joi.boolean().optional().description('filter on verification status')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
-    }).unknown(true)
-  }
-}
-
-v2.publishers.status = {
-  handler: (runtime) => {
-    return async (request, reply) => {
-      const authority = 'automation'
-      const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
-      const debug = braveHapi.debug(module, request)
-
-      await runtime.queue.send(debug, 'report-publishers-status',
-                               underscore.defaults({ reportId: reportId, reportURL: reportURL, authority: authority },
-                                                   { elide: true }, request.query))
-      reply({ reportURL: reportURL })
-    }
-  },
-
-  auth: {
-    strategy: 'simple',
-    mode: 'required'
-  },
-
-  description: 'Returns information about publisher status (for automation)',
-  tags: [ 'api' ],
-
-  validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    query: {
-      format: Joi.string().valid('json', 'csv').optional().default('csv').description('the format of the response'),
-      summary: Joi.boolean().optional().default(true).description('summarize report'),
-      verified: Joi.boolean().optional().description('filter on verification status')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
-    }).unknown(true)
-  }
-}
-
-/*
    GET /v1/reports/surveyors/contributions
  */
 
@@ -632,8 +548,6 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/reports/publishers/statements/{hash}').config(v1.publishers.statements),
   braveHapi.routes.async().path('/v2/reports/publishers/statements').config(v2.publishers.statements),
   braveHapi.routes.async().path('/v3/reports/publishers/statements/{settlementId}').config(v3.publishers.statements),
-  braveHapi.routes.async().path('/v1/reports/publishers/status').config(v1.publishers.status),
-  braveHapi.routes.async().path('/v2/reports/publishers/status').config(v2.publishers.status),
   braveHapi.routes.async().path('/v1/reports/surveyors/contributions').config(v1.surveyors.contributions),
   braveHapi.routes.async().path('/v1/reports/grants/outstanding').config(v1.grants.outstanding)
 ]
