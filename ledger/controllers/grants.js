@@ -185,7 +185,12 @@ const getGrant = (protocolVersion) => (runtime) => {
       }
       candidates.push(entry)
     })
-    promotion = underscore.shuffle(candidates)[0]
+    const sortedCandidates = candidates.sort((a, b) => {
+      const aTsmp = a.minimumReconcileTimestamp || 0
+      const bTsmp = b.minimumReconcileTimestamp || 0
+      return aTsmp > bTsmp ? -1 : (aTsmp < bTsmp ? 1 : 0)
+    })
+    promotion = sortedCandidates[0]
 
     debug('grants', { languages: languages })
     l10n(promotion)
@@ -716,12 +721,14 @@ module.exports.initialize = async (debug, runtime) => {
         batchId: '',
         timestamp: bson.Timestamp.ZERO,
 
+        minimumReconcileTimestamp: 0,
         protocolVersion: 1
       },
       unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
                 { batchId: 1 }, { timestamp: 1 },
-                { protocolVersion: 1 } ]
+                { protocolVersion: 1 },
+                { minimumReconcileTimestamp: 1 } ]
     }
   ])
 
