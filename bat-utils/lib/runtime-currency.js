@@ -1,4 +1,5 @@
 const BigNumber = require('bignumber.js')
+const Bitfinex = require('bitfinex-api-node')
 const Joi = require('joi')
 const NodeCache = require('node-cache')
 const Promise = require('bluebird')
@@ -27,6 +28,8 @@ const msecs = {
 }
 
 let client2
+let client3
+
 let flatlineP
 let singleton
 
@@ -79,7 +82,7 @@ Currency.prototype.schemas = {
 }
 
 Currency.prototype.altrates = {}
-Currency.prototype.fxrates = {}
+Currency.prototype.fxrates = { rates: {} }
 Currency.prototype.rates = {}
 
 Currency.prototype.init = function () {
@@ -98,6 +101,7 @@ Currency.prototype.init = function () {
   monitor1(self.config, self.runtime)
   monitor2(self.config, self.runtime)
   monitor3(self.config, self.runtime)
+  monitor4(self.config, self.runtime)
 }
 
 const schemaBINANCE =
@@ -111,8 +115,11 @@ const monitor1 = (config, runtime) => {
   const symbols = []
 
   config.altcoins.forEach((altcoin) => {
+    if ((altcoin === 'BTG') || (altcoin === 'DASH')) return
+
     if (altcoin === 'BTC') symbols.push('BTC-USDT')
     else if (altcoin === 'ETH') symbols.push('ETH-USDT', 'ETH-BTC')
+    else if (altcoin === 'BCH') symbols.push('BCC-BTC')
     else symbols.push(altcoin + '-BTC')
   })
   debug('monitor1', { symbols: symbols })
@@ -138,6 +145,7 @@ const monitor1a = (symbol, retryP, config, runtime) => {
       return
     }
 
+    trade.p = parseFloat(trade.p)
     if (!singleton.altrates[src]) singleton.altrates[src] = {}
     singleton.altrates[src][dst] = trade.p
 
@@ -159,8 +167,10 @@ const altcoins = {
       if (!fiats) return
 
       fiats.forEach((fiat) => {
+        if ((altcoin !== 'BTC') && (fiat !== 'USD')) return
+
         rate = singleton.cache.get('ticker:' + altcoin + fiat)
-        rates[fiat] = (rate && rate.last) || (unavailable.push(fiat) && undefined)
+        rates[fiat] = rate || (unavailable.push(fiat) && undefined)
       })
       if (unavailable.length > 0) {
         return runtime.captureException(altcoin + '.f fiat error: ' + unavailable.join(', ') + ' unavailable')
@@ -182,12 +192,24 @@ const altcoins = {
     id: 'basic-attention-token'
   },
 
+  BCH: {
+    id: 'bitcoin-cash'
+  },
+
   BTC: {
     id: 'bitcoin',
 
     f: async (tickers, config, runtime) => {
       return altcoins._internal.f('BTC', tickers, config, runtime)
     }
+  },
+
+  BTG: {
+    id: 'bitcoin-gold'
+  },
+
+  DASH: {
+    id: 'dash'
   },
 
   ETH: {
@@ -204,6 +226,10 @@ const altcoins = {
     f: async (tickers, config, runtime) => {
       return altcoins._internal.f('LTC', tickers, config, runtime)
     }
+  },
+
+  XRP: {
+    id: 'ripple'
   }
 }
 
@@ -229,10 +255,19 @@ const monitor2 = (config, runtime) => {
 
   config.altcoins.forEach((altcoin) => {
     const eligible = []
+// not really convenient to retrieve /currencies in this method...
+    const possibles = [ 'BCH', 'BTC', 'ETH', 'LTC', 'EUR', 'GBP', 'USD' ]
 
-    if ((!altcoins[altcoin]) || (altcoin === 'BAT')) return
+    if ((possibles.indexOf(altcoin) === -1) || (!altcoins[altcoin])) return
+
+    if (altcoin !== 'BTC') {
+      query.push({ type: 'subscribe', product_id: altcoin + '-BTC' })
+      symbols.push(altcoin + '-BTC')
+    }
 
     fiats.forEach((fiat) => {
+      if (possibles.indexOf(fiat) === -1) return
+
       query.push({ type: 'subscribe', product_id: altcoin + '-' + fiat })
       symbols.push(altcoin + '-' + fiat)
       eligible.push(fiat)
@@ -269,7 +304,13 @@ const monitor2 = (config, runtime) => {
       return runtime.captureException(ex)
     }
 
-    if ((typeof data.type === 'undefined') || (typeof data.price === 'undefined')) return
+    if ((typeof data.type === 'undefined') ||
+        (typeof data.price === 'undefined') ||
+        (data.type !== 'done') ||
+        (data.side !== 'sell') ||
+        (data.reason !== 'filled')) {
+      return
+    }
 
     validity = Joi.validate(data, schemaGDAX)
     if (validity.error) {
@@ -287,7 +328,112 @@ const monitor2 = (config, runtime) => {
   }
 }
 
+const paramsBITFINEX = {
+  BID: Joi.any().required(),
+  BID_SIZE: Joi.any().required(),
+  ASK: Joi.any().required(),
+  ASK_SIZE: Joi.any().required(),
+  DAILY_CHANGE: Joi.number().optional(),
+  DAILY_CHANGE_PERC: Joi.number().optional(),
+  LAST_PRICE: Joi.number().positive().optional(),
+  VOLUME: Joi.number().positive().optional(),
+  HIGH: Joi.number().positive().optional(),
+  LOW: Joi.number().positive().optional()
+}
+const schemaBITFINEX =
+      Joi.object().keys(
+
+      ).required()
+
 const monitor3 = (config, runtime) => {
+  const pairs = []
+  const symbols = []
+  let subscriptions = {}
+
+  const retry = () => {
+    try { if (client3) client3.close(1000, 'schema') } catch (ex) {
+      debug('monitor3', { event: 'end', message: ex.toString() })
+    }
+
+    client3 = undefined
+    subscriptions = {}
+    setTimeout(function () { monitor3(config, runtime) }, 15 * msecs.second)
+  }
+
+  if (client3) return
+
+  config.altcoins.forEach((altcoin) => {
+    const possibles = {
+/* handled by monitor1
+      BCH: [ 'BTC', 'ETH', 'USD' ],
+      BTC: [ 'EUR', 'USD', 'XRP' ],
+ */
+      BTG: [ 'BTC', 'USD' ],
+      DASH: [ 'BTC', 'USD' ]
+/* handled by monitor1
+      ETH: [ 'BTC', 'USD' ],
+      LTC: [ 'BTC', 'USD' ]
+ */
+    }
+
+    if (!possibles[altcoin]) return
+
+    possibles[altcoin].forEach((coin) => {
+      if (config.allcoins.indexOf(coin) === -1) return
+
+      pairs.push(((altcoin !== 'DASH') ? altcoin : 'DSH') + coin)
+      symbols.push(altcoin + '-' + coin)
+    })
+  })
+  debug('monitor3', { symbols: symbols })
+
+  client3 = (new Bitfinex()).ws(2)
+  client3.on('open', () => {
+    debug('monitor3', { event: 'connected' })
+
+    pairs.forEach((pair) => { client3.subscribeTicker('t' + pair) })
+  }).on('close', () => {
+    debug('monitor3', { event: 'disconnected' })
+    retry()
+  }).on('error', (msg) => {
+    debug('monitor3', underscore.extend({ event: 'error' }, msg))
+    retry()
+  }).on('subscribed', (msg) => {
+    subscriptions[msg.chanId] = msg
+  }).on('message', (data) => {
+    const packet = Array.isArray(data) && (data.length === 2) && data
+    const symbol = packet && subscriptions[packet[0]] && subscriptions[packet[0]].pair
+    const params = packet && underscore.object(underscore.keys(paramsBITFINEX), packet[1])
+    let validity
+    let src = symbol && symbol.substr(0, 3)
+    let dst = symbol && symbol.substr(3)
+
+    if ((data.event) || (!symbol)) return
+
+    validity = Joi.validate(params, schemaBITFINEX)
+    if (validity.error) {
+      retry()
+      return runtime.captureException(validity.error, { extra: { data: data } })
+    }
+    if (!params.LAST_PRICE) return
+
+    if (src === 'DSH') src = 'DASH'
+    else if (dst === 'DSH') dst = 'DASH'
+
+    if (!singleton.altrates[src]) singleton.altrates[src] = {}
+    singleton.altrates[src][dst] = params.LAST_PRICE
+
+    if (!singleton.altrates[dst]) singleton.altrates[dst] = {}
+    singleton.altrates[dst][src] = 1.0 / params.LAST_PRICE
+
+    Currency.prototype.altrates = singleton.altrates
+  }).on('unsubscribed', (msg) => {
+    debug('monitor3', underscore.extend({ event: 'unsubscribed' }, msg))
+    retry()
+  }).open()
+}
+
+const monitor4 = (config, runtime) => {
   let cacheTTL
 
   if (!config.oxr) return
@@ -403,7 +549,7 @@ const retrieve = async (runtime, url, props, schema) => {
 
 const schemaCMC =
       Joi.object().keys({
-        symbol: Joi.string().regex(/^[A-Z]{3}$/).required(),
+        symbol: Joi.string().regex(/^[A-Z]{3,4}$/).required(),
         price_btc: Joi.number().positive().required(),
         price_usd: Joi.number().positive().required()
       }).unknown(true).required()
@@ -591,12 +737,15 @@ Currency.prototype.decimals = {
   BAT: 18,
   BCH: 8,
   BTC: 8,
+  BTG: 8,
+  DASH: 8,
   ETC: 18,
   ETH: 18,
   LTC: 8,
   NMC: 8,
   PPC: 6,
   XPM: 8,
+  XRP: 6,
   ZEC: 8
 }
 

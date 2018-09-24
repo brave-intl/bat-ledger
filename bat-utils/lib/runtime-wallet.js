@@ -27,7 +27,13 @@ const Wallet = function (config, runtime) {
   this.runtime = runtime
   if (config.wallet.uphold) {
     if ((process.env.FIXIE_URL) && (!process.env.HTTPS_PROXY)) process.env.HTTPS_PROXY = process.env.FIXIE_URL
-    this.uphold = this.createUpholdSDK(this.config.uphold.accessToken)
+
+    this.uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+      baseUrl: upholdBaseUrls[this.config.uphold.environment],
+      clientId: this.config.uphold.clientId,
+      clientSecret: this.config.uphold.clientSecret
+    })
+    this.uphold.storage.setItem('uphold.access_token', this.config.uphold.accessToken)
   }
 
   if (config.currency) {
@@ -35,22 +41,20 @@ const Wallet = function (config, runtime) {
   }
 }
 
-Wallet.prototype.createCard = async function () {
-  let f = Wallet.providers.mock.createCard
-  if (this.config.uphold) {
-    f = Wallet.providers.uphold.createCard
-  }
-  if (!f) return {}
-  return f.apply(this, arguments)
+Wallet.prototype.addAddress = async function (info, altcoin) {
+  const f = Wallet.providers[info.provider].addAddress
+
+  if (!f) throw new Error('provider ' + info.provider + ' addAddress not supported')
+  return f.bind(this)(info, altcoin)
 }
 
-Wallet.prototype.create = async function (requestType, request) {
+Wallet.prototype.create = async function (apiVersion, requestType, request) {
   let f = Wallet.providers.mock.create
   if (this.config.uphold) {
     f = Wallet.providers.uphold.create
   }
   if (!f) return {}
-  return f.bind(this)(requestType, request)
+  return f.bind(this)(apiVersion, requestType, request)
 }
 
 Wallet.prototype.balances = async function (info) {
@@ -242,61 +246,82 @@ Wallet.prototype.purchaseBAT = async function (info, amount, currency, language)
   return {}
 }
 
-Wallet.prototype.createUpholdSDK = function (token) {
-  const options = {
-    baseUrl: upholdBaseUrls[this.config.uphold.environment],
-    clientId: this.config.uphold.clientId,
-    clientSecret: this.config.uphold.clientSecret
-  }
-  const uphold = new UpholdSDK.default(options) // eslint-disable-line new-cap
-  uphold.storage.setItem(uphold.options.accessTokenKey, token)
-  return uphold
-}
-
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
-  createCard: async function (info, {
-    currency,
-    label,
-    options
-  }) {
-    const accessToken = info.parameters.access_token
-    const uphold = this.createUpholdSDK(accessToken)
-    return uphold.createCard(currency, label, Object.assign({
-      authenticate: true
-    }, options))
+  createAddress: async function (cardId, altcoin) {
+    const networks = {
+      BCH: 'bitcoin-cash',
+      BTC: 'bitcoin',
+      BTG: 'bitcoin-gold',
+      DASH: 'dash',
+      ETH: 'ethereum',
+      LTC: 'litecoin',
+      XRP: 'xrp-ledger'
+    }
+    let addresses, cardInfo
+    let network = networks[altcoin]
+
+    if (!network) return ('unsupported altcoin: ' + altcoin)
+
+    if (this.runtime.config.currency.altcoins.indexOf(altcoin) === -1) return ('unconfigured altcoin: ' + altcoin)
+
+    cardInfo = await this.uphold.getCard(cardId)
+    addresses = (cardInfo && cardInfo.address) || {}
+    if (addresses[network]) return { id: addresses[network], network: network }
+
+    return this.uphold.createCardAddress(cardId, network)
   },
-  create: async function (requestType, request) {
+  addAddress: async function (info, altcoin) {
+    let result
+
+    try {
+      result = await Wallet.providers.uphold.createAddress.bind(this)(info.providerId, altcoin)
+      if (typeof result === 'string') return result
+
+      info.addresses[altcoin] = result.id
+    } catch (ex) {
+      debug('addAddress',
+            { provider: 'uphold', reason: ex.toString(), operation: '/me/cards/:id/addresses', altcoin: altcoin })
+      throw ex
+    }
+  },
+  create: async function (apiVersion, requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
-        let btcAddr, ethAddr, ltcAddr, wallet
+        const altcoins = [ 'ETH' ]
+        let addresses, result, wallet
 
+        if (apiVersion === 2) altcoins.push('BTC', 'LTC')
         try {
           wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
-          ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
-          btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
-          ltcAddr = await this.uphold.createCardAddress(wallet.id, 'litecoin')
+          addresses = { CARD_ID: wallet.id }
+          for (let altcoin of altcoins) {
+            result = await Wallet.providers.uphold.createAddress.bind(this)(wallet.id, altcoin)
+            if (typeof result === 'string') throw new Error(result)
+
+            addresses[altcoin] = result.id
+          }
         } catch (ex) {
           debug('create', {
             provider: 'uphold',
             reason: ex.toString(),
-            operation: btcAddr ? 'litecoin' : ethAddr ? 'bitcoin' : wallet ? 'ethereum' : '/me/cards'
+            operation: wallet ? '/me/cards' : '/me/cards/:id/addresses'
           })
           throw ex
         }
-        return { 'wallet': { 'addresses': {
-          'BAT': ethAddr.id,
-          'BTC': btcAddr.id,
-          'CARD_ID': wallet.id,
-          'ETH': ethAddr.id,
-          'LTC': ltcAddr.id
-        },
-          'provider': 'uphold',
-          'providerId': wallet.id,
-          'httpSigningPubKey': request.body.publicKey,
-          'altcurrency': 'BAT' } }
+        addresses.BAT = addresses.ETH
+
+        return {
+          wallet: {
+            addresses: addresses,
+            provider: 'uphold',
+            providerId: wallet.id,
+            httpSigningPubKey: request.body.publicKey,
+            altcurrency: 'BAT'
+          }
+        }
       } else {
         throw new Error('wallet uphold create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
       }
@@ -403,8 +428,13 @@ Wallet.providers.uphold = {
     let card, cards, currency, currencies, result, uphold, user
 
     try {
-      uphold = this.createUpholdSDK(info.parameters.access_token)
-      debug('uphold api', uphold.api)
+      uphold = new UpholdSDK.default({ // eslint-disable-line new-cap
+        baseUrl: upholdBaseUrls[this.config.uphold.environment],
+        clientId: this.config.uphold.clientId,
+        clientSecret: this.config.uphold.clientSecret
+      })
+      uphold.storage.setItem('uphold.access_token', info.parameters.access_token)
+
       user = await uphold.api('/me')
       if (user.status !== 'pending') cards = await uphold.api('/me/cards')
     } catch (ex) {
@@ -426,8 +456,7 @@ Wallet.providers.uphold = {
       provider: info.provider,
       authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
       defaultCurrency: info.defaultCurrency || currency,
-      availableCurrencies: currencies,
-      possibleCurrencies: user.currencies
+      availableCurrencies: currencies
     }
     if (result.authorized) {
       card = underscore.findWhere(cards, { currency: result.defaultCurrency })

@@ -13,6 +13,7 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 let altcurrency
 
@@ -25,6 +26,7 @@ const server = (request, runtime) => {
 /*
    GET /v1/registrar/{registrarType}
    GET /v2/registrar/{registrarType}
+   GET /v3/registrar/{registrarType}
  */
 
 v2.read =
@@ -45,7 +47,7 @@ v2.read =
   validate:
   { params: {
     registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-    apiV: Joi.string().required().description('the api version')
+    apiV: Joi.string().valid('v2', 'v3').required().description('the api version')
   } },
 
   response: {
@@ -121,8 +123,9 @@ v2.update =
 /*
    POST /v1/registrar/persona/{uId}
    POST /v2/registrar/persona/{uId}
+   POST /v3/registrar/persona/{uId}
  */
-const createPersona = function (runtime) {
+const createPersona = function (runtime, apiVersion) {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
     const uId = request.params.uId.toLowerCase()
@@ -186,7 +189,7 @@ const createPersona = function (runtime) {
     requestBody = request.payload.request
 
     try {
-      result = await runtime.wallet.create(requestType, requestBody)
+      result = await runtime.wallet.create(apiVersion, requestType, requestBody)
       wallet = result.wallet
     } catch (ex) {
       runtime.captureException(ex, { req: request })
@@ -354,11 +357,35 @@ v2.createPersona =
   }
 }
 
+v3.createPersona =
+{ handler: (runtime) => { return createPersona(runtime, 3) },
+  description: 'Registers a user persona',
+  tags: ['api'],
+
+  validate: v2.createPersona.validate,
+
+  response: {
+    schema: Joi.object().keys({
+      verification: Joi.string().required().description('credential registration response'),
+      wallet: Joi.object().keys({
+        paymentId: Joi.string().guid().required().description('opaque identifier for BTC address'),
+        addresses: Joi.object().keys({
+          BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
+          ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
+          CARD_ID: Joi.string().guid().optional().description('Card id')
+        }).unknown(true)
+      }).optional().description('wallet information'),
+      payload: Joi.object().optional().description('additional information')
+    })
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/{apiV}/registrar/{registrarType}').config(v2.read),
   braveHapi.routes.async().patch().path('/{apiV}/registrar/{registrarType}').config(v2.update),
   braveHapi.routes.async().post().path('/v1/registrar/persona/{uId}').config(v1.createPersona),
   braveHapi.routes.async().post().path('/v2/registrar/persona/{uId}').config(v2.createPersona),
+  braveHapi.routes.async().post().path('/v3/registrar/persona/{uId}').config(v3.createPersona),
   braveHapi.routes.async().post().path('/{apiV}/registrar/viewing/{uId}').config(v2.createViewing)
 ]
 
