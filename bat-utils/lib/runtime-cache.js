@@ -6,7 +6,6 @@ const ONE_HOUR = 1000 * 60 * 60
 const MAX_RECONNECT_TIMEOUT = 10000
 const MAX_RECONNECT_ATTEMPTS = 100
 Cache.accessor = accessor
-Cache.create = createRedisCache
 module.exports = Cache
 
 bluebird.promisifyAll(redis.RedisClient.prototype)
@@ -103,15 +102,4 @@ function retryStrategy (options) {
   }
   // reconnect after
   return Math.min(attempt * 100, MAX_RECONNECT_TIMEOUT)
-}
-
-// shim for current setup
-function createRedisCache () {
-  return new Cache({
-    cache: {
-      redis: {
-        url: process.env.BAT_REDIS_URL
-      }
-    }
-  })
 }

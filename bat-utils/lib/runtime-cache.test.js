@@ -7,7 +7,13 @@ import { v4 } from 'uuid'
 
 dotenv.config()
 
-const cache = Cache.create()
+const cache = new Cache({
+  cache: {
+    redis: {
+      url: process.env.BAT_REDIS_URL
+    }
+  }
+})
 
 test('cache.connects', async t => {
   t.plan(0)
@@ -31,7 +37,7 @@ runDelGetSet()
 // prefixed does not collide with non prefixed
 runDelGetSet('prefixed')
 
-function runDelGetSet (prefix, performCollideCheck) {
+function runDelGetSet (prefix) {
   const stringPrefix = JSON.stringify(prefix)
   test(`cache.get and .set and .del with prefix ${stringPrefix}`, async (t) => {
     t.plan(3)
