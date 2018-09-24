@@ -45,7 +45,13 @@ const balanceCacheConfig = configuration.cache
 let prevSurveyorId
 let paymentId
 
-const cache = Cache.create()
+const cache = new Cache({
+  cache: {
+    redis: {
+      url: process.env.BAT_REDIS_URL
+    }
+  }
+})
 
 const cardDeleteUrl = `/v2/card`
 const statsURL = '/v1/wallet/stats'
