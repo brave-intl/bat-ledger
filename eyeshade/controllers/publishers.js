@@ -1,6 +1,5 @@
 const url = require('url')
 
-const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
@@ -13,6 +12,7 @@ const getPublisherProps = batPublisher.getPublisherProps
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { BigNumber } = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
@@ -163,14 +163,14 @@ v2.getBalance = {
         }
       ])
       if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
-      if (probi.lessThan(0)) probi = new BigNumber(0)
+      if (probi.isLessThan(0)) probi = new BigNumber(0)
 
       amount = await runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
       const rates = await runtime.currency.rates(altcurrency)
       reply({
         rates,
         altcurrency: altcurrency,
-        probi: probi.truncated().toString(),
+        probi: probi.integerValue().toString(),
         amount: amount,
         currency: currency
       })
@@ -271,7 +271,7 @@ v2.getWallet = {
         }
       ])
       if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
-      if (probi.lessThan(0)) {
+      if (probi.isLessThan(0)) {
         runtime.captureException(new Error('negative probi'), { extra: { publisher: publisher, probi: probi.toString() } })
         probi = new BigNumber(0)
       }
@@ -284,7 +284,7 @@ v2.getWallet = {
           amount: amount,
           currency: currency,
           altcurrency: altcurrency,
-          probi: probi.truncated().toString()
+          probi: probi.integerValue().toString()
         }
       }
 

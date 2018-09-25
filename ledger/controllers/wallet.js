@@ -286,7 +286,7 @@ const write = function (runtime, apiVersion) {
 
     params = surveyor.payload.adFree
 
-    votes = runtime.wallet.getTxProbi(wallet, wallet.unsignedTx).dividedBy(params.probi).times(params.votes).round().toNumber()
+    votes = runtime.wallet.getTxProbi(wallet, wallet.unsignedTx).dividedBy(params.probi).times(params.votes).integerValue().toNumber()
 
     if (votes < 1) votes = 1
 

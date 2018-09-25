@@ -1,9 +1,9 @@
-const BigNumber = require('bignumber.js')
 const getPublisherProps = require('bat-publisher').getPublisherProps
 const uuidv5 = require('uuid/v5')
 const {
   createdTimestamp,
-  normalizeChannel
+  normalizeChannel,
+  BigNumber
 } = require('bat-utils/lib/extras-utils')
 
 const SETTLEMENT_NAMESPACE = {
@@ -20,7 +20,7 @@ exports.insertFromSettlement = async (runtime, client, settlement) => {
   if (settlement.probi && settlement.owner) {
     const probi = new BigNumber(settlement.probi.toString())
     const fees = new BigNumber(settlement.fees.toString())
-    if (probi.greaterThan(new BigNumber(0))) {
+    if (probi.isGreaterThan(new BigNumber(0))) {
       const normalizedChannel = normalizeChannel(settlement.publisher)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
@@ -52,7 +52,7 @@ exports.insertFromSettlement = async (runtime, client, settlement) => {
         ])
 
         // owner -> brave for fees, only applies to contributions
-        if (fees.greaterThan(new BigNumber(0))) {
+        if (fees.isGreaterThan(new BigNumber(0))) {
           const query2 = `
           insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
           VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11 )
@@ -113,7 +113,7 @@ exports.insertFromVoting = async (runtime, client, voteDoc, surveyorCreatedAt) =
     const probi = new BigNumber(voteDoc.probi.toString())
     const fees = new BigNumber(voteDoc.fees.toString())
 
-    if (probi.greaterThan(new BigNumber(0))) {
+    if (probi.isGreaterThan(new BigNumber(0))) {
       const normalizedChannel = normalizeChannel(voteDoc._id.publisher)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
@@ -156,7 +156,7 @@ exports.insertFromReferrals = async (runtime, client, referrals) => {
     const created = createdTimestamp(referrals.firstId)
     const month = new Date(created).toDateString().split(' ')[1]
 
-    if (probi.greaterThan(new BigNumber(0))) {
+    if (probi.isGreaterThan(new BigNumber(0))) {
       const normalizedChannel = normalizeChannel(referrals._id.publisher)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {

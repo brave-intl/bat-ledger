@@ -97,7 +97,7 @@ Currency.prototype = {
     const scale = singleton.alt2scale(altcurrency)
     let amount
 
-    if (!(probi instanceof BigNumber)) {
+    if (!BigNumber.isBigNumber(probi)) {
       probi = new BigNumber(probi.toString())
     }
     amount = probi.times(new BigNumber(rate.toString()))
@@ -134,7 +134,7 @@ Currency.prototype = {
     const scale = singleton.alt2scale(altcurrency)
     let probi
 
-    if (!(amount instanceof BigNumber)) {
+    if (!BigNumber.isBigNumber(amount)) {
       amount = new BigNumber(amount.toString())
     }
     probi = amount.dividedBy(new BigNumber(rate.toString()))
@@ -143,7 +143,7 @@ Currency.prototype = {
       probi = probi.times(scale)
     }
 
-    return probi.floor().toString()
+    return probi.toFixed(0).toString()
   }
 }
 

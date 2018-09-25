@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const Joi = require('joi')
 const underscore = require('underscore')
@@ -6,6 +5,7 @@ const underscore = require('underscore')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { BigNumber } = utils.extras.utils
 
 const v1 = {}
 const v2 = {}

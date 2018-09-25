@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const dateformat = require('dateformat')
 const json2csv = require('json2csv')
@@ -11,7 +10,8 @@ const getPublisherProps = require('bat-publisher').getPublisherProps
 const {
   utf8ify,
   documentOlderThan,
-  createdTimestamp
+  createdTimestamp,
+  BigNumber
 } = braveExtras.utils
 
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
@@ -354,7 +354,7 @@ const quanta = async (debug, runtime, qid) => {
 
       if (!(params[key] instanceof bson.Decimal128)
           ? (params[key] !== surveyor[key])
-          : !(new BigNumber(params[key].toString()).truncated().equals(new BigNumber(surveyor[key].toString()).truncated()))) {
+          : !(new BigNumber(params[key].toString()).integerValue().isEqualTo(new BigNumber(surveyor[key].toString()).integerValue()))) {
         updateP = true
       }
     })
@@ -442,7 +442,7 @@ const mixer = async (debug, runtime, filter, qid) => {
 
     // current is always defined
   function equals (previous, current) {
-    return previous && previous.dividedBy(1e11).round().equals(current.dividedBy(1e11).round())
+    return previous && previous.dividedBy(1e11).integerValue().isEqualTo(current.dividedBy(1e11).integerValue())
   }
 
   async function slicer ({
@@ -621,14 +621,14 @@ const publisherContributions = (runtime, publishers, authority, authorized, veri
 
   results = results.sort(publisherCompare)
   results.forEach((result) => {
-    result.probi = result.probi.truncated().toString()
-    result.fees = result.fees.truncated().toString()
+    result.probi = result.probi.integerValue().toString()
+    result.fees = result.fees.integerValue().toString()
 
     result.votes.forEach((vote) => {
       vote['publisher USD'] = usd && new BigNumber(vote.probi).times(usd).dividedBy(scale).toFixed(2)
       vote['processor USD'] = usd && new BigNumber(vote.fees).times(usd).dividedBy(scale).toFixed(2)
-      vote.probi = new BigNumber(vote.probi).truncated().toString()
-      vote.fees = new BigNumber(vote.fees).truncated().toString()
+      vote.probi = new BigNumber(vote.probi).integerValue().toString()
+      vote.fees = new BigNumber(vote.fees).integerValue().toString()
     })
   })
 
@@ -921,7 +921,7 @@ const referralStatement = async (debug, runtime, owner, summaryP) => {
     statements[publisher].settlements.summaries.forEach((summary) => {
       balance = balance.minus(summary.probi)
     })
-    if (balance.lessThan(0)) {
+    if (balance.isLessThan(0)) {
       throw new Error(`Publisher ${publisher} has been overpaid`)
     }
     statements[publisher].balance = {
@@ -971,7 +971,7 @@ const findEligPublishers = async (debug, runtime, publishers) => {
 const prepareReferralPayout = async (debug, runtime, authority, reportId, thresholdProbi, includeUnpayable) => {
   const statements = await referralStatement(debug, runtime, undefined, true)
   const threshPubs = underscore.filter(underscore.keys(statements), (publisher) => {
-    return statements[publisher].balance.probi.greaterThan(thresholdProbi)
+    return statements[publisher].balance.probi.isGreaterThan(thresholdProbi)
   })
   const eligPublishers = await findEligPublishers(debug, runtime, threshPubs)
 
@@ -1258,8 +1258,8 @@ exports.workers = {
         data.push({
           publisher: 'TOTAL',
           altcurrency: info.altcurrency,
-          probi: info.probi.truncated().toString(),
-          fees: info.fees.truncated().toString(),
+          probi: info.probi.integerValue().toString(),
+          fees: info.fees.integerValue().toString(),
           'publisher USD': usd && info.probi.times(usd).dividedBy(scale).toFixed(2),
           'processor USD': usd && info.fees.times(usd).dividedBy(scale).toFixed(2)
         })
@@ -1424,7 +1424,7 @@ exports.workers = {
         referralTotals = referralTotals.reduce((obj, item) => {
           item.publisher = item._id
           item.probi = new BigNumber(item.probi.toString())
-          item.fees = item.probi.times(feePercent).truncated()
+          item.fees = item.probi.times(feePercent).integerValue()
           item.probi = item.probi.minus(item.fees)
           item.altcurrency = altcurrency
           item.note = 'Finalized referrals'
@@ -1679,7 +1679,7 @@ exports.workers = {
 
         results[publisher].probi = probi[publisher] || new BigNumber(0)
         results[publisher].USD = await runtime.currency.alt2fiat(altcurrency, results[publisher].probi, 'USD')
-        results[publisher].probi = results[publisher].probi.truncated().toString()
+        results[publisher].probi = results[publisher].probi.integerValue().toString()
 
         if (results[publisher].history) {
           results[publisher].history = underscore.sortBy(results[publisher].history, (record) => {
@@ -1839,10 +1839,10 @@ exports.workers = {
       results = []
       for (let quantum of data) {
         quantum = underscore.extend(quantum, {
-          probi: new BigNumber(quantum.probi.toString()).truncated().toString(),
+          probi: new BigNumber(quantum.probi.toString()).integerValue().toString(),
           fee: quantum.fee.toString(),
           inputs: quantum.inputs.toString(),
-          quantum: new BigNumber(quantum.quantum.toString()).truncated().toString()
+          quantum: new BigNumber(quantum.quantum.toString()).integerValue().toString()
         })
         results.push(quantum)
         if (summaryP) continue
@@ -1856,10 +1856,10 @@ exports.workers = {
           if (publishers[slice.publisher]) {
             probi = new BigNumber(publishers[slice.publisher].probi.toString())
 
-            if (probi.lessThan(slice.probi)) slice.probi = slice.probi.minus(probi)
+            if (probi.isLessThan(slice.probi)) slice.probi = slice.probi.minus(probi)
             else {
               probi = probi.minus(slice.probi)
-              if (probi.greaterThan(0)) publishers[slice.publisher].probi = probi
+              if (probi.isGreaterThan(0)) publishers[slice.publisher].probi = probi
               else if (!excluded) delete publishers[slice.publisher]
 
               return
@@ -1869,7 +1869,7 @@ exports.workers = {
           results.push({
             surveyorId: slice.surveyorId,
             altcurrency: slice.altcurrency,
-            probi: slice.probi.truncated().toString(),
+            probi: slice.probi.integerValue().toString(),
             publisher: slice.publisher,
             votes: slice.counts,
             created: createdTimestamp(slice._id),

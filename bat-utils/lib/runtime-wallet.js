@@ -1,4 +1,4 @@
-const BigNumber = require('bignumber.js')
+const { BigNumber } = require('./extras-utils')
 const SDebug = require('sdebug')
 const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const crypto = require('crypto')
@@ -190,10 +190,10 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
     const probi = new BigNumber(grantContent.probi)
     balance = balance.plus(probi)
     grantTotal = grantTotal.plus(probi)
-    if (grantTotal.greaterThanOrEqualTo(desired)) break
+    if (grantTotal.isGreaterThan(desired)) break
   }
 
-  if (balance.lessThan(desired)) return
+  if (balance.isLessThan(desired)) return
 
   if (info.cohort && this.runtime.config.testingCohorts.includes(info.cohort)) {
     return {
@@ -340,11 +340,11 @@ Wallet.providers.uphold = {
 
       debug('unsignedTx', { balance: balance, desired: desired, minimum: minimum })
 
-      if (minimum.greaterThan(balance)) return
+      if (minimum.isGreaterThan(balance)) return
 
-      desired = desired.floor()
+      desired = desired.integerValue()
 
-      if (desired.greaterThan(balance)) desired = new BigNumber(balance)
+      if (desired.isGreaterThan(balance)) desired = new BigNumber(balance)
 
       // NOTE skipping fee calculation here as transfers within uphold have none
 

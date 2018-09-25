@@ -3,7 +3,8 @@ const getPublisherProps = require('bat-publisher').getPublisherProps
 const BigNumber = require('bignumber.js')
 const dotenv = require('dotenv')
 dotenv.config()
-BigNumber.config({
+const ScopedBigNumber = BigNumber.clone()
+ScopedBigNumber.config({
   EXPONENTIAL_AT: 28,
   DECIMAL_PLACES: 18
 })
@@ -18,7 +19,7 @@ module.exports = {
   isYoutubeChannelId,
   normalizeChannel,
   justDate,
-  BigNumber
+  BigNumber: ScopedBigNumber
 }
 
 const DAY_MS = 60 * 60 * 24 * 1000
