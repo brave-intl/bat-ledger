@@ -7,12 +7,15 @@ const debug = new SDebug('currency')
 let singleton
 
 const knownRateKeys = [
-  'USD',
-  'EUR',
-  'BAT',
-  'LTC',
   'BTC',
-  'ETH'
+  'ETH',
+  'XRP',
+  'BCH',
+  'LTC',
+  'DASH',
+  'BTG',
+  'USD',
+  'EUR'
 ]
 // satoshis, wei, etc.
 const decimals = {
