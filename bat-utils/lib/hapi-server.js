@@ -4,6 +4,7 @@ const os = require('os')
 const asyncHandler = require('hapi-async-handler')
 const authBearerToken = require('hapi-auth-bearer-token')
 const authCookie = require('hapi-auth-cookie')
+const raven = require('hapi-raven')
 const cryptiles = require('cryptiles')
 const bell = require('bell')
 const boom = require('boom')
@@ -32,6 +33,12 @@ const Server = async (options, runtime) => {
     runtime = options
     options = {}
   }
+
+  const ravenPlugin = {
+    register: raven,
+    options: runtime.config.sentry
+  }
+
   underscore.defaults(options, { id: server.info.id, module: module, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
@@ -60,7 +67,9 @@ const Server = async (options, runtime) => {
   else epimetheus.instrument(server)
 
   server.register(
-    [ bell,
+    [
+      ravenPlugin,
+      bell,
       asyncHandler,
       authBearerToken,
       authCookie,
