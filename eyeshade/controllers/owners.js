@@ -539,14 +539,8 @@ v1.putWallet = {
       const provider = payload.provider
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
-      const sites = []
-      let entry, entries, state
 
-      entry = await owners.findOne({ owner: owner })
-      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
-
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
           defaultCurrency: payload.defaultCurrency,
@@ -558,20 +552,6 @@ v1.putWallet = {
         })
       }
       await owners.update({ owner: owner }, state, { upsert: true })
-
-      entries = await publishers.find({ owner: owner })
-      entries.forEach((entry) => {
-        const props = getPublisherProps(entry.publisher)
-
-        if (props && props.URL) sites.push(props.URL)
-      })
-      if (sites.length === 0) sites.push('none')
-      runtime.notify(debug, {
-        channel: '#publishers-bot',
-        text: 'owner ' + ownerString(owner, entry.info) + ' ' +
-          (payload.parameters && payload.parameters.access_token ? 'registered with' : 'unregistered from') + ' ' + provider +
-           ': ' + sites.join(' ')
-      })
 
       reply({})
     }
@@ -609,17 +589,13 @@ v1.patchWallet = {
     return async (request, reply) => {
       const owner = request.params.owner
       const payload = request.payload
-      const provider = payload.provider
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
-      const sites = []
-      let entry, entries, state
 
-      entry = await owners.findOne({ owner: owner })
+      const entry = await owners.findOne({ owner: owner })
       if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.pick(underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
           defaultCurrency: payload.defaultCurrency,
@@ -627,20 +603,6 @@ v1.patchWallet = {
         }), (value) => { return (typeof value !== 'undefined') })
       }
       await owners.update({ owner: owner }, state, { upsert: true })
-
-      entries = await publishers.find({ owner: owner })
-      entries.forEach((entry) => {
-        const props = getPublisherProps(entry.publisher)
-
-        if (props && props.URL) sites.push(props.URL)
-      })
-      if (sites.length === 0) sites.push('none')
-      runtime.notify(debug, {
-        channel: '#publishers-bot',
-        text: 'owner ' + ownerString(owner, entry.info) + ' ' +
-          (payload.parameters && (payload.parameters.access_token || payload.defaultCurrency) ? 'registered with'
-           : 'unregistered from') + ' ' + (provider || entry.provider) + ': ' + sites.join(' ')
-      })
 
       reply({})
     }
