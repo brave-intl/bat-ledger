@@ -74,7 +74,7 @@
     "bson": "1.0.4",
     "country-list": "1.1.0",
     "cron-parser": "2.4.1",
-    "cryptiles": "3.1.2",
+    "cryptiles": "4.1.2",
     "currency-codes": "1.1.2",
     "dateformat": "3.0.2",
     "dotenv": "^4.0.0",
