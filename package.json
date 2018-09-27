@@ -71,7 +71,7 @@
     "bluebird": "3.5.0",
     "boom": "5.2.0",
     "bs58check": "^2.0.2",
-    "bson": "1.0.4",
+    "bson": "1.0.5",
     "country-list": "1.1.0",
     "cron-parser": "2.4.1",
     "cryptiles": "4.1.2",
