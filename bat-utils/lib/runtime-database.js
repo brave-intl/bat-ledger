@@ -195,4 +195,22 @@ Database.prototype.checkIndices = async function (debug, entries) {
   }))
 }
 
+/**
+ * Sets the schema for a mongodb collection, see https://docs.mongodb.com/manual/core/schema-validation/
+ * @param {string} collection - The collection to set the schema for
+ * @param {Object} schema - Schema to set, note only query style validation is supported in mongo < 3.6
+ * @param {string=} [level=strict] - Schema validation level to apply, see mongo docs for details
+ * @param {string=} [action=strict] - Schema validation action to apply on failure, see mongo docs for details
+ */
+Database.prototype.setSchema = function (collection, schema, level, action) {
+  let command = { collMod: collection, validator: schema }
+  if (level) {
+    command.validationLevel = level
+  }
+  if (action) {
+    command.validationAction = action
+  }
+  this.db._db.command(command)
+}
+
 module.exports = Database
