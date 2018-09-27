@@ -190,9 +190,6 @@ const bulk = async (request, reply, runtime, owner, info, visible, channels) => 
       authority: owner,
       info: info
     })
-    await runtime.queue.send(debug, 'publisher-report',
-                             underscore.extend({ owner: owner, publisher: channel.channelId },
-                                               underscore.pick(state.$set, [ 'verified', 'visible' ])))
   }
 
   reply({})
@@ -766,6 +763,4 @@ module.exports.initialize = async (debug, runtime) => {
                 { timestamp: 1 } ]
     }
   ])
-
-  await runtime.queue.create('publisher-report')
 }
