@@ -10,18 +10,18 @@ dotenv.config()
 
 // const config = require('../../config')
 
-const runtime = {
-  // config,
-  notify: () => {},
-  captureException: () => {},
-  cache: new Cache({
-    cache: {
-      redis: process.env.REDIS_URL || 'redis://localhost:6379'
-    }
-  })
-}
-
 test.skip('hapi throws', async (t) => {
+  const runtime = {
+    // config,
+    notify: () => {},
+    captureException: () => {},
+    cache: new Cache({
+      cache: {
+        redis: process.env.REDIS_URL || 'redis://localhost:6379'
+      }
+    })
+  }
+
   const server = await Server({
     routes: hapiControllersIndex,
     id: 'a'
