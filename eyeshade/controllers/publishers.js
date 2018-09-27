@@ -650,6 +650,5 @@ module.exports.initialize = async (debug, runtime) => {
   ])
 
   await runtime.queue.create('publishers-bulk-create')
-  await runtime.queue.create('publisher-report')
   await runtime.queue.create('report-publishers-statements')
 }
