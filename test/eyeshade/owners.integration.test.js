@@ -8,7 +8,6 @@ import {
   connectToDb,
   cleanEyeshadeDb,
   braveYoutubeOwner,
-  braveYoutubePublisher,
   ok
 } from '../utils'
 
@@ -133,7 +132,7 @@ test('eyeshade POST /v2/owners with site channels', async t => {
 })
 
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(16)
+  t.plan(14)
   const { owners } = t.context
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33b'
   const SCOPE = 'cards:read user:read'
@@ -156,13 +155,6 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   const ownerWalletUrl = `/v1/owners/${encodedOwner}/wallet`
 
   t.is(await owners.count(dbSelector), 0, 'sanity')
-  await eyeshadeAgent.post('/v2/owners')
-    .send(dataPublisherWithSite)
-    .expect(200)
-  t.is(await owners.count(dbSelector), 1, 'can add owner')
-  let owner = await owners.findOne(dbSelector)
-  t.is(owner.parameters, undefined, 'sanity')
-  t.is(owner.authorized, false, 'sanity')
 
   const dataOwnerWalletParams = {
     provider: 'uphold',
@@ -175,18 +167,11 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
     .send(dataOwnerWalletParams)
     .expect(200)
 
-  owner = await owners.findOne(dbSelector)
+  t.is(await owners.count(dbSelector), 1, 'can add owner')
+
+  let owner = await owners.findOne(dbSelector)
   t.is(_.isObject(owner.parameters), true, 'wallet has uphold parameters')
   t.is(owner.authorized, true, 'owner is authorized')
-
-  // resend channel info
-  await eyeshadeAgent.post('/v2/owners')
-    .send(dataPublisherWithSite)
-    .expect(200)
-
-  owner = await owners.findOne(dbSelector)
-  t.is(_.isObject(owner.parameters), true, 'wallet still has uphold parameters')
-  t.is(owner.authorized, true, 'owner is still authorized')
 
   const { body } = await eyeshadeAgent.get(ownerWalletUrl)
     .send().expect(200)
@@ -209,23 +194,20 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(possibleCurrencies.indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
   t.is(possibleCurrencies.indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
   t.is(scope, SCOPE, 'get wallet returns authorization scope')
+
+  // resend channel info
+  await eyeshadeAgent.post('/v2/owners')
+    .send(dataPublisherWithSite)
+    .expect(200)
+
+  owner = await owners.findOne(dbSelector)
+  t.is(_.isObject(owner.parameters), true, 'wallet still has uphold parameters')
+  t.is(owner.authorized, true, 'owner is still authorized')
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
   t.plan(0)
   const encodedOwner = encodeURIComponent(braveYoutubeOwner)
-
-  await eyeshadeAgent.post('/v2/owners').send({
-    ownerId: braveYoutubeOwner,
-    contactInfo: {
-      name: 'Brave',
-      phone: '+12345678900',
-      email: 'null@brave.com'
-    },
-    channels: [{
-      channelId: braveYoutubePublisher
-    }]
-  }).expect(ok)
 
   const walletUrl = `/v1/owners/${encodedOwner}/wallet`
   const parameters = {
