@@ -617,8 +617,7 @@ v1.getStats =
 },
 
   auth: {
-    strategy: 'session',
-    scope: [ 'ledger', 'QA' ],
+    strategy: 'simple',
     mode: 'required'
   },
 
