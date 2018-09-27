@@ -6,18 +6,26 @@ const underscore = require('underscore')
 
 const debug = new SDebug('sentry')
 
-const release = process.env.HEROKU_SLUG_COMMIT || 'test'
-
 const Sentry = function (config, runtime) {
   if (!(this instanceof Sentry)) return new Sentry(config, runtime)
 
-  if (!config.sentry.dsn) {
+  const { sentry } = config
+  const {
+    dsn,
+    project,
+    slug
+  } = sentry
+
+  if (!dsn) {
     process.on('unhandledRejection', (ex) => {
       console.log(ex.stack)
 
       debug('sentry', ex)
     })
   }
+
+  const release = `${project}:${slug}`
+  debug('sentry release', release)
 
   // NOTE If sentry dsn if falsey, events will be consumed without error
   //      with no attempt to send them
