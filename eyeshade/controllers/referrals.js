@@ -10,6 +10,7 @@ const braveJoi = utils.extras.joi
 const v1 = {}
 
 const schema = Joi.array().min(1).items(Joi.object().keys({
+  ownerId: braveJoi.string().owner().required().description('the owner'),
   channelId: braveJoi.string().publisher().required().description('the publisher identity'),
   downloadId: Joi.string().guid().required().description('the download identity'),
   platform: Joi.string().token().required().description('the download platform'),
@@ -72,7 +73,6 @@ v1.createReferrals = {
       const transactionId = request.params.transactionId
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
-      const publishers = runtime.database.get('publishers', debug)
       const referrals = runtime.database.get('referrals', debug)
       let entries, matches, probi, query
 
@@ -83,10 +83,7 @@ v1.createReferrals = {
       probi = bson.Decimal128.fromString(probi.toString())
       query = { $or: [] }
       for (let referral of payload) {
-        const entry = await publishers.findOne({ publisher: referral.channelId })
-        if (!entry) return reply(boom.badData('no such channelId: ' + referral.channelId))
-
-        underscore.extend(referral, { owner: entry.owner, altcurrency: altcurrency, probi: probi })
+        underscore.extend(referral, { altcurrency: altcurrency, probi: probi })
         query.$or.push({ downloadId: referral.downloadId })
       }
       entries = await referrals.find(query)
@@ -103,11 +100,12 @@ v1.createReferrals = {
         state = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
           $set: underscore.extend({
-            transactionId: transactionId,
-            publisher: referral.channelId,
             finalized: new Date(referral.finalized),
+            owner: referral.ownerId,
+            publisher: referral.channelId,
+            transactionId: transactionId,
             exclude: false
-          }, underscore.pick(referral, [ 'owner', 'platform', 'altcurrency', 'probi' ]))
+          }, underscore.pick(referral, [ 'platform', 'altcurrency', 'probi' ]))
         }
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
       }

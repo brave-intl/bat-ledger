@@ -720,6 +720,7 @@ test('ensure referral balances are computed correctly', async t => {
 
   await eyeshadeAgent.put('/v1/referrals/' + uuid.v4().toLowerCase()).send([
     {
+      ownerId: braveYoutubeOwner,
       channelId: braveYoutubePublisher,
       downloadId: uuid.v4(),
       platform: 'android',
