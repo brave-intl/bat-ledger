@@ -539,10 +539,8 @@ v1.putWallet = {
       const provider = payload.provider
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
-      let entry, entries, state
 
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
           defaultCurrency: payload.defaultCurrency,
@@ -591,16 +589,13 @@ v1.patchWallet = {
     return async (request, reply) => {
       const owner = request.params.owner
       const payload = request.payload
-      const provider = payload.provider
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
-      let entry, entries, state
 
-      entry = await owners.findOne({ owner: owner })
+      const entry = await owners.findOne({ owner: owner })
       if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.pick(underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
           defaultCurrency: payload.defaultCurrency,
