@@ -20,7 +20,7 @@ test('hapi throws', async (t) => {
     },
     cache: new Cache({
       cache: {
-        redis: process.env.REDIS_URL || 'redis://localhost:6379'
+        redis: process.env.BAT_REDIS_URL || 'redis://localhost:6379'
       }
     })
   }
