@@ -4,7 +4,6 @@ const os = require('os')
 const asyncHandler = require('hapi-async-handler')
 const authBearerToken = require('hapi-auth-bearer-token')
 const authCookie = require('hapi-auth-cookie')
-const raven = require('hapi-raven')
 const cryptiles = require('cryptiles')
 const bell = require('bell')
 const boom = require('boom')
@@ -33,12 +32,6 @@ const Server = async (options, runtime) => {
     runtime = options
     options = {}
   }
-
-  const ravenPlugin = {
-    register: raven,
-    options: runtime.config.sentry
-  }
-
   underscore.defaults(options, { id: server.info.id, module: module, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
@@ -67,9 +60,7 @@ const Server = async (options, runtime) => {
   else epimetheus.instrument(server)
 
   server.register(
-    [
-      ravenPlugin,
-      bell,
+    [ bell,
       asyncHandler,
       authBearerToken,
       authCookie,
@@ -335,30 +326,34 @@ const Server = async (options, runtime) => {
   // automated fishing expeditions shouldn't result in devops alerts...
   server.route({ method: 'GET', path: '/{path*}', handler: { file: './documentation/robots.txt' } })
 
-  server.start((err) => {
-    if (err) {
-      debug('unable to start server', err)
-      throw err
-    }
+  server.started = new Promise((resolve, reject) => {
+    server.start((err) => {
+      if (err) {
+        debug('unable to start server', err)
+        reject(err)
+        throw err
+      }
 
-    let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
+      let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
 
-    dns.setServers(resolvers)
-    debug('webserver started',
-      underscore.extend(
-        { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
-        server.info,
-        {
-          env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
-          options: underscore.pick(options, [ 'headersP', 'remoteP' ])
-        }))
-    runtime.notify(debug, {
-      text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
-        (process.env.DYNO || 'web') + '/' + options.id
+      dns.setServers(resolvers)
+      debug('webserver started',
+        underscore.extend(
+          { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
+          server.info,
+          {
+            env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
+            options: underscore.pick(options, [ 'headersP', 'remoteP' ])
+          }))
+      runtime.notify(debug, {
+        text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
+          (process.env.DYNO || 'web') + '/' + options.id
+      })
+
+      resolve('started')
+      // Hook to notify start script.
+      if (process.send) { process.send('started') }
     })
-
-    // Hook to notify start script.
-    if (process.send) { process.send('started') }
   })
 
   return server
