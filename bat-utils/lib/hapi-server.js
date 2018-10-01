@@ -326,30 +326,34 @@ const Server = async (options, runtime) => {
   // automated fishing expeditions shouldn't result in devops alerts...
   server.route({ method: 'GET', path: '/{path*}', handler: { file: './documentation/robots.txt' } })
 
-  server.start((err) => {
-    if (err) {
-      debug('unable to start server', err)
-      throw err
-    }
+  server.started = new Promise((resolve, reject) => {
+    server.start((err) => {
+      if (err) {
+        debug('unable to start server', err)
+        reject(err)
+        throw err
+      }
 
-    let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
+      let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
 
-    dns.setServers(resolvers)
-    debug('webserver started',
-      underscore.extend(
-        { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
-        server.info,
-        {
-          env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
-          options: underscore.pick(options, [ 'headersP', 'remoteP' ])
-        }))
-    runtime.notify(debug, {
-      text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
-        (process.env.DYNO || 'web') + '/' + options.id
+      dns.setServers(resolvers)
+      debug('webserver started',
+        underscore.extend(
+          { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
+          server.info,
+          {
+            env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
+            options: underscore.pick(options, [ 'headersP', 'remoteP' ])
+          }))
+      runtime.notify(debug, {
+        text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
+          (process.env.DYNO || 'web') + '/' + options.id
+      })
+
+      resolve('started')
+      // Hook to notify start script.
+      if (process.send) { process.send('started') }
     })
-
-    // Hook to notify start script.
-    if (process.send) { process.send('started') }
   })
 
   return server
