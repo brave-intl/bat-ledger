@@ -30,7 +30,7 @@ exports.workers = {
         }
       ])
 
-      const client = await runtime.postgres.pool.connect()
+      const client = await runtime.postgres.connect()
       try {
         await client.query('BEGIN')
         try {

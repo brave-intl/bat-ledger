@@ -9,6 +9,12 @@ import { insertFromSettlement, insertFromReferrals, insertFromVoting, updateBala
 import uuid from 'uuid'
 import _ from 'underscore'
 
+import {
+  cleanPgDb
+} from '../utils'
+
+const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+
 const runtime = {
   config: {
     wallet: {
@@ -18,12 +24,10 @@ const runtime = {
     }
   },
   currency: new Currency({ currency: { static: true } }),
-  postgres: new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+  postgres
 }
 
-test.beforeEach(async (t) => {
-  await runtime.postgres.pool.query('delete from transactions;')
-})
+test.afterEach(cleanPgDb(postgres))
 
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
@@ -63,7 +67,7 @@ const referralSettlement = {
 test('contribution settlement transaction', async t => {
   t.plan(12)
 
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
     await insertFromSettlement(runtime, client, contributionSettlement)
@@ -104,7 +108,7 @@ test('contribution settlement transaction', async t => {
 test('referral settlement transaction', async t => {
   t.plan(6)
 
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
     await insertFromSettlement(runtime, client, referralSettlement)
@@ -132,7 +136,7 @@ test('referral settlement transaction', async t => {
 
 test('settlement transaction throws on invalid altcurrency', async t => {
   t.plan(1)
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.altcurrency = 'ETH'
@@ -144,7 +148,7 @@ test('settlement transaction throws on invalid altcurrency', async t => {
 
 test('settlement transaction throws on missing probi', async t => {
   t.plan(1)
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.probi
@@ -156,7 +160,7 @@ test('settlement transaction throws on missing probi', async t => {
 
 test('settlement transaction throws on 0 probi', async t => {
   t.plan(1)
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '0'
@@ -168,7 +172,7 @@ test('settlement transaction throws on 0 probi', async t => {
 
 test('settlement transaction throws on negative probi', async t => {
   t.plan(1)
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '-1'
@@ -180,7 +184,7 @@ test('settlement transaction throws on negative probi', async t => {
 
 test('settlement transaction throws on missing owner', async t => {
   t.plan(1)
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.owner
@@ -203,7 +207,7 @@ const voting = {
 test('voting transaction', async t => {
   t.plan(6)
 
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
     await insertFromVoting(runtime, client, voting, createdTimestamp(docId))
@@ -232,7 +236,7 @@ test('voting transaction', async t => {
 test('voting and contribution settlement transaction', async t => {
   t.plan(5)
 
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
     await insertFromVoting(runtime, client, voting, createdTimestamp(docId))
@@ -270,7 +274,7 @@ const referrals = {
 test('referral transaction', async t => {
   t.plan(4)
 
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
     await insertFromReferrals(runtime, client, referrals)
@@ -279,7 +283,7 @@ test('referral transaction', async t => {
     const txns = await client.query('select * from transactions order by created_at;')
 
     t.true(txns.rows.length === 1)
-  // payout to uphold occurs
+    // payout to uphold occurs
     t.true(txns.rows[0].transaction_type === 'referral')
 
     await updateBalances(runtime, client)
@@ -295,7 +299,7 @@ test('referral transaction', async t => {
 test('referral and referral settlement transaction', async t => {
   t.plan(3)
 
-  const client = await runtime.postgres.pool.connect()
+  const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
     await insertFromReferrals(runtime, client, referrals)

@@ -89,7 +89,7 @@ exports.workers = {
       const { settlementId, shouldUpdateBalances } = payload
       const docs = await settlements.find({ settlementId, owner: { $exists: true } })
 
-      const client = await runtime.postgres.pool.connect()
+      const client = await runtime.postgres.connect()
       try {
         await client.query('BEGIN')
         try {

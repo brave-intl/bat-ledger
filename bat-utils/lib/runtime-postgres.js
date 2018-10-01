@@ -16,10 +16,7 @@ const Postgres = function (config, runtime) {
   })
 
   if (config.postgres.schemaVersionCheck) {
-    this.pool.query('select id from migrations order by id desc limit 1;', [], (err, resp) => {
-      if (err) {
-        throw Error(err)
-      }
+    this.query('select id from migrations order by id desc limit 1;', []).then((resp) => {
       if (resp.rowCount !== 1) {
         throw Error('db has not been initialized')
       }
@@ -32,12 +29,17 @@ const Postgres = function (config, runtime) {
   }
 }
 
-Postgres.prototype.query = async (text, params) => {
-  const start = Date.now()
-  const ret = await this.pool.query(text, params)
-  const duration = Date.now() - start
-  debug('executed query', { text, duration, rows: ret.rowCount })
-  return ret
+Postgres.prototype = {
+  connect: function () {
+    return this.pool.connect()
+  },
+  query: async function (text, params) {
+    const start = Date.now()
+    const ret = await this.pool.query(text, params)
+    const duration = Date.now() - start
+    debug('executed query', { text, duration, rows: ret.rowCount })
+    return ret
+  }
 }
 
 module.exports = Postgres
