@@ -42,6 +42,7 @@ const read = function (runtime, apiVersion) {
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
+      httpSigningPubKey: wallet.httpSigningPubKey,
       rates: currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency]
     }
 
@@ -180,6 +181,7 @@ v1.read = { handler: (runtime) => { return read(runtime, 1) },
       recurringURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for recurring payments'),
       paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful payment'),
       rates: Joi.object().optional().description('current exchange rates from BTC to various currencies'),
+      httpSigningPubKey: Joi.string().description('public signing key from uphold wallet'),
       satoshis: Joi.number().integer().min(0).optional().description('the wallet balance in satoshis'),
       unsignedTx: Joi.object().optional().description('unsigned transaction')
     }).unknown(true)
