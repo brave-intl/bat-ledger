@@ -42,6 +42,7 @@ const read = function (runtime, apiVersion) {
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
+      httpSigningPubKey: wallet.httpSigningPubKey,
       rates: currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency]
     }
 

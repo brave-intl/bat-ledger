@@ -190,6 +190,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   if (err) throw err
 
   t.true(response.body.hasOwnProperty('balance'))
+  t.true(_.isString(response.body.httpSigningPubKey))
   t.is(response.body.balance, '0.0000')
 
   const desired = donateAmt.toFixed(4).toString()
