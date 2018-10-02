@@ -189,6 +189,7 @@ v1.getEarningsTotals =
 v1.getPaidTotals =
 { handler: (runtime) => {
   return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
     let { type } = request.params
     let {
       order,

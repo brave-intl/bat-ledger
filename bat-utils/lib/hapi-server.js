@@ -348,7 +348,7 @@ const Server = async (options, runtime) => {
             options: underscore.pick(options, [ 'headersP', 'remoteP' ])
           }))
       runtime.notify(debug, {
-        text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
+        text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +
           (process.env.DYNO || 'web') + '/' + options.id
       })
 

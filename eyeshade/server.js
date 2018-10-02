@@ -7,6 +7,7 @@ const { controllers, server } = hapi
 
 const config = require('../config.js')
 
+const accountsController = require('./controllers/accounts')
 const addressController = require('./controllers/address')
 const grafanaDatasourceController = require('./controllers/grafana-datasource')
 const ownersController = require('./controllers/owners')
@@ -19,6 +20,7 @@ const walletController = require('./controllers/wallet')
 Runtime.newrelic.setupNewrelic(config, __filename)
 
 const parentModules = [
+  accountsController,
   addressController,
   grafanaDatasourceController,
   ownersController,

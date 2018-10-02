@@ -8,6 +8,7 @@ const cache = require('./lib/runtime-cache')
 const currency = require('./lib/runtime-currency')
 const database = require('./lib/runtime-database')
 const newrelic = require('./lib/runtime-newrelic')
+const postgres = require('./lib/runtime-postgres')
 const prometheus = require('./lib/runtime-prometheus')
 const queue = require('./lib/runtime-queue')
 const sentry = require('./lib/runtime-sentry')
@@ -19,6 +20,7 @@ const hash = {
   currency,
   database,
   newrelic,
+  postgres,
   prometheus,
   queue,
   sentry,
