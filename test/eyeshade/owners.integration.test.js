@@ -8,7 +8,8 @@ import {
   connectToDb,
   cleanEyeshadeDb,
   braveYoutubeOwner,
-  ok
+  ok,
+  auth
 } from '../utils'
 
 import dotenv from 'dotenv'
@@ -45,14 +46,14 @@ test('eyeshade POST /v2/owners with YouTube channels', async t => {
   }
 
   t.is(await publishers.count(dbSelector), 0, 'sanity')
-  await eyeshadeAgent.post(PATH)
+  await eyeshadeAgent.post(PATH).use(auth)
     .send(dataPublisherWithYouTube)
     .expect(200)
   t.is(await publishers.count(dbSelector), 1, 'can add channels')
   const channel = await publishers.findOne(dbSelector)
   t.is(channel.providerName, 'youtube', 'sets channel provider to youtube')
 
-  await eyeshadeAgent.post(PATH)
+  await eyeshadeAgent.post(PATH).use(auth)
     .send(dataPublisherWithYouTube)
     .expect(200)
   const publishersCount = await publishers.count(dbSelector)
@@ -81,7 +82,7 @@ test('eyeshade POST /v2/owners with Twitch channels', async t => {
   }
 
   t.is(await publishers.count(dbSelector), 0, 'sanity')
-  await eyeshadeAgent.post(PATH)
+  await eyeshadeAgent.post(PATH).use(auth)
     .send(dataPublisherWithTwitch)
     .expect(200)
 
@@ -89,7 +90,7 @@ test('eyeshade POST /v2/owners with Twitch channels', async t => {
   const channel = await publishers.findOne(dbSelector)
   t.is(channel.providerName, 'twitch', 'sets channel provider to twitch')
 
-  await eyeshadeAgent.post(PATH)
+  await eyeshadeAgent.post(PATH).use(auth)
     .send(dataPublisherWithTwitch)
     .expect(200)
 
@@ -117,14 +118,14 @@ test('eyeshade POST /v2/owners with site channels', async t => {
   }
 
   t.is(await publishers.count(dbSelector), 0, 'sanity')
-  await eyeshadeAgent.post(PATH)
+  await eyeshadeAgent.post(PATH).use(auth)
     .send(dataPublisherWithSite)
     .expect(200)
   t.is(await publishers.count(dbSelector), 1, 'can add channels')
   const channel = await publishers.findOne(dbSelector)
   t.is(channel.verified, true, 'adds site channels in verified state')
 
-  await eyeshadeAgent.post(PATH)
+  await eyeshadeAgent.post(PATH).use(auth)
     .send(dataPublisherWithSite)
     .expect(200)
 
@@ -163,7 +164,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
       scope: SCOPE
     }
   }
-  await eyeshadeAgent.put(ownerWalletUrl)
+  await eyeshadeAgent.put(ownerWalletUrl).use(auth)
     .send(dataOwnerWalletParams)
     .expect(200)
 
@@ -173,7 +174,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(_.isObject(owner.parameters), true, 'wallet has uphold parameters')
   t.is(owner.authorized, true, 'owner is authorized')
 
-  const { body } = await eyeshadeAgent.get(ownerWalletUrl)
+  const { body } = await eyeshadeAgent.get(ownerWalletUrl).use(auth)
     .send().expect(200)
   const { wallet } = body
   const {
@@ -196,7 +197,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(scope, SCOPE, 'get wallet returns authorization scope')
 
   // resend channel info
-  await eyeshadeAgent.post('/v2/owners')
+  await eyeshadeAgent.post('/v2/owners').use(auth)
     .send(dataPublisherWithSite)
     .expect(200)
 
@@ -219,10 +220,10 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
     provider: 'uphold',
     parameters
   }
-  await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
+  await eyeshadeAgent.put(walletUrl).use(auth).send(data).expect(ok)
 
   const currency = 'BAT'
   const createCardData = { currency }
   const cardUrl = `/v3/owners/${encodedOwner}/wallet/card`
-  await eyeshadeAgent.post(cardUrl).send(createCardData).expect(ok)
+  await eyeshadeAgent.post(cardUrl).use(auth).send(createCardData).expect(ok)
 })

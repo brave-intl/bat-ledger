@@ -13,7 +13,8 @@ import Postgres from 'bat-utils/lib/runtime-postgres'
 import Currency from 'bat-utils/lib/runtime-currency'
 import {
   eyeshadeAgent,
-  cleanPgDb
+  cleanPgDb,
+  auth
 } from '../utils'
 
 const docId = {
@@ -93,7 +94,8 @@ test('check total settlement totals', async t => {
     let type
     let body
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/settlements/${type}/total`))
+
+    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/settlements/${type}/total`).use(auth))
     t.deepEqual(body, [{
       channel: 'bar.com',
       paid: '12.000000000000000000',
@@ -105,7 +107,7 @@ test('check total settlement totals', async t => {
     }])
 
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/settlements/${type}/total?order=asc`))
+    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/settlements/${type}/total?order=asc`).use(auth))
     t.deepEqual(body, [{
       channel: 'foo.com',
       paid: '10.000000000000000000',
@@ -133,7 +135,7 @@ test('check total earnings total', async t => {
     let body
 
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/earnings/${type}/total`))
+    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/earnings/${type}/total`).use(auth))
     t.deepEqual(body, [{
       channel: 'bar.com',
       earnings: '12.000000000000000000',
@@ -145,7 +147,7 @@ test('check total earnings total', async t => {
     }])
 
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/earnings/${type}/total?order=asc`))
+    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/earnings/${type}/total?order=asc`).use(auth))
     t.deepEqual(body, [{
       channel: 'foo.com',
       earnings: '10.000000000000000000',

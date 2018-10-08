@@ -47,7 +47,6 @@ const ledgerCollections = [
 ]
 
 const tkn = process.env.TOKEN_LIST.split(',')[0]
-const token = `Bearer ${tkn}`
 
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 
@@ -60,10 +59,13 @@ const formURL = createFormURL({
   currency: 'USD'
 })
 
-const AUTH_KEY = 'Authorization'
-const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
-const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
-const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
+const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER)
+const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER)
+const balanceAgent = agent(process.env.BAT_BALANCE_SERVER)
+
+const auth = (req) => {
+  return req.set('Authorization', `Bearer ${tkn}`)
+}
 
 const status = (expectation) => ({ status, body }) => {
   if (status !== expectation) {
@@ -157,6 +159,7 @@ module.exports = {
   fetchReport,
   formURL,
   ok,
+  auth,
   status,
   eyeshadeAgent,
   ledgerAgent,
@@ -210,7 +213,7 @@ function createSurveyor (options = {}) {
       probi: probi || new BigNumber(votes * rate).times('1e18').toString()
     }
   }
-  return ledgerAgent.post(url).send(data).expect(ok)
+  return ledgerAgent.post(url).use(auth).send(data).expect(ok)
 }
 
 function createRedisCache () {
