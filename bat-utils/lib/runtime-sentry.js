@@ -25,11 +25,13 @@ const Sentry = function (config, runtime) {
   }
 
   const release = `${project}:${slug}`
+  const enabled = !!dsn
   debug('sentry release', release)
 
   // NOTE If sentry dsn if falsey, events will be consumed without error
   //      with no attempt to send them
-  Raven.config(config.sentry.dsn, {
+  Raven.config(dsn, {
+    enabled,
     release,
     captureUnhandledRejections: true
   }).install()
