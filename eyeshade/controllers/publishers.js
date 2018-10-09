@@ -28,21 +28,12 @@ v2.settlement = {
     return async (request, reply) => {
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
       const settlements = runtime.database.get('settlements', debug)
       const fields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
-      let entry, owner, publisher, state
+      let entry, state
 
       for (entry of payload) {
         if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
-
-        publisher = await publishers.findOne({ publisher: entry.publisher })
-        if (!publisher) return reply(boom.badData('no such entry: ' + entry.publisher))
-
-        // The owner at the time of uploading could be different
-        owner = await owners.findOne({ owner: entry.owner })
-        if (!owner) return reply(boom.badData('no such owner ' + publisher.owner + ' for entry: ' + entry.publisher))
       }
 
       state = {
