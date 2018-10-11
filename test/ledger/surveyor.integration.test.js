@@ -1,8 +1,11 @@
 import { serial as test } from 'ava'
 import {
   ledgerAgent,
+  cleanDbs,
   ok
 } from '../utils'
+
+test.after(cleanDbs)
 
 test('verify voting batching endpoint does not error', async t => {
   const surveyorType = 'voting'

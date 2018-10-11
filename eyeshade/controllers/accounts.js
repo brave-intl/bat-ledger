@@ -1,15 +1,18 @@
 const Joi = require('joi')
 const boom = require('boom')
-
+const BigNumber = require('bignumber.js')
 const utils = require('bat-utils')
+const _ = require('underscore')
+const queries = require('../lib/queries')
+const transactions = require('../lib/transaction')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
-
-const queries = require('../lib/queries')
 
 const v1 = {}
 
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
+const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
+const joiPaid = Joi.number().description('amount paid out in BAT')
 
 /*
    GET /v1/accounts/{account}/transactions
@@ -37,15 +40,11 @@ ORDER BY created_at
     const result = await runtime.postgres.query(query1, [ account ])
     const transactions = result.rows
 
-    transactions.forEach((transaction) => {
-      Object.keys(transaction).forEach((key) => {
-        if (transaction[key] == null) {
-          delete transaction[key]
-        }
-      })
+    const txs = _.map(transactions, (tx) => {
+      return _.omit(tx, (value) => value == null)
     })
 
-    reply(transactions)
+    reply(txs)
   }
 },
 
@@ -242,11 +241,73 @@ v1.getPaidTotals =
   response: {
     schema: Joi.array().items(
        Joi.object().keys({
-         channel: Joi.string(),
-         paid: Joi.number().description('amount paid out in BAT'),
+         channel: joiChannel.required(),
+         paid: joiPaid.required(),
          account_id: Joi.string()
        })
      )
+  }
+}
+
+/*
+  PUT /v1/accounts/{payment_id}/transactions/ads/{token_id}
+*/
+v1.adTransactions = {
+  handler: (runtime) => async (request, reply) => {
+    const {
+      params,
+      payload
+    } = request
+    const {
+      postgres
+    } = runtime
+    const {
+      amount: payloadAmount
+    } = payload
+    if (!_.isString(payloadAmount)) {
+      return reply(boom.badRequest())
+    }
+    const amount = (new BigNumber(payloadAmount)).toString()
+    const tx = _.assign({}, params, {
+      amount
+    })
+    let txs = null
+    try {
+      txs = await transactions.insertFromAd(runtime, postgres, tx)
+    } catch (e) {
+      const text = 'Transaction with that id exists, updates are not allowed'
+      return reply(boom.conflict(text))
+    }
+    const transaction = txs[0]
+    const result = {
+      channel: transaction.channel,
+      paid: transaction.amount
+    }
+    reply(result)
+  },
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Used by publishers for retrieving a list of top channels paid out',
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    params: {
+      payment_id: Joi.string().required().description('The payment id to hold the transaction under'),
+      token_id: Joi.string().required().description('A unique token id')
+    },
+    payload: Joi.object().keys({
+      amount: Joi.string().regex(/^\d*\.?\d+/i).required().description('Amount of bat to pay for the ad')
+    }).required()
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      channel: joiChannel.required(),
+      paid: joiPaid.required()
+    }).required().description('Transaction inserted result')
   }
 }
 
@@ -254,5 +315,8 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
   braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances),
+  braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
 ]
+
+module.exports.v1 = v1
