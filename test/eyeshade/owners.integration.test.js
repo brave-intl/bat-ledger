@@ -24,130 +24,12 @@ test.beforeEach(async (t) => {
   })
 })
 
-test('eyeshade POST /v2/owners with YouTube channels', async t => {
-  t.plan(4)
-  const { publishers } = t.context
-  const PATH = '/v2/owners'
-  const channelId = 'youtube#channel:323541525412313421'
-  const dataPublisherWithYouTube = {
-    ownerId: 'publishers#uuid:8eb1efca-a648-5e37-b328-b298f232d70f',
-    contactInfo: {
-      name: 'Alice the Youtuber',
-      phone: '+14159001420',
-      email: 'alice2@spud.com'
-    },
-    channels: [{
-      channelId
-    }]
-  }
-  const dbSelector = {
-    publisher: channelId
-  }
-
-  t.is(await publishers.count(dbSelector), 0, 'sanity')
-  await eyeshadeAgent.post(PATH)
-    .send(dataPublisherWithYouTube)
-    .expect(200)
-  t.is(await publishers.count(dbSelector), 1, 'can add channels')
-  const channel = await publishers.findOne(dbSelector)
-  t.is(channel.providerName, 'youtube', 'sets channel provider to youtube')
-
-  await eyeshadeAgent.post(PATH)
-    .send(dataPublisherWithYouTube)
-    .expect(200)
-  const publishersCount = await publishers.count(dbSelector)
-  t.is(publishersCount, 1, 'does not double add the same channel')
-})
-
-test('eyeshade POST /v2/owners with Twitch channels', async t => {
-  t.plan(4)
-  const { publishers } = t.context
-  const PATH = '/v2/owners'
-  const channelId = 'twitch#channel:twtwtw'
-  const dataPublisherWithTwitch = {
-    ownerId: 'publishers#uuid:20995cae-d0f7-50b9-aa42-05ea04ab28be',
-    contactInfo: {
-      name: 'Alice the Twitcher',
-      phone: '+14159001420',
-      email: 'aliceTwitch@spud.com'
-    },
-    channels: [{
-      channelId,
-      authorizerName: 'TwTwTw'
-    }]
-  }
-  const dbSelector = {
-    publisher: channelId
-  }
-
-  t.is(await publishers.count(dbSelector), 0, 'sanity')
-  await eyeshadeAgent.post(PATH)
-    .send(dataPublisherWithTwitch)
-    .expect(200)
-
-  t.is(await publishers.count(dbSelector), 1, 'can add channels')
-  const channel = await publishers.findOne(dbSelector)
-  t.is(channel.providerName, 'twitch', 'sets channel provider to twitch')
-
-  await eyeshadeAgent.post(PATH)
-    .send(dataPublisherWithTwitch)
-    .expect(200)
-
-  t.is(await publishers.count(dbSelector), 1, 'does not double add the same channel')
-})
-
-test('eyeshade POST /v2/owners with site channels', async t => {
-  t.plan(4)
-  const { publishers } = t.context
-  const PATH = '/v2/owners'
-  const channelId = 'verified.org'
-  const dataPublisherWithSite = {
-    ownerId: 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33a',
-    contactInfo: {
-      name: 'Alice the Verified',
-      phone: '+14159001421',
-      email: 'alice@verified.org'
-    },
-    channels: [{
-      channelId
-    }]
-  }
-  const dbSelector = {
-    publisher: channelId
-  }
-
-  t.is(await publishers.count(dbSelector), 0, 'sanity')
-  await eyeshadeAgent.post(PATH)
-    .send(dataPublisherWithSite)
-    .expect(200)
-  t.is(await publishers.count(dbSelector), 1, 'can add channels')
-  const channel = await publishers.findOne(dbSelector)
-  t.is(channel.verified, true, 'adds site channels in verified state')
-
-  await eyeshadeAgent.post(PATH)
-    .send(dataPublisherWithSite)
-    .expect(200)
-
-  t.is(await publishers.count(dbSelector), 1, 'does not double add the same channel')
-})
-
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(14)
+  t.plan(12)
   const { owners } = t.context
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33b'
   const SCOPE = 'cards:read user:read'
 
-  const dataPublisherWithSite = {
-    ownerId: OWNER,
-    contactInfo: {
-      name: 'Alice the Verified',
-      phone: '+14159001421',
-      email: 'alice@verified.org'
-    },
-    channels: [{
-      channelId: 'verified.org'
-    }]
-  }
   const dbSelector = {
     owner: OWNER
   }
@@ -194,15 +76,6 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(possibleCurrencies.indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
   t.is(possibleCurrencies.indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
   t.is(scope, SCOPE, 'get wallet returns authorization scope')
-
-  // resend channel info
-  await eyeshadeAgent.post('/v2/owners')
-    .send(dataPublisherWithSite)
-    .expect(200)
-
-  owner = await owners.findOne(dbSelector)
-  t.is(_.isObject(owner.parameters), true, 'wallet still has uphold parameters')
-  t.is(owner.authorized, true, 'owner is still authorized')
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {

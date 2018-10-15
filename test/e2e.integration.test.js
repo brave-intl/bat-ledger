@@ -18,10 +18,7 @@ import {
 
 import {
   cleanDbs,
-  assertWithinBounds,
   eyeshadeAgent,
-  fetchReport,
-  formURL,
   ledgerAgent,
   ok,
   braveYoutubeOwner,
@@ -29,7 +26,6 @@ import {
   createSurveyor,
   balanceAgent,
   createRedisCache,
-  freezeSurveyors,
   connectToDb
 } from './utils'
 
@@ -593,25 +589,11 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
 
 test('eyeshade: create brave youtube channel and owner', async t => {
   t.plan(1)
-
-  const { body } = await eyeshadeAgent.post('/v2/owners').send({
-    'ownerId': braveYoutubeOwner,
-    'contactInfo': {
-      'name': 'Brave',
-      'phone': '+12345678900',
-      'email': 'null@brave.com'
-    },
-    'channels': [{
-      'channelId': braveYoutubePublisher
-    }]
-  }).expect(ok)
-
-  t.true(_.isObject(body))
-
   // set authorized / uphold parameters
   await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
     .send({ 'provider': 'uphold', 'parameters': {} })
     .expect(ok)
+  t.true(true)
 })
 
 test('check stats endpoint', async t => {
@@ -656,122 +638,6 @@ test('payments are cached and can be removed', async t => {
   }).expect(ok)
   t.is(await getCached(cardId, balanceCacheConfig.link), paymentId)
   t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
-})
-
-test('ensure contribution balances are computed correctly', async t => {
-  t.plan(7)
-  let reportProbi, reportFees
-  let body
-  const url = formURL('/v1/reports/publishers/contributions', { includeUnpayable: true })
-
-  ;({ reportProbi } = await run())
-  t.is(Number(reportProbi), 0)
-
-  freezeSurveyors(-1)
-
-  ;({ reportProbi, reportFees } = await run())
-  t.true(Number(reportProbi) > 0)
-
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
-  let { contributions } = body
-
-  t.true(Number(contributions.probi) > 0)
-
-  t.true(contributions.probi === reportProbi)
-
-  // settle completely
-  await eyeshadeAgent.post('/v2/publishers/settlement').send([
-    {
-      owner: braveYoutubeOwner,
-      publisher: braveYoutubePublisher,
-      address: uuid.v4(),
-      altcurrency: 'BAT',
-      probi: reportProbi,
-      fees: reportFees,
-      currency: contributions.currency,
-      amount: contributions.amount,
-      transactionId: uuid.v4(),
-      type: 'contribution',
-      hash: uuid.v4()
-    }
-  ]).expect(ok)
-
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
-  ;({ contributions } = body)
-
-  t.true(Number(contributions.probi) === 0)
-
-  async function run () {
-    let body
-    let reportURL
-
-    ;({ body } = await eyeshadeAgent.get(url).send().expect(ok))
-    ;({ reportURL } = body)
-
-    ;({ body } = await fetchReport({ url: reportURL }))
-    t.true(body.length > 0)
-
-    const singleEntry = _.findWhere(body, { publisher: braveYoutubePublisher })
-    return { reportProbi: singleEntry.probi, reportFees: singleEntry.fees }
-  }
-})
-
-test('ensure referral balances are computed correctly', async t => {
-  t.plan(6)
-
-  await eyeshadeAgent.put('/v1/referrals/' + uuid.v4().toLowerCase()).send([
-    {
-      ownerId: braveYoutubeOwner,
-      channelId: braveYoutubePublisher,
-      downloadId: uuid.v4(),
-      platform: 'android',
-      finalized: (new Date()).toISOString()
-    }
-  ]).expect(ok)
-
-  let { body } = await eyeshadeAgent.get(formURL('/v1/reports/publishers/referrals', { includeUnpayable: true }))
-    .send().expect(ok)
-  const { reportURL } = body
-
-  ;({ body } = await fetchReport({ url: reportURL }))
-  t.true(body.length > 0)
-
-  const singleEntry = _.findWhere(body, { publisher: braveYoutubePublisher })
-
-  const reportProbi = singleEntry.probi
-  const fees = singleEntry.fees
-  t.is(fees, '0')
-
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
-  let { contributions } = body
-
-  const walletProbi = new BigNumber(contributions.probi)
-  const amount = Number(contributions.amount)
-
-  t.true(walletProbi > 0)
-  t.is(walletProbi.toString(), reportProbi)
-  assertWithinBounds(t, amount, 5.00, 0.25, 'USD value for a referral should be approx $5')
-
-  // settle completely
-  await eyeshadeAgent.post('/v2/publishers/settlement').send([
-    {
-      owner: braveYoutubeOwner,
-      publisher: braveYoutubePublisher,
-      address: uuid.v4(),
-      altcurrency: 'BAT',
-      probi: contributions.probi,
-      currency: contributions.currency,
-      amount: contributions.amount,
-      transactionId: uuid.v4(),
-      type: 'referral',
-      hash: uuid.v4()
-    }
-  ]).expect(ok)
-
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
-  ;({ contributions } = body)
-
-  t.true(Number(contributions.probi) === 0)
 })
 
 test('check stats endpoint after funds move', async t => {

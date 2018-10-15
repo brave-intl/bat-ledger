@@ -165,7 +165,4 @@ module.exports.initialize = async (debug, runtime) => {
       others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
     }
   ])
-
-  await runtime.queue.create('publishers-bulk-create')
-  await runtime.queue.create('report-publishers-statements')
 }
