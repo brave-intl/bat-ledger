@@ -1,11 +1,9 @@
 const BigNumber = require('bignumber.js')
 const bson = require('bson')
-const dateformat = require('dateformat')
 const moment = require('moment')
 const underscore = require('underscore')
 
 const braveExtras = require('bat-utils').extras
-const braveHapi = braveExtras.hapi
 const {
   documentOlderThan,
   createdTimestamp
@@ -14,51 +12,7 @@ const {
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 let altcurrency
 
-const datefmt2 = 'yyyymmdd-HHMMss-l'
 const feePercent = 0.05
-
-const create = async (runtime, prefix, params) => {
-  let extension, filename, options
-
-  if (params.format === 'json') {
-    options = { content_type: 'application/json' }
-    extension = '.json'
-  } else {
-    options = { content_type: 'text/csv' }
-    extension = '.csv'
-  }
-  filename = prefix + dateformat(underscore.now(), datefmt2) + extension
-  options.metadata = { 'content-disposition': 'attachment; filename="' + filename + '"' }
-  return runtime.database.file(params.reportId, 'w', options)
-}
-
-const publish = async (debug, runtime, method, owner, publisher, endpoint, payload) => {
-  let path, result
-
-  if (!runtime.config.publishers) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('no configuration for publishers server')
-    }
-    return {}
-  }
-
-  path = '/api'
-  if (owner) path += '/owners/' + encodeURIComponent(owner)
-  if ((owner) || (publisher)) path += '/channel'
-  if (owner) path += 's'
-  if (publisher) path += '/' + encodeURIComponent(publisher)
-  result = await braveHapi.wreck[method](runtime.config.publishers.url + path + (endpoint || ''), {
-    headers: {
-      authorization: 'Bearer ' + runtime.config.publishers.access_token,
-      'content-type': 'application/json'
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
-  if (Buffer.isBuffer(result)) result = JSON.parse(result)
-
-  return result
-}
 
 const daily = async (debug, runtime) => {
   const { database } = runtime
@@ -378,6 +332,3 @@ exports.initialize = async (debug, runtime) => {
     setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
   }
 }
-
-exports.create = create
-exports.publish = publish

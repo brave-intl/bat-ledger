@@ -1,13 +1,9 @@
-const url = require('url')
-
 const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
 const underscore = require('underscore')
-const uuid = require('uuid')
 
-const getPublisherProps = require('bat-publisher').getPublisherProps
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
@@ -16,18 +12,6 @@ const v1 = {}
 const v3 = {}
 
 let altcurrency
-
-const ownerString = (owner, info) => {
-  const name = info && (info.name || info.ownerName)
-  const email = info && (info.email || info.ownerEmail)
-  let result = name
-
-  if (result && email) result += ' <' + email + '>'
-  if (result) result += ' '
-  result += owner
-
-  return result
-}
 
 /*
    GET /v1/owners/{owner}/wallet
@@ -414,62 +398,11 @@ v1.patchWallet = {
     { schema: Joi.object().length(0) }
 }
 
-/*
-   GET /v1/owner/{owner}/statement
-       [ used by publishers ]
- */
-
-v1.getStatement = {
-  handler: (runtime) => {
-    return async (request, reply) => {
-      const owner = request.params.owner
-      const reportId = uuid.v4().toLowerCase()
-      const reportURL = url.format(underscore.defaults({ pathname: '/v1/reports/file/' + reportId }, underscore.extend(request.info, { protocol: runtime.config.server.protocol })))
-      const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owners', debug)
-      let entry
-
-      entry = await owners.findOne({ owner: owner })
-      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
-
-      await runtime.queue.send(debug, 'report-publishers-statements',
-                               underscore.defaults({ reportId: reportId, reportURL: reportURL, owner: owner },
-                                                   request.query,
-                                                   { authority: 'automated', rollup: false, summary: false }))
-      reply({ reportURL: reportURL })
-    }
-  },
-
-  auth: {
-    strategy: 'simple',
-    mode: 'required'
-  },
-
-  description: 'Generates a statement for a publisher',
-  tags: [ 'api', 'publishers' ],
-
-  validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: { owner: braveJoi.string().owner().required().description('the owner identity') },
-    query: {
-      starting: Joi.date().iso().optional().description('starting timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z'),
-      ending: Joi.date().iso().optional().description('ending timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      reportURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for a forthcoming report')
-    })
-  }
-}
-
 module.exports.routes = [
   braveHapi.routes.async().post().path('/v3/owners/{owner}/wallet/card').config(v3.createCard),
   braveHapi.routes.async().path('/v1/owners/{owner}/wallet').whitelist().config(v1.getWallet),
   braveHapi.routes.async().put().path('/v1/owners/{owner}/wallet').whitelist().config(v1.putWallet),
-  braveHapi.routes.async().patch().path('/v1/owners/{owner}/wallet').whitelist().config(v1.patchWallet),
-  braveHapi.routes.async().path('/v1/owners/{owner}/statement').whitelist().config(v1.getStatement)
+  braveHapi.routes.async().patch().path('/v1/owners/{owner}/wallet').whitelist().config(v1.patchWallet)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
