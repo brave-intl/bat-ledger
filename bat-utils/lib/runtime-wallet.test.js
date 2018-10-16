@@ -12,7 +12,7 @@ import { uint8tohex } from 'bat-utils/lib/extras-utils'
 dotenv.config()
 
 test('validateTxSignature: works', async t => {
-  t.plan(8)
+  t.plan(9)
 
   const settlementAddress = '0xcafe'
   const wallet = new Wallet({wallet: {settlementAddress: {BAT: settlementAddress}}}, {})
@@ -74,6 +74,12 @@ test('validateTxSignature: works', async t => {
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
   body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '20', extra: false } }
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+
+  // Duplicate field
+  body = `{"destination":"${settlementAddress}","denomination":{"currency":"BAT","amount":"20"}}`
+  wallet.validateTxSignature(info, signTxn(keypair, null, body))
+  body = `{"destination":"${settlementAddress}","destination":"${settlementAddress}","denomination":{"currency":"BAT","amount":"20"}}`
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, null, body)) })
 })
 
 test('selectGrants: does not err when nothing is passed in', async t => {

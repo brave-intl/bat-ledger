@@ -90,6 +90,10 @@ Wallet.prototype.validateTxSignature = function (info, signature) {
     if (!signature.headers.digest) throw new Error('a valid http signature must include the content digest')
 
     const txn = JSON.parse(signature.octets)
+    if (JSON.stringify(txn) !== signature.octets) {
+      throw new Error('octets are not canonical')
+    }
+
     const tmp = Joi.validate(txn, upholdTxnSchema).error
     if (tmp !== null) throw new Error('the signed transaction failed to validate')
     if (+txn.denomination.amount < 1) throw new Error('amount is less than minimum')
