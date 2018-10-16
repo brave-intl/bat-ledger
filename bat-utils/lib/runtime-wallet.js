@@ -4,8 +4,10 @@ const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
+const Joi = require('joi')
 
 const braveHapi = require('./extras-hapi')
+const braveJoi = require('./extras-joi')
 const braveUtils = require('./extras-utils')
 const whitelist = require('./hapi-auth-whitelist')
 
@@ -75,10 +77,23 @@ Wallet.prototype.getTxProbi = function (info, txn) {
   }
 }
 
-Wallet.prototype.validateTxSignature = function (info, txn, signature) {
+Wallet.prototype.validateTxSignature = function (info, signature) {
+  const upholdTxnSchema = Joi.object().keys({
+    denomination: Joi.object().keys({
+      amount: braveJoi.string().numeric().required(),
+      currency: Joi.string().valid('BAT').required()
+    }),
+    destination: Joi.string().valid(this.config.settlementAddress['BAT']).required()
+  })
+
   if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
     if (!signature.headers.digest) throw new Error('a valid http signature must include the content digest')
-    if (!underscore.isEqual(txn, JSON.parse(signature.octets))) throw new Error('the signed and unsigned transactions differed')
+
+    const txn = JSON.parse(signature.octets)
+    const tmp = Joi.validate(txn, upholdTxnSchema).error
+    if (tmp !== null) throw new Error('the signed transaction failed to validate')
+    if (+txn.denomination.amount < 1) throw new Error('amount is less than minimum')
+
     const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(signature.octets, 'utf8').digest('base64')
     if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
 

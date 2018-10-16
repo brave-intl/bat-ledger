@@ -1,19 +1,93 @@
+import crypto from 'crypto'
+import dotenv from 'dotenv'
+import tweetnacl from 'tweetnacl'
 import test from 'ava'
+import uuid from 'uuid'
+import { sign } from 'http-request-signature'
+
 import Wallet from './runtime-wallet'
 import utils from './extras-utils'
-import dotenv from 'dotenv'
+import { uint8tohex } from 'bat-utils/lib/extras-utils'
+
 dotenv.config()
+
+test('validateTxSignature: works', async t => {
+  t.plan(8)
+
+  const settlementAddress = '0xcafe'
+  const wallet = new Wallet({wallet: {settlementAddress: {BAT: settlementAddress}}}, {})
+  const keypair = tweetnacl.sign.keyPair()
+  const wrongKeypair = tweetnacl.sign.keyPair()
+
+  const info = {
+    provider: 'mockHttpSignature',
+    altcurrency: 'BAT',
+    httpSigningPubKey: uint8tohex(keypair.publicKey)
+  }
+
+  const signTxn = (keypair, body, octets) => {
+    if (!octets) {
+      octets = JSON.stringify(body)
+    }
+    const headers = {
+      digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+    }
+
+    headers['signature'] = sign({
+      headers: headers,
+      keyId: 'primary',
+      secretKey: uint8tohex(keypair.secretKey)
+    }, { algorithm: 'ed25519' })
+    return { headers, octets }
+  }
+
+  let body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '20' } }
+  wallet.validateTxSignature(info, signTxn(keypair, body))
+
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '5.5' } }
+  wallet.validateTxSignature(info, signTxn(keypair, body))
+
+  // Wrong keypair
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '20' } }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(wrongKeypair, body)) })
+
+  // Invalid destination
+  body = { destination: uuid.v4(), denomination: { currency: 'BAT', amount: '20' } }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+
+  // Invalid currency
+  body = { destination: settlementAddress, denomination: { currency: 'USD', amount: '20' } }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+
+  // Invalid amount
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '-20' } }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.5' } }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+
+  // Missing field
+  body = { destination: settlementAddress, denomination: { amount: '20' } }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+
+  // Extra field
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '20' }, extra: false }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '20', extra: false } }
+  t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+})
 
 test('selectGrants: does not err when nothing is passed in', async t => {
   t.plan(0)
   Wallet.selectGrants()
 })
+
 test('selectGrants: returns a new array', async t => {
   t.plan(1)
   const grants = []
   const selected = Wallet.selectGrants(grants)
   t.not(grants, selected)
 })
+
 test('selectGrants: filters non active grants and sorts by expiry time', async t => {
   t.plan(2)
   const status = 'active'
