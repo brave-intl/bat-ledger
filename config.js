@@ -47,7 +47,7 @@ const services = {
         { currency              : process.env.REFERRALS_CURRENCY || 'USD'
         , amount                : process.env.REFERRALS_AMOUNT || 5
         }
-      module.exports.postgres = 
+      module.exports.postgres =
         { url                   : process.env.DATABASE_URL || 'postgres://localhost/test'
         , schemaVersionCheck    : true
         }
@@ -133,7 +133,11 @@ module.exports =
 , login                 : { github: false }
 , queue                 :
   { rsmq                : process.env.REDIS_URL                 || 'redis://localhost:6379' }
-, sentry                : { dsn: process.env.SENTRY_DSN         || false }
+, sentry                :
+  { dsn: process.env.SENTRY_DSN          || false
+  , slug: process.env.HEROKU_SLUG_COMMIT || 'test'
+  , project: process.env.HEROKU_APP_NAME  || process.env.SERVICE
+  }
 , newrelic              : { key: process.env.NEW_RELIC_LICENSE_KEY
                                                                 || false }
 , wallet                : { }
