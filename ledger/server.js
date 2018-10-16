@@ -1,33 +1,30 @@
 require('dotenv').config()
-if (!process.env.BATUTIL_SPACES) process.env.BATUTIL_SPACES = '*,-extras.worker'
+if (!process.env.BATUTIL_SPACES) {
+  process.env.BATUTIL_SPACES = '*,-extras.worker'
+}
+const { Runtime, hapi } = require('bat-utils')
+const { controllers, server } = hapi
 
-const os = require('os')
-const path = require('path')
-
-const tldjs = require('tldjs')
+const grantsController = require('./controllers/grants')
+const registrarController = require('./controllers/registrar')
+const surveyorController = require('./controllers/surveyor')
+const walletController = require('./controllers/wallet')
 
 const config = require('../config.js')
-if (config.newrelic) {
-  if (!config.newrelic.appname) {
-    const appname = path.parse(__filename).name
 
-    if (process.env.NODE_ENV === 'production') {
-      config.newrelic.appname = appname + '.' + tldjs.getSubdomain(process.env.HOST)
-    } else {
-      config.newrelic.appname = 'bat-' + process.env.SERVICE + '-' + appname + '@' + os.hostname()
-    }
-  }
-  process.env.NEW_RELIC_APP_NAME = config.newrelic.appname
+const parentModules = [
+  grantsController,
+  registrarController,
+  surveyorController,
+  walletController
+]
 
-  require(path.join('..', 'bat-utils', 'lib', 'runtime-newrelic'))(config)
-}
-
-const utils = require('bat-utils')
+Runtime.newrelic.setupNewrelic(config, __filename)
 
 const options = {
-  parent: path.join(__dirname, 'controllers'),
-  routes: utils.hapi.controllers.index,
-  controllers: utils.hapi.controllers,
+  parentModules,
+  routes: controllers.index,
+  controllers: controllers,
   module: module,
   headersP: false,
   remoteP: false
@@ -35,4 +32,4 @@ const options = {
 
 config.cache = false
 
-module.exports = utils.hapi.server(options, new utils.Runtime(config))
+module.exports = server(options, new Runtime(config))

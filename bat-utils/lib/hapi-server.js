@@ -20,6 +20,8 @@ const vision = require('vision')
 const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
 
+const npminfo = require('../npminfo')
+
 const Server = async (options, runtime) => {
   const debug = new SDebug('web')
 
@@ -117,9 +119,9 @@ const Server = async (options, runtime) => {
             mode: 'required'
           },
           info: {
-            title: process.npminfo.name,
-            version: process.npminfo.version,
-            description: process.npminfo.description
+            title: npminfo.name,
+            version: npminfo.version,
+            description: npminfo.description
           }
         }
       }
@@ -346,7 +348,7 @@ const Server = async (options, runtime) => {
             options: underscore.pick(options, [ 'headersP', 'remoteP' ])
           }))
       runtime.notify(debug, {
-        text: os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version + ' started ' +
+        text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +
           (process.env.DYNO || 'web') + '/' + options.id
       })
 

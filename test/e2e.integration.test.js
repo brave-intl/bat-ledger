@@ -15,6 +15,7 @@ import {
   uint8tohex,
   justDate
 } from 'bat-utils/lib/extras-utils'
+import Cache from 'bat-utils/lib/runtime-cache'
 
 import {
   cleanDbs,
@@ -25,7 +26,6 @@ import {
   braveYoutubePublisher,
   createSurveyor,
   balanceAgent,
-  createRedisCache,
   connectToDb
 } from './utils'
 
@@ -41,7 +41,13 @@ const balanceCacheConfig = configuration.cache
 let prevSurveyorId
 let paymentId
 
-const cache = createRedisCache()
+const cache = new Cache({
+  cache: {
+    redis: {
+      url: process.env.BAT_REDIS_URL
+    }
+  }
+})
 
 const cardDeleteUrl = `/v2/card`
 const statsURL = '/v1/wallet/stats'

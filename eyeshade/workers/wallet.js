@@ -1,6 +1,7 @@
 const bson = require('bson')
 const underscore = require('underscore')
 
+exports.name = 'wallet'
 exports.initialize = async (debug, runtime) => {
   const voting = runtime.database.get('voting', debug)
   let indices

@@ -4,6 +4,7 @@ const SDebug = require('sdebug')
 const underscore = require('underscore')
 const wreck = require('wreck')
 
+const npminfo = require('../npminfo')
 const whitelist = require('./hapi-auth-whitelist')
 
 exports.debug = (info, request) => {
@@ -144,8 +145,8 @@ const ErrorInspect = (err) => {
 exports.error = { inspect: ErrorInspect }
 
 let wreckUA = ''
-if (process.npminfo) {
-  wreckUA += process.npminfo.name + '/' + process.npminfo.version + ' wreck/' + process.npminfo.dependencies.wreck
+if (npminfo) {
+  wreckUA += npminfo.name + '/' + npminfo.version + ' wreck/' + npminfo.dependencies.wreck
 }
 
 underscore.keys(process.versions).forEach((version) => { wreckUA += ' ' + version + '/' + process.versions[version] })

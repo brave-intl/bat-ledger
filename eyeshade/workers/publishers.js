@@ -1,5 +1,6 @@
 const { insertFromSettlement, updateBalances } = require('../lib/transaction.js')
 
+exports.name = 'publishers'
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('settlement-report')
 }

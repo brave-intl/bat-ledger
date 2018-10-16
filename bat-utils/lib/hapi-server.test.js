@@ -10,8 +10,6 @@ dotenv.config()
 test('hapi throws', async (t) => {
   const message = 'failed in throwing test'
 
-  process.npminfo = {}
-
   const runtime = {
     config: {server: {}},
     notify: () => {},
