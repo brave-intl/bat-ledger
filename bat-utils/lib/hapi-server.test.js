@@ -18,7 +18,9 @@ test('hapi throws', async (t) => {
     },
     cache: new Cache({
       cache: {
-        redis: process.env.BAT_REDIS_URL || 'redis://localhost:6379'
+        redis: {
+          url: process.env.BAT_REDIS_URL || 'redis://localhost:6379'
+        }
       }
     })
   }
@@ -45,5 +47,4 @@ test('hapi throws', async (t) => {
   await server.stop({
     timeout: 1
   })
-  console.log('finished')
 })
