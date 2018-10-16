@@ -24,10 +24,10 @@ Runtime.newrelic.setupNewrelic(config, __filename)
 
 const parentModules = [
   publishersWorker,
-  reportsWorker,
-  walletWorker,
   referralsWorker,
-  surveyorsWorker
+  reportsWorker,
+  surveyorsWorker,
+  walletWorker
 ]
 
 const options = {
