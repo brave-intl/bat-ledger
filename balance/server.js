@@ -1,37 +1,35 @@
-require('dotenv').config()
-if (!process.env.BATUTIL_SPACES) process.env.BATUTIL_SPACES = '*,-extras.worker'
-
-const os = require('os')
-const path = require('path')
-
-const tldjs = require('tldjs')
-
+const dotenv = require('dotenv')
 const config = require('../config.js')
-if (config.newrelic) {
-  if (!config.newrelic.appname) {
-    const appname = path.parse(__filename).name
+const utils = require('../bat-utils')
 
-    if (process.env.NODE_ENV === 'production') {
-      config.newrelic.appname = appname + '.' + tldjs.getSubdomain(process.env.HOST)
-    } else {
-      config.newrelic.appname = 'bat-' + process.env.SERVICE + '-' + appname + '@' + os.hostname()
-    }
-  }
-  process.env.NEW_RELIC_APP_NAME = config.newrelic.appname
+const addressControllers = require('./controllers/address')
 
-  require(path.join('..', 'bat-utils', 'lib', 'runtime-newrelic'))(config)
-}
+const {
+  hapi,
+  Runtime
+} = utils
 
-const utils = require('bat-utils')
+dotenv.config()
+
+Runtime.newrelic.setupNewrelic(config, __filename)
+
+const {
+  controllers,
+  server: hapiServer
+} = hapi
+
+const parentModules = [
+  addressControllers
+]
 
 const options = {
-  parent: path.join(__dirname, 'controllers'),
-  routes: utils.hapi.controllers.index,
-  controllers: utils.hapi.controllers,
+  parentModules,
+  routes: controllers.index,
+  controllers: controllers,
   module: module
 }
 
 config.database = false
 config.queue = false
 
-module.exports = utils.hapi.server(options, new utils.Runtime(config))
+module.exports = hapiServer(options, new Runtime(config))

@@ -1,35 +1,41 @@
-require('dotenv').config()
-if (!process.env.BATUTIL_SPACES) process.env.BATUTIL_SPACES = '*,-hapi'
-
-const os = require('os')
-const path = require('path')
-
-const tldjs = require('tldjs')
-
-const config = require('../config.js')
-if (config.newrelic) {
-  if (!config.newrelic.appname) {
-    const appname = path.parse(__filename).name
-
-    if (process.env.NODE_ENV === 'production') {
-      config.newrelic.appname = appname + '.' + tldjs.getSubdomain(process.env.HOST)
-    } else {
-      config.newrelic.appname = 'bat-' + process.env.SERVICE + '-' + appname + '@' + os.hostname()
-    }
-  }
-  process.env.NEW_RELIC_APP_NAME = config.newrelic.appname
-
-  require(path.join('..', 'bat-utils', 'lib', 'runtime-newrelic'))(config)
-}
-
+const dotenv = require('dotenv')
 const utils = require('bat-utils')
 
+const config = require('../config.js')
+
+const publishersWorker = require('./workers/publishers')
+const referralsWorker = require('./workers/referrals')
+const reportsWorker = require('./workers/reports')
+const surveyorsWorker = require('./workers/surveyors')
+const walletWorker = require('./workers/wallet')
+
+const {
+  Runtime,
+  extras
+} = utils
+
+dotenv.config()
+
+if (!process.env.BATUTIL_SPACES) {
+  process.env.BATUTIL_SPACES = '*,-hapi'
+}
+
+Runtime.newrelic.setupNewrelic(config, __filename)
+
+const parentModules = [
+  publishersWorker,
+  reportsWorker,
+  walletWorker,
+  referralsWorker,
+  surveyorsWorker
+]
+
 const options = {
-  parent: path.join(__dirname, 'workers'),
+  parentModules,
   module: module
 }
 
 config.cache = false
 config.postgres.schemaVersion = require('./migrations/current')
 
-utils.extras.worker(options, new utils.Runtime(config))
+extras.worker(options, new Runtime(config))

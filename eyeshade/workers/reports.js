@@ -101,6 +101,7 @@ const daily = async (debug, runtime) => {
   debug('daily', 'running again ' + moment(tomorrow).fromNow())
 }
 
+exports.name = 'reports'
 exports.freezeOldSurveyors = freezeOldSurveyors
 
 /*

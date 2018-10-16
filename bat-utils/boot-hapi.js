@@ -1,33 +1,21 @@
-const path = require('path')
 
-const glob = require('glob')
-const SDebug = require('sdebug')
-const underscore = require('underscore')
+const hapiAuthWhitelist = require('./lib/hapi-auth-whitelist')
+const hapiControllersIndex = require('./lib/hapi-controllers-index')
+const hapiControllersLogin = require('./lib/hapi-controllers-login')
+const hapiControllersPing = require('./lib/hapi-controllers-ping')
+const hapiServer = require('./lib/hapi-server')
 
-const cwd = path.join(__dirname, 'lib')
-const debug = new SDebug('boot')
-const prefix = 'hapi-'
+const controllers = {
+  index: hapiControllersIndex,
+  login: hapiControllersLogin,
+  ping: hapiControllersPing
+}
+const auth = {
+  whitelist: hapiAuthWhitelist
+}
 
-glob.sync(prefix + '*.js', { cwd: cwd }).forEach((file) => {
-  if (file.indexOf('.test.js') !== -1) return
-
-  let base = module.exports
-  let key = path.basename(file.substring(prefix.length), '.js')
-  let parent = ''
-  let parts = key.split('-')
-
-  while (parts.length > 1) {
-    key = parts[0]
-    if (!base[key]) base[key] = {}
-    base = base[key]
-    parent += key + '.'
-
-    parts = underscore.rest(parts)
-    key = parts[0]
-  }
-
-  if (!process.batutil.enabled('hapi.' + key)) return
-
-  base[key] = require(path.join(cwd, file))
-  debug('hapi', 'loaded ' + parent + key)
-})
+module.exports = {
+  server: hapiServer,
+  controllers,
+  auth
+}

@@ -8,6 +8,8 @@ const underscore = require('underscore')
 const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
 
+const npminfo = require('../npminfo')
+
 const v1 = {}
 
 /*
@@ -43,8 +45,8 @@ v1.login = {
           channel: '#devops-bot',
           text: 'login ' + credentials.provider + ' ' +
             JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
-            ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + process.npminfo.name + '@' +
-            process.npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
+            ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + npminfo.name + '@' +
+            npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
         })
 
         request.cookieAuth.set(credentials)
@@ -76,7 +78,7 @@ v1.logout = {
     return async (request, reply) => {
       const debug = braveHapi.debug(module, request)
       const credentials = request.auth.credentials
-      const suffix = ' at ' + os.hostname() + ' ' + process.npminfo.name + '@' + process.npminfo.version +
+      const suffix = ' at ' + os.hostname() + ' ' + npminfo.name + '@' + npminfo.version +
             (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
 
       if (credentials) {
