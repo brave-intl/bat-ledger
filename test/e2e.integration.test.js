@@ -30,7 +30,8 @@ import {
   balanceAgent,
   createRedisCache,
   freezeSurveyors,
-  connectToDb
+  connectToDb,
+  auth
 } from './utils'
 
 import {
@@ -87,13 +88,13 @@ test('ledger: create promotion', async t => {
   t.plan(0)
   const url = '/v1/grants'
   // valid grant
-  await ledgerAgent.post(url).send(grants).expect(ok)
+  await ledgerAgent.post(url).use(auth).send(grants).expect(ok)
 })
 
 test('check stats endpoint before wallets add', async t => {
   t.plan(1)
   let body
-  ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
+  ;({ body } = await ledgerAgent.get(statsURL).use(auth).expect(ok))
   t.deepEqual(body, [])
 })
 
@@ -102,7 +103,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   const viewingId = uuid.v4().toLowerCase()
   let response, octets, headers, payload, err
 
-  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  response = await ledgerAgent.get('/v2/registrar/persona').use(auth).expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -137,7 +138,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId).use(auth)
     .send(payload).expect(ok)
   t.true(response.body.hasOwnProperty('wallet'))
   paymentId = response.body.wallet.paymentId
@@ -154,7 +155,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   personaCredential.finalize(response.body.verification)
 
-  response = await ledgerAgent.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+  response = await ledgerAgent.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey)).use(auth)
     .expect(ok)
   t.true(response.body.paymentId === paymentId)
 
@@ -170,7 +171,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   t.true(response.body.payload.adFree.hasOwnProperty('probi'))
   const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await ledgerAgent.get(statsURL).use(auth).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 0,
@@ -195,7 +196,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   const desired = donateAmt.toFixed(4).toString()
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await ledgerAgent.get(statsURL).use(auth).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 1,
@@ -274,7 +275,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   }
 
   // first post to an old contribution surveyor, this should fail
-  response = await ledgerAgent.put('/v2/wallet/' + paymentId).send(payload)
+  response = await ledgerAgent.put('/v2/wallet/' + paymentId).use(auth).send(payload)
   t.true(response.status === 410)
 
   payload.surveyorId = surveyorId
@@ -294,7 +295,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await ledgerAgent.get(statsURL).use(auth).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 1,
@@ -349,7 +350,7 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
   const viewingId = uuid.v4().toLowerCase()
   let response, octets, headers, payload, err
 
-  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  response = await ledgerAgent.get('/v2/registrar/persona').use(auth).expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
@@ -384,7 +385,7 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId).use(auth)
     .send(payload).expect(ok)
   t.true(response.body.hasOwnProperty('wallet'))
   const paymentId = response.body.wallet.paymentId
@@ -431,7 +432,7 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
   const desired = donateAmt.toString()
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await ledgerAgent.get(statsURL).use(auth).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 1,
     anyFunds: 2,
@@ -594,7 +595,7 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
 test('eyeshade: create brave youtube channel and owner', async t => {
   t.plan(1)
 
-  const { body } = await eyeshadeAgent.post('/v2/owners').send({
+  const { body } = await eyeshadeAgent.post('/v2/owners').use(auth).send({
     'ownerId': braveYoutubeOwner,
     'contactInfo': {
       'name': 'Brave',
@@ -609,7 +610,7 @@ test('eyeshade: create brave youtube channel and owner', async t => {
   t.true(_.isObject(body))
 
   // set authorized / uphold parameters
-  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
+  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).use(auth)
     .send({ 'provider': 'uphold', 'parameters': {} })
     .expect(ok)
 })
@@ -617,7 +618,7 @@ test('eyeshade: create brave youtube channel and owner', async t => {
 test('check stats endpoint', async t => {
   t.plan(1)
   let body
-  ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
+  ;({ body } = await ledgerAgent.get(statsURL).use(auth).expect(ok))
   const created = justDate(new Date())
   t.deepEqual(body, [{
     activeGrant: 0,
@@ -672,7 +673,7 @@ test('ensure contribution balances are computed correctly', async t => {
   ;({ reportProbi, reportFees } = await run())
   t.true(Number(reportProbi) > 0)
 
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).use(auth).send().expect(ok))
   let { contributions } = body
 
   t.true(Number(contributions.probi) > 0)
@@ -680,7 +681,7 @@ test('ensure contribution balances are computed correctly', async t => {
   t.true(contributions.probi === reportProbi)
 
   // settle completely
-  await eyeshadeAgent.post('/v2/publishers/settlement').send([
+  await eyeshadeAgent.post('/v2/publishers/settlement').use(auth).send([
     {
       owner: braveYoutubeOwner,
       publisher: braveYoutubePublisher,
@@ -696,7 +697,7 @@ test('ensure contribution balances are computed correctly', async t => {
     }
   ]).expect(ok)
 
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).use(auth).send().expect(ok))
   ;({ contributions } = body)
 
   t.true(Number(contributions.probi) === 0)
@@ -705,7 +706,7 @@ test('ensure contribution balances are computed correctly', async t => {
     let body
     let reportURL
 
-    ;({ body } = await eyeshadeAgent.get(url).send().expect(ok))
+    ;({ body } = await eyeshadeAgent.get(url).use(auth).send().expect(ok))
     ;({ reportURL } = body)
 
     ;({ body } = await fetchReport({ url: reportURL }))
@@ -719,7 +720,7 @@ test('ensure contribution balances are computed correctly', async t => {
 test('ensure referral balances are computed correctly', async t => {
   t.plan(6)
 
-  await eyeshadeAgent.put('/v1/referrals/' + uuid.v4().toLowerCase()).send([
+  await eyeshadeAgent.put('/v1/referrals/' + uuid.v4().toLowerCase()).use(auth).send([
     {
       ownerId: braveYoutubeOwner,
       channelId: braveYoutubePublisher,
@@ -729,7 +730,7 @@ test('ensure referral balances are computed correctly', async t => {
     }
   ]).expect(ok)
 
-  let { body } = await eyeshadeAgent.get(formURL('/v1/reports/publishers/referrals', { includeUnpayable: true }))
+  let { body } = await eyeshadeAgent.get(formURL('/v1/reports/publishers/referrals', { includeUnpayable: true })).use(auth)
     .send().expect(ok)
   const { reportURL } = body
 
@@ -742,7 +743,7 @@ test('ensure referral balances are computed correctly', async t => {
   const fees = singleEntry.fees
   t.is(fees, '0')
 
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).use(auth).send().expect(ok))
   let { contributions } = body
 
   const walletProbi = new BigNumber(contributions.probi)
@@ -753,7 +754,7 @@ test('ensure referral balances are computed correctly', async t => {
   assertWithinBounds(t, amount, 5.00, 0.25, 'USD value for a referral should be approx $5')
 
   // settle completely
-  await eyeshadeAgent.post('/v2/publishers/settlement').send([
+  await eyeshadeAgent.post('/v2/publishers/settlement').use(auth).send([
     {
       owner: braveYoutubeOwner,
       publisher: braveYoutubePublisher,
@@ -768,7 +769,7 @@ test('ensure referral balances are computed correctly', async t => {
     }
   ]).expect(ok)
 
-  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).send().expect(ok))
+  ;({ body } = await eyeshadeAgent.get(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`).use(auth).send().expect(ok))
   ;({ contributions } = body)
 
   t.true(Number(contributions.probi) === 0)
@@ -778,7 +779,7 @@ test('check stats endpoint after funds move', async t => {
   t.plan(1)
   const created = justDate(new Date())
   let body
-  ;({ body } = await ledgerAgent.get(statsURL).expect(ok))
+  ;({ body } = await ledgerAgent.get(statsURL).use(auth).expect(ok))
   t.deepEqual(body, [{
     activeGrant: 0,
     anyFunds: 2,

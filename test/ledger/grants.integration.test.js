@@ -12,7 +12,8 @@ import {
   ledgerAgent,
   ok,
   cleanDbs,
-  connectToDb
+  connectToDb,
+  auth
 } from '../utils'
 import {
   timeout,
@@ -28,11 +29,11 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
   t.plan(10)
   let body, item
   const url = '/v1/grants'
-  await ledgerAgent.post(url).send(expired).expect(ok)
+  await ledgerAgent.post(url).use(auth).send(expired).expect(ok)
 
   const personaId = v4().toLowerCase()
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  var response = await ledgerAgent.get('/v2/registrar/persona').use(auth).expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -60,7 +61,7 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId).use(auth)
     .send(payload).expect(ok)
   const paymentId = response.body.wallet.paymentId
 
@@ -75,7 +76,7 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
       .send({promotionId})
       .expect(ok)
 
-  ;({ body } = await ledgerAgent.get('/v1/promotions').expect(ok))
+  ;({ body } = await ledgerAgent.get('/v1/promotions').use(auth).expect(ok))
   t.true(_.isArray(body))
   ;([ item ] = body)
   t.true(_.isObject(item))
@@ -119,7 +120,7 @@ test('getting grant from v2', async t => {
   }
   const options = { upsert: true }
   await db.collection('promotions').update(where, state, options)
-  ;({ body } = await ledgerAgent.get(url).expect(ok))
+  ;({ body } = await ledgerAgent.get(url).use(auth).expect(ok))
   t.true(_.isArray(body))
   ;([ item ] = body)
   t.true(_.isObject(item))
