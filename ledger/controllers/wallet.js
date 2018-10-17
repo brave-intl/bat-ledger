@@ -256,7 +256,7 @@ const write = function (runtime, apiVersion) {
 
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
-      runtime.wallet.validateTxSignature(info, wallet.unsignedTx, signedTx)
+      runtime.wallet.validateTxSignature(info, signedTx)
     } catch (ex) {
       debug('validateTxSignature', { reason: ex.toString(), stack: ex.stack })
       runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
