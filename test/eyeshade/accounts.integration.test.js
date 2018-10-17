@@ -126,7 +126,7 @@ test('check settlement totals', async t => {
 })
 
 test('check earnings total', async t => {
-  t.plan(2)
+  t.plan(3)
 
   const client = await runtime.postgres.connect()
   try {
@@ -160,6 +160,17 @@ test('check earnings total', async t => {
       earnings: '12.000000000000000000',
       account_id: ownerId
     }])
+  } catch (e) {
+    client.release()
+    throw e
+  }
+
+  try {
+    const { body } = await eyeshadeAgent.get(`/v1/accounts/${encodeURIComponent(ownerId)}/transactions`)
+    const count = body.reduce((memo, transaction) => _.keys(transaction).reduce((memo, key) => {
+      return memo + (transaction[key] == null ? 1 : 0)
+    }, 0))
+    t.is(count, 0)
   } finally {
     client.release()
   }
