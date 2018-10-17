@@ -167,9 +167,10 @@ test('check earnings total', async t => {
 
   try {
     const { body } = await eyeshadeAgent.get(`/v1/accounts/${encodeURIComponent(ownerId)}/transactions`)
+    t.true(body.length >= 1)
     const count = body.reduce((memo, transaction) => _.keys(transaction).reduce((memo, key) => {
       return memo + (transaction[key] == null ? 1 : 0)
-    }, 0))
+    }, memo), 0)
     t.is(count, 0)
   } finally {
     client.release()
