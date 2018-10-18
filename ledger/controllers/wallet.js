@@ -613,7 +613,7 @@ v1.getStats =
     function add (numbers) {
       return numbers.reduce((memo, number) => {
         return memo.plus(new BigNumber(number || 0))
-      }, new BigNumber('0')).toNumber()
+      }, new BigNumber('0')).toString()
     }
   }
 },
@@ -632,7 +632,7 @@ v1.getStats =
         created: Joi.string().required().description('date the wallets in this cohort were created'),
         wallets: Joi.number().required().description('the number of wallets created on this date'),
         contributed: Joi.number().required().description('the number of wallets created on this date that have a claimed grant that has not yet been redeemed'),
-        walletProviderBalance: Joi.number().required().description('the balances of the wallets created on this day'),
+        walletProviderBalance: Joi.string().required().description('the balances of the wallets created on this day'),
         anyFunds: Joi.number().required().description('the number of wallets created on this date that have either an unredeemed grant or a wallet provider balance'),
         activeGrant: Joi.number().required().description('the number of wallets created on this date that have an active grant'),
         walletProviderFunded: Joi.number().required().description('the number of wallets that are currently funded')

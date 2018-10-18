@@ -51,7 +51,7 @@ const cache = new Cache({
 
 const cardDeleteUrl = `/v2/card`
 const statsURL = '/v1/wallet/stats'
-const probi12 = (new BigNumber(12)).times(1e18).toNumber()
+const probi12 = (new BigNumber(12)).times(1e18).toString()
 
 test.before(cleanDbs)
 // test.after(cleanDbs)
@@ -177,7 +177,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     activeGrant: 0,
     anyFunds: 0,
     created: justDate(new Date()),
-    walletProviderBalance: 0,
+    walletProviderBalance: '0',
     walletProviderFunded: 1,
     contributed: 0,
     wallets: 1
@@ -203,7 +203,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     anyFunds: 1,
     contributed: 0,
     created: justDate(new Date()),
-    walletProviderBalance: 0,
+    walletProviderBalance: '0',
     walletProviderFunded: 0,
     wallets: 1
   }])
@@ -656,7 +656,7 @@ test('check stats endpoint after funds move', async t => {
     anyFunds: 2,
     contributed: 2,
     created,
-    walletProviderBalance: 0,
+    walletProviderBalance: '0',
     walletProviderFunded: 0,
     wallets: 2
   }])
