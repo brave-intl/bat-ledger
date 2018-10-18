@@ -38,7 +38,11 @@ ORDER BY created_at
     const transactions = result.rows
 
     transactions.forEach((transaction) => {
-      Object.keys(transaction).forEach((key) => (transaction[key] == null) && delete transaction[key])
+      Object.keys(transaction).forEach((key) => {
+        if (transaction[key] == null) {
+          delete transaction[key]
+        }
+      })
     })
 
     reply(transactions)
