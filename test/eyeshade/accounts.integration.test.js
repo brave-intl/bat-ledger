@@ -126,7 +126,7 @@ test('check settlement totals', async t => {
 })
 
 test('check earnings total', async t => {
-  t.plan(3)
+  t.plan(4)
 
   const client = await runtime.postgres.connect()
   try {
