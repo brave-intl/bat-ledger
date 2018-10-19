@@ -1,8 +1,3 @@
-drop materialized view account_balances;
-drop view account_transactions;
-drop table transactions;
+drop table settlements;
 
-drop type account_type;
-drop type transaction_type;
-
-delete from migrations where id = '0001';
+delete from migrations where id = '0007';

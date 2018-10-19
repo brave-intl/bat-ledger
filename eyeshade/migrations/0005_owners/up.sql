@@ -15,6 +15,6 @@ create table owners(
   parameters jsonb,
   default_currency text,
   info jsonb
-)
+);
 
 $$) where not exists (select * from migrations where id = '0005');

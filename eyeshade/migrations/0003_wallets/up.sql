@@ -11,6 +11,6 @@ create table wallets(
   keychains jsonb,
   payment_stamp time,
   altcurrency text
-)
+);
 
 $$) where not exists (select * from migrations where id = '0003');

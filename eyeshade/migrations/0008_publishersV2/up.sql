@@ -7,6 +7,6 @@ create table publishersV2(
   facet text,
   exclude boolean,
   tags jsonb
-)
+);
 
 $$) where not exists (select * from migrations where id = '0008');

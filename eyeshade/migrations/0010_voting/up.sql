@@ -12,6 +12,6 @@ create table voting(
   satoshis bigint,
   altcurrency text,
   probi numeric(28) not null check (probi > 0.0)
-)
+);
 
 $$) where not exists (select * from migrations where id = '0001');

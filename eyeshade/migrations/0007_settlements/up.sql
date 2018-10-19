@@ -15,6 +15,6 @@ create table settlements(
   commission numeric(28) not null check (commission > 0.0),
   fee numeric(28) not null check (fee > 0.0),
   type text
-)
+);
 
 $$) where not exists (select * from migrations where id = '0007');

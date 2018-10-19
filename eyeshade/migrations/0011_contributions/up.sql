@@ -14,6 +14,6 @@ create table contributions(
   fee numeric(28) not null check (fee > 0.0),
   votes int,
   hash text
-)
+);
 
 $$) where not exists (select * from migrations where id = '0011');

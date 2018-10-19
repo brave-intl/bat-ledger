@@ -15,6 +15,6 @@ create table publishers (
   authorizer_name text,
   altcurrency text,
   info jsonb
-)
+);
 
 $$) where not exists (select * from migrations where id = '0006');

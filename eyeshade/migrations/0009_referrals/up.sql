@@ -13,6 +13,6 @@ create table referrals(
   probi numeric(28) not null check (probi > 0.0),
   exclude boolean,
   hash text
-)
+);
 
 $$) where not exists (select * from migrations where id = '0009');
