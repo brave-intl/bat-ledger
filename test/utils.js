@@ -10,6 +10,8 @@ const BigNumber = require('bignumber.js')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
+const SDebug = require('sdebug')
+const debug = new SDebug('test')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -152,6 +154,7 @@ module.exports = {
   fetchReport,
   formURL,
   ok,
+  debug,
   status,
   eyeshadeAgent,
   ledgerAgent,
@@ -183,7 +186,7 @@ function cleanPgDb (client) {
       client.query('DELETE from transactions;'),
       client.query('DELETE from surveyor_groups;'),
       client.query('DELETE from votes;')
-    ])
+    ]).then(() => client.query('REFRESH MATERIALIZED VIEW account_balances;'))
   }
 }
 

@@ -35,14 +35,13 @@ exports.workers = {
       const client = await runtime.postgres.connect()
       try {
         const query1 = `
-        select 
-          votes.channel, 
-          coalesce(sum(votes.amount), 0.0) as amount, 
+        select
+          votes.channel,
+          coalesce(sum(votes.amount), 0.0) as amount,
           coalesce(sum(votes.fees), 0.0) as fees
         from votes where surveyor_id = $1 and not excluded and not transacted and amount is not null
         group by votes.channel;
         `
-
         const votingQ = await client.query(query1, [surveyorId])
         if (surveyorQ.rowCount !== 1) {
           throw new Error('no votes for this surveyor!')
