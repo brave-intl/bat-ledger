@@ -83,7 +83,7 @@ Wallet.prototype.validateTxSignature = function (info, signature) {
       amount: braveJoi.string().numeric().required(),
       currency: Joi.string().valid('BAT').required()
     }),
-    destination: Joi.string().valid(this.config.settlementAddress['BAT']).required()
+    destination: braveJoi.string().guid().required()
   })
 
   if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {
@@ -103,6 +103,8 @@ Wallet.prototype.validateTxSignature = function (info, signature) {
 
     const result = verify({headers: signature.headers, publicKey: info.httpSigningPubKey}, { algorithm: 'ed25519' })
     if (!result.verified) throw new Error('the http-signature is not valid')
+
+    return txn
   } else {
     throw new Error('wallet validateTxSignature for requestType ' + info.requestType + ' not supported for altcurrency ' + info.altcurrency)
   }
@@ -115,11 +117,11 @@ Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
   return f.bind(this)(info, amount, currency, balance)
 }
 
-Wallet.prototype.submitTx = async function (info, txn, signature) {
+Wallet.prototype.submitTx = async function (info, txn, signature, confirm) {
   const f = Wallet.providers[info.provider].submitTx
 
   if (!f) throw new Error('provider ' + info.provider + ' submitTx not supported')
-  return f.bind(this)(info, txn, signature)
+  return f.bind(this)(info, txn, signature, confirm)
 }
 
 Wallet.prototype.ping = async function (provider) {
@@ -378,7 +380,7 @@ Wallet.providers.uphold = {
       throw new Error('wallet uphold unsignedTx for ' + info.altcurrency + ' not supported')
     }
   },
-  submitTx: async function (info, txn, signature) {
+  submitTx: async function (info, txn, signature, confirm) {
     if (info.altcurrency === 'BAT') {
       let postedTx
 
@@ -388,7 +390,7 @@ Wallet.providers.uphold = {
                                                            underscore.pick(underscore.extend(txn.denomination,
                                                                                              { destination: txn.destination }),
                                                                            ['amount', 'currency', 'destination']),
-                                                           true,        // commit tx in one swoop
+                                                           confirm,        // commit tx in one swoop if true
                                                            null,        // no otp code
                                                            { headers: signature.headers, body: signature.octets })
       } catch (ex) {
@@ -405,7 +407,8 @@ Wallet.providers.uphold = {
         altcurrency: info.altcurrency,
         address: txn.destination,
         fee: 0,
-        status: postedTx.status
+        status: postedTx.status,
+        postedTx: postedTx
       }
     } else {
       throw new Error('wallet uphold submitTx for ' + info.altcurrency + ' not supported')

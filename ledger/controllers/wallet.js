@@ -245,68 +245,105 @@ const write = function (runtime, apiVersion) {
     const surveyorId = request.payload.surveyorId
     const viewingId = request.payload.viewingId
     const requestType = request.payload.requestType
+    const members = runtime.database.get('members', debug)
     const surveyors = runtime.database.get('surveyors', debug)
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let cohort, fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
+    let cohort, fee, now, params, result, state, surveyor, surveyorIds, txn, votes, wallet
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
-    if (!wallet.unsignedTx) throw new Error('no unsignedTx found')
 
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
-      runtime.wallet.validateTxSignature(info, signedTx)
+      txn = runtime.wallet.validateTxSignature(info, signedTx)
     } catch (ex) {
       debug('validateTxSignature', { reason: ex.toString(), stack: ex.stack })
       runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
       return reply(boom.badData(ex.toString()))
     }
 
-    surveyor = await surveyors.findOne({ surveyorId: surveyorId, surveyorType: 'contribution' })
-    if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
-    if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
+    if (txn.destination !== runtime.config.wallet.settlementAddress['BAT']) {
+      // Two way wallet transaction
 
-    if (!surveyor.cohorts) {
-      if (surveyor.surveyors) { // legacy surveyor, no cohort support
-        return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
+      // Retrieve the user id by doing a transaction submission without confirming
+      const unconfirmedTx = await runtime.wallet.submitTx(wallet, txn, signedTx, false).postedTx
+
+      // Check that the destination type is card
+      if (unconfirmedTx.destination.type !== 'card') return reply(boom.forbidden())
+
+      // Check that the user is a valid member
+      if (!unconfirmedTx.destination.isMember) return reply(boom.forbidden())
+      const memberId = unconfirmedTx.destination.node.user.id
+      if (!memberId) return reply(boom.forbidden())
+
+      if (wallet.memberId) {
+        // Check if the member matches the associated member
+        if (memberId !== wallet.memberId) return reply(boom.forbidden())
       } else {
-        // new contribution surveyor not yet populated with voting surveyors
-        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
-        runtime.captureException(errMsg, { req: request })
+        // Ensure there is a member document
+        await members.update({ memberId }, {}, { upsert: true })
 
-        const resp = boom.serverUnavailable(errMsg)
-        resp.output.headers['retry-after'] = '5'
-        return reply(resp)
+        // Attempt to associate the paymentId with the member, enforcing max associations no more than 3
+        const member = await members.findOneAndUpdate({
+          'memberId': memberId,
+          'paymentIds.2': { '$exists': false }
+        },
+          { $push: { paymentIds: paymentId } }
+        )
+
+        // If association worked, perform reverse association, memberId with wallet
+        if (!member) reply(boom.forbidden())
+        await wallets.update({ paymentId }, { $set: { memberId } })
       }
-    }
+    } else {
+      // Normal settlement transaction
 
-    params = surveyor.payload.adFree
+      surveyor = await surveyors.findOne({ surveyorId: surveyorId, surveyorType: 'contribution' })
+      if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
+      if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
 
-    votes = runtime.wallet.getTxProbi(wallet, wallet.unsignedTx).dividedBy(params.probi).times(params.votes).round().toNumber()
+      if (!surveyor.cohorts) {
+        if (surveyor.surveyors) { // legacy surveyor, no cohort support
+          return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
+        } else {
+          // new contribution surveyor not yet populated with voting surveyors
+          const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
+          runtime.captureException(errMsg, { req: request })
 
-    if (votes < 1) votes = 1
+          const resp = boom.serverUnavailable(errMsg)
+          resp.output.headers['retry-after'] = '5'
+          return reply(resp)
+        }
+      }
 
-    const possibleCohorts = ['control', 'grant']
+      params = surveyor.payload.adFree
 
-    for (let cohort of possibleCohorts) {
-      const cohortSurveyors = surveyor.cohorts[cohort]
+      votes = runtime.wallet.getTxProbi(wallet, txn).dividedBy(params.probi).times(params.votes).round().toNumber()
 
-      if (votes > cohortSurveyors.length) {
-        state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
-        debug('wallet', state)
+      if (votes < 1) votes = 1
 
-        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + votes
-        runtime.captureException(errMsg, { req: request })
+      const possibleCohorts = ['control', 'grant']
 
-        const resp = boom.serverUnavailable(errMsg)
-        resp.output.headers['retry-after'] = '5'
-        return reply(resp)
+      for (let cohort of possibleCohorts) {
+        const cohortSurveyors = surveyor.cohorts[cohort]
+
+        if (votes > cohortSurveyors.length) {
+          state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
+          debug('wallet', state)
+
+          const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + votes
+          runtime.captureException(errMsg, { req: request })
+
+          const resp = boom.serverUnavailable(errMsg)
+          resp.output.headers['retry-after'] = '5'
+          return reply(resp)
+        }
       }
     }
 
     try {
-      result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx, request)
+      result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
     } catch (err) {
       let payload = err.data.payload
       payload = payload.toString()
@@ -321,58 +358,64 @@ const write = function (runtime, apiVersion) {
     }
 
     if (!result) {
-      result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+      result = await runtime.wallet.submitTx(wallet, txn, signedTx, true)
     }
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
-    cohort = 'control'
-
-    const grantIds = result.grantIds
-    if (grantIds) {
-      cohort = wallet.cohort || 'grant'
-      await markGrantsAsRedeemed(grantIds)
-      result = underscore.omit(result, ['grantIds'])
-    }
-
-    now = timestamp()
-    state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
-    await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-
-    fee = result.fee
-
-    surveyorIds = underscore.shuffle(surveyor.cohorts[cohort]).slice(0, votes)
-
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: {
-        surveyorId: surveyorId,
-        uId: anonize.uId(viewingId),
-        surveyorIds: surveyorIds,
-        altcurrency: wallet.altcurrency,
-        probi: result.probi,
-        count: votes
-      }
-    }
-    await viewings.update({ viewingId: viewingId }, state, { upsert: true })
-
-    const picked = ['votes', 'probi', 'altcurrency']
-    result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
-    if (apiVersion === 1) {
-      reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))
+    if (txn.destination !== runtime.config.wallet.settlementAddress['BAT']) {
+      // If this was a two-way wallet transaction return
+      return reply({})
     } else {
-      reply(result)
-    }
+      // If this was a settlement payment give out votes
 
-    await runtime.queue.send(debug, 'contribution-report', underscore.extend({
-      paymentId: paymentId,
-      address: wallet.addresses[result.altcurrency],
-      surveyorId: surveyorId,
-      viewingId: viewingId,
-      fee: fee,
-      votes: votes,
-      cohort: cohort
-    }, result))
+      cohort = 'control'
+
+      const grantIds = result.grantIds
+      if (grantIds) {
+        cohort = wallet.cohort || 'grant'
+        await markGrantsAsRedeemed(grantIds)
+      }
+
+      now = timestamp()
+      state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
+      await wallets.update({ paymentId: paymentId }, state, { upsert: true })
+
+      fee = result.fee
+
+      surveyorIds = underscore.shuffle(surveyor.cohorts[cohort]).slice(0, votes)
+
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: {
+          surveyorId: surveyorId,
+          uId: anonize.uId(viewingId),
+          surveyorIds: surveyorIds,
+          altcurrency: wallet.altcurrency,
+          probi: result.probi,
+          count: votes
+        }
+      }
+      await viewings.update({ viewingId: viewingId }, state, { upsert: true })
+
+      const picked = ['votes', 'probi', 'altcurrency']
+      result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
+      if (apiVersion === 1) {
+        reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))
+      } else {
+        reply(result)
+      }
+
+      await runtime.queue.send(debug, 'contribution-report', underscore.extend({
+        paymentId: paymentId,
+        address: wallet.addresses[result.altcurrency],
+        surveyorId: surveyorId,
+        viewingId: viewingId,
+        fee: fee,
+        votes: votes,
+        cohort: cohort
+      }, result))
+    }
 
     async function markGrantsAsRedeemed (grantIds) {
       await Promise.all(grantIds.map((grantId) => {
@@ -700,6 +743,17 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { viewingId: 1 }, { uId: 1 } ],
       others: [ { altcurrency: 1 }, { probi: 1 }, { count: 1 }, { timestamp: 1 } ]
+    },
+    {
+      category: runtime.database.get('members', debug),
+      name: 'members',
+      property: 'memberId',
+      empty: {
+        memberId: '',
+        paymentIds: []
+      },
+      unique: [ { memberId: 1 } ],
+      others: [ { paymentIds: 1 } ]
     }
   ])
 
