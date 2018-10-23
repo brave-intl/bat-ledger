@@ -135,8 +135,9 @@ const getGrant = (protocolVersion) => (runtime) => {
       protocolVersion
     }
     const debug = braveHapi.debug(module, request)
-    const wallets = runtime.database.get('wallets', debug)
+    const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
+    const wallets = runtime.database.get('wallets', debug)
     let candidates, entries, priority, promotion, promotionIds
 
     const l10n = (o) => {
@@ -186,6 +187,10 @@ const getGrant = (protocolVersion) => (runtime) => {
       candidates.push(entry)
     })
     promotion = underscore.shuffle(candidates)[0]
+
+    if (grants.count({'promotionId': promotion.promotionId}) === 0) {
+      reply(boom.notFound('promotion not available'))
+    }
 
     debug('grants', { languages: languages })
     l10n(promotion)
@@ -258,7 +263,7 @@ v1.claimGrant = { handler: (runtime) => {
 
     const promotion = await promotions.findOne({ promotionId: promotionId })
     if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
-    if (!promotion.active) return reply(boom.badData('promotion is not active: ' + promotionId))
+    if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -292,7 +297,7 @@ v1.claimGrant = { handler: (runtime) => {
 
     // pop off one grant
     grant = await grants.findOneAndDelete({ status: 'active', promotionId: promotionId })
-    if (!grant) return reply(boom.badData('promotion not available'))
+    if (!grant) return reply(boom.resourceGone('promotion no longer available'))
 
     const grantInfo = underscore.extend(underscore.pick(grant, ['token', 'grantId', 'promotionId', 'status']),
       { claimTimestamp: Date.now(), claimIP: whitelist.ipaddr(request) }
