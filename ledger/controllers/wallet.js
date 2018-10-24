@@ -252,7 +252,8 @@ const write = function (runtime, apiVersion) {
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
-    if (!wallet.unsignedTx) throw new Error('no unsignedTx found')
+
+    const txn = JSON.parse(signedTx.octets)
 
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
@@ -283,7 +284,7 @@ const write = function (runtime, apiVersion) {
 
     params = surveyor.payload.adFree
 
-    votes = runtime.wallet.getTxProbi(wallet, wallet.unsignedTx).dividedBy(params.probi).times(params.votes).round().toNumber()
+    votes = runtime.wallet.getTxProbi(wallet, txn).dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (votes < 1) votes = 1
 
@@ -306,7 +307,7 @@ const write = function (runtime, apiVersion) {
     }
 
     try {
-      result = await runtime.wallet.redeem(wallet, wallet.unsignedTx, signedTx, request)
+      result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
     } catch (err) {
       let payload = err.data.payload
       payload = payload.toString()
@@ -321,7 +322,7 @@ const write = function (runtime, apiVersion) {
     }
 
     if (!result) {
-      result = await runtime.wallet.submitTx(wallet, wallet.unsignedTx, signedTx)
+      result = await runtime.wallet.submitTx(wallet, txn, signedTx)
     }
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
