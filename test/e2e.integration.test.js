@@ -53,7 +53,7 @@ const cardDeleteUrl = `/v2/card`
 const statsURL = '/v1/wallet/stats'
 const probi12 = (new BigNumber(12)).times(1e18).toString()
 
-test.before(cleanDbs)
+test.after(cleanDbs)
 // test.after(cleanDbs)
 
 test('ledger: create a surveyor', async t => {

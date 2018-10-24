@@ -16,7 +16,7 @@ dotenv.config()
 
 const collections = ['owners', 'publishers', 'tokens']
 
-test.before(async () => connectToDb('eyeshade'))
+test.after(async () => connectToDb('eyeshade'))
 test.beforeEach(async (t) => {
   const db = await cleanEyeshadeDb(collections)
   collections.forEach((name) => {

@@ -19,7 +19,7 @@ import {
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
 
-test.before(cleanDbs)
+test.after(cleanDbs)
 
 const promotionId = 'c96c39c8-77dd-4b2d-a8df-2ecf824bc9e9'
 // expired grant
