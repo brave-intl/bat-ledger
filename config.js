@@ -92,6 +92,9 @@ const uphold = () => {
   }
 }
 
+if (!process.env.SERVICE) {
+  process.env.SERVICE = 'ledger'
+}
 
 const service = services[process.env.SERVICE]
 if (!service) {

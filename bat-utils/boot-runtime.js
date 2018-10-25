@@ -1,6 +1,3 @@
-
-const path = require('path')
-
 const SDebug = require('sdebug')
 const _ = require('underscore')
 
@@ -52,16 +49,12 @@ function Runtime (config) {
     return new Runtime(config)
   }
 
-  if (!config) {
-    config = process.env.NODE_ENV || 'development'
-  }
-  if (typeof config === 'string') {
-    config = require(path.join(process.cwd(), 'config', 'config.' + config + '.js'))
-  }
+  const statConfig = require('../config')
+  const conf = _.assign(statConfig, config)
 
-  sanity(config)
+  sanity(conf)
 
-  this.setup(config)
+  this.setup(conf)
 }
 
 function reduction (config) {

@@ -7,14 +7,14 @@ drop view account_transactions;
 
 alter table transactions alter column from_account_type type text using from_account_type::text;
 alter table transactions alter column to_account_type type text using to_account_type::text;
-alter table transactions add constraint check_from_account_type 
+alter table transactions add constraint check_from_account_type
   check (from_account_type in ('channel', 'owner', 'uphold', 'internal', 'payment_id'));
-alter table transactions add constraint check_to_account_type 
+alter table transactions add constraint check_to_account_type
   check (to_account_type in ('channel', 'owner', 'uphold', 'internal', 'payment_id'));
 drop type account_type;
 
 alter table transactions alter column transaction_type type text using transaction_type::text;
-alter table transactions add constraint check_transaction_type 
+alter table transactions add constraint check_transaction_type
   check (transaction_type in ('contribution', 'referral', 'contribution_settlement', 'referral_settlement', 'fees', 'scaleup', 'manual', 'ad', 'ad_settlement'));
 drop type transaction_type;
 

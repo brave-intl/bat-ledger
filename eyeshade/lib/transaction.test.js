@@ -5,13 +5,13 @@ import { serial as test } from 'ava'
 import { createdTimestamp } from 'bat-utils/lib/extras-utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import Currency from 'bat-utils/lib/runtime-currency'
-import { insertFromSettlement, insertFromReferrals, insertFromVoting, updateBalances } from '../../eyeshade/lib/transaction'
+import { insertFromSettlement, insertFromReferrals, insertFromVoting, updateBalances } from './transaction'
 import uuid from 'uuid'
 import _ from 'underscore'
 
 import {
   cleanPgDb
-} from '../utils'
+} from 'bat-utils/test'
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 

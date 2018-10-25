@@ -30,7 +30,7 @@ import {
   balanceAgent,
   debug,
   connectToDb
-} from './utils'
+} from 'bat-utils/test'
 
 import {
   accessCardId,
