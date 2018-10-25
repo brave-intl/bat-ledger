@@ -450,7 +450,7 @@ Wallet.providers.uphold = {
   status: async function (info) {
     let result, uphold, user, desiredCard, desiredCardCurrency, possibleCurrencies, availableCurrencies
 
-    desiredCardCurrency = info.defaultCurrency // Set by Publishers
+    desiredCardCurrency = info.default_currency // Set by Publishers
 
     try {
       uphold = this.createUpholdSDK(info.parameters.access_token)

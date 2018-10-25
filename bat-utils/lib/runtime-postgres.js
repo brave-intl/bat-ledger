@@ -6,7 +6,7 @@ const debug = new SDebug('postgres')
 
 const Postgres = function (config, runtime) {
   if (!(this instanceof Postgres)) return new Postgres(config, runtime)
-
+  this.runtime = runtime
   if (!config.postgres) return
   this.pool = new Pool({ connectionString: config.postgres.url, ssl: process.env.NODE_ENV === 'production' })
 
@@ -32,6 +32,30 @@ const Postgres = function (config, runtime) {
 Postgres.prototype = {
   connect: function () {
     return this.pool.connect()
+  },
+  transaction: async function (fn, errHandler) {
+    let result
+    const postgres = this
+    const client = await postgres.connect()
+    try {
+      await client.query('BEGIN')
+      result = await fn({
+        config: postgres.runtime.config,
+        postgres: {
+          query: (text, params) => client.query(text, params)
+        }
+      })
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK')
+      if (errHandler) {
+        await errHandler(e)
+      }
+      throw e
+    } finally {
+      client.release()
+    }
+    return result
   },
   query: async function (text, params) {
     const start = Date.now()

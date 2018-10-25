@@ -1,22 +1,40 @@
 'use strict'
 
-import { serial as test } from 'ava'
+import {
+  serial as test
+} from 'ava'
 import _ from 'underscore'
 import uuidV4 from 'uuid/v4'
+import owners from '../../eyeshade/lib/owners'
+import Runtime from 'bat-utils/boot-runtime'
 import {
   eyeshadeAgent,
-  cleanDbs,
-  cleanEyeshadeDb,
+  publisherId,
   braveYoutubeOwner,
-  ok
+  cleanEyeshadeDb,
+  cleanDbs,
+  ok,
+  dbUri,
+  status
 } from '../utils'
 
-import dotenv from 'dotenv'
-dotenv.config()
-
 const collections = ['owners', 'publishers', 'tokens']
+const SCOPE = 'cards:read user:read'
 
-test.after(cleanDbs)
+const {
+  UPHOLD_ACCESS_TOKEN,
+  BAT_POSTGRES_URL
+} = process.env
+
+const mongoURL = dbUri('eyeshade')
+const runtime = new Runtime({
+  database: mongoURL,
+  postgres: {
+    url: BAT_POSTGRES_URL
+  }
+})
+
+test.after.always(cleanDbs)
 test.beforeEach(async (t) => {
   const db = await cleanEyeshadeDb(collections)
   collections.forEach((name) => {
@@ -24,19 +42,75 @@ test.beforeEach(async (t) => {
   })
 })
 
+test('owners can be created', async (t) => {
+  t.plan(15)
+  const owner = createOwnerInfos()
+  const payload = {
+    provider: 'uphold',
+    show_verification_status: false,
+    parameters: {
+      scope: SCOPE,
+      access_token: UPHOLD_ACCESS_TOKEN
+    }
+  }
+
+  t.is(await owners.countByOwner(runtime, owner.key), '0', 'sanity')
+
+  await eyeshadeAgent
+    .get(owner.urls.root)
+    .expect(status(404))
+
+  await eyeshadeAgent
+    .put(owner.urls.root)
+    .send(payload)
+    .expect(ok)
+
+  t.is(await owners.countByOwner(runtime, owner.key), '1', 'can add owner')
+
+  let ownerObject = await owners.readByOwner(runtime, owner.key)
+  t.is(_.isObject(ownerObject.parameters), true, 'wallet has uphold parameters')
+  t.is(ownerObject.authorized, true, 'owner is authorized')
+
+  const { body } = await eyeshadeAgent
+    .get(owner.urls.root)
+    .expect(ok)
+  const { wallet } = body
+  t.true(_.isObject(wallet), 'wallet info is returned')
+
+  const {
+    authorized,
+    isMember,
+    id,
+    availableCurrencies,
+    possibleCurrencies,
+    scope
+  } = wallet
+
+  t.is(authorized, true, 'sanity')
+  t.is(isMember, true, 'sanity')
+  t.true(_.isString(id), 'an id is returned on the wallet object')
+  t.is(Array.isArray(availableCurrencies), true, 'get wallet returns currencies we have a card for')
+  // since we're reusing the test ledger wallet, this should always be true
+  t.is(availableCurrencies.indexOf('BAT') !== -1, true, 'wallet has a BAT card')
+  // hopefully no one creates a JPY card on the test ledger wallet :)
+  t.is(availableCurrencies.indexOf('JPY'), -1, 'wallet does not have a JPY card')
+
+  t.is(Array.isArray(possibleCurrencies), true, 'get wallet returns currencies we could create a card for')
+  t.is(possibleCurrencies.indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
+  t.is(possibleCurrencies.indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
+  t.is(scope, SCOPE, 'get wallet returns authorization scope')
+  await owners.removeByOwner(runtime, owner.key)
+})
+
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
   t.plan(14)
-  const { owners } = t.context
-  const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33b'
-  const SCOPE = 'cards:read user:read'
 
-  const dbSelector = {
-    owner: OWNER
-  }
+  const OWNER = publisherId()
+  const SCOPE = 'cards:read user:read'
   const encodedOwner = encodeURIComponent(OWNER)
   const ownerWalletUrl = `/v1/owners/${encodedOwner}/wallet`
 
-  t.is(await owners.count(dbSelector), 0, 'sanity')
+  t.is(await owners.countByOwner(runtime, OWNER), '0', 'sanity')
 
   const dataOwnerWalletParams = {
     provider: 'uphold',
@@ -49,9 +123,9 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
     .send(dataOwnerWalletParams)
     .expect(200)
 
-  t.is(await owners.count(dbSelector), 1, 'can add owner')
+  t.is(await owners.countByOwner(runtime, OWNER), '1', 'can add owner')
 
-  let owner = await owners.findOne(dbSelector)
+  let owner = await owners.readByOwner(runtime, OWNER)
   t.is(_.isObject(owner.parameters), true, 'wallet has uphold parameters')
   t.is(owner.authorized, true, 'owner is authorized')
 
@@ -80,6 +154,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(possibleCurrencies.indexOf('BAT') !== -1, true, 'wallet can have a BAT card')
   t.is(possibleCurrencies.indexOf('JPY') !== -1, true, 'wallet can have a JPY card')
   t.is(scope, SCOPE, 'get wallet returns authorization scope')
+  await owners.removeByOwner(runtime, OWNER)
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
@@ -88,11 +163,11 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
   const walletUrl = `/v1/owners/${encodedOwner}/wallet`
   const parameters = {
     access_token: process.env.UPHOLD_ACCESS_TOKEN,
-    show_verification_status: false,
-    defaultCurrency: 'DASH'
+    show_verification_status: false
   }
   const data = {
     provider: 'uphold',
+    defaultCurrency: 'DASH',
     parameters
   }
   await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
@@ -155,4 +230,19 @@ function createCard (owner, currency) {
   const createCardData = { currency }
   const cardUrl = `/v3/owners/${encodedOwner}/wallet/card`
   return eyeshadeAgent.post(cardUrl).send(createCardData).expect(ok)
+}
+
+function createOwnerInfos () {
+  const key = publisherId()
+  const encoded = encodeURIComponent(key)
+  const root = `/v1/owners/${encoded}/wallet`
+  const card = `/v3/owners/${encoded}/wallet/card`
+  return {
+    key,
+    encoded,
+    urls: {
+      root,
+      card
+    }
+  }
 }

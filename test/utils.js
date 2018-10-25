@@ -13,12 +13,11 @@ const {
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
 
-const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
+const braveYoutubeOwner = publisherId()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
 const eyeshadeCollections = [
   'grants',
-  'owners',
   'restricted',
   'publishers',
   'tokens',
@@ -59,16 +58,19 @@ const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
 const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
 
-const status = (expectation) => (res) => {
-  if (!res) {
-    return new Error('no response object given')
-  }
-  const { status, body } = res
-  if (status !== expectation) {
-    return new Error(JSON.stringify(Object.assign({}, body, {
-      url: res.request.url,
-      method: res.request.method
-    }), null, 2).replace(/\\n/g, '\n'))
+function status (expected) {
+  return (res) => {
+    if (!res) {
+      return new Error('no response object given')
+    }
+    const { status, body } = res
+    if (status !== expected) {
+      return Object.assign(new Error(''), body, {
+        url: res.request.url,
+        method: res.request.method,
+        status
+      })
+    }
   }
 }
 
@@ -154,6 +156,7 @@ const cleanRedisDb = async () => {
 
 module.exports = {
   makeSettlement,
+  publisherId,
   createSurveyor,
   getSurveyor,
   fetchReport,
@@ -219,6 +222,11 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
+}
+
+function publisherId (_id) {
+  const id = _id = uuidV4()
+  return `publishers#uuid:${id.toLowerCase()}`
 }
 
 function statsUrl () {

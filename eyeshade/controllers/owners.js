@@ -1,17 +1,17 @@
 const boom = require('boom')
-const bson = require('bson')
 const Joi = require('joi')
 const underscore = require('underscore')
 const BigNumber = require('bignumber.js')
+
+const owners = require('../lib/owners')
+
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
 const v1 = {}
 const v3 = {}
-
 let altcurrency
-
 /*
    GET /v1/owners/{owner}/wallet
        [ used by publishers ]
@@ -22,19 +22,17 @@ v1.getWallet = {
     return async (request, reply) => {
       const owner = request.params.owner
       const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owners', debug)
-      let entry, provider, rates, result
+      let entry, provider, result
 
-      entry = await owners.findOne({ owner })
-      provider = entry && entry.provider
-      if (!provider) {
-        return reply(boom.notFound('owner does not exist'))
-      }
+      entry = await owners.readByOwner(runtime, owner)
+      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
 
+      const rates = await runtime.currency.rates(altcurrency)
       result = {
-        rates: await runtime.currency.rates(altcurrency)
+        rates
       }
 
+      provider = entry && entry.provider
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
@@ -42,7 +40,6 @@ v1.getWallet = {
           if (entry.parameters.scope) {
             result.wallet.scope = entry.parameters.scope
           }
-          rates = result.rates
 
           const fxrates = await runtime.currency.all()
           const bigUSD = new BigNumber(rates.USD)
@@ -53,7 +50,7 @@ v1.getWallet = {
           })
         }
       } catch (ex) {
-        debug('status', { reason: ex.toString(), stack: ex.stack })
+        debug('status', { reason: ex.toString(), stack: ex.stack, result, entry })
         runtime.captureException(ex, { req: request, extra: { owner: owner } })
       }
       if ((provider) && (!result.wallet)) {
@@ -116,7 +113,6 @@ v3.createCard = {
       params
     } = request
     const {
-      database,
       wallet
     } = runtime
     const {
@@ -126,27 +122,28 @@ v3.createCard = {
     const {
       owner
     } = params
-    const where = {
-      owner
+
+    const ownerObject = await owners.readByOwner(runtime, owner)
+    if (!ownerObject) {
+      return reply(boom.notFound('no such entry: ' + owner))
     }
 
-    const owners = database.get('owners', debug)
-
+    if (!owners.isVerified(ownerObject)) {
+      return reply(boom.badData('owner not verified'))
+    }
     debug('create card begin', {
       currency,
       label,
       owner
     })
-    const info = await owners.findOne(where)
-    if (!ownerVerified(info)) {
-      return reply(boom.badData('owner not verified'))
-    }
-    await wallet.createCard(info, {
+    const created = await wallet.createCard(ownerObject, {
       currency,
       label
     })
-    debug('card data create successful')
-    reply({})
+    debug('card data create successful', currency)
+    reply({
+      currency: created.currency
+    })
   },
   description: 'Create a card for uphold',
   tags: [ 'api' ],
@@ -161,16 +158,8 @@ v3.createCard = {
     }
   },
   response: {
-    schema: Joi.object().keys({})
+    schema: Joi.object().unknown(true)
   }
-}
-
-function ownerVerified (info) {
-  const {
-    provider,
-    parameters
-  } = info
-  return provider && parameters && parameters.access_token
 }
 
 /*
@@ -183,22 +172,8 @@ v1.putWallet = {
     return async (request, reply) => {
       const owner = request.params.owner
       const payload = request.payload
-      const provider = payload.provider
-      const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owners', debug)
 
-      const state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
-          defaultCurrency: payload.defaultCurrency,
-          visible: payload.show_verification_status,
-          verified: true,
-          altcurrency: altcurrency,
-          authorized: true,
-          authority: provider
-        })
-      }
-      await owners.update({ owner: owner }, state, { upsert: true })
+      await owners.create(runtime, owner, payload)
 
       reply({})
     }
@@ -236,21 +211,12 @@ v1.patchWallet = {
     return async (request, reply) => {
       const owner = request.params.owner
       const payload = request.payload
-      const debug = braveHapi.debug(module, request)
-      const owners = runtime.database.get('owners', debug)
 
-      const entry = await owners.findOne({ owner: owner })
-      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
-
-      const state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.pick(underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
-          defaultCurrency: payload.defaultCurrency,
-          visible: payload.show_verification_status
-        }), (value) => { return (typeof value !== 'undefined') })
+      const entry = await owners.readByOwner(runtime, owner)
+      if (!entry) {
+        return reply(boom.notFound('no such entry: ' + owner))
       }
-      await owners.update({ owner: owner }, state, { upsert: true })
-
+      await owners.updateByOwner(runtime, entry.owner, entry, payload)
       reply({})
     }
   },
@@ -286,36 +252,4 @@ module.exports.routes = [
 
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
-
-  await runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('owners', debug),
-      name: 'owners',
-      property: 'owner',
-      empty: {
-        owner: '',              // 'oauth#' + provider + ':' + (profile.id || profile._id)
-
-        providerName: '',
-        providerSuffix: '',
-        providerValue: '',
-        visible: false,
-
-        authorized: false,
-        authority: '',
-        provider: '',
-        altcurrency: '',
-        parameters: {},
-        defaultCurrency: '',
-
-        info: {},
-
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { owner: 1 } ],
-      others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 }, { visible: 1 },
-                { authorized: 1 }, { authority: 1 },
-                { provider: 1 }, { altcurrency: 1 }, { parameters: 1 }, { defaultCurrency: 1 },
-                { timestamp: 1 } ]
-    }
-  ])
 }
