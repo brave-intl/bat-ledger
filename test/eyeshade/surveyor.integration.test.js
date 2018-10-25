@@ -11,6 +11,7 @@ import {
   createSurveyor,
   dbUri,
   getSurveyor,
+  cleanDbs,
   freezeSurveyors
 } from '../utils'
 import {
@@ -35,6 +36,8 @@ const runtime = {
   database,
   config
 }
+
+test.after(cleanDbs)
 
 test('verify frozen occurs when daily is run', async t => {
   t.plan(5)

@@ -5,7 +5,7 @@ import _ from 'underscore'
 
 import {
   eyeshadeAgent,
-  connectToDb,
+  cleanDbs,
   cleanEyeshadeDb,
   braveYoutubeOwner,
   ok
@@ -16,7 +16,7 @@ dotenv.config()
 
 const collections = ['owners', 'publishers', 'tokens']
 
-test.before(async () => connectToDb('eyeshade'))
+test.after(cleanDbs)
 test.beforeEach(async (t) => {
   const db = await cleanEyeshadeDb(collections)
   collections.forEach((name) => {
