@@ -15,7 +15,7 @@ import {
   eyeshadeAgent,
   cleanPgDb,
   ok
-} from '../utils'
+} from 'bat-utils/test'
 import {
   agent
 } from 'supertest'

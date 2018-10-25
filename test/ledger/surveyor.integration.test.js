@@ -10,7 +10,9 @@ import {
   ledgerAgent,
   cleanDbs,
   ok
-} from '../utils'
+} from 'bat-utils/test'
+
+test.after(cleanDbs)
 
 const postgres = new Postgres({
   postgres: {

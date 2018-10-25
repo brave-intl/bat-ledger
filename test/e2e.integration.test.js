@@ -30,7 +30,7 @@ import {
   balanceAgent,
   debug,
   connectToDb
-} from './utils'
+} from 'bat-utils/test'
 
 import {
   accessCardId,
@@ -770,10 +770,7 @@ test('ensure referral balances are computed correctly', async t => {
   const referralURL = '/v1/referrals/' + referralKey
   const referral = {
     ownerId: braveYoutubeOwner,
-    channelId: braveYoutubePublisher,
-    downloadId: uuid.v4(),
-    platform: 'android',
-    finalized: (new Date()).toISOString()
+    channelId: braveYoutubePublisher
   }
   const referrals = [referral]
 

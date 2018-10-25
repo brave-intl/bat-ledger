@@ -1,23 +1,40 @@
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
-const underscore = require('underscore')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const {
+  insertFromReferrals,
+  updateBalances
+} = require('../lib/transaction')
+
 const v1 = {}
+let altcurrency = null
 
-const schema = Joi.array().min(1).items(Joi.object().keys({
-  ownerId: braveJoi.string().owner().required().description('the owner'),
-  channelId: braveJoi.string().publisher().required().description('the publisher identity'),
-  downloadId: Joi.string().guid().required().description('the download identity'),
-  platform: Joi.string().token().required().description('the download platform'),
-  finalized: Joi.date().iso().required().description('timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
-}).unknown(true)).required().description('list of finalized referrals')
+const authorizationHeader = Joi.object({
+  authorization: Joi.string().required()
+}).unknown()
 
-let altcurrency
+const channelId = braveJoi.string().publisher().required().description('the publisher identity')
+const transactionId = Joi.string().guid().required().description('the transaction identity')
+const ownerId = braveJoi.string().owner().required().description('the owner')
+const amount = braveJoi.number().required().description('amount awarded for the referral')
+
+const joiPublisher = Joi.object().keys({
+  ownerId,
+  channelId
+})
+const joiReferral = Joi.object().keys({
+  channelId,
+  ownerId,
+  amount,
+  transactionId
+})
+const joiPublishers = Joi.array().items(joiPublisher).required().description('list of requested referral creations')
+const joiReferrals = Joi.array().items(joiReferral).required().description('list of finalized referrals')
 
 /*
    GET /v1/referrals/{transactionID}
@@ -26,20 +43,17 @@ let altcurrency
 v1.findReferrals = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const transactionId = request.params.transactionId
-      const debug = braveHapi.debug(module, request)
-      const transactions = runtime.database.get('referrals', debug)
-      let entries, results
+      const {
+        transactionId
+      } = request.params
 
-      entries = await transactions.find({ transactionId: transactionId })
-      if (entries.length === 0) return reply(boom.notFound('no such transaction-identifier: ' + transactionId))
+      const entries = await getByTransactionIds(runtime, [transactionId])
 
-      results = []
-      entries.forEach((entry) => {
-        results.push(underscore.extend({ channelId: entry.publisher },
-                                       underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
-      })
-      reply(results)
+      if (entries.length === 0) {
+        return reply(boom.notFound('no such transaction-identifier: ' + transactionId))
+      }
+
+      reply(entries)
     }
   },
 
@@ -52,14 +66,15 @@ v1.findReferrals = {
   tags: [ 'api', 'referrals' ],
 
   validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    headers: authorizationHeader,
     params: {
-      transactionId: Joi.string().guid().required().description('the transaction identity')
+      transactionId: transactionId
     }
   },
 
-  response:
-    { schema: schema }
+  response: {
+    schema: joiReferrals
+  }
 }
 
 /*
@@ -70,49 +85,33 @@ v1.findReferrals = {
 v1.createReferrals = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const transactionId = request.params.transactionId
-      const payload = request.payload
-      const debug = braveHapi.debug(module, request)
-      const referrals = runtime.database.get('referrals', debug)
-      let entries, matches, probi, query
+      const { transactionId } = request.params
+      const referrals = request.payload
 
-      entries = await referrals.find({ transactionId: transactionId })
-      if (entries.length > 0) return reply(boom.badData('existing transaction-identifier: ' + transactionId))
+      const byTxId = await getByTransactionIds(runtime, [transactionId])
 
-      probi = await runtime.currency.fiat2alt(runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
-      probi = bson.Decimal128.fromString(probi.toString())
-      query = { $or: [] }
-      for (let referral of payload) {
-        underscore.extend(referral, { altcurrency: altcurrency, probi: probi })
-        query.$or.push({ downloadId: referral.downloadId })
-      }
-      entries = await referrals.find(query)
-      if (entries.length > 0) {
-        matches = []
-        entries.forEach((referral) => { matches.push(referral.downloadId) })
-        return reply(boom.badData('existing download-identifier' + ((entries.length > 1) ? 's' : '') + ': ' +
-                                  matches.join(', ')))
+      if (byTxId.length > 0) {
+        const message = 'existing transaction-identifier: ' + transactionId
+        return reply(boom.badData(message))
       }
 
-      for (let referral of payload) {
-        let state
+      const {
+        amount,
+        currency
+      } = runtime.config.referrals
 
-        state = {
-          $currentDate: { timestamp: { $type: 'timestamp' } },
-          $set: underscore.extend({
-            finalized: new Date(referral.finalized),
-            owner: referral.ownerId,
-            publisher: referral.channelId,
-            transactionId: transactionId,
-            exclude: false
-          }, underscore.pick(referral, [ 'platform', 'altcurrency', 'probi' ]))
-        }
-        await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
+      const probi = await runtime.currency.fiat2alt(currency, amount, altcurrency)
+      const probiString = probi.toString()
+
+      const options = {
+        probi: probiString,
+        altcurrency,
+        transactionId
       }
+      await insertReferrals(runtime, options, referrals)
+      const created = await getByTransactionIds(runtime, [transactionId])
 
-      await runtime.queue.send(debug, 'referral-report', { transactionId, shouldUpdateBalances: true })
-
-      reply({})
+      reply(created)
     }
   },
 
@@ -125,15 +124,16 @@ v1.createReferrals = {
   tags: [ 'api', 'referrals' ],
 
   validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
+    headers: authorizationHeader,
+    payload: joiPublishers,
     params: {
-      transactionId: Joi.string().guid().required().description('the transaction identity')
-    },
-    payload: schema
+      transactionId: transactionId
+    }
   },
 
-  response:
-    { schema: Joi.object().length(0) }
+  response: {
+    schema: joiReferrals
+  }
 }
 
 module.exports.routes = [
@@ -141,39 +141,65 @@ module.exports.routes = [
   braveHapi.routes.async().put().path('/v1/referrals/{transactionId}').whitelist().config(v1.createReferrals)
 ]
 
+module.exports.removeReferral = removeReferral
+module.exports.insertReferrals = insertReferrals
+module.exports.getByTransactionIds = getByTransactionIds
+
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
+}
 
-  runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('referrals', debug),
-      name: 'referrals',
-      property: 'downloadId',
-      empty: {
-        downloadId: '',
+async function getByTransactionIds (runtime, transactionIds) {
+  const query = `
+SELECT
+  TX.document_id as "transactionId",
+  TX.to_account as "ownerId",
+  TX.channel as "channelId",
+  amount
+FROM transactions as TX
+WHERE
+  TX.document_id = any($1::text[]);`
+  const {
+    rows
+  } = await runtime.postgres.query(query, [transactionIds])
+  return rows
+}
 
-        transactionId: '',
-        publisher: '',
-        owner: '',
-        platform: '',
-        finalized: bson.Timestamp.ZERO,
+function removeReferral (runtime, transactionId) {
+  const query = `
+DELETE FROM transactions WHERE document_id = $1;`
+  return runtime.postgres.query(query, [transactionId])
+}
 
-        altcurrency: '',
-        probi: bson.Decimal128.POSITIVE_ZERO,
+async function insertReferrals (runtime, options, referrals) {
+  return runtime.postgres.transaction(async (client) => {
+    const inserter = insertReferral(runtime, client, options)
+    const result = await Promise.all(referrals.map(inserter))
+    await updateBalances(runtime, client)
+    return result
+  })
+}
 
-     // added by administrator
-        exclude: false,
-        hash: '',
-
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [ { downloadId: 1 } ],
-      others: [ { transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
-                { altcurrency: 1 }, { probi: 1 }, { exclude: 1 }, { hash: 1 }, { timestamp: 1 },
-                { altcurrency: 1, probi: 1 },
-                { altcurrency: 1, exclude: 1, probi: 1 },
-                { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-                { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+function insertReferral (runtime, client, {
+  probi,
+  altcurrency,
+  transactionId
+}) {
+  return ({
+    channelId,
+    ownerId
+  }) => {
+    const firstId = bson.ObjectID.createFromTime(new Date())
+    const _id = {
+      publisher: channelId,
+      owner: ownerId,
+      altcurrency: altcurrency || runtime.config.altcurrency || 'BAT'
     }
-  ])
+    return insertFromReferrals(runtime, client, {
+      transactionId,
+      firstId,
+      probi,
+      _id
+    })
+  }
 }

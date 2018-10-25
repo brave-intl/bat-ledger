@@ -1,5 +1,6 @@
 const dotenv = require('dotenv')
 dotenv.config()
+
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
@@ -58,19 +59,6 @@ const AUTH_KEY = 'Authorization'
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
 const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
-
-const status = (expectation) => (res) => {
-  if (!res) {
-    return new Error('no response object given')
-  }
-  const { status, body } = res
-  if (status !== expectation) {
-    return new Error(JSON.stringify(Object.assign({}, body, {
-      url: res.request.url,
-      method: res.request.method
-    }), null, 2).replace(/\\n/g, '\n'))
-  }
-}
 
 const ok = (res) => status(200)(res)
 
@@ -217,4 +205,19 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
+}
+
+function status (expected) {
+  return (res) => {
+    if (!res) {
+      return new Error('no response object given')
+    }
+    const { status, body } = res
+    if (status !== expected) {
+      return Object.assign(new Error(''), body, {
+        url: res.request.url,
+        status
+      })
+    }
+  }
 }
