@@ -1,6 +1,6 @@
 const dns = require('dns')
 const os = require('os')
-
+const _ = require('underscore')
 const asyncHandler = require('hapi-async-handler')
 const authBearerToken = require('hapi-auth-bearer-token')
 const authCookie = require('hapi-auth-cookie')
@@ -179,6 +179,33 @@ const Server = async (options, runtime) => {
 
         debug('session authentication strategy via bearer-access-token')
         debug('github authentication strategy via bearer-access-token')
+      }
+    }
+
+    server.auth.strategy('ads', 'bearer-access-token', {
+      allowQueryToken: true,
+      allowMultipleHeaders: false,
+      validateFunc: (...options) => {
+        const [token, callback] = options
+        const map = {
+          ADS_READ_TOKENS: 'ads:read',
+          ADS_WRITE_TOKENS: 'ads:write'
+        }
+        const keys = _.keys(map)
+        const scope = _.reduce(keys, pushTokens(token, map), [])
+        callback(null, !!scope.length, {
+          token,
+          scope
+        }, null)
+      }
+    })
+
+    function pushTokens (token, map) {
+      return (memo, key) => {
+        const value = map[key]
+        console.log(memo, key, token, process.env[key])
+        const TOKENS = process.env[key] ? process.env[key].split(',') : []
+        return memo.concat(TOKENS.includes(token) ? value : [])
       }
     }
 
