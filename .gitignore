@@ -64,3 +64,4 @@ _.env
 
 # babel output
 dist
+.DS_Store

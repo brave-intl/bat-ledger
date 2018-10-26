@@ -1,4 +1,3 @@
-const Raven = require('raven')
 const SlackJS = require('node-slack')
 const tldjs = require('tldjs')
 const underscore = require('underscore')
@@ -35,7 +34,7 @@ function Slack (config, runtime) {
     this.slackjs.send(payload, (res, err, body) => {
       if (err && err !== 'ok') {
         debug('notify', err)
-        Raven.captureException(err)
+        runtime.captureException(err)
       }
     })
   }
