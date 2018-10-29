@@ -47,7 +47,7 @@ const services = {
         , amount                : process.env.REFERRALS_AMOUNT || 5
         }
       module.exports.postgres =
-        { url                   : process.env.BAT_POSTGRES_URL || 'postgres://localhost/test'
+        { url                   : process.env.DATABASE_URL || 'postgres://localhost/test'
         , schemaVersionCheck    : true
         }
 

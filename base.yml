@@ -52,6 +52,7 @@ services:
       - LEDGER_SLACK_ICON_URL
       - PORT
       - PUBLISHERS_TOKEN
+      - PUBLISHERS_TOKENS
       - PUBLISHERS_URL
       - REDEEMER_CARD_ID
       - REDEEMER_TOKEN

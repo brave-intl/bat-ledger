@@ -50,8 +50,8 @@ ORDER BY created_at
 },
 
   auth: {
-    strategy: 'ads',
-    scope: ['ads:read'],
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
     mode: 'required'
   },
 
@@ -101,8 +101,8 @@ v1.getBalances =
 },
 
   auth: {
-    strategy: 'ads',
-    scope: ['ads:read'],
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
     mode: 'required'
   },
 
@@ -159,8 +159,8 @@ v1.getEarningsTotals =
 },
 
   auth: {
-    strategy: 'ads',
-    scope: ['ads:read'],
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
     mode: 'required'
   },
 
@@ -220,8 +220,8 @@ v1.getPaidTotals =
 },
 
   auth: {
-    strategy: 'ads',
-    scope: ['ads:read'],
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
     mode: 'required'
   },
 

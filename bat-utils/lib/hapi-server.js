@@ -22,10 +22,24 @@ const whitelist = require('./hapi-auth-whitelist')
 
 const npminfo = require('../npminfo')
 
-const pushAdsTokens = pushTokens({
-  ADS_READ_TOKENS: 'ads:read',
-  ADS_WRITE_TOKENS: 'ads:write'
+const pushScopedTokens = pushTokens({
+  // env var       // scope key
+  PUBLISHERS_TOKENS: 'publishers',
+  ADS_TOKENS: 'ads'
 })
+
+function pushTokens (map) {
+  const keys = _.keys(map)
+  return (token, memo = []) => {
+    return keys.reduce((memo, key) => {
+      const value = map[key]
+      const envTokens = process.env[key]
+      const TOKENS = envTokens ? envTokens.split(',') : []
+      const has = TOKENS.includes(token)
+      return memo.concat(has ? [value] : [])
+    }, memo)
+  }
+}
 
 const Server = async (options, runtime) => {
   const debug = new SDebug('web')
@@ -187,12 +201,11 @@ const Server = async (options, runtime) => {
       }
     }
 
-    server.auth.strategy('ads', 'bearer-access-token', {
+    server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
       allowQueryToken: true,
       allowMultipleHeaders: false,
-      validateFunc: (...options) => {
-        const [token, callback] = options
-        const scope = pushAdsTokens(token, [])
+      validateFunc: (token, callback) => {
+        const scope = pushScopedTokens(token)
         callback(null, !!scope.length, {
           token,
           scope
@@ -378,17 +391,5 @@ const Server = async (options, runtime) => {
 
   return server
 }
-
-function pushTokens (map) {
-  const keys = _.keys(map)
-  return (token, memo) => {
-    return keys.reduce((memo, key) => {
-      const value = map[key]
-      const TOKENS = process.env[key] ? process.env[key].split(',') : []
-      return memo.concat(TOKENS.includes(token) ? [value] : [])
-    }, memo || [])
-  }
-}
-
 
 module.exports = Server
