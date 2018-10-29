@@ -203,7 +203,6 @@ const Server = async (options, runtime) => {
     function pushTokens (token, map) {
       return (memo, key) => {
         const value = map[key]
-        console.log(memo, key, token, process.env[key])
         const TOKENS = process.env[key] ? process.env[key].split(',') : []
         return memo.concat(TOKENS.includes(token) ? value : [])
       }
