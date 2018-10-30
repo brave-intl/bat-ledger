@@ -188,8 +188,11 @@ const getGrant = (protocolVersion) => (runtime) => {
     })
     promotion = underscore.shuffle(candidates)[0]
 
-    if (grants.count({'promotionId': promotion.promotionId}) === 0) {
-      reply(boom.notFound('promotion not available'))
+    const counted = await grants.count({
+      promotionId: promotion.promotionId
+    })
+    if (counted === 0) {
+      return reply(boom.notFound('promotion not available'))
     }
 
     debug('grants', { languages: languages })
