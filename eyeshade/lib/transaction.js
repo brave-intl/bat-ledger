@@ -1,6 +1,7 @@
 const BigNumber = require('bignumber.js')
 const getPublisherProps = require('bat-publisher').getPublisherProps
 const uuidv5 = require('uuid/v5')
+const uuid = require('uuid')
 const {
   createdTimestamp,
   normalizeChannel
@@ -169,7 +170,7 @@ exports.insertFromReferrals = async (runtime, client, referrals) => {
       `
       await client.query(query, [
         // transactionId and channel pair should be unique
-        uuidv5(referrals.transactionId + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536'),
+        uuid.v4(),
         created / 1000,
         `referrals through ${month}`,
         'referral',

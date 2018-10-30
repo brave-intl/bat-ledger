@@ -31,18 +31,6 @@ async function main () {
     }
   }
 
-  // contributions
-
-  const surveyorsC = database.get('surveyors', debug)
-  const surveyors = await surveyorsC.find({ surveyorType: 'contribution', frozen: true })
-
-  for (let surveyor of surveyors) {
-    const { surveyorId } = surveyor
-    if (surveyorId) {
-      await queue.send(debug, 'surveyor-frozen-report', { surveyorId })
-    }
-  }
-
   await database.db.close()
   await queue.rsmq.quit()
 }

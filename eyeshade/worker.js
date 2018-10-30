@@ -6,7 +6,6 @@ const config = require('../config.js')
 const publishersWorker = require('./workers/publishers')
 const referralsWorker = require('./workers/referrals')
 const reportsWorker = require('./workers/reports')
-const surveyorsWorker = require('./workers/surveyors')
 const walletWorker = require('./workers/wallet')
 
 const {
@@ -26,7 +25,6 @@ const parentModules = [
   publishersWorker,
   referralsWorker,
   reportsWorker,
-  surveyorsWorker,
   walletWorker
 ]
 

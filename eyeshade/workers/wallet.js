@@ -1,5 +1,14 @@
 const bson = require('bson')
+const BigNumber = require('bignumber.js')
 const underscore = require('underscore')
+const {
+  insertFromVoting,
+  updateBalances
+} = require('../lib/transaction.js')
+const {
+  createdTimestamp
+} = require('bat-utils/lib/extras-utils')
+const feePercent = 0.05
 
 exports.name = 'wallet'
 exports.initialize = async (debug, runtime) => {
@@ -268,6 +277,7 @@ exports.workers = {
  */
   'voting-report':
     async (debug, runtime, payload) => {
+      const { fromString } = bson.Decimal128
       const publisher = payload.publisher
       const surveyorId = payload.surveyorId
       const cohort = payload.cohort || 'control'
@@ -285,24 +295,41 @@ exports.workers = {
       if (!surveyor) {
         throw new Error('surveyor does not exist')
       }
-      if (surveyor.frozen) {
-        state = {
-          $inc: { rejectedVotes: 1 }
-        }
-        await surveyors.update(where, state)
-      } else {
-        where = {
-          surveyorId,
-          publisher,
-          cohort
-        }
-        state = {
-          $currentDate: { timestamp: { $type: 'timestamp' } },
-          $inc: { counts: 1 },
-          $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
-        }
-        await voting.update(where, state, { upsert: true })
+
+      const counts = 1
+      const total = new BigNumber(surveyor.probi.toString()).dividedBy(surveyor.votes).times(counts)
+      const fees = total.times(feePercent)
+      const probi = total.minus(fees)
+      const probiString = probi.toString()
+      const feesString = fees.toString()
+      where = {
+        surveyorId,
+        publisher,
+        cohort
       }
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: { exclude: runtime.config.testingCohorts.includes(cohort) },
+        $inc: {
+          probi: fromString(probiString),
+          fees: fromString(feesString),
+          counts
+        }
+      }
+      await voting.update(where, state, { upsert: true })
+
+      const vote = {
+        surveyorId,
+        probi: probiString,
+        fees: feesString,
+        _id: {
+          publisher,
+          altcurrency: 'BAT'
+        }
+      }
+      const client = await runtime.postgres.connect()
+      await insertFromVoting(runtime, client, vote, createdTimestamp(surveyor._id))
+      await updateBalances(runtime, client)
     },
 
 /* sent when the wallet balance updates

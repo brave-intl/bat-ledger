@@ -1,7 +1,5 @@
 const dotenv = require('dotenv')
 dotenv.config()
-const Database = require('bat-utils/lib/runtime-database')
-const Queue = require('bat-utils/lib/runtime-queue')
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
@@ -12,9 +10,6 @@ const BigNumber = require('bignumber.js')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
-const {
-  freezeOldSurveyors
-} = require('../eyeshade/workers/reports')
 
 const SDebug = require('sdebug')
 const debug = new SDebug('tests')
@@ -174,8 +169,8 @@ module.exports = {
   cleanEyeshadeDb,
   cleanRedisDb,
   braveYoutubeOwner,
-  braveYoutubePublisher,
-  freezeSurveyors
+  debug,
+  braveYoutubePublisher
 }
 
 function cleanDbs () {
@@ -187,7 +182,7 @@ function cleanDbs () {
 }
 
 function cleanPgDb (client) {
-  return () => client.query('DELETE from transactions;')
+  return () => client.query('DELETE from transactions; REFRESH MATERIALIZED VIEW account_balances')
 }
 
 function getSurveyor (id) {
@@ -213,13 +208,4 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
-}
-
-async function freezeSurveyors (dayShift) {
-  const runtime = {
-    database: new Database({ database: dbUri('eyeshade') }),
-    queue: new Queue({ queue: process.env.BAT_REDIS_URL })
-  }
-
-  await freezeOldSurveyors(debug, runtime, dayShift)
 }

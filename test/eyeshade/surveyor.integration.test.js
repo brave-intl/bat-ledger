@@ -1,8 +1,10 @@
 import {
   serial as test
 } from 'ava'
+import Currency from 'bat-utils/lib/runtime-currency'
 import Database from 'bat-utils/lib/runtime-database'
-import SDebug from 'sdebug'
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import BigNumber from 'bignumber.js'
 import {
   workers
 } from '../../eyeshade/workers/wallet'
@@ -10,83 +12,94 @@ import {
   connectToDb,
   createSurveyor,
   dbUri,
-  getSurveyor,
   cleanDbs,
-  freezeSurveyors
+  cleanPgDb,
+  debug,
+  getSurveyor
 } from '../utils'
 import {
   timeout
 } from 'bat-utils/lib/extras-utils'
 
-process.env.SERVICE = 'ledger'
-const config = require('../../config')
-
 const votingReportWorker = workers['voting-report']
 
-const debug = new SDebug('surveyor-test')
+process.env.SERVICE = 'ledger'
+const config = require('../../config')
 const mongo = dbUri('eyeshade')
-
 const database = new Database({
   database: {
     mongo
   }
 })
+const currency = new Currency(config)
+const postgres = new Postgres({
+  postgres: {
+    url: process.env.BAT_POSTGRES_URL
+  }
+})
 
 const runtime = {
   database,
-  config
+  config,
+  currency,
+  postgres,
+  captureExcaption: (e) => console.log(e)
 }
 
 test.after(cleanDbs)
+test.after(cleanPgDb(postgres))
 
-test('verify frozen occurs when daily is run', async t => {
-  t.plan(5)
+test('voting report adds votes', async (t) => {
   let body
+  let rows
   const eyeshade = await connectToDb('eyeshade')
+  const surveyors = eyeshade.collection('surveyors')
+  const publisher = 'fake-publisher'
 
   await createSurveyor()
-  // just made value
   ;({ body } = await getSurveyor())
   const { surveyorId } = body
   await waitUntilPropagated(querySurveyor)
-  // does not freeze if midnight is before creation date
-  // vote on surveyor, no rejectedVotes yet
-  await voteAndCheckRejected(0)
-  await tryFreeze(0, false)
-  // freezes if midnight is after creation date
-  await voteAndCheckRejected(0)
-  await tryFreeze(-1, true)
-  // property is needed
-  await voteAndCheckRejected(1)
+  rows = await countVotes()
+  t.deepEqual(rows, [])
+  await votingReportWorker(debug, runtime, {
+    surveyorId,
+    publisher
+  })
+  rows = await countVotes()
+  t.is(rows.length, 1)
+  const [row] = rows
+  t.deepEqual({
+    to_account: row.to_account,
+    publisher: row.channel,
+    amount: new BigNumber(row.amount).toString()
+  }, {
+    publisher,
+    to_account: publisher,
+    amount: new BigNumber('1').toString()
+  })
 
-  async function voteAndCheckRejected (count) {
-    const publisher = 'fake-publisher'
-    await votingReportWorker(debug, runtime, {
-      surveyorId,
-      publisher
-    })
-    const surveyor = await querySurveyor()
-    t.is(surveyor.rejectedVotes, count)
-  }
-
-  async function tryFreeze (dayShift, expect) {
-    await freezeSurveyors(dayShift)
-    // beware of cursor
-    const surveyor = await querySurveyor()
-    t.is(surveyor.frozen, expect)
+  async function countVotes () {
+    const {
+      rows
+    } = await runtime.postgres.query(`
+ SELECT * from transactions
+ WHERE document_id = $1::text
+ AND to_account = $2::text;`, [surveyorId, publisher])
+    return rows
   }
 
   function querySurveyor () {
-    return eyeshade.collection('surveyors').findOne({
+    return surveyors.findOne({
       surveyorId
     })
   }
 
   async function waitUntilPropagated (fn) {
-    let finished = await fn()
-    while (!finished) {
-      await timeout(2000)
+    let finished
+    do {
+      await timeout()
       finished = await fn()
-    }
+    } while (!finished)
   }
 })
