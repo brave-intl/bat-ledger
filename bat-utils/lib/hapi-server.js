@@ -24,8 +24,8 @@ const npminfo = require('../npminfo')
 
 const pushScopedTokens = pushTokens({
   // env var       // scope key
-  PUBLISHERS_TOKENS: 'publishers',
-  ADS_TOKENS: 'ads'
+  ALLOWED_ADS_TOKENS: 'ads',
+  ALLOWED_PUBLISHERS_TOKENS: 'publishers'
 })
 
 function pushTokens (map) {
