@@ -186,8 +186,8 @@ const Server = async (options, runtime) => {
       allowQueryToken: true,
       allowMultipleHeaders: false,
       validateFunc: (token, callback) => {
-        const tokenlist = process.env.TOKEN_LIST && process.env.TOKEN_LIST.split(',')
-        callback(null, ((!tokenlist) || (tokenlist.indexOf(token) !== -1)), { token: token }, null)
+        const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
+        callback(null, braveHapi.isSimpleTokenValid(tokenlist, token), { token: token }, null)
       }
     })
   })
