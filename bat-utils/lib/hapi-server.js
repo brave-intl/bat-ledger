@@ -35,7 +35,7 @@ function pushTokens (map) {
       const value = map[key]
       const envTokens = process.env[key]
       const TOKENS = envTokens ? envTokens.split(',') : []
-      const has = TOKENS.includes(token)
+      const has = braveHapi.isSimpleTokenValid(TOKENS, token)
       return memo.concat(has ? [value] : [])
     }, memo)
   }
@@ -206,7 +206,8 @@ const Server = async (options, runtime) => {
       allowMultipleHeaders: false,
       validateFunc: (token, callback) => {
         const scope = pushScopedTokens(token)
-        callback(null, !!scope.length, {
+        const valid = !!scope.length
+        callback(null, valid, {
           token,
           scope
         }, null)
