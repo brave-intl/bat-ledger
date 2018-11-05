@@ -350,7 +350,7 @@ Wallet.providers.uphold = {
 
       currency = currency.toUpperCase()
       if (currency !== info.altcurrency) {
-        const rate = this.currency.rates.BAT[currency]
+        const rate = await this.currency.ratio(currency, 'BAT')
         if (!rate) throw new Error('no conversion rate for ' + currency + ' to BAT')
 
         desired = desired.dividedBy(new BigNumber(rate.toString()))

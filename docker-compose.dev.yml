@@ -26,8 +26,3 @@ services:
       - "./bat-utils:/usr/src/app/bat-utils"
       - "./balance:/usr/src/app/balance"
     command: "npm run start-balance"
-  helper-web:
-    volumes:
-      - "./bat-utils:/usr/src/app/bat-utils"
-      - "./helper:/usr/src/app/helper"
-    command: "npm run start-helper"
