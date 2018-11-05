@@ -145,7 +145,7 @@ test('settlement transaction throws on invalid altcurrency', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.altcurrency = 'ETH'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throws(insertFromSettlement(runtime, client, settlement))
   } finally {
     client.release()
   }
@@ -157,7 +157,7 @@ test('settlement transaction throws on missing probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.probi
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throws(insertFromSettlement(runtime, client, settlement))
   } finally {
     client.release()
   }
@@ -169,7 +169,7 @@ test('settlement transaction throws on 0 probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '0'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throws(insertFromSettlement(runtime, client, settlement))
   } finally {
     client.release()
   }
@@ -181,7 +181,7 @@ test('settlement transaction throws on negative probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '-1'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throws(insertFromSettlement(runtime, client, settlement))
   } finally {
     client.release()
   }
@@ -193,7 +193,7 @@ test('settlement transaction throws on missing owner', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.owner
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throws(insertFromSettlement(runtime, client, settlement))
   } finally {
     client.release()
   }

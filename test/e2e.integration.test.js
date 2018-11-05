@@ -253,7 +253,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
-  await t.throwsAsync(uphold.createCardTransaction(userCardId,
+  await t.throws(uphold.createCardTransaction(userCardId,
     {'amount': desired, 'currency': 'BAT', 'destination': donorCardId},
     true // commit tx in one swoop
   ))
