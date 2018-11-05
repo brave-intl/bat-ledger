@@ -1,6 +1,6 @@
 const dns = require('dns')
 const os = require('os')
-
+const _ = require('underscore')
 const asyncHandler = require('hapi-async-handler')
 const authBearerToken = require('hapi-auth-bearer-token')
 const authCookie = require('hapi-auth-cookie')
@@ -21,6 +21,25 @@ const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
 
 const npminfo = require('../npminfo')
+
+const pushScopedTokens = pushTokens({
+  // env var       // scope key
+  ALLOWED_ADS_TOKENS: 'ads',
+  ALLOWED_PUBLISHERS_TOKENS: 'publishers'
+})
+
+function pushTokens (map) {
+  const keys = _.keys(map)
+  return (token, memo = []) => {
+    return keys.reduce((memo, key) => {
+      const value = map[key]
+      const envTokens = process.env[key]
+      const TOKENS = envTokens ? envTokens.split(',') : []
+      const has = braveHapi.isSimpleTokenValid(TOKENS, token)
+      return memo.concat(has ? [value] : [])
+    }, memo)
+  }
+}
 
 const Server = async (options, runtime) => {
   const debug = new SDebug('web')
@@ -181,6 +200,19 @@ const Server = async (options, runtime) => {
         debug('github authentication strategy via bearer-access-token')
       }
     }
+
+    server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
+      allowQueryToken: true,
+      allowMultipleHeaders: false,
+      validateFunc: (token, callback) => {
+        const scope = pushScopedTokens(token)
+        const valid = !!scope.length
+        callback(null, valid, {
+          token,
+          scope
+        }, null)
+      }
+    })
 
     server.auth.strategy('simple', 'bearer-access-token', {
       allowQueryToken: true,

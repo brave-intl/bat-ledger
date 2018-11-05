@@ -16,6 +16,9 @@ import {
   cleanPgDb,
   ok
 } from '../utils'
+import {
+  agent
+} from 'supertest'
 
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
@@ -84,6 +87,19 @@ const referralsBar = {
 test.afterEach(cleanPgDb(postgres))
 
 const auth = (agent) => agent.set('Authorization', 'Bearer foobarfoobar')
+
+test('check auth scope', async (t) => {
+  t.plan(0)
+  const AUTH = 'Authorization'
+  const KEY = `Bearer fake`
+  const unauthed = agent(process.env.BAT_EYESHADE_SERVER)
+  await unauthed.get('/v1/accounts/settlements/referrals/total').expect(401)
+  await unauthed.get('/v1/accounts/earnings/referral/total').expect(401)
+  await unauthed.get('/v1/accounts/owner/transactions').expect(401)
+  await unauthed.get('/v1/accounts/settlements/referrals/total').set(AUTH, KEY).expect(401)
+  await unauthed.get('/v1/accounts/earnings/referral/total').set(AUTH, KEY).expect(401)
+  await unauthed.get('/v1/accounts/owner/transactions').set(AUTH, KEY).expect(401)
+})
 
 test('check settlement totals', async t => {
   t.plan(2)

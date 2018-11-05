@@ -23,11 +23,13 @@ services:
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDEEMER_URL=${REDEEMER_URL-http://grant-web:3333}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
-      - BAT_RATIOS_TOKEN
+      - ALLOWED_ADS_TOKENS
+      - ALLOWED_PUBLISHERS_TOKENS
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN
       - BALANCE_URL
       - BAT_FEE_ACCOUNT
+      - BAT_RATIOS_TOKEN
       - BAT_SETTLEMENT_ADDRESS
       - BITCOIN_AVERAGE_PUBLIC_KEY
       - BITCOIN_AVERAGE_SECRET_KEY

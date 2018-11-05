@@ -22,6 +22,8 @@ env:
     - "GRANT_WALLET_CARD_ID=f042845f-fa62-4022-8117-a476ec583a7b"
     - "NODE_ENV=development"
     - "NODE_PATH=."
+    - "ALLOWED_ADS_TOKENS=foobarfoobar"
+    - "ALLOWED_PUBLISHERS_TOKENS=foobarfoobar"
     - "REDEEMER_TOKEN=foobarfoobar"
     - "TESTING_COHORTS=test"
     - "TOKEN_LIST=foobarfoobar"
