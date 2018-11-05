@@ -43,7 +43,7 @@ test('get fiat 2 alt rate', async (t) => {
   t.is(await currency.fiat2alt('USD', 0, 'BAT'), undefined)
 })
 
-test.skip('get alt 2 fiat rate', async (t) => {
+test('get alt 2 fiat rate', async (t) => {
   t.plan(5)
   let result
   result = await currency.alt2fiat('BAT', 1, 'USD', true)
