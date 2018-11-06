@@ -86,6 +86,7 @@ function retryStrategy (options) {
     total_retry_time: totalRetryTime,
     attempt
   } = options
+
   if (error && error.code === 'ECONNREFUSED') {
     // End reconnecting on a specific error and flush all commands with
     // a individual error
