@@ -51,6 +51,8 @@ test('get alt 2 fiat rate', async (t) => {
   resultNumber = new BigNumber(resultNumber)
   t.true(_.isNumber(+resultNumber))
   t.true(resultNumber > 0)
+  resultNumber = await currency.alt2fiat('BAT', 1, 'USD')
+  resultNumber = new BigNumber(resultNumber)
   const noDecimal = resultNumber.times(100)
   t.is(+noDecimal, Math.round(+noDecimal))
   await t.throws(currency.alt2fiat('SSS', 1, 'BBB'))
