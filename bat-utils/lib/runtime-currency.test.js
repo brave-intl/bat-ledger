@@ -45,7 +45,7 @@ test('get fiat 2 alt rate', async (t) => {
 })
 
 test('get alt 2 fiat rate', async (t) => {
-  t.plan(5)
+  t.plan(4)
   let resultNumber
   resultNumber = await currency.alt2fiat('BAT', 1, 'USD', true)
   resultNumber = new BigNumber(resultNumber)
