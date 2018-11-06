@@ -35,10 +35,12 @@ test('get fiat 2 alt rate', async (t) => {
   t.plan(5)
   let result
   result = await currency.fiat2alt('USD', 5, 'BAT')
+/* not any more...
   t.true(_.isString(result))
-  t.true(_.isNumber(+result))
+ */
+  t.true(_.isNumber(result))
   // make sure is integer
-  t.true(parseInt(result) === +result)
+  t.true(parseInt(result.toString(), 10) === +result)
   await t.throws(currency.fiat2alt('SSS', 1, 'BBB'))
   t.is(await currency.fiat2alt('USD', 0, 'BAT'), undefined)
 })
