@@ -166,7 +166,6 @@ Currency.prototype = {
     if (scale) {
       probi = probi.times(scale)
     }
-
     return probi.floor().toString()
   }
 }

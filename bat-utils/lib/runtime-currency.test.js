@@ -32,13 +32,10 @@ test('get decimal scale', async (t) => {
 })
 
 test('get fiat 2 alt rate', async (t) => {
-  t.plan(5)
+  t.plan(4)
   let result
   result = await currency.fiat2alt('USD', 5, 'BAT')
-/* not any more...
   t.true(_.isString(result))
- */
-  t.true(_.isNumber(result))
   // make sure is integer
   t.true(parseInt(result.toString(), 10) === +result)
   await t.throws(currency.fiat2alt('SSS', 1, 'BBB'))
@@ -85,9 +82,9 @@ test('make sure cache is caching', async (t) => {
   t.plan(1)
   const oldCache = currency.cache
   const trueResult = await currency.rates('BAT')
-  const ones = _.mapObject(trueResult, () => '1')
+  const ones = _.mapObject(trueResult, () => 1)
   const oneResult = _.assign({}, ones, {
-    BAT: '1'
+    BAT: 1
   })
   const createCache = (context) => ({
     set: () => {},
