@@ -90,7 +90,7 @@ function retryStrategy (options) {
     // End reconnecting on a specific error and flush all commands with
     // a individual error
     return new Error('The server refused the connection')
-  } else if (error.code === 'NR_CLOSED') {
+  } else if (error && error.code === 'NR_CLOSED') {
     // return attempt
   } else if (totalRetryTime > ONE_HOUR) {
     // End reconnecting after a specific timeout and flush all commands
