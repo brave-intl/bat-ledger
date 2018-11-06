@@ -39,11 +39,13 @@ const read = function (runtime, apiVersion) {
       return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
     }
 
+    const rates = underscore.mapObject(currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency], (value) => +value)
+
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
       httpSigningPubKey: wallet.httpSigningPubKey,
-      rates: currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency]
+      rates
     }
 
     if (apiVersion === 2) {
