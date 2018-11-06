@@ -45,7 +45,7 @@ const read = function (runtime, apiVersion) {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
       httpSigningPubKey: wallet.httpSigningPubKey,
-      rates
+      rates: underscore.mapObject(rates, (value) => +value)
     }
 
     if (apiVersion === 2) {
