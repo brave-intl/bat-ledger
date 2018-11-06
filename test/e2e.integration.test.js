@@ -240,11 +240,16 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   const { rates } = response.body
   console.log(rates)
   t.true(_.isObject(rates))
-  t.true(_.isNumber(rates.BTC))
-  t.true(_.isNumber(rates.ETH))
-  t.true(_.isNumber(rates.LTC))
-  t.true(_.isNumber(rates.USD))
-  t.true(_.isNumber(rates.EUR))
+  t.true(_.isString(rates.BTC))
+  t.true(_.isNumber(+rates.BTC))
+  t.true(_.isString(rates.ETH))
+  t.true(_.isNumber(+rates.ETH))
+  t.true(_.isString(rates.LTC))
+  t.true(_.isNumber(+rates.LTC))
+  t.true(_.isString(rates.USD))
+  t.true(_.isNumber(+rates.USD))
+  t.true(_.isString(rates.EUR))
+  t.true(_.isNumber(+rates.EUR))
 
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card

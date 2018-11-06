@@ -23,7 +23,7 @@ const daily = async (debug, runtime) => {
       if (validity.error) return debug('daily', 'unable to create surveyorType=' + surveyorType + ': ' + validity.error)
 
       delete entry.payload.probi
-      payload = utilities.enumerate(runtime, surveyorType, entry.payload)
+      payload = await utilities.enumerate(runtime, surveyorType, entry.payload)
       if (!payload) return debug('daily', 'no available currencies' + JSON.stringify(entry.payload))
 
       surveyor = await utilities.create(debug, runtime, surveyorType, payload)

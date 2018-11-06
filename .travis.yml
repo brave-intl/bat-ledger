@@ -10,9 +10,9 @@ env:
     - "BAT_EYESHADE_SERVER=http://localhost:3002"
     - "BAT_GRANT_REDIS_URL=redis://localhost:3013"
     - "BAT_GRANT_SERVER=http://localhost:3333"
-    - "BAT_HELPER_SERVER=http://localhost:3004"
     - "BAT_LEDGER_SERVER=http://localhost:3001"
     - "BAT_MONGODB_URI=mongodb://localhost:3010"
+    - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
     - "BAT_POSTGRES_URL=postgres://eyeshade:password@localhost:3012/eyeshade"
     - "BAT_REDIS_URL=redis://localhost:3011"
     - "BAT_SETTLEMENT_ADDRESS=6654ecb0-6079-4f6c-ba58-791cc890a561"
@@ -22,6 +22,8 @@ env:
     - "GRANT_WALLET_CARD_ID=f042845f-fa62-4022-8117-a476ec583a7b"
     - "NODE_ENV=development"
     - "NODE_PATH=."
+    - "ALLOWED_ADS_TOKENS=foobarfoobar"
+    - "ALLOWED_PUBLISHERS_TOKENS=foobarfoobar"
     - "REDEEMER_TOKEN=foobarfoobar"
     - "TESTING_COHORTS=test"
     - "TOKEN_LIST=foobarfoobar"
@@ -33,6 +35,7 @@ env:
     - secure: "Flt+fCZMubcyqCbKntaPvmxyJ2gix8wCIcBa0yE82lQ3lzXgmOZLE1x7V0HssCnuXsLe7CA4wrqKk7aMpNcNpzhgghroZZ1K3zKf2DXg8T0GJqombMrHpoHUzTEIK9iojXYBvkaVqK/vYLbrel2dkJDWER0dUP00wwAgTCTm+W6IzTDUGDaah31Xann+gFbu++1L8zdDQNXW2XOmpuLQ141/NV1vZBuAi7I6ORf43vOLziIl443s+DepcODXQMawX/HMzwMuMS1RQcxAkIt9EKF0E5UpEqoJdD1KY5/5v3OzPi7w8e/D/wdGvIwXTwLPR6ZgLexNdEgr/B36CLc22RSJOa3IMrDjoETRGbVO0gCLuDeYgwWAoYpp6DMqP5DGoZlcssuhkd8Q5OPpK3tD1kHwJwB0SSGmCJ/c2KlSjxoKQs9tdq3900bu8ETHOfR7vyR+qmZTj2lHRpRLwsaN7KqnQzWAJu2qs5m5/AJYHeDATFy+VCQh/gvg1mrToWVxKS+gWQfXdfTm/UK+zE3fJTMD7qkp6l7QNbhTQNVLFJlty1W/Bx65KEgVs8WzlM/nWRaYlln/lu8vbZAZdmGrpjQzkcqy8oT4d3u0ZVoDNEu0F/wY0PBxw2DIqi3TZTThbGYz7T1oBeBONEBr5XBIRFmaMuNVamxPzKJiSoiFKu4="
     - secure: "vFqXh+FeAYsgtSyvEozHOcQgTdqxZpHFZ+AUH9JYe1X5cYWI+Yi4vhfL+BGirDLufuGyx6xfMTuacB3fNt6wl4oMdH8UJ/Kj7FYtNFeiWL7F81w9ux7HvQo1KA6YQb+O4xKfjUgRbSdvpVIWBpmSBdZMHc7l3e9eLGUzh5Xkr/KAFeg3FT+9/VVHvVmir0mmPxzw8dbk3PcK6lSb6aY4Q9shIVLST46v2MilduYIxIjzSq7MhrwZkek8RSarWrXIX614UDBhYYh/UbfuzGtobovLSqjgO5JdskTWHagE/MER0fmB2s7BE57OfH6wgRaFeUy6YrLtDl2BkYRWXxHGCALnuJcDQfKEdPRayIzLOAsSXMbTI5gxj/6izzkRyTaomi2wjk0ZZxJIZYmnK5IKG3an6SlCTb2HnlT8tAlJRvh9c+Kh1TQY4hzmJUj74pmCe4gxkCRuOi75gAT8eJIfZO/jTuDxXb7MumHowOZOOberBOQXVkffWdsE8bv7AaMhTRTqYmv751HmMBj++m33nP4Ex7Zvm9lZrcPyw7M1IMVTvVn4dNI/a2oUxkvUJvn/BM2YSnl6ez2GFyi/lPErlfs651DmU2juOcznISP06G0wXWC2TWB+5YGlv11ST7VKUlp2FtG7mUNlU3ptpZxThf9EB5wT5jYuL4YRa0NzfhY="
     - secure: "RmguZ8icDfLYIhPka3bCgAW+w7WoGhNiZRZmSkSo/gDZstSwMHGe/Vsoxfx0gyYZLkgB1PHS/8ZVtopxeXMdI7PDeeidpzQ+aM9nlK4LNktvGORlBSIaXBcZM+lFHEfOThMO969rT2xmIntuVd+bzaXa29ayG83x7vuREl7/VdSI/qdBKL0jldshwAXRU+3I5EgF/KK/r4Wi322Lh7/6BWGWN8OISAhv+IszfvfdDtCd71EzhJ+O78dOiDsdfVif0nQrGwQ6QgnGwxa4RlHnseUBnTVl9Uh/mS2PreZRb0SnJ3Tybsq1ZGG0zop1zyI0epc4b96pi9s4LmyQ3HeMP6fGfDmf7VJTRWJXAk+Jidh/dT89668IMnbvEu+cRTnyM8Q/ZsAtlZy61jRJLRqPw/KE/959mmTew2CMZDmF+RtisxMqFhGV/CV8WtWcm3D17uw1Ug89BddB1zB7ZVCACsi4OxX5DGPhoLHDM+gS6QhBms2mNBdybHuDrOlGLwFrZKTos+a78A4L5eCjqxjDHdcGoZKq/M+sxa5bCH44A3mQINT1jzGR5C2/suJR62sknIrdxp1gqimsf4C0iCuoU/Q4aU03/0O81PqrmGnJJY5Z0Q5EENQ/qLeAlXGMSfBVfEycYO9X24dZX586fjzFCW2ZeWlfDEA8uxGW/1a3sqg="
+    - secure: "st0na2ROPCCPgacRZKE+4qIzZdjDnCDkbL2rzbKMuWYuonVTQzyTMb9LxtBubmwcwyhah75gP6PFd0VKEb6Rrfn/zS0N8hmdkpCYLdF2g4QZZpqAe+kx1eRk42BHqh+rMxlIES1RX9m53d3vnS+EO9bE0iz96dSWUn4CfzXJqWNx5bew7HJX6AZy0o8O6piROxQm4ofdIglYMnyOrawRlb6H28A7bY8f2Icnuy8nUn7H0IeJDvOYSybpvUuHy1dlM3s5TVK+WhXqN6MAXyT7T9nE5DgM9rLmWlGEtv9wF/xplxZ3xQpqhFEz97lMKbfqnFd6RBqx1lAZ/I0qtftUs4vYZgpj2q+Qlx5H1c6XpqwwGjFNGqIwKvNwrmIvwgc1/20Y6o+Z9NlCygF+9/NtDzAyFex5fWWbSx4tNHFZ58FPuGbaV++UgjzZUAgk59nOzHRPIdU5mo/atagdmN1I6berMc2aa+oW8rtqXJbYK3FGiFgLjJwefRxR42luAuUMZEhmxv5Iob0al3e34B0ZdaE/Qg/Tqi1pJDfJD6R4nidkbJcfBljyULhqKpURgaJW2bCb5uyw0R559pULFT9cJAIOR/A+Ow6lgNCdIB5+fVp2WqV5FtIjprTeRVPQXssVem0NVpSqdLuBC1VslF+bc6PDQ9uadtOVzsiJiBRw8k0="
 services:
   - docker
 cache:

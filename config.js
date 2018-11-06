@@ -34,7 +34,6 @@ const services = {
         }
       }
       publishers()
-      helper()
       uphold()
     }
   },
@@ -53,7 +52,6 @@ const services = {
         }
 
       publishers()
-      helper()
       uphold()
     }
   },
@@ -66,13 +64,8 @@ const services = {
         url : process.env.LEDGER_URL  || 'http://127.0.0.1:3001'
       }
 
-      helper()
       uphold()
     }
-  },
-
-  helper: {
-    portno: 3004
   }
 }
 
@@ -85,15 +78,6 @@ const publishers = () => {
       , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
       , takeover            : takeover ? ({ true: true, false: false })[takeover] : false
       }
-  }
-}
-
-const helper = () => {
-  if (!process.env.HELPER_URL) return
-
-  module.exports.currency.helper =
-  { url               : process.env.HELPER_URL
-  , access_token      : process.env.HELPER_TOKEN                || '00000000-0000-4000-0000-000000000000'
   }
 }
 
@@ -145,6 +129,10 @@ module.exports =
 , wallet                : { }
 
 , testingCohorts        : process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : []
+, currency:
+  { url: process.env.BAT_RATIOS_URL
+  , access_token: process.env.BAT_RATIOS_TOKEN
+  }
 }
 if (service.f) service.f()
 
@@ -157,13 +145,6 @@ if (process.env.NODE_ENV === 'production') {
 if (process.env.BAT_SETTLEMENT_ADDRESS) {
   module.exports.wallet.settlementAddress =
   { BAT : process.env.BAT_SETTLEMENT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
-}
-
-if (process.env.OXR_APP_ID) {
-  module.exports.currency.oxr =
-  { apiID             : process.env.OXR_APP_ID
-  , cacheTTL          : process.env.OXR_CACHE_TTL
-  }
 }
 
 if (process.env.SLACK_WEBHOOK) {

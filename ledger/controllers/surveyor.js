@@ -55,22 +55,32 @@ const validateV2 = (surveyorType, payload) => {
 
 module.exports.validate = validateV2
 
-const enumerate = (runtime, surveyorType, payload) => {
+const enumerate = async (runtime, surveyorType, payload) => {
   payload.adFree.altcurrency = payload.adFree.altcurrency || 'BTC'
   let params = (payload || {}).adFree
-  let probi = params.probi
 
-  if ((surveyorType !== 'contribution') || (typeof params === 'undefined')) return payload
+  if ((surveyorType !== 'contribution') || underscore.isUndefined(params)) {
+    return payload
+  }
+  let {
+    probi,
+    altcurrency,
+    fee
+  } = params
 
   if (!probi) {
-    underscore.keys(params.fee).forEach((currency) => {
-      const amount = params.fee[currency]
-
-      if (probi) return
-
-      probi = runtime.currency.fiat2alt(currency, amount, params.altcurrency).toString()
-      params.probi = probi
-    })
+    const feeKeys = underscore.keys(fee)
+    for (var i = 0; i < feeKeys.length; i += 1) {
+      const currency = feeKeys[i]
+      const amount = fee[currency]
+      if (amount) {
+        probi = await runtime.currency.fiat2alt(currency, amount, altcurrency).toString()
+        if (probi) {
+          params.probi = probi
+          break
+        }
+      }
+    }
   }
   if (!probi) return
 
@@ -135,7 +145,7 @@ v2.create =
 
     if (validity.error) return reply(boom.badData(validity.error))
 
-    payload = enumerate(runtime, surveyorType, payload)
+    payload = await enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
 
     surveyor = await create(debug, runtime, surveyorType, payload)
@@ -193,7 +203,7 @@ v2.update =
 
     if (validity.error) return reply(boom.badData(validity.error))
 
-    payload = enumerate(runtime, surveyorType, payload)
+    payload = await enumerate(runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
 
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }

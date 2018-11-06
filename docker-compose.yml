@@ -106,22 +106,6 @@ services:
       - redis
     networks:
       - ledger
-  helper-web:
-    container_name: helper-web
-    ports:
-      - "3004:3004"
-    command: "npm run helper-server"
-    extends:
-      file: base.yml
-      service: ledger
-    environment:
-      - "MONGODB_URI=mongodb://mongo/helper"
-      - "SERVICE=helper"
-    depends_on:
-      - mongo
-      - redis
-    networks:
-      - ledger
   grant-redis:
     container_name: grant-redis
     ports:

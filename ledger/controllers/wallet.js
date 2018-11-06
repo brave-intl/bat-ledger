@@ -38,9 +38,8 @@ const read = function (runtime, apiVersion) {
     if (altcurrency && altcurrency !== wallet.altcurrency) {
       return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
     }
-
-    const rates = underscore.mapObject(currency ? underscore.pick(runtime.currency.rates[wallet.altcurrency], [ currency.toUpperCase() ]) : runtime.currency.rates[wallet.altcurrency], (value) => +value)
-
+    
+    const rates = await runtime.currency.rates(wallet.altcurrency, currency ? [currency] : null)
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
@@ -86,10 +85,13 @@ const read = function (runtime, apiVersion) {
     if (amount) {
       if (refreshP) {
         if (currency) {
-          if (!runtime.currency.fiats[currency]) {
+          try {
+            await runtime.currency.ratio('USD', currency)
+          } catch (e) {
             return reply(boom.notFound('no such currency: ' + currency))
           }
-          if (!runtime.currency.rates[wallet.altcurrency] || !runtime.currency.rates[wallet.altcurrency][currency.toUpperCase()]) {
+          const rates = await runtime.currency.rates(wallet.altcurrency)
+          if (!rates || !rates[currency.toUpperCase()]) {
             const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
             const resp = boom.serverUnavailable(errMsg)
             resp.output.headers['retry-after'] = '5'
