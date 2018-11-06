@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
@@ -22,127 +21,12 @@ v1.getWallet = {
   handler: (runtime) => {
     return async (request, reply) => {
       const owner = request.params.owner
-      const currency = request.query.currency.toUpperCase()
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
-      const publishers = runtime.database.get('publishers', debug)
-      const referrals = runtime.database.get('referrals', debug)
-      const settlements = runtime.database.get('settlements', debug)
-      const voting = runtime.database.get('voting', debug)
-      let amount, entries, entry, provider, query, rates, result, summary
-      let probi = new BigNumber(0)
+      let entry, provider, rates, result
 
-      entry = await owners.findOne({ owner: owner })
-      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
-
-      query = {
-        probi: { $gt: 0 },
-        $or: [ { owner: owner } ],
-        altcurrency: { $eq: altcurrency },
-        exclude: false
-      }
-      entries = await publishers.find({ owner: owner }, { publisher: true })
-      entries.forEach((entry) => { query.$or.push({ publisher: entry.publisher }) })
-
-      summary = await voting.aggregate([
-        {
-          $match: query
-        },
-        {
-          $group: {
-            _id: '$owner',
-            probi: { $sum: '$probi' }
-          }
-        }
-      ])
-      if (summary.length > 0) probi = new BigNumber(summary[0].probi.toString())
-
-      summary = await referrals.aggregate([
-        {
-          $match: query
-        },
-        {
-          $group: {
-            _id: '$owner',
-            probi: { $sum: '$probi' }
-          }
-        }
-      ])
-      if (summary.length > 0) probi = probi.plus(new BigNumber(summary[0].probi.toString()))
-
-      summary = await settlements.aggregate([
-        {
-          $match: underscore.pick(query, [ '$or', 'probi' ])
-        },
-        {
-          $group: {
-            _id: '$owner',
-            probi: { $sum: '$probi' }
-          }
-        }
-      ])
-      if (summary.length > 0) probi = probi.minus(new BigNumber(summary[0].probi.toString()))
-      if (probi.lessThan(0)) {
-        runtime.captureException(new Error('negative probi'), { extra: { owner: owner, probi: probi.toString() } })
-        probi = new BigNumber(0)
-      }
-
-      amount = await runtime.currency.alt2fiat(altcurrency, probi, currency) || 0
-      rates = await runtime.currency.rates(altcurrency)
       result = {
-        rates,
-        contributions: {
-          amount: amount,
-          currency: currency,
-          altcurrency: altcurrency,
-          probi: probi.truncated().toString()
-        }
-      }
-
-      entries = await publishers.find({ owner: owner })
-      summary = await settlements.aggregate([
-        {
-          $match: { owner: owner }
-        },
-        {
-          $sort: { timestamp: 1 }
-        },
-        {
-          $group:
-          {
-            _id: { publisher: '$publisher', type: '$type' },
-            timestamp: { $last: '$timestamp' },
-            probi: { $last: '$probi' },
-            amount: { $last: '$amount' },
-            altcurrency: { $last: '$altcurrency' },
-            currency: { $last: '$currency' }
-          }
-        }
-      ])
-      entry = underscore.first(summary)
-      if (entry) {
-        result.lastSettlement = underscore.extend(underscore.pick(entry, [ 'altcurrency', 'currency' ]), {
-          probi: new BigNumber(entry.probi.toString()),
-          amount: new BigNumber(entry.amount.toString()),
-          timestamp: (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-        })
-        underscore.rest(summary).forEach((entry) => {
-          const timestamp = (entry.timestamp.high_ * 1000) + (entry.timestamp.low_ / bson.Timestamp.TWO_PWR_32_DBL_)
-
-          result.lastSettlement.probi = result.lastSettlement.probi.plus(new BigNumber(entry.probi.toString()))
-          if (result.lastSettlement.timestamp < timestamp) result.lastSettlement.timestamp = timestamp
-          if (!result.lastSettlement.currency) return
-
-          if (result.lastSettlement.currency !== entry.currency) {
-            delete result.lastSettlement.currency
-            delete result.lastSettlement.amount
-          } else {
-            result.lastSettlement.amount = result.lastSettlement.amount.plus(new BigNumber(entry.amount.toString()))
-          }
-        })
-
-        result.lastSettlement.probi = result.lastSettlement.probi.toString()
-        if (result.lastSettlement.amount) result.lastSettlement.amount = result.lastSettlement.amount.toString()
+        rates: await runtime.currency.rates(altcurrency)
       }
 
       entry = await owners.findOne({ owner: owner })
@@ -192,19 +76,6 @@ v1.getWallet = {
   response: {
     schema: Joi.object().keys({
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
-      contributions: Joi.object().keys({
-        amount: Joi.number().min(0).optional().default(0).description('the balance in the fiat currency'),
-        currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency'),
-        altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the altcurrency'),
-        probi: braveJoi.string().numeric().optional().description('the balance in probi')
-      }).unknown(true).required().description('pending publisher contributions'),
-      lastSettlement: Joi.object().keys({
-        altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
-        probi: braveJoi.string().numeric().required().description('the balance in probi'),
-        currency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the deposit currency'),
-        amount: braveJoi.string().numeric().optional().description('the amount in the deposit currency'),
-        timestamp: Joi.number().positive().optional().description('timestamp of settlement')
-      }).unknown(true).optional().description('last publisher settlement'),
       wallet: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
