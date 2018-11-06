@@ -39,7 +39,8 @@ const read = function (runtime, apiVersion) {
       return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
     }
 
-    const rates = await runtime.currency.rates(wallet.altcurrency, currency ? [currency] : null)
+    const subset = currency ? [currency.toUpperCase()] : null
+    const rates = await runtime.currency.rates(wallet.altcurrency, subset)
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
