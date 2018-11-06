@@ -38,7 +38,7 @@ const read = function (runtime, apiVersion) {
     if (altcurrency && altcurrency !== wallet.altcurrency) {
       return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
     }
-    
+
     const rates = await runtime.currency.rates(wallet.altcurrency, currency ? [currency] : null)
     result = {
       altcurrency: wallet.altcurrency,
