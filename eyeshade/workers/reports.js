@@ -54,7 +54,7 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
 const mixer = async (debug, runtime, filter, qid) => {
   const query = `
   update votes
-  set 
+  set
     amount = (1 - $1) * votes.tally * surveyor_groups.price,
     fees =  $1 * votes.tally * surveyor_groups.price
   from surveyor_groups
@@ -67,14 +67,11 @@ const mixer = async (debug, runtime, filter, qid) => {
 exports.mixer = mixer
 
 exports.initialize = async (debug, runtime) => {
-  altcurrency = runtime.config.altcurrency || 'BAT'
-
   if (typeof freezeInterval === 'undefined' || isNaN(parseFloat(freezeInterval))) {
     throw new Error('FREEZE_SURVEYORS_AGE_DAYS is not set or not numeric')
   }
 
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
-    // setTimeout(() => { hourly(debug, runtime) }, 30 * 1000)
   }
 }
