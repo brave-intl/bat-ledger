@@ -104,17 +104,12 @@ exports.insertFromSettlement = async (runtime, client, settlement) => {
 }
 
 exports.insertFromVoting = async (runtime, client, voteDoc, surveyorCreatedAt) => {
-  if (voteDoc._id.altcurrency !== 'BAT') {
-    throw new Error('Only altcurrency === BAT transactions are supported')
-  }
-  const BATtoProbi = runtime.currency.alt2scale(voteDoc._id.altcurrency)
-
-  if (voteDoc.probi) {
-    const probi = new BigNumber(voteDoc.probi.toString())
+  if (voteDoc.amount) {
+    const amount = new BigNumber(voteDoc.amount.toString())
     const fees = new BigNumber(voteDoc.fees.toString())
 
-    if (probi.greaterThan(new BigNumber(0))) {
-      const normalizedChannel = normalizeChannel(voteDoc._id.publisher)
+    if (amount.greaterThan(new BigNumber(0))) {
+      const normalizedChannel = normalizeChannel(voteDoc.channel)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
         // skip for now, we will reprocess later
@@ -123,25 +118,25 @@ exports.insertFromVoting = async (runtime, client, voteDoc, surveyorCreatedAt) =
 
       const query = `
       insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
-      VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11 )
+      VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 )
       `
       await client.query(query, [
         // surveyorId and channel pair should be unique
         uuidv5(voteDoc.surveyorId + normalizedChannel, 'be90c1a8-20a3-4f32-be29-ed3329ca8630'),
-        surveyorCreatedAt / 1000,
+        surveyorCreatedAt,
         `votes from ${voteDoc.surveyorId}`,
         'contribution',
         voteDoc.surveyorId,
-        runtime.config.wallet.settlementAddress[voteDoc._id.altcurrency],
+        runtime.config.wallet.settlementAddress['BAT'],
         'uphold',
         normalizedChannel,
         'channel',
-        probi.plus(fees).dividedBy(BATtoProbi).toString(),
+        amount.plus(fees).toString(),
         normalizedChannel
       ])
     }
   } else {
-    throw new Error('Missing probi field')
+    throw new Error('Missing amount field')
   }
 }
 

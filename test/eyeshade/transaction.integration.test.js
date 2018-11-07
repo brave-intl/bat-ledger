@@ -200,13 +200,10 @@ test('settlement transaction throws on missing owner', async t => {
 })
 
 const voting = {
-  probi: '9500000000000000000',
-  fees: '500000000000000000',
+  amount: '9.5',
+  fees: '0.5',
   surveyorId: uuid.v4().toLowerCase(),
-  _id: {
-    altcurrency: 'BAT',
-    publisher: 'foo.com'
-  }
+  channel: 'foo.com'
 }
 
 test('voting transaction', async t => {
@@ -215,7 +212,7 @@ test('voting transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromVoting(runtime, client, voting, createdTimestamp(docId))
+    await insertFromVoting(runtime, client, voting, new Date(createdTimestamp(docId)).toISOString())
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -244,7 +241,7 @@ test('voting and contribution settlement transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromVoting(runtime, client, voting, createdTimestamp(docId))
+    await insertFromVoting(runtime, client, voting, new Date(createdTimestamp(docId)).toISOString())
     await insertFromSettlement(runtime, client, contributionSettlement)
     await client.query('COMMIT')
 

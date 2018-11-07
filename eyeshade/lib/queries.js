@@ -1,7 +1,13 @@
+const uuidv5 = require('uuid/v5')
 
 module.exports = {
   settlements,
-  earnings
+  earnings,
+  votesId
+}
+
+function votesId (channel, cohort, surveyorId) {
+  return uuidv5(channel + cohort + surveyorId, 'f0ca8ff9-8399-493a-b2c2-6d4a49e5223a')
 }
 
 function earnings (options = {}) {
