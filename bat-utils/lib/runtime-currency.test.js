@@ -40,7 +40,7 @@ test('get fiat 2 alt rate', async (t) => {
   t.true(_.isNumber(+result))
   // make sure is integer
   t.true(parseInt(result) === +result)
-  await t.throws(currency.fiat2alt('SSS', 1, 'BBB'))
+  await t.throwsAsync(currency.fiat2alt('SSS', 1, 'BBB'))
   t.is(await currency.fiat2alt('USD', 0, 'BAT'), undefined)
 })
 
@@ -55,7 +55,7 @@ test('get alt 2 fiat rate', async (t) => {
   resultNumber = new BigNumber(resultNumber)
   const noDecimal = resultNumber.times(100)
   t.is(+noDecimal, Math.round(+noDecimal))
-  await t.throws(currency.alt2fiat('SSS', 1, 'BBB'))
+  await t.throwsAsync(currency.alt2fiat('SSS', 1, 'BBB'))
 })
 
 test('capture exception is passed up to runtime', async (t) => {
