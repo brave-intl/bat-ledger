@@ -43,9 +43,11 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
   returning id;
   `
 
-  const surveyorQ = await runtime.postgres.query(query, [olderThanDays])
+  const {
+    rows
+  } = await runtime.postgres.query(query, [olderThanDays])
 
-  await Promise.all(surveyorQ.rows.map(async (row) => {
+  await Promise.all(rows.map(async (row) => {
     const surveyorId = row.id
     await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true, shouldUpdateBalances: true })
   }))
@@ -55,13 +57,12 @@ const mixer = async (debug, runtime, filter, qid) => {
   const query = `
   update votes
   set
-    amount = (1 - $1) * votes.tally * surveyor_groups.price,
-    fees =  $1 * votes.tally * surveyor_groups.price
+    amount = (1 - $1::decimal) * votes.tally * surveyor_groups.price,
+    fees =  $1::decimal * votes.tally * surveyor_groups.price
   from surveyor_groups
   where votes.surveyor_id = surveyor_groups.id and not votes.excluded and surveyor_groups.frozen;
   `
-
-  runtime.postgres.query(query, [feePercent])
+  return runtime.postgres.query(query, [feePercent])
 }
 
 exports.mixer = mixer

@@ -16,6 +16,8 @@ import {
   justDate
 } from 'bat-utils/lib/extras-utils'
 import Cache from 'bat-utils/lib/runtime-cache'
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import Queue from 'bat-utils/lib/runtime-queue'
 
 import {
   cleanDbs,
@@ -26,6 +28,7 @@ import {
   braveYoutubePublisher,
   createSurveyor,
   balanceAgent,
+  debug,
   connectToDb
 } from './utils'
 
@@ -33,8 +36,17 @@ import {
   accessCardId,
   configuration
 } from '../balance/controllers/address'
+import {
+  freezeOldSurveyors
+} from '../eyeshade/workers/reports'
 
 dotenv.config()
+
+const postgres = new Postgres({
+  postgres: {
+    url: process.env.BAT_POSTGRES_URL
+  }
+})
 
 const balanceCacheConfig = configuration.cache
 
@@ -48,6 +60,17 @@ const cache = new Cache({
     }
   }
 })
+
+const queue = new Queue({
+  queue: {
+    rsmq: process.env.BAT_REDIS_URL
+  }
+})
+
+const runtime = {
+  postgres,
+  queue
+}
 
 const cardDeleteUrl = `/v2/card`
 const statsURL = '/v1/wallet/stats'
@@ -643,6 +666,110 @@ test('payments are cached and can be removed', async t => {
   }).expect(ok)
   t.is(await getCached(cardId, balanceCacheConfig.link), paymentId)
   t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
+})
+
+test('ensure contribution balances are computed correctly', async t => {
+  t.plan(3)
+
+  let amount
+  let probi
+  let fees
+  let body
+  let entry
+  const account = [braveYoutubePublisher]
+  const query = { account }
+  const balanceURL = '/v1/accounts/balances'
+
+  await freezeOldSurveyors(debug, runtime, -1)
+
+  body = []
+  do {
+    await timeout(5000)
+    ;({ body } = await eyeshadeAgent
+      .get(balanceURL)
+      .query(query)
+      .expect(ok))
+    entry = body[0]
+  } while (!entry)
+
+  t.true(entry.balance > 0)
+
+  amount = new BigNumber(entry.balance).times(1e18)
+  fees = amount.times(0.05)
+  probi = amount.times(0.95)
+  // settle completely
+  const settlement = {
+    fees: fees.toString(),
+    probi: probi.toString(),
+    amount: amount.dividedBy(1e18).toString(),
+    currency: 'USD',
+    owner: braveYoutubeOwner,
+    publisher: braveYoutubePublisher,
+    address: uuid.v4(),
+    altcurrency: 'BAT',
+    transactionId: uuid.v4(),
+    type: 'contribution',
+    hash: uuid.v4()
+  }
+
+  await eyeshadeAgent.post('/v2/publishers/settlement').send([settlement]).expect(ok)
+
+  do {
+    await timeout(5000)
+    ;({ body } = await eyeshadeAgent
+      .get(balanceURL)
+      .query(query)
+      .expect(ok))
+    entry = body[0]
+  } while (+entry.balance)
+
+  const { balance } = entry
+  t.true(balance.length > 1)
+  t.is(+balance, 0)
+})
+
+test('ensure referral balances are computed correctly', async t => {
+  let transactions
+  const encoded = encodeURIComponent(braveYoutubeOwner)
+  const transactionsURL = `/v1/accounts/${encoded}/transactions`
+  const referralKey = uuid.v4().toLowerCase()
+  const referralURL = '/v1/referrals/' + referralKey
+  const referral = {
+    ownerId: braveYoutubeOwner,
+    channelId: braveYoutubePublisher,
+    downloadId: uuid.v4(),
+    platform: 'android',
+    finalized: (new Date()).toISOString()
+  }
+  const referrals = [referral]
+
+  transactions = await getReferrals()
+  t.deepEqual(transactions, [])
+
+  await eyeshadeAgent
+    .put(referralURL)
+    .send(referrals)
+    .expect(ok)
+
+  transactions = []
+  do {
+    await timeout(5000)
+    transactions = await getReferrals()
+  } while (!transactions.length)
+
+  const [tx] = transactions
+  const { amount } = tx
+  t.true(amount.length > 1)
+  t.true(amount > 0)
+
+  async function getReferrals () {
+    const {
+      body: transactions
+    } = await eyeshadeAgent
+      .get(transactionsURL)
+      .expect(ok)
+    return transactions.filter(({ transaction_type: type }) => type === 'referral')
+  }
 })
 
 test('check stats endpoint after funds move', async t => {
