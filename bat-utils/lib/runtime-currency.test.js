@@ -1,6 +1,7 @@
 'use strict'
 
 import Currency from './runtime-currency'
+import BigNumber from 'bignumber.js'
 import test from 'ava'
 import _ from 'underscore'
 import dotenv from 'dotenv'
@@ -43,16 +44,17 @@ test('get fiat 2 alt rate', async (t) => {
   t.is(await currency.fiat2alt('USD', 0, 'BAT'), undefined)
 })
 
-test.skip('get alt 2 fiat rate', async (t) => {
-  t.plan(5)
-  let result
-  result = await currency.alt2fiat('BAT', 1, 'USD', true)
-  t.true(_.isNumber(+result))
-  t.true(result > 0)
-  const resultA = result
-  result = await currency.alt2fiat('BAT', 1e18, 'USD')
-  t.true(_.isNumber(+result))
-  t.is(result * 100, Math.round(resultA * 100))
+test('get alt 2 fiat rate', async (t) => {
+  t.plan(4)
+  let resultNumber
+  resultNumber = await currency.alt2fiat('BAT', 1, 'USD', true)
+  resultNumber = new BigNumber(resultNumber)
+  t.true(_.isNumber(+resultNumber))
+  t.true(resultNumber > 0)
+  resultNumber = await currency.alt2fiat('BAT', 1, 'USD')
+  resultNumber = new BigNumber(resultNumber)
+  const noDecimal = resultNumber.times(100)
+  t.is(+noDecimal, Math.round(+noDecimal))
   await t.throwsAsync(currency.alt2fiat('SSS', 1, 'BBB'))
 })
 

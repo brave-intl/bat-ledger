@@ -1,7 +1,5 @@
 const dotenv = require('dotenv')
 dotenv.config()
-const Database = require('bat-utils/lib/runtime-database')
-const Queue = require('bat-utils/lib/runtime-queue')
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
@@ -12,12 +10,6 @@ const BigNumber = require('bignumber.js')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
-const {
-  freezeOldSurveyors
-} = require('../eyeshade/workers/reports')
-
-const SDebug = require('sdebug')
-const debug = new SDebug('tests')
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -174,8 +166,7 @@ module.exports = {
   cleanEyeshadeDb,
   cleanRedisDb,
   braveYoutubeOwner,
-  braveYoutubePublisher,
-  freezeSurveyors
+  braveYoutubePublisher
 }
 
 function cleanDbs () {
@@ -187,7 +178,13 @@ function cleanDbs () {
 }
 
 function cleanPgDb (client) {
-  return () => client.query('DELETE from transactions;')
+  return () => {
+    return Promise.all([
+      client.query('DELETE from transactions;'),
+      client.query('DELETE from surveyor_groups;'),
+      client.query('DELETE from votes;')
+    ])
+  }
 }
 
 function getSurveyor (id) {
@@ -213,13 +210,4 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
-}
-
-async function freezeSurveyors (dayShift) {
-  const runtime = {
-    database: new Database({ database: dbUri('eyeshade') }),
-    queue: new Queue({ queue: process.env.BAT_REDIS_URL })
-  }
-
-  await freezeOldSurveyors(debug, runtime, dayShift)
 }

@@ -1,16 +1,11 @@
+const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const underscore = require('underscore')
 
+const { votesId } = require('../lib/queries.js')
+
 exports.name = 'wallet'
 exports.initialize = async (debug, runtime) => {
-  const voting = runtime.database.get('voting', debug)
-  let indices
-
-  try { indices = await voting.indexes() } catch (ex) { indices = [] }
-  if (underscore.keys(indices).indexOf('surveyorId_1_publisher_1') !== -1) {
-    await voting.dropIndex([ 'surveyorId', 'publisher' ])
-  }
-
   runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('wallets', debug),
@@ -31,37 +26,6 @@ exports.initialize = async (debug, runtime) => {
       },
       unique: [ { paymentId: 1 } ],
       others: [ { provider: 1 }, { address: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 } ]
-    },
-    {
-      category: runtime.database.get('surveyors', debug),
-      name: 'surveyors',
-      property: 'surveyorId',
-      empty: {
-        surveyorId: '',
-        surveyorType: '',
-        votes: 0,
-        counts: 0,
-
-     // v1 only
-     // satoshis: 0,
-
-     // v2 and later
-        altcurrency: '',
-        probi: bson.Decimal128.POSITIVE_ZERO,
-
-        timestamp: bson.Timestamp.ZERO,
-        frozen: false,
-        mature: false,
-        rejectedVotes: 0,
-
-     // added during report runs...
-        inputs: bson.Decimal128.POSITIVE_ZERO,
-        fee: bson.Decimal128.POSITIVE_ZERO,
-        quantum: 0
-      },
-      unique: [ { surveyorId: 1 } ],
-      others: [ { surveyorType: 1 }, { votes: 1 }, { counts: 1 }, { altcurrency: 1 }, { probi: 1 }, { timestamp: 1 },
-                { inputs: 1 }, { fee: 1 }, { quantum: 1 }, { frozen: 1 }, { mature: 1 }, { rejectedVotes: 1 } ]
     },
     {
       category: runtime.database.get('contributions', debug),
@@ -90,37 +54,6 @@ exports.initialize = async (debug, runtime) => {
       others: [ { paymentId: 1 }, { address: 1 }, { paymentStamp: 1 }, { surveyorId: 1 }, { altcurrency: 1 }, { probi: 1 },
                 { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 },
                 { mature: 1 } ]
-    },
-    {
-      category: voting,
-      name: 'voting',
-      property: 'surveyorId_1_publisher_1_cohort',
-      empty: {
-        surveyorId: '',
-        publisher: '',
-        cohort: '',
-        counts: 0,
-        timestamp: bson.Timestamp.ZERO,
-
-     // added by administrator
-        exclude: false,
-        hash: '',
-
-     // added during report runs...
-     // v1 only
-        satoshis: 0,
-
-     // v2 and later
-        altcurrency: '',
-        probi: bson.Decimal128.POSITIVE_ZERO
-      },
-      unique: [ { surveyorId: 1, publisher: 1, cohort: 1 } ],
-      others: [ { counts: 1 }, { timestamp: 1 },
-                { exclude: 1 }, { hash: 1 }, { counts: 1 },
-                { altcurrency: 1, probi: 1 },
-                { altcurrency: 1, exclude: 1, probi: 1 },
-                { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-                { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
     },
     {
       category: runtime.database.get('grants', debug),
@@ -193,25 +126,14 @@ exports.workers = {
  */
   'surveyor-report':
     async (debug, runtime, payload) => {
-      const surveyorId = payload.surveyorId
-      const surveyors = runtime.database.get('surveyors', debug)
+      const BATtoProbi = runtime.currency.alt2scale(payload.altcurrency)
+      const { surveyorId } = payload
+      const { postgres } = runtime
 
-      payload.probi = bson.Decimal128.fromString(payload.probi.toString())
-      const $set = underscore.extend({
-        counts: 0
-      }, underscore.omit(payload, [ 'surveyorId' ]))
-      const $setOnInsert = {
-        mature: false,
-        frozen: false,
-        rejectedVotes: 0,
-        surveyorId
-      }
-      const state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set,
-        $setOnInsert
-      }
-      await surveyors.update({ surveyorId }, state, { upsert: true })
+      const probi = payload.probi && new BigNumber(payload.probi.toString())
+      const price = probi.dividedBy(BATtoProbi).dividedBy(payload.votes)
+
+      await postgres.query('insert into surveyor_groups (id, price) values ($1, $2)', [ surveyorId, price.toString() ])
     },
 
 /* sent by PUT /v1/wallet/{paymentId}
@@ -268,40 +190,28 @@ exports.workers = {
  */
   'voting-report':
     async (debug, runtime, payload) => {
-      const publisher = payload.publisher
-      const surveyorId = payload.surveyorId
+      const { publisher, surveyorId } = payload
       const cohort = payload.cohort || 'control'
-      const { database } = runtime
-      const voting = database.get('voting', debug)
-      const surveyors = database.get('surveyors', debug)
-      let state, where
+      const { postgres } = runtime
 
       if (!publisher) throw new Error('no publisher specified')
 
-      where = {
-        surveyorId
-      }
-      const surveyor = await surveyors.findOne(where)
-      if (!surveyor) {
+      const surveyorQ = await postgres.query('select frozen from surveyor_groups where id = $1 limit 1;', [surveyorId])
+      if (surveyorQ.rowCount !== 1) {
         throw new Error('surveyor does not exist')
       }
-      if (surveyor.frozen) {
-        state = {
-          $inc: { rejectedVotes: 1 }
-        }
-        await surveyors.update(where, state)
-      } else {
-        where = {
-          surveyorId,
+      if (!surveyorQ.rows[0].frozen) {
+        const update = `
+        insert into votes (id, cohort, tally, excluded, channel, surveyor_id) values ($1, $2, 1, $3, $4, $5)
+        on conflict (id) do update set updated_at = current_timestamp, tally = votes.tally + 1;
+        `
+        await postgres.query(update, [
+          votesId(publisher, cohort, surveyorId),
+          cohort,
+          runtime.config.testingCohorts.includes(cohort),
           publisher,
-          cohort
-        }
-        state = {
-          $currentDate: { timestamp: { $type: 'timestamp' } },
-          $inc: { counts: 1 },
-          $set: { exclude: runtime.config.testingCohorts.includes(cohort) }
-        }
-        await voting.update(where, state, { upsert: true })
+          surveyorId
+        ])
       }
     },
 
