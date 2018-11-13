@@ -43,7 +43,7 @@ exports.workers = {
         group by votes.channel;
         `
         const votingQ = await client.query(query1, [surveyorId])
-        if (surveyorQ.rowCount !== 1) {
+        if (!votingQ.rowCount) {
           throw new Error('no votes for this surveyor!')
         }
         const docs = votingQ.rows
