@@ -39,7 +39,6 @@ const read = function (runtime, apiVersion) {
       return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
     }
 
-    const subset = currency ? [currency.toUpperCase()] : null
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
