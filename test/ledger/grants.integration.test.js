@@ -229,6 +229,7 @@ test('claim grants with attestations', async (t) => {
   // get available grant
   await ledgerAgent
     .get('/v3/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(ok)
 
   const attestationURL = `/v1/attestations/${paymentId}`
@@ -263,7 +264,6 @@ test('claim grants with attestations', async (t) => {
 
   ;({ body } = await ledgerAgent
       .get('/v3/promotions')
-      .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
       .expect(ok))
   t.true(_.isArray(body))
   item = body[0]

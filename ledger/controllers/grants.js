@@ -102,7 +102,7 @@ const getPromotions = (protocolVersion) => (runtime) => async (request, reply) =
  GET /v3/promotions
 */
 
-const getV3Promotions = (runtime) => async (request, reply) => {
+const safetynetPassthrough = (handler) => (runtime) => async (request, reply) => {
   const endpoint = '/v1/attestations/safetynet'
   const {
     config
@@ -125,7 +125,7 @@ const getV3Promotions = (runtime) => async (request, reply) => {
     payload: body
   })
 
-  await getPromotions(3)(runtime)(request, reply)
+  await handler(runtime)(request, reply)
 }
 
 const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
@@ -157,15 +157,11 @@ v2.all = {
 }
 
 v3.all = {
-  handler: getV3Promotions,
-  description: 'See if a v3 promotion is available after checking captcha token',
+  handler: getPromotions(3),
+  description: 'See if a v3 promotion is available',
   tags: [ 'api' ],
 
-  validate: {
-    headers: Joi.object().keys({
-      'safetynet-token': Joi.string().required().description('safetynet token to be passed through to captcha server')
-    }).unknown(true)
-  },
+  validate: {},
 
   response: {
     schema: promotionsGetResponseSchema
@@ -296,11 +292,14 @@ v2.read = {
 }
 
 v3.read = {
-  handler: getGrant(3),
+  handler: safetynetPassthrough(getGrant(3)),
   description: 'See if a v3 promotion is available',
   tags: [ 'api' ],
 
   validate: {
+    headers: Joi.object().keys({
+      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
+    }).unknown(true),
     query: {
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
@@ -789,7 +788,6 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const { headers } = res
 
     const solution = JSON.parse(headers['captcha-solution'])
-    console.log('captcha solution', solution)
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: underscore.extend(solution, {version: protocolVersion}) } })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
