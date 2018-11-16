@@ -1,4 +1,5 @@
 const Joi = require('joi')
+const uuidv5 = require('uuid/v5')
 const Netmask = require('netmask').Netmask
 const l10nparser = require('accept-language-parser')
 const boom = require('boom')
@@ -24,8 +25,15 @@ const grantSchema = Joi.object().keys({
   expiryTime: Joi.number().positive().required().description('the time the grant expires')
 })
 
+const joiGrantSubset = Joi.object().keys({
+  altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+  expiryTime: Joi.number().optional().description('the expiration time of the grant'),
+  probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
+}).unknown(true).description('grant properties')
+
 const v1 = {}
 const v2 = {}
+const v3 = {}
 
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
 
@@ -60,6 +68,7 @@ const qaOnlyP = (request) => {
 /*
    GET /v1/promotions
    GET /v2/promotions
+   GET /v3/promotions
  */
 
 const getPromotions = (protocolVersion) => (runtime) => async (request, reply) => {
@@ -87,6 +96,36 @@ const getPromotions = (protocolVersion) => (runtime) => async (request, reply) =
   entries = await promotions.find(where, projection)
 
   reply(entries)
+}
+
+/*
+ GET /v3/promotions
+*/
+
+const safetynetPassthrough = (handler) => (runtime) => async (request, reply) => {
+  const endpoint = '/v1/attestations/safetynet'
+  const {
+    config
+  } = runtime
+  const {
+    captcha
+  } = config
+
+  const url = captcha.url + endpoint
+  const headers = {
+    'Authorization': 'Bearer ' + captcha.access_token,
+    'Content-Type': 'application/json'
+  }
+  const body = JSON.stringify({
+    token: request.headers['safetynet-token']
+  })
+
+  await braveHapi.wreck.post(url, {
+    headers,
+    payload: body
+  })
+
+  await handler(runtime)(request, reply)
 }
 
 const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
@@ -117,9 +156,22 @@ v2.all = {
   }
 }
 
+v3.all = {
+  handler: getPromotions(3),
+  description: 'See if a v3 promotion is available',
+  tags: [ 'api' ],
+
+  validate: {},
+
+  response: {
+    schema: promotionsGetResponseSchema
+  }
+}
+
 /*
    GET /v1/grants
    GET /v2/grants
+   GET /v3/grants
  */
 
 // from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
@@ -239,6 +291,28 @@ v2.read = {
   }
 }
 
+v3.read = {
+  handler: safetynetPassthrough(getGrant(3)),
+  description: 'See if a v3 promotion is available',
+  tags: [ 'api' ],
+
+  validate: {
+    headers: Joi.object().keys({
+      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
+    }).unknown(true),
+    query: {
+      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
+      paymentId: Joi.string().guid().optional().description('identity of the wallet')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).unknown(true).description('promotion properties')
+  }
+}
+
 const checkBounds = (v1, v2, tol) => {
   if (v1 > v2) {
     return (v1 - v2) <= tol
@@ -252,10 +326,72 @@ const checkBounds = (v1, v2, tol) => {
    PUT /v2/grants/{paymentId}
  */
 
-v1.claimGrant = { handler: (runtime) => {
-  return async (request, reply) => {
+v1.claimGrant = {
+  handler: claimGrant(captchaCheck),
+  description: 'Request a grant for a wallet',
+  tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: {
+      enabled: rateLimitEnabled,
+      rate: (request) => claimRate
+    }
+  },
+
+  validate: {
+    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
+    payload: Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier'),
+      captchaResponse: Joi.object().optional().keys({
+        x: Joi.number().required(),
+        y: Joi.number().required()
+      })
+    }).required().description('promotion derails')
+  },
+
+  response: {
+    schema: joiGrantSubset
+  }
+}
+v2.claimGrant = v1.claimGrant
+
+/*
+   PUT /v3/grants/{paymentId}
+ */
+
+v3.claimGrant = {
+  handler: claimGrant(safetynetCheck),
+  description: 'Request a grant for a wallet',
+  tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: {
+      enabled: rateLimitEnabled,
+      rate: (request) => claimRate
+    }
+  },
+
+  validate: {
+    params: {
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    },
+    headers: Joi.object().keys({
+      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
+    }).unknown(true),
+    payload: Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).required().description('promotion details')
+  },
+
+  response: {
+    schema: joiGrantSubset
+  }
+}
+
+function claimGrant (validate) {
+  return (runtime) => async (request, reply) => {
     const paymentId = request.params.paymentId.toLowerCase()
-    const { promotionId, captchaResponse } = request.payload
+    const { promotionId } = request.payload
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
@@ -271,26 +407,9 @@ v1.claimGrant = { handler: (runtime) => {
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    const configCaptcha = runtime.config.captcha
-    if (configCaptcha) {
-      if (!wallet.captcha) return reply(boom.forbidden('must first request captcha'))
-      if (!captchaResponse) return reply(boom.badData())
-
-      await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $unset: { captcha: {} } })
-
-      if (wallet.captcha.version) {
-        if (wallet.captcha.version !== promotion.protocolVersion) {
-          return reply(boom.forbidden('must first request correct captcha version'))
-        }
-      } else {
-        if (promotion.protocolVersion !== 1) {
-          return reply(boom.forbidden('must first request correct captcha version'))
-        }
-      }
-
-      if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
-        return reply(boom.forbidden())
-      }
+    const validationError = await validate(debug, runtime, request, promotion, wallet)
+    if (validationError) {
+      return reply(validationError)
     }
 
     if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
@@ -368,37 +487,77 @@ v1.claimGrant = { handler: (runtime) => {
 
     return reply(result)
   }
-},
-  description: 'Request a grant for a wallet',
-  tags: [ 'api' ],
+}
 
-  plugins: {
-    rateLimit: {
-      enabled: rateLimitEnabled,
-      rate: (request) => claimRate
+async function safetynetCheck (debug, runtime, request, promotion, wallet) {
+  const {
+    config,
+    database
+  } = runtime
+  const {
+    captcha
+  } = config
+  const {
+    headers
+  } = request
+  const {
+    paymentId
+  } = wallet
+  const url = `${captcha.url}/v1/attestations/safetynet`
+  const captchaHeaders = {
+    'Authorization': 'Bearer ' + captcha.access_token,
+    'Content-Type': 'application/json'
+  }
+  const wallets = database.get('wallets', debug)
+  const body = JSON.stringify({
+    token: headers['safetynet-token']
+  })
+
+  const payload = await braveHapi.wreck.post(url, {
+    headers: captchaHeaders,
+    payload: body
+  })
+  const data = JSON.parse(payload.toString())
+
+  await wallets.findOneAndUpdate({
+    paymentId
+  }, {
+    $unset: {
+      nonce: {}
     }
-  },
+  })
 
-  validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-    payload: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier'),
-      captchaResponse: Joi.object().optional().keys({
-        x: Joi.number().required(),
-        y: Joi.number().required()
-      })
-    }).required().description('promotion derails')
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
-      expiryTime: Joi.number().optional().description('the expiration time of the grant'),
-      probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
-    }).unknown(true).description('grant properties')
+  if (wallet.nonce !== data.nonce) {
+    return boom.forbidden('safetynet nonce does not match')
   }
 }
-v2.claimGrant = v1.claimGrant
+
+async function captchaCheck (debug, runtime, request, promotion, wallet) {
+  const { captchaResponse } = request.payload
+  const { paymentId } = wallet
+  const wallets = runtime.database.get('wallets', debug)
+  const configCaptcha = runtime.config.captcha
+  if (configCaptcha) {
+    if (!wallet.captcha) return boom.forbidden('must first request captcha')
+    if (!captchaResponse) return boom.badData()
+
+    await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $unset: { captcha: {} } })
+
+    if (wallet.captcha.version) {
+      if (wallet.captcha.version !== promotion.protocolVersion) {
+        return boom.forbidden('must first request correct captcha version')
+      }
+    } else {
+      if (promotion.protocolVersion !== 1) {
+        return boom.forbidden('must first request correct captcha version')
+      }
+    }
+
+    if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
+      return boom.forbidden()
+    }
+  }
+}
 
 const grantsUploadSchema = {
   grants: Joi.array().min(0).items(
@@ -672,15 +831,74 @@ v2.getCaptcha = {
   }
 }
 
+/*
+  GET /v1/attestations/{paymentId}
+*/
+
+v3.attestations = {
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+  description: 'Retrieve nonce for android attestation',
+  tags: [ 'api' ],
+  response: {
+    schema: Joi.object().keys({
+      nonce: Joi.string().required().description('Nonce for wallet')
+    }).required().description('Response payload')
+  },
+  validate: {
+    params: Joi.object().keys({
+      paymentId: Joi.string().guid().required().description('Wallet payment id')
+    }).required().description('Request parameters')
+  },
+  handler: (runtime) => async (request, reply) => {
+    const {
+      id,
+      params
+    } = request
+    const {
+      paymentId
+    } = params
+    const {
+      database
+    } = runtime
+
+    const debug = braveHapi.debug(module, request)
+    const wallets = database.get('wallets', debug)
+
+    const requested = (new Date()).toISOString()
+    const key = `${paymentId}_${requested}_${id}_android`
+    const nonce = uuidv5(key, '90f167b8-0c44-4ae9-a97d-4fd211d5693d')
+    const $set = {
+      nonce
+    }
+
+    await wallets.update({
+      paymentId
+    }, {
+      $set
+    })
+
+    reply({
+      nonce
+    })
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v2/promotions').config(v2.all),
+  braveHapi.routes.async().path('/v3/promotions').config(v3.all),
   braveHapi.routes.async().path('/v1/grants').config(v1.read),
   braveHapi.routes.async().path('/v2/grants').config(v2.read),
+  braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.claimGrant),
   braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
+  braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
   braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
   braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
+  braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
   braveHapi.routes.async().path('/v1/captchas/{paymentId}').config(v1.getCaptcha),
   braveHapi.routes.async().path('/v2/captchas/{paymentId}').config(v2.getCaptcha)

@@ -64,7 +64,10 @@ const status = (expectation) => (res) => {
   }
   const { status, body } = res
   if (status !== expectation) {
-    return new Error(JSON.stringify(body, null, 2).replace(/\\n/g, '\n'))
+    return new Error(JSON.stringify(Object.assign({}, body, {
+      url: res.request.url,
+      method: res.request.method
+    }), null, 2).replace(/\\n/g, '\n'))
   }
 }
 
