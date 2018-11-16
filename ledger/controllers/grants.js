@@ -380,7 +380,7 @@ v3.claimGrant = {
     }).unknown(true),
     payload: Joi.object().keys({
       promotionId: Joi.string().required().description('the promotion-identifier')
-    }).required().description('promotion derails')
+    }).required().description('promotion details')
   },
 
   response: {
@@ -407,9 +407,9 @@ function claimGrant (validate) {
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    const invalidated = await validate(debug, runtime, request, promotion, wallet)
-    if (invalidated) {
-      return reply(invalidated)
+    const validationError = await validate(debug, runtime, request, promotion, wallet)
+    if (validationError) {
+      return reply(validationError)
     }
 
     if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
