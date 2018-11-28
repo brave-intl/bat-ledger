@@ -147,6 +147,11 @@ if (process.env.BAT_SETTLEMENT_ADDRESS) {
   { BAT : process.env.BAT_SETTLEMENT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
 }
 
+if (process.env.BAT_ADS_PAYOUT_ADDRESS) {
+  module.exports.wallet.adsPayoutAddress =
+  { BAT : process.env.BAT_ADS_PAYOUT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
+}
+
 if (process.env.SLACK_WEBHOOK) {
   module.exports.slack =
   { webhook             : process.env.SLACK_WEBHOOK

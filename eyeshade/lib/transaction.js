@@ -25,26 +25,23 @@ async function insertFromAd (runtime, client, {
   amount
 }) {
   const query = `
- insert into transactions ( id, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
- VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10 )
+ insert into transactions ( id, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount )
+ VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 )
  RETURNING *;`
   const created = seconds()
   const { config } = runtime
   const id = uuidv5(`${paymentId}:${tokenId}`, '2ca02950-084f-475f-bac3-42a3c99dec95')
-  const probi = (new BigNumber(amount)).toString()
   const month = monthsFromSeconds(created)
   const replacements = [
     id,
-    // created,
     `ad payments through ${month}`,
     'ad',
     tokenId,
-    config.wallet.settlementAddress.BAT,
+    config.wallet.adsPayoutAddress.BAT,
     'uphold',
     paymentId,
     'payment_id',
-    probi,
-    paymentId
+    amount
   ]
   const { rows } = await client.query(query, replacements)
   return rows

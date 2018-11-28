@@ -1,6 +1,5 @@
 const Joi = require('joi')
 const boom = require('boom')
-const BigNumber = require('bignumber.js')
 const utils = require('bat-utils')
 const _ = require('underscore')
 const queries = require('../lib/queries')
@@ -258,40 +257,32 @@ v1.adTransactions = {
       params,
       payload
     } = request
-    const {
-      postgres
-    } = runtime
-    const {
-      amount: payloadAmount
-    } = payload
-    if (!_.isString(payloadAmount)) {
-      return reply(boom.badRequest())
+    const { postgres } = runtime
+    const { amount } = payload
+
+    if (typeof process.env.ENABLE_ADS_PAYOUT === 'undefined') {
+      return reply(boom.serverUnavailable())
     }
-    const amount = (new BigNumber(payloadAmount)).toString()
-    const tx = _.assign({}, params, {
-      amount
-    })
-    let txs = null
+
     try {
-      txs = await transactions.insertFromAd(runtime, postgres, tx)
+      await transactions.insertFromAd(runtime, postgres, Object.assign(params, { amount }))
+      reply({})
     } catch (e) {
-      const text = 'Transaction with that id exists, updates are not allowed'
-      return reply(boom.conflict(text))
+      if (e.code && e.code === '23505') { // Unique constraint violation
+        reply(boom.conflict('Transaction with that id exists, updates are not allowed'))
+      } else {
+        throw e
+      }
     }
-    const transaction = txs[0]
-    const result = {
-      channel: transaction.channel,
-      paid: transaction.amount
-    }
-    reply(result)
   },
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['ads'],
     mode: 'required'
   },
 
-  description: 'Used by publishers for retrieving a list of top channels paid out',
-  tags: [ 'api', 'publishers' ],
+  description: 'Used by ads serve for scheduling an ad viewing payout',
+  tags: [ 'api', 'ads' ],
 
   validate: {
     params: {
@@ -299,16 +290,11 @@ v1.adTransactions = {
       token_id: Joi.string().required().description('A unique token id')
     },
     payload: Joi.object().keys({
-      amount: Joi.string().regex(/^\d*\.?\d+/i).required().description('Amount of bat to pay for the ad')
+      amount: braveJoi.string().numeric().required().description('Amount of bat to pay for the ad')
     }).required()
   },
 
-  response: {
-    schema: Joi.object().keys({
-      channel: joiChannel.required(),
-      paid: joiPaid.required()
-    }).required().description('Transaction inserted result')
-  }
+  response: { schema: Joi.object().length(0) }
 }
 
 module.exports.routes = [

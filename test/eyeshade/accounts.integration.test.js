@@ -36,6 +36,9 @@ const runtime = {
     wallet: {
       settlementAddress: {
         'BAT': '0xdeadbeef'
+      },
+      adsPayoutAddress: {
+        'BAT': '0xdeadbeef'
       }
     }
   },
@@ -195,4 +198,43 @@ test('check earnings total', async t => {
   } finally {
     client.release()
   }
+})
+
+test('create ads payment fails if bad values are given', async (t) => {
+  t.plan(0)
+
+  const paymentId = uuid.v4().toLowerCase()
+  const transactionId = uuid.v4().toLowerCase()
+  const url = `/v1/accounts/${paymentId}/transactions/ads/${transactionId}`
+
+  await eyeshadeAgent
+    .put(url)
+    .send({})
+    .expect(400)
+
+  await eyeshadeAgent
+    .put(url)
+    .send({ amount: 5 })
+    .expect(400)
+})
+
+test('ads payment api inserts a transaction into the table and errs on subsequent tries', async (t) => {
+  t.plan(0)
+
+  const paymentId = uuid.v4().toLowerCase()
+  const transactionId = uuid.v4().toLowerCase()
+  const url = `/v1/accounts/${paymentId}/transactions/ads/${transactionId}`
+  const payload = {
+    amount: '1'
+  }
+
+  await eyeshadeAgent
+    .put(url)
+    .send(payload)
+    .expect(200)
+
+  await eyeshadeAgent
+    .put(url)
+    .send(payload)
+    .expect(409)
 })
