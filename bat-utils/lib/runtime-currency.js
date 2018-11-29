@@ -7,8 +7,7 @@ const { BigNumber } = require('./extras-utils')
 const _ = require('underscore')
 const debug = new SDebug('currency')
 let singleton
-
-const mins5InSeconds = 5 * 60
+const ms5min = 5 * 60 * 1000
 
 const knownRateKeys = [
   'BTC',
@@ -51,15 +50,24 @@ Currency.prototype = {
     } = context
     let {
       url: currencyUrl,
-      access_token: accessToken
+      access_token: accessToken,
+      updateTime
     } = config
     accessToken = accessToken || 'foobarfoobar'
     const baseUrl = url.resolve(currencyUrl, '/v1/')
     const endpoint = url.resolve(baseUrl, path)
     const cacheKey = `currency:${endpoint}`
-    const cached = cache.get(cacheKey)
-    if (cached) {
-      return cached
+    let oldData = cache.get(cacheKey)
+    if (oldData) {
+      const {
+        lastUpdated,
+        payload
+      } = oldData
+      const lastDate = new Date(lastUpdated)
+      const lastAcceptableCache = new Date() - updateTime
+      if (lastDate > lastAcceptableCache) {
+        return payload
+      }
     }
     const options = {
       useProxyP: true,
@@ -73,12 +81,12 @@ Currency.prototype = {
       const dataString = body.toString()
       const data = JSON.parse(dataString)
       const { payload } = data
-      cache.set(cacheKey, payload)
-      return payload
+      cache.set(cacheKey, data)
+      oldData = data
     } catch (err) {
       context.captureException(err)
-      throw err
     }
+    return oldData.payload
   },
 
   all: function () {
@@ -184,9 +192,10 @@ function Currency (config, runtime) {
   if (!conf.url) {
     throw new Error('currency ratios url is required')
   }
-  context.config = conf
-  context.runtime = runtime
-  context.cache = new NodeCache({
-    stdTTL: mins5InSeconds
+  context.config = _.assign({}, conf, {
+    updateTime: ms5min
   })
+  context.runtime = runtime
+  context.debug = debug
+  context.cache = new NodeCache({})
 }
