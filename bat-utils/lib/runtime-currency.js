@@ -2,7 +2,6 @@ const url = require('url')
 const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const braveHapi = require('./extras-hapi')
-const NodeCache = require('node-cache')
 const { BigNumber } = require('./extras-utils')
 const _ = require('underscore')
 const debug = new SDebug('currency')
@@ -191,10 +190,15 @@ function Currency (config, runtime) {
   if (!conf.url) {
     throw new Error('currency ratios url is required')
   }
-  context.config = _.assign({}, conf, {
+  context.config = Object.assign({}, conf, {
     updateTime: ms5min
   })
   context.runtime = runtime
   context.debug = debug
-  context.cache = new NodeCache({})
+  context.cache = ((cache) => ({
+    get: (key) => cache[key],
+    set: (key, value) => {
+      cache[key] = value
+    }
+  }))({})
 }
