@@ -88,7 +88,7 @@ test('make sure cache is caching', async (t) => {
   const ones = _.mapObject(trueResult, () => '1')
   const oneResult = {
     lastUpdated: (new Date()).toISOString(),
-    payload: _.assign({}, ones, {
+    payload: Object.assign({}, ones, {
       BAT: '1'
     })
   }
