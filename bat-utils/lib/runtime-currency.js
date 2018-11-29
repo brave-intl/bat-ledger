@@ -80,7 +80,6 @@ Currency.prototype = {
       const body = await braveHapi.wreck.get(endpoint, options)
       const dataString = body.toString()
       const data = JSON.parse(dataString)
-      const { payload } = data
       cache.set(cacheKey, data)
       oldData = data
     } catch (err) {
