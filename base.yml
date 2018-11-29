@@ -13,9 +13,10 @@ services:
       - "BAT_LEDGER_SERVER=http://ledger-web:3001"
       - "BAT_MONGODB_URI=mongodb://mongo"
       - "BAT_POSTGRES_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
-      - "BAT_REDIS_URL=redis://redis:6379"
       - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
+      - "BAT_REDIS_URL=redis://redis:6379"
       - "DEBUG=${DEBUG-*,-babel,-eslint:*,-mongo:*,mongo:queries,-ava}"
+      - "ENABLE_ADS_PAYOUT=1"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
       - "LEDGER_URL=${LEDGER_URL-http://ledger-web:3001}"
@@ -28,6 +29,7 @@ services:
       - BALANCE_CACHE_TTL_S
       - BALANCE_TOKEN
       - BALANCE_URL
+      - BAT_ADS_PAYOUT_ADDRESS
       - BAT_FEE_ACCOUNT
       - BAT_RATIOS_TOKEN
       - BAT_SETTLEMENT_ADDRESS

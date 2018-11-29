@@ -7,7 +7,6 @@ import { sign } from 'http-request-signature'
 
 import Wallet from './runtime-wallet'
 import utils from './extras-utils'
-import { uint8tohex } from 'bat-utils/lib/extras-utils'
 
 dotenv.config()
 
@@ -22,7 +21,7 @@ test('validateTxSignature: works', async t => {
   const info = {
     provider: 'mockHttpSignature',
     altcurrency: 'BAT',
-    httpSigningPubKey: uint8tohex(keypair.publicKey)
+    httpSigningPubKey: utils.uint8tohex(keypair.publicKey)
   }
 
   const signTxn = (keypair, body, octets) => {
@@ -36,7 +35,7 @@ test('validateTxSignature: works', async t => {
     headers['signature'] = sign({
       headers: headers,
       keyId: 'primary',
-      secretKey: uint8tohex(keypair.secretKey)
+      secretKey: utils.uint8tohex(keypair.secretKey)
     }, { algorithm: 'ed25519' })
     return { headers, octets }
   }

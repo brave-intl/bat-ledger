@@ -1,15 +1,17 @@
 const Joi = require('joi')
 const boom = require('boom')
-
 const utils = require('bat-utils')
+const _ = require('underscore')
+const queries = require('../lib/queries')
+const transactions = require('../lib/transaction')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
-
-const queries = require('../lib/queries')
 
 const v1 = {}
 
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
+const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
+const joiPaid = Joi.number().description('amount paid out in BAT')
 
 /*
    GET /v1/accounts/{account}/transactions
@@ -37,15 +39,11 @@ ORDER BY created_at
     const result = await runtime.postgres.query(query1, [ account ])
     const transactions = result.rows
 
-    transactions.forEach((transaction) => {
-      Object.keys(transaction).forEach((key) => {
-        if (transaction[key] == null) {
-          delete transaction[key]
-        }
-      })
+    const txs = _.map(transactions, (tx) => {
+      return _.omit(tx, (value) => value == null)
     })
 
-    reply(transactions)
+    reply(txs)
   }
 },
 
@@ -242,17 +240,69 @@ v1.getPaidTotals =
   response: {
     schema: Joi.array().items(
        Joi.object().keys({
-         channel: Joi.string(),
-         paid: Joi.number().description('amount paid out in BAT'),
+         channel: joiChannel.required(),
+         paid: joiPaid.required(),
          account_id: Joi.string()
        })
      )
   }
 }
 
+/*
+  PUT /v1/accounts/{payment_id}/transactions/ads/{token_id}
+*/
+v1.adTransactions = {
+  handler: (runtime) => async (request, reply) => {
+    const {
+      params,
+      payload
+    } = request
+    const { postgres } = runtime
+    const { amount } = payload
+
+    if (typeof process.env.ENABLE_ADS_PAYOUT === 'undefined') {
+      return reply(boom.serverUnavailable())
+    }
+
+    try {
+      await transactions.insertFromAd(runtime, postgres, Object.assign(params, { amount }))
+      reply({})
+    } catch (e) {
+      if (e.code && e.code === '23505') { // Unique constraint violation
+        reply(boom.conflict('Transaction with that id exists, updates are not allowed'))
+      } else {
+        throw e
+      }
+    }
+  },
+  auth: {
+    strategy: 'simple-scoped-token',
+    scope: ['ads'],
+    mode: 'required'
+  },
+
+  description: 'Used by ads serve for scheduling an ad viewing payout',
+  tags: [ 'api', 'ads' ],
+
+  validate: {
+    params: {
+      payment_id: Joi.string().required().description('The payment id to hold the transaction under'),
+      token_id: Joi.string().required().description('A unique token id')
+    },
+    payload: Joi.object().keys({
+      amount: braveJoi.string().numeric().required().description('Amount of bat to pay for the ad')
+    }).required()
+  },
+
+  response: { schema: Joi.object().length(0) }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
   braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances),
+  braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
 ]
+
+module.exports.v1 = v1

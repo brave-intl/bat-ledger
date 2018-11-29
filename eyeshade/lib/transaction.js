@@ -11,7 +11,51 @@ const SETTLEMENT_NAMESPACE = {
   'referral': '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a'
 }
 
-exports.insertFromSettlement = async (runtime, client, settlement) => {
+module.exports = {
+  insertFromSettlement,
+  insertFromVoting,
+  insertFromReferrals,
+  updateBalances,
+  insertFromAd
+}
+
+async function insertFromAd (runtime, client, {
+  payment_id: paymentId,
+  token_id: tokenId,
+  amount
+}) {
+  const query = `
+ insert into transactions ( id, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount )
+ VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 )
+ RETURNING *;`
+  const created = seconds()
+  const { config } = runtime
+  const id = uuidv5(`${paymentId}:${tokenId}`, '2ca02950-084f-475f-bac3-42a3c99dec95')
+  const month = monthsFromSeconds(created)
+  const replacements = [
+    id,
+    `ad payments through ${month}`,
+    'ad',
+    tokenId,
+    config.wallet.adsPayoutAddress.BAT,
+    'uphold',
+    paymentId,
+    'payment_id',
+    amount
+  ]
+  const { rows } = await client.query(query, replacements)
+  return rows
+}
+
+function monthsFromSeconds (created) {
+  return new Date(created * 1000).toDateString().split(' ')[1]
+}
+
+function seconds () {
+  return +(new Date()) / 1000
+}
+
+async function insertFromSettlement (runtime, client, settlement) {
   if (settlement.altcurrency !== 'BAT') {
     throw new Error('Only altcurrency === BAT transactions are supported')
   }
@@ -103,7 +147,7 @@ exports.insertFromSettlement = async (runtime, client, settlement) => {
   }
 }
 
-exports.insertFromVoting = async (runtime, client, voteDoc, surveyorCreatedAt) => {
+async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
   if (voteDoc.amount) {
     const amount = new BigNumber(voteDoc.amount.toString())
     const fees = new BigNumber(voteDoc.fees.toString())
@@ -140,7 +184,7 @@ exports.insertFromVoting = async (runtime, client, voteDoc, surveyorCreatedAt) =
   }
 }
 
-exports.insertFromReferrals = async (runtime, client, referrals) => {
+async function insertFromReferrals (runtime, client, referrals) {
   if (referrals._id.altcurrency !== 'BAT') {
     throw new Error('Only altcurrency === BAT transactions are supported')
   }
@@ -180,7 +224,7 @@ exports.insertFromReferrals = async (runtime, client, referrals) => {
   }
 }
 
-exports.updateBalances = async (runtime, client, concurrently) => {
+async function updateBalances (runtime, client, concurrently) {
   if (concurrently) {
     await client.query('REFRESH MATERIALIZED VIEW CONCURRENTLY account_balances')
   } else {
