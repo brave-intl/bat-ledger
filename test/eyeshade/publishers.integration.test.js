@@ -1,5 +1,4 @@
 'use strict'
-
 import { serial as test } from 'ava'
 import uuid from 'uuid'
 import {

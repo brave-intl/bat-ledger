@@ -19,39 +19,72 @@ let altcurrency
 v2.settlement = {
   handler: (runtime) => {
     return async (request, reply) => {
-      const payload = request.payload
+      const {
+        payload
+      } = request
+      const { fromString } = bson.Decimal128
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
-      const fields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
-      let transactionId = null
+      const numberFields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
+      const mappedFields = [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]
 
-      for (let entry of payload) {
-        if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
+      if (payload.find((entry) => entry.altcurrency !== altcurrency)) {
+        return reply(boom.badData('altcurrency should be ' + altcurrency))
       }
 
       const $currentDate = { timestamp: { $type: 'timestamp' } }
       const executedTime = new Date()
+      const settlementGroups = {}
       for (let entry of payload) {
         const {
+          commission,
+          fee,
+          type,
+          publisher,
           executedAt,
           transactionId: settlementId
         } = entry
-        transactionId = settlementId
-        const $set = {}
-        const state = {
-          $currentDate,
-          $set
-        }
-        entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
-        fields.forEach((field) => { $set[field] = bson.Decimal128.fromString(entry[field].toString()) })
-        underscore.extend($set, {
-          executedAt: new Date(executedAt || executedTime)
-        }, underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]))
 
-        await settlements.update({ settlementId, publisher: entry.publisher }, state, { upsert: true })
+        const bigFee = new BigNumber(fee)
+        const bigCom = new BigNumber(commission)
+        const bigComPlusFee = bigCom.plus(bigFee)
+
+        let picked = underscore.pick(entry, mappedFields)
+        picked.commission = fromString(bigComPlusFee.toString())
+        picked.executedAt = new Date(executedAt || executedTime)
+        const $set = numberFields.reduce((memo, field) => {
+          memo[field] = fromString(entry[field].toString())
+          return memo
+        }, picked)
+
+        const state = {
+          $set,
+          $currentDate
+        }
+
+        await settlements.update({
+          settlementId,
+          publisher
+        }, state, { upsert: true })
+
+        let entries = settlementGroups[type]
+        if (!entries) {
+          entries = []
+          settlementGroups[type] = entries
+        }
+        entries.push(settlementId)
       }
 
-      await runtime.queue.send(debug, 'settlement-report', { settlementId: transactionId, shouldUpdateBalances: true })
+      for (let type in settlementGroups) {
+        const settlementIds = underscore.uniq(settlementGroups[type])
+        for (let settlementId of settlementIds) {
+          await runtime.queue.send(debug, 'settlement-report', {
+            type,
+            settlementId,
+            shouldUpdateBalances: true
+          })
+        }
+      }
 
       reply({})
     }

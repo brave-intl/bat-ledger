@@ -27,8 +27,8 @@ import {
   braveYoutubePublisher,
   createSurveyor,
   debug,
-  connectToDb,
-  statsUrl
+  statsUrl,
+  connectToDb
 } from './utils'
 import {
   freezeOldSurveyors

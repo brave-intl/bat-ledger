@@ -231,7 +231,7 @@ test('ads payment api inserts a transaction into the table and errs on subsequen
   await eyeshadeAgent
     .put(url)
     .send(payload)
-    .expect(200)
+    .expect(ok)
 
   await eyeshadeAgent
     .put(url)
