@@ -6,7 +6,9 @@ const { BigNumber } = require('./extras-utils')
 const _ = require('underscore')
 const debug = new SDebug('currency')
 let singleton
-const ms5min = 5 * 60 * 1000
+const oneMin = 1000 * 60
+const ms5min = 5 * oneMin
+const failureDebounceTime = oneMin
 
 const knownRateKeys = [
   'BTC',
@@ -33,14 +35,49 @@ const decimals = {
   ZEC: 8
 }
 
+const Cache = (cache = {}) => ({
+  get: (key) => cache[key],
+  set: (key, value) => {
+    cache[key] = value
+  }
+})
+
+generateGlobal.Cache = Cache
 generateGlobal.knownRateKeys = knownRateKeys
 generateGlobal.decimals = decimals
 
+Currency.Cache = Cache
+
 module.exports = generateGlobal
+generateGlobal.Constructor = Currency
 
 Currency.prototype = {
   decimals,
   knownRateKeys,
+  Cache,
+  parser: function (buffer) {
+    return JSON.parse(buffer.toString())
+  },
+
+  request: async function (endpoint) {
+    const context = this
+    const {
+      config
+    } = context
+    const {
+      access_token: accessToken = 'foobarfoobar'
+    } = config
+    const authorization = `Bearer ${accessToken}`
+    const options = {
+      useProxyP: true,
+      headers: {
+        authorization,
+        'content-type': 'application/json'
+      }
+    }
+    return braveHapi.wreck.get(endpoint, options)
+  },
+
   access: async function (path) {
     const context = this
     const {
@@ -49,42 +86,39 @@ Currency.prototype = {
     } = context
     let {
       url: currencyUrl,
-      access_token: accessToken,
-      updateTime
+      updateTime,
+      failureDebounceTime
     } = config
-    accessToken = accessToken || 'foobarfoobar'
     const baseUrl = url.resolve(currencyUrl, '/v1/')
     const endpoint = url.resolve(baseUrl, path)
     const cacheKey = `currency:${endpoint}`
-    let oldData = cache.get(cacheKey)
-    if (oldData) {
+    let data = cache.get(cacheKey)
+    if (data) {
       const {
         lastUpdated,
+        lastFailure,
         payload
-      } = oldData
+      } = data
       const lastDate = new Date(lastUpdated)
       const lastAcceptableCache = new Date() - updateTime
       if (lastDate > lastAcceptableCache) {
         return payload
       }
-    }
-    const options = {
-      useProxyP: true,
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        'content-type': 'application/json'
+      if (new Date(lastFailure) > (new Date()) - failureDebounceTime) {
+        return payload
       }
     }
     try {
-      const body = await braveHapi.wreck.get(endpoint, options)
-      const dataString = body.toString()
-      const data = JSON.parse(dataString)
-      cache.set(cacheKey, data)
-      oldData = data
+      const body = await context.request(endpoint)
+      data = context.parser(body)
     } catch (err) {
       context.captureException(err)
+      if (data) {
+        data.lastFailure = (new Date()).toISOString()
+      }
     }
-    return oldData.payload
+    cache.set(cacheKey, data)
+    return data.payload
   },
 
   all: function () {
@@ -190,15 +224,11 @@ function Currency (config, runtime) {
   if (!conf.url) {
     throw new Error('currency ratios url is required')
   }
-  context.config = Object.assign({}, conf, {
-    updateTime: ms5min
-  })
+  context.config = Object.assign({
+    updateTime: ms5min,
+    failureDebounceTime
+  }, conf)
   context.runtime = runtime
   context.debug = debug
-  context.cache = ((cache) => ({
-    get: (key) => cache[key],
-    set: (key, value) => {
-      cache[key] = value
-    }
-  }))({})
+  context.cache = Currency.Cache()
 }
