@@ -86,9 +86,12 @@ test('make sure cache is caching', async (t) => {
   const oldCache = currency.cache
   const trueResult = await currency.rates('BAT')
   const ones = _.mapObject(trueResult, () => '1')
-  const oneResult = _.assign({}, ones, {
-    BAT: '1'
-  })
+  const oneResult = {
+    lastUpdated: (new Date()).toISOString(),
+    payload: Object.assign({}, ones, {
+      BAT: '1'
+    })
+  }
   const createCache = (context) => ({
     set: () => {},
     get: (key) => oneResult
