@@ -414,7 +414,7 @@ function claimGrant (validate) {
 
     if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
       // promotion already applied to wallet
-      return reply({})
+      return reply(boom.conflict())
     }
 
     // pop off one grant
@@ -433,7 +433,7 @@ function claimGrant (validate) {
       // reinsert grant, another request already added a grant for this promotion to the wallet
       await grants.insert(grant)
       // promotion already applied to wallet
-      return reply({})
+      return reply(boom.conflict())
     }
 
     // register the users claim to the grant with the redemption server
