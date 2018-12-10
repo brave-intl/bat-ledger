@@ -29,7 +29,9 @@ const Wallet = function (config, runtime) {
   this.runtime = runtime
   if (config.wallet.uphold) {
     if ((process.env.FIXIE_URL) && (!process.env.HTTPS_PROXY)) process.env.HTTPS_PROXY = process.env.FIXIE_URL
-    this.uphold = this.createUpholdSDK(this.config.uphold.accessToken)
+    this.uphold = this.createUpholdSDK({
+      access_token: this.config.uphold.accessToken
+    })
   }
 
   if (config.currency) {
@@ -261,14 +263,20 @@ Wallet.prototype.purchaseBAT = async function (info, amount, currency, language)
   return {}
 }
 
-Wallet.prototype.createUpholdSDK = function (token) {
+Wallet.prototype.createUpholdSDK = function (parameters) {
+  const wallet = this
+  const {
+    environment,
+    clientId,
+    clientSecret
+  } = wallet.config.uphold
   const options = {
-    baseUrl: upholdBaseUrls[this.config.uphold.environment],
-    clientId: this.config.uphold.clientId,
-    clientSecret: this.config.uphold.clientSecret
+    baseUrl: upholdBaseUrls[environment],
+    clientId: clientId,
+    clientSecret: clientSecret
   }
   const uphold = new UpholdSDK.default(options) // eslint-disable-line new-cap
-  uphold.storage.setItem(uphold.options.accessTokenKey, token)
+  uphold.setToken(parameters)
   return uphold
 }
 
@@ -280,8 +288,7 @@ Wallet.providers.uphold = {
     label,
     options
   }) {
-    const accessToken = info.parameters.access_token
-    const uphold = this.createUpholdSDK(accessToken)
+    const uphold = this.createUpholdSDK(info.parameters)
     return uphold.createCard(currency, label, Object.assign({
       authenticate: true
     }, options))
@@ -291,7 +298,7 @@ Wallet.providers.uphold = {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
         let btcAddr, ethAddr, ltcAddr, wallet
-
+        console.log('uphold', this.uphold.options)
         try {
           wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
           ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
@@ -422,7 +429,7 @@ Wallet.providers.uphold = {
     let card, cards, currency, currencies, result, uphold, user
 
     try {
-      uphold = this.createUpholdSDK(info.parameters.access_token)
+      uphold = this.createUpholdSDK(info.parameters)
       debug('uphold api', uphold.api)
       user = await uphold.api('/me')
       if (user.status !== 'pending') cards = await uphold.api('/me/cards')

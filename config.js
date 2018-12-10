@@ -86,6 +86,7 @@ const uphold = () => {
 
   module.exports.wallet.uphold =
   { accessToken       : process.env.UPHOLD_ACCESS_TOKEN         || 'none'
+  , refreshToken      : process.env.UPHOLD_REFRESH_TOKEN        || 'none'
   , clientId          : process.env.UPHOLD_CLIENT_ID            || 'none'
   , clientSecret      : process.env.UPHOLD_CLIENT_SECRET        || 'none'
   , environment       : process.env.UPHOLD_ENVIRONMENT          || 'sandbox'

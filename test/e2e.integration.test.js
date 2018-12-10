@@ -241,7 +241,10 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     clientSecret: 'none'
   })
   // have to do some hacky shit to use a personal access token
-  uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
+  uphold.setToken({
+    access_token: process.env.UPHOLD_ACCESS_TOKEN,
+    refresh_token: process.env.UPHOLD_REFRESH_TOKEN
+  })
   const donorCardId = process.env.UPHOLD_DONOR_CARD_ID
 
   await uphold.createCardTransaction(donorCardId,
