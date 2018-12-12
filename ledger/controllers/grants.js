@@ -192,6 +192,10 @@ const getGrant = (protocolVersion) => (runtime) => {
     const wallets = runtime.database.get('wallets', debug)
     let candidates, entries, priority, promotion, promotionIds
 
+    if (true) {
+      return reply(boom.notFound('promotion not available'))
+    }
+
     const l10n = (o) => {
       const labels = [ 'greeting', 'message', 'text' ]
 
