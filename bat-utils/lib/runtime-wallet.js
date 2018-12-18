@@ -443,7 +443,7 @@ Wallet.providers.uphold = {
 
     result = {
       provider: info.provider,
-      authorized: [ 'restricted', 'ok' ].indexOf(user.status) !== -1,
+      authorized: user.status === 'ok',
       defaultCurrency: info.defaultCurrency || currency,
       availableCurrencies: currencies,
       possibleCurrencies: user.currencies
