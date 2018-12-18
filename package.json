@@ -60,7 +60,7 @@
     "accept-language-parser": "1.4.1",
     "babel-cli": "^6.26.0",
     "babel-preset-stage-2": "^6.24.1",
-    "bat-publisher": "^2.0.23",
+    "bat-publisher": "^2.0.24",
     "bat-utils": "file:./bat-utils",
     "bell": "8.7.0",
     "bignumber.js": "^4.1.0",
