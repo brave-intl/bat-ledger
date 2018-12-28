@@ -32,6 +32,7 @@ const ledgerCollections = [
   'publishers',
   'tokens',
   'grants',
+  'wallets',
   'surveyors',
   'settlements',
   'publishersV2',
