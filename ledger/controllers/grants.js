@@ -130,11 +130,11 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
   } catch (ex) {
     try {
       const errPayload = JSON.parse(ex.data.payload.toString())
-      return boom.notFound(errPayload.message)
+      return reply(boom.notFound(errPayload.message))
     } catch (ex) {
       runtime.captureException(ex, { req: request })
     }
-    return boom.notFound()
+    return reply(boom.notFound())
   }
 }
 
