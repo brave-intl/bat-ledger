@@ -513,31 +513,22 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
     token: headers['safetynet-token']
   })
 
-  try {
-    const payload = await braveHapi.wreck.post(url, {
-      headers: captchaHeaders,
-      payload: body
-    })
-    const data = JSON.parse(payload.toString())
+  const payload = await braveHapi.wreck.post(url, {
+    headers: captchaHeaders,
+    payload: body
+  })
+  const data = JSON.parse(payload.toString())
 
-    await wallets.findOneAndUpdate({
-      paymentId
-    }, {
-      $unset: {
-        nonce: {}
-      }
-    })
+  await wallets.findOneAndUpdate({
+    paymentId
+  }, {
+    $unset: {
+      nonce: {}
+    }
+  })
 
-    if (wallet.nonce !== data.nonce) {
-      return boom.forbidden('safetynet nonce does not match')
-    }
-  } catch (ex) {
-    try {
-      const errPayload = JSON.parse(ex.data.payload.toString())
-      return boom.notFound(errPayload.message)
-    } catch (ex) {
-    }
-    return boom.notFound()
+  if (wallet.nonce !== data.nonce) {
+    return boom.forbidden('safetynet nonce does not match')
   }
 }
 
