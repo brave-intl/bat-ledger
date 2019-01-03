@@ -5,14 +5,12 @@ import BigNumber from 'bignumber.js'
 import test from 'ava'
 import _ from 'underscore'
 import dotenv from 'dotenv'
+import {
+  timeout
+} from './extras-utils'
 dotenv.config()
 
-const currency = Currency({
-  currency: {
-    url: process.env.BAT_RATIOS_URL,
-    access_token: process.env.BAT_RATIOS_TOKEN
-  }
-}, {})
+const currency = make(Currency)
 
 test('instantiates correctly', (t) => {
   t.plan(1)
@@ -101,3 +99,60 @@ test('make sure cache is caching', async (t) => {
   t.deepEqual(ones, result)
   currency.cache = oldCache
 })
+
+test('a faulty request does not result in an error', async (t) => {
+  t.plan(2)
+  const currency = make(Currency.Constructor)
+  currency.cache = currency.Cache()
+  currency.parser = () => { throw new Error('missed') }
+  // throwing with no cache
+  try {
+    await currency.rates('BAT')
+  } catch (e) {
+    t.true(_.isObject(e))
+  }
+  // caching
+  delete currency.parser
+  const res1 = await currency.rates('BAT')
+  let res2 = null
+  try {
+    res2 = await currency.rates('BAT')
+  } catch (e) {
+    t.true(false)
+  }
+  t.deepEqual(res1, res2)
+  currency.cache = currency.Cache()
+})
+
+test('a faulty request delays subsequent requests', async (t) => {
+  t.plan(4)
+  const currency = make(Currency.Constructor, {
+    lastFailure: 5000
+  })
+  const first = await currency.rates('BAT')
+  currency.parser = () => { throw new Error('missed') }
+  currency.request = _.wrap(currency.request, (request, endpoint) => {
+    t.true(true)
+    return request.call(currency, endpoint)
+  })
+  t.deepEqual(first, await currency.rates('BAT'))
+  await timeout(6000)
+  t.deepEqual(first, await currency.rates('BAT'))
+  currency.cache = currency.Cache()
+  try {
+    await currency.rates('BAT')
+  } catch (e) {
+    t.true(_.isObject(e))
+  }
+})
+
+function make (Constructor = Currency, options = {}) {
+  return new Constructor({
+    currency: Object.assign({
+      url: process.env.BAT_RATIOS_URL,
+      access_token: process.env.BAT_RATIOS_TOKEN
+    }, options)
+  }, {
+    captureException: () => {}
+  })
+}
