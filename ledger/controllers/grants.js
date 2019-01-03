@@ -120,12 +120,22 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
     token: request.headers['safetynet-token']
   })
 
-  await braveHapi.wreck.post(url, {
-    headers,
-    payload: body
-  })
+  try {
+    await braveHapi.wreck.post(url, {
+      headers,
+      payload: body
+    })
 
-  await handler(runtime)(request, reply)
+    await handler(runtime)(request, reply)
+  } catch (ex) {
+    try {
+      const errPayload = JSON.parse(ex.data.payload.toString())
+      return boom.notFound(errPayload.message)
+    } catch (ex) {
+      runtime.captureException(ex, { req: request })
+    }
+    return boom.notFound()
+  }
 }
 
 const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
@@ -513,31 +523,22 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
     token: headers['safetynet-token']
   })
 
-  try {
-    const payload = await braveHapi.wreck.post(url, {
-      headers: captchaHeaders,
-      payload: body
-    })
-    const data = JSON.parse(payload.toString())
+  const payload = await braveHapi.wreck.post(url, {
+    headers: captchaHeaders,
+    payload: body
+  })
+  const data = JSON.parse(payload.toString())
 
-    await wallets.findOneAndUpdate({
-      paymentId
-    }, {
-      $unset: {
-        nonce: {}
-      }
-    })
+  await wallets.findOneAndUpdate({
+    paymentId
+  }, {
+    $unset: {
+      nonce: {}
+    }
+  })
 
-    if (wallet.nonce !== data.nonce) {
-      return boom.forbidden('safetynet nonce does not match')
-    }
-  } catch (ex) {
-    try {
-      const errPayload = JSON.parse(ex.data.payload.toString())
-      return boom.notFound(errPayload.message)
-    } catch (ex) {
-    }
-    return boom.notFound()
+  if (wallet.nonce !== data.nonce) {
+    return boom.forbidden('safetynet nonce does not match')
   }
 }
 
