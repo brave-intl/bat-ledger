@@ -120,12 +120,21 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
     token: request.headers['safetynet-token']
   })
 
-  await braveHapi.wreck.post(url, {
-    headers,
-    payload: body
-  })
+  try {
+    await braveHapi.wreck.post(url, {
+      headers,
+      payload: body
+    })
 
-  await handler(runtime)(request, reply)
+    await handler(runtime)(request, reply)
+  } catch (ex) {
+    try {
+      const errPayload = JSON.parse(ex.data.payload.toString())
+      return boom.notFound(errPayload.message)
+    } catch (ex) {
+    }
+    return boom.notFound()
+  }
 }
 
 const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
