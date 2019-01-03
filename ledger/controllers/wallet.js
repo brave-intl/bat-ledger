@@ -14,6 +14,18 @@ const braveUtils = utils.extras.utils
 const v1 = {}
 const v2 = {}
 
+const walletStatsList = Joi.array().items(
+  Joi.object().keys({
+    created: Joi.string().required().description('date the wallets in this cohort were created'),
+    wallets: Joi.number().required().description('the number of wallets created on this date'),
+    contributed: Joi.number().required().description('the number of wallets created on this date that have a claimed grant that has not yet been redeemed'),
+    walletProviderBalance: Joi.string().required().description('the balances of the wallets created on this day'),
+    anyFunds: Joi.number().required().description('the number of wallets created on this date that have either an unredeemed grant or a wallet provider balance'),
+    activeGrant: Joi.number().required().description('the number of wallets created on this date that have an active grant'),
+    walletProviderFunded: Joi.number().required().description('the number of wallets that are currently funded')
+  })
+)
+
 /*
    GET /v1/wallet/{paymentId}
    GET /v2/wallet/{paymentId}
@@ -481,148 +493,7 @@ v2.lookup = { handler: (runtime) => {
  */
 
 v1.getStats =
-{ handler: (runtime) => {
-  return async (request, reply) => {
-    const debug = braveHapi.debug(module, request)
-    const wallets = runtime.database.get('wallets', debug)
-
-    let values = await wallets.aggregate([{
-      $match: {
-        paymentId: {
-          $nin: ['', null]
-        }
-      }
-    }, {
-      $project: {
-        _id: 0,
-        walletProviderBalance: '$balances.balance',
-        created: {
-          $dateToString: {
-            format: '%Y-%m-%d',
-            date: '$_id'
-          }
-        },
-        contributed: {
-          $cond: {
-            if: {
-              $gt: ['$paymentStamp', 0]
-            },
-            then: 1,
-            else: 0
-          }
-        },
-        activeGrant: {
-          $cond: {
-            then: 1,
-            else: 0,
-            if: {
-              $size: {
-                $filter: {
-                  input: {
-                    $ifNull: ['$grants', []]
-                  },
-                  as: 'grant',
-                  cond: {
-                    $eq: ['$$grant.status', 'active']
-                  }
-                }
-              }
-            }
-          }
-        },
-        walletProviderFunded: {
-          $cond: {
-            then: 1,
-            else: 0,
-            if: {
-              $ne: ['$balances.confirmed', '0']
-            }
-          }
-        }
-      }
-    }, {
-      $project: {
-        walletProviderBalance: 1,
-        created: 1,
-        contributed: 1,
-        activeGrant: 1,
-        walletProviderFunded: 1,
-        anyFunds: {
-          $cond: {
-            then: 1,
-            else: 0,
-            if: {
-              $or: [{
-                $gt: ['$walletProviderBalance', 0]
-              }, {
-                $gt: ['$activeGrant', 0]
-              }]
-            }
-          }
-        }
-      }
-    }, {
-      $group: {
-        _id: '$created',
-        walletProviderBalance: {
-          $push: '$walletProviderBalance'
-        },
-        contributed: {
-          $sum: '$contributed'
-        },
-        walletProviderFunded: {
-          $sum: '$walletProviderFunded'
-        },
-        anyFunds: {
-          $sum: '$anyFunds'
-        },
-        activeGrant: {
-          $sum: '$activeGrant'
-        },
-        wallets: {
-          $sum: 1
-        }
-      }
-    }, {
-      $project: {
-        created: '$_id',
-        wallets: 1,
-        contributed: 1,
-        walletProviderBalance: 1,
-        anyFunds: 1,
-        activeGrant: 1,
-        walletProviderFunded: 1,
-        _id: 0
-      }
-    }])
-
-    values = values.map(({
-      created,
-      wallets,
-      contributed,
-      walletProviderBalance,
-      anyFunds,
-      activeGrant,
-      walletProviderFunded
-    }) => ({
-      created,
-      wallets,
-      contributed,
-      walletProviderBalance: add(walletProviderBalance),
-      anyFunds,
-      activeGrant,
-      walletProviderFunded
-    }))
-
-    reply(values)
-
-    function add (numbers) {
-      return numbers.reduce((memo, number) => {
-        return memo.plus(new BigNumber(number || 0))
-      }, new BigNumber('0')).toString()
-    }
-  }
-},
+{ handler: getStats(),
 
   auth: {
     strategy: 'simple',
@@ -633,17 +504,200 @@ v1.getStats =
   tags: [ 'api' ],
 
   response: {
-    schema: Joi.array().items(
-      Joi.object().keys({
-        created: Joi.string().required().description('date the wallets in this cohort were created'),
-        wallets: Joi.number().required().description('the number of wallets created on this date'),
-        contributed: Joi.number().required().description('the number of wallets created on this date that have a claimed grant that has not yet been redeemed'),
-        walletProviderBalance: Joi.string().required().description('the balances of the wallets created on this day'),
-        anyFunds: Joi.number().required().description('the number of wallets created on this date that have either an unredeemed grant or a wallet provider balance'),
-        activeGrant: Joi.number().required().description('the number of wallets created on this date that have an active grant'),
-        walletProviderFunded: Joi.number().required().description('the number of wallets that are currently funded')
-      })
-    )
+    schema: walletStatsList
+  }
+}
+
+v2.getStats = {
+  handler: getStats(singleDateQuery),
+
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Retrieves information about wallets',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      from: Joi.date().iso().required().description('the date to query for'),
+      until: Joi.date().iso().optional().description('the non inclusive date to query until')
+    }
+  },
+  response: {
+    schema: walletStatsList
+  }
+}
+
+function singleDateQuery ({
+  params
+}) {
+  const {
+    from,
+    until
+  } = params
+  const baseDate = new Date(from)
+  const DAY = 1000 * 60 * 60 * 24
+  const endOfDay = new Date(+baseDate + DAY)
+  const dateEnd = until ? new Date(until) : endOfDay
+  return {
+    _id: {
+      $gte: bson.ObjectID.createFromTime(new Date(baseDate / 1000)),
+      $lt: bson.ObjectID.createFromTime(new Date(dateEnd / 1000))
+    },
+    paymentId: {
+      $nin: ['', null]
+    }
+  }
+}
+
+function defaultQuery () {
+  return {
+    paymentId: {
+      $nin: ['', null]
+    }
+  }
+}
+
+function getStats (getQuery = defaultQuery) {
+  return (runtime) => {
+    return async (request, reply) => {
+      const debug = braveHapi.debug(module, request)
+      const wallets = runtime.database.get('wallets', debug)
+
+      let values = await wallets.aggregate([{
+        $match: getQuery(request)
+      }, {
+        $project: {
+          _id: 0,
+          walletProviderBalance: '$balances.balance',
+          created: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$_id'
+            }
+          },
+          contributed: {
+            $cond: {
+              if: {
+                $gt: ['$paymentStamp', 0]
+              },
+              then: 1,
+              else: 0
+            }
+          },
+          activeGrant: {
+            $cond: {
+              then: 1,
+              else: 0,
+              if: {
+                $size: {
+                  $filter: {
+                    input: {
+                      $ifNull: ['$grants', []]
+                    },
+                    as: 'grant',
+                    cond: {
+                      $eq: ['$$grant.status', 'active']
+                    }
+                  }
+                }
+              }
+            }
+          },
+          walletProviderFunded: {
+            $cond: {
+              then: 1,
+              else: 0,
+              if: {
+                $ne: ['$balances.confirmed', '0']
+              }
+            }
+          }
+        }
+      }, {
+        $project: {
+          walletProviderBalance: 1,
+          created: 1,
+          contributed: 1,
+          activeGrant: 1,
+          walletProviderFunded: 1,
+          anyFunds: {
+            $cond: {
+              then: 1,
+              else: 0,
+              if: {
+                $or: [{
+                  $gt: ['$walletProviderBalance', 0]
+                }, {
+                  $gt: ['$activeGrant', 0]
+                }]
+              }
+            }
+          }
+        }
+      }, {
+        $group: {
+          _id: '$created',
+          walletProviderBalance: {
+            $push: '$walletProviderBalance'
+          },
+          contributed: {
+            $sum: '$contributed'
+          },
+          walletProviderFunded: {
+            $sum: '$walletProviderFunded'
+          },
+          anyFunds: {
+            $sum: '$anyFunds'
+          },
+          activeGrant: {
+            $sum: '$activeGrant'
+          },
+          wallets: {
+            $sum: 1
+          }
+        }
+      }, {
+        $project: {
+          created: '$_id',
+          wallets: 1,
+          contributed: 1,
+          walletProviderBalance: 1,
+          anyFunds: 1,
+          activeGrant: 1,
+          walletProviderFunded: 1,
+          _id: 0
+        }
+      }])
+
+      values = values.map(({
+        created,
+        wallets,
+        contributed,
+        walletProviderBalance,
+        anyFunds,
+        activeGrant,
+        walletProviderFunded
+      }) => ({
+        created,
+        wallets,
+        contributed,
+        walletProviderBalance: add(walletProviderBalance),
+        anyFunds,
+        activeGrant,
+        walletProviderFunded
+      }))
+
+      reply(values)
+
+      function add (numbers) {
+        return numbers.reduce((memo, number) => {
+          return memo.plus(new BigNumber(number || 0))
+        }, new BigNumber('0')).toString()
+      }
+    }
   }
 }
 
@@ -653,6 +707,7 @@ module.exports.routes = [
   braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup),
+  braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
   braveHapi.routes.async().path('/v1/wallet/stats').whitelist().config(v1.getStats)
 ]
 
