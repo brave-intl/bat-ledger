@@ -846,10 +846,6 @@ v2.getCaptcha = {
 */
 
 v3.attestations = {
-  auth: {
-    strategy: 'simple',
-    mode: 'required'
-  },
   description: 'Retrieve nonce for android attestation',
   tags: [ 'api' ],
   response: {
