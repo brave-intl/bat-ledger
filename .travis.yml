@@ -53,7 +53,7 @@ install:
 sudo: required
 before_script:
   # lint the files (fail early)
-  - npm run lint
+  - npm run security
   # pull the bat go layer
   - docker pull brave/bat-go:latest
   # build the docker compose file
