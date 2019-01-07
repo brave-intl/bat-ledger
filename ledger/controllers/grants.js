@@ -537,8 +537,7 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
     }
   })
 
-  const buf = Buffer.from(data.nonce, 'base64')
-  if (wallet.nonce !== buf.toString('utf8')) {
+  if (wallet.nonce !== data.nonce) {
     return boom.forbidden('safetynet nonce does not match')
   }
 }
@@ -878,7 +877,7 @@ v3.attestations = {
     const key = `${paymentId}_${requested}_${id}_android`
     const nonce = uuidv5(key, '90f167b8-0c44-4ae9-a97d-4fd211d5693d')
     const $set = {
-      nonce
+      nonce: Buffer.from(nonce).toString('base64')
     }
 
     await wallets.update({
