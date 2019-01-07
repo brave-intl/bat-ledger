@@ -877,7 +877,7 @@ v3.attestations = {
     const key = `${paymentId}_${requested}_${id}_android`
     const nonce = uuidv5(key, '90f167b8-0c44-4ae9-a97d-4fd211d5693d')
     const $set = {
-      nonce
+      nonce: Buffer.from(nonce).toString('base64')
     }
 
     await wallets.update({
