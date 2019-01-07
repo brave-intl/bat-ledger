@@ -4,6 +4,7 @@ import _ from 'underscore'
 import {
   timeout
 } from 'bat-utils/lib/extras-utils'
+import BigNumber from 'bignumber.js'
 import {
   connectToDb,
   createSurveyor,
@@ -38,6 +39,39 @@ test('verify surveyor batching endpoint does not error', async t => {
   t.true(true)
 })
 
+test('check votes ratio', async (t) => {
+  const list = [{
+    rate: '1',
+    options: {}
+  }, {
+    rate: '0.25',
+    options: {
+      votes: 100,
+      probi: (new BigNumber(25)).times(1e18).toString()
+    }
+  }]
+  t.plan(list.length)
+
+  for (let context of list) {
+    const {
+      options,
+      rate
+    } = context
+    const res = await createSurveyor(options)
+    const encodedId = encodeURIComponent(res.body.surveyorId)
+    const url = `/v1/surveyor/voterate/contribution/${encodedId}`
+    const {
+      body
+    } = await ledgerAgent
+      .get(url)
+      .expect(ok)
+
+    t.deepEqual(body, {
+      rate
+    })
+  }
+})
+
 test('required cohorts are added to surveyors', async (t) => {
   const { VOTING_COHORTS } = process.env
   const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : []
@@ -47,35 +81,45 @@ test('required cohorts are added to surveyors', async (t) => {
   const {
     body: publicSurveyor
   } = await createSurveyor()
-  const { surveyorId: id } = publicSurveyor
+  const { surveyorId } = publicSurveyor
 
   const ledger = await connectToDb('ledger')
   const surveyors = ledger.collection('surveyors', () => {})
-  const privateSurveyor = await querySurveyor('findOne', id)
+  const privateSurveyor = await findOneSurveyor()
 
+  const encodedSurveyorId = encodeURIComponent(surveyorId)
   const {
     surveyorType
   } = privateSurveyor
-  const url = `/v2/surveyor/${surveyorType}/${encodeURIComponent(id)}`
+  const url = `/v2/surveyor/${surveyorType}/${encodedSurveyorId}`
 
   await ledgerAgent
     .get(url)
     .expect(ok)
 
-  await timeout(5000)
-
-  const privateFullSurveyor = await querySurveyor('findOne', id)
-  cohorts.map((cohort) => {
+  while (await noCohorts()) {
+    await timeout(5000)
+  }
+  const privateFullSurveyor = await findOneSurveyor()
+  cohorts.forEach((cohort) => {
     const surveyorCohortGrants = privateFullSurveyor.cohorts[cohort]
     t.true(_.isArray(surveyorCohortGrants), 'an array is present')
     t.true(surveyorCohortGrants.length > 0, 'the array is not empty')
   })
-  await querySurveyor('remove', id)
-  await postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [id])
 
-  function querySurveyor (method, surveyorId) {
-    return surveyors[method]({
+  await surveyors.remove({
+    surveyorId
+  })
+  await postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [surveyorId])
+
+  function findOneSurveyor () {
+    return surveyors.findOne({
       surveyorId
     })
+  }
+
+  async function noCohorts () {
+    const privateFullSurveyor = await findOneSurveyor()
+    return !privateFullSurveyor.cohorts
   }
 })

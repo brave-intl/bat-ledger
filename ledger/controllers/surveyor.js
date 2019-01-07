@@ -3,12 +3,14 @@ const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
+const surveyors = require('../lib/surveyors')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
 const defaultCohorts = ['control', 'grant', 'ads']
+const v1 = {}
 const v2 = {}
 
 const slop = 35
@@ -415,6 +417,34 @@ v2.phase2 =
     { schema: Joi.object().keys({ submissionId: Joi.string().required().description('verification submissionId') }) }
 }
 
+/*
+   GET /v1/surveyor/voterate/{surveyorType}/{surveyorId}
+*/
+
+v1.getVoteRate = {
+  handler: getVoteRate(),
+  auth: {
+    strategy: 'simple',
+    mode: 'required'
+  },
+
+  description: 'Retrieves vote rate about surveyor',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      surveyorType: Joi.string().required().description('the type of surveyor'),
+      surveyorId: Joi.string().required().description('the surveyor id to check')
+    }
+  },
+
+  response: {
+    schema: {
+      rate: braveJoi.string().numeric().required().description('vote / bat available in surveyor')
+    }
+  }
+}
+
 const create = async (debug, runtime, surveyorType, payload, parentId) => {
   const surveyors = runtime.database.get('surveyors', debug)
   let registrar, state, surveyor
@@ -653,6 +683,7 @@ v2.batchSurveyor =
 }
 
 module.exports.routes = [
+  braveHapi.routes.async().path('/v1/surveyor/voterate/{surveyorType}/{surveyorId}').config(v1.getVoteRate),
   braveHapi.routes.async().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.read),
   braveHapi.routes.async().post().path('/{apiV}/surveyor/{surveyorType}').config(v2.create),
   braveHapi.routes.async().patch().path('/{apiV}/surveyor/{surveyorType}/{surveyorId}').config(v2.update),
@@ -706,5 +737,17 @@ module.exports.initialize = async (debug, runtime) => {
 
       setTimeout(() => { provision(debug, runtime, surveyor.surveyorId) }, 5 * 1000)
     }
+  }
+}
+
+function getVoteRate () {
+  return (runtime) => async (request, reply) => {
+    const surveyor = await server(request, reply, runtime)
+    console.log(surveyor)
+    const voteRate = surveyors.voteValueFromSurveyor(runtime, surveyor)
+
+    reply({
+      rate: voteRate.toString()
+    })
   }
 }
