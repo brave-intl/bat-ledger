@@ -537,7 +537,8 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
     }
   })
 
-  if (wallet.nonce !== data.nonce) {
+  const buf = Buffer.from(data.nonce, 'base64')
+  if (wallet.nonce !== buf.toString('utf8')) {
     return boom.forbidden('safetynet nonce does not match')
   }
 }
