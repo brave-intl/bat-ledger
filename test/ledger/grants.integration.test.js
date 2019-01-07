@@ -237,12 +237,14 @@ test('claim grants with attestations', async (t) => {
     .get(attestationURL)
     .expect(ok)
 
+  const nonce = Buffer.from(response.body.nonce).toString('base64')
+
   const ledgerDB = await connectToDb('ledger')
   const wallets = ledgerDB.collection('wallets')
   wallet = await wallets.findOne({ paymentId })
 
   t.not(wallet.nonce, undefined, 'a random nonce was set')
-  t.is(wallet.nonce, response.body.nonce, 'a random nonce was set on the wallet object')
+  t.is(wallet.nonce, nonce, 'a random nonce was set on the wallet object')
 
   await wallets.update({
     paymentId
