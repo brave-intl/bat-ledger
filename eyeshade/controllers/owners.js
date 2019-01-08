@@ -85,7 +85,7 @@ v1.getWallet = {
         scope: Joi.string().optional().description('scope of authorization with wallet provider'),
         address: Joi.string().guid().optional().description('address (id) for default currency card'),
         status: Joi.string().optional().description('wallet provider user status'),
-        isMember: Joi.string().optional().description('wallet provider user is member')
+        isMember: Joi.boolean().optional().description('wallet provider user is member')
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
