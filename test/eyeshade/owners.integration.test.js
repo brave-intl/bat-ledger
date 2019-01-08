@@ -60,12 +60,14 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   const { wallet } = body
   const {
     authorized,
+    isMember,
     availableCurrencies,
     possibleCurrencies,
     scope
   } = wallet
 
   t.is(authorized, true, 'sanity')
+  t.is(isMember, true, 'sanity')
   t.is(Array.isArray(availableCurrencies), true, 'get wallet returns currencies we have a card for')
   // since we're reusing the test ledger wallet, this should always be true
   t.is(availableCurrencies.indexOf('BAT') !== -1, true, 'wallet has a BAT card')
