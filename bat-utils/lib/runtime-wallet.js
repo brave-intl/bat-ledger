@@ -445,6 +445,7 @@ Wallet.providers.uphold = {
       provider: info.provider,
       authorized: user.status === 'ok',
       status: user.status,
+      isMember: !!user.memberAt,
       defaultCurrency: info.defaultCurrency || currency,
       availableCurrencies: currencies,
       possibleCurrencies: user.currencies
