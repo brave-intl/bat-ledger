@@ -177,24 +177,44 @@ v1.putWallet = {
     return async (request, reply) => {
       const owner = request.params.owner
       const payload = request.payload
-      const provider = payload.provider
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
 
+      const {
+        provider,
+        parameters
+      } = payload
       const state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
+        $currentDate: {
+          timestamp: { $type: 'timestamp' }
+        },
+        $set: {
+          provider,
+          parameters,
           defaultCurrency: payload.defaultCurrency,
           visible: payload.show_verification_status,
           verified: true,
           altcurrency: altcurrency,
           authorized: true,
           authority: provider
-        })
+        }
       }
-      await owners.update({ owner: owner }, state, { upsert: true })
+      await owners.update({
+        owner
+      }, state, {
+        upsert: true
+      })
 
-      reply({})
+      const {
+        id
+      } = await runtime.wallet.user({
+        provider,
+        parameters
+      })
+
+      reply({
+        id
+      })
     }
   },
 
@@ -216,8 +236,11 @@ v1.putWallet = {
     }
   },
 
-  response:
-    { schema: Joi.object().length(0) }
+  response: {
+    schema: Joi.object().keys({
+      id: Joi.string().guid().description('user id from provider like uphold')
+    })
+  }
 }
 
 /*

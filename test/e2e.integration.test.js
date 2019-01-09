@@ -41,10 +41,17 @@ import {
 } from '../eyeshade/workers/reports'
 
 dotenv.config()
+const {
+  BAT_REDIS_URL,
+  BAT_POSTGRES_URL,
+  UPHOLD_ENVIRONMENT,
+  UPHOLD_DONOR_CARD_ID,
+  UPHOLD_ACCESS_TOKEN
+} = process.env
 
 const postgres = new Postgres({
   postgres: {
-    url: process.env.BAT_POSTGRES_URL
+    url: BAT_POSTGRES_URL
   }
 })
 
@@ -56,14 +63,14 @@ let paymentId
 const cache = new Cache({
   cache: {
     redis: {
-      url: process.env.BAT_REDIS_URL
+      url: BAT_REDIS_URL
     }
   }
 })
 
 const queue = new Queue({
   queue: {
-    rsmq: process.env.BAT_REDIS_URL
+    rsmq: BAT_REDIS_URL
   }
 })
 
@@ -233,7 +240,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     'prod': 'https://api.uphold.com',
     'sandbox': 'https://api-sandbox.uphold.com'
   }
-  const environment = process.env.UPHOLD_ENVIRONMENT || 'sandbox'
+  const environment = UPHOLD_ENVIRONMENT || 'sandbox'
 
   const uphold = new UpholdSDK({ // eslint-disable-line new-cap
     baseUrl: upholdBaseUrls[environment],
@@ -241,8 +248,8 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     clientSecret: 'none'
   })
   // have to do some hacky shit to use a personal access token
-  uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
-  const donorCardId = process.env.UPHOLD_DONOR_CARD_ID
+  uphold.storage.setItem('uphold.access_token', UPHOLD_ACCESS_TOKEN)
+  const donorCardId = UPHOLD_DONOR_CARD_ID
 
   await uphold.createCardTransaction(donorCardId,
     {'amount': desired, 'currency': 'BAT', 'destination': userCardId},
@@ -630,8 +637,17 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
 test('eyeshade: create brave youtube channel and owner', async t => {
   t.plan(1)
   // set authorized / uphold parameters
-  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
-    .send({ 'provider': 'uphold', 'parameters': {} })
+  const encoded = encodeURIComponent(braveYoutubeOwner)
+  const url = `/v1/owners/${encoded}/wallet`
+  const SCOPE = 'cards:read user:read'
+  await eyeshadeAgent.put(url)
+    .send({
+      provider: 'uphold',
+      parameters: {
+        access_token: UPHOLD_ACCESS_TOKEN,
+        scope: SCOPE
+      }
+    })
     .expect(ok)
   t.true(true)
 })
