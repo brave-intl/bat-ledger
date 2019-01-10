@@ -81,7 +81,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
-  t.plan(0)
+  t.plan(1)
   const encodedOwner = encodeURIComponent(braveYoutubeOwner)
 
   const walletUrl = `/v1/owners/${encodedOwner}/wallet`
@@ -94,7 +94,10 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
     provider: 'uphold',
     parameters
   }
-  await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
+  const {
+    body
+  } = await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
+  t.true(_.isString(body.id), 'the id returned is a string')
 
   const currency = 'BAT'
   const createCardData = { currency }

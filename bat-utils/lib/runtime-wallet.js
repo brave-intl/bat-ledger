@@ -1,4 +1,5 @@
 const BigNumber = require('bignumber.js')
+const uuid = require('uuid')
 const SDebug = require('sdebug')
 const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const crypto = require('crypto')
@@ -128,6 +129,8 @@ Wallet.prototype.ping = async function (provider) {
   if (!f) throw new Error('provider ' + provider + ' ping not supported')
   return f.bind(this)(provider)
 }
+
+Wallet.prototype.user = wrapEndpoint('user')
 
 Wallet.prototype.status = async function (info) {
   const f = Wallet.providers[info.provider].status
@@ -418,16 +421,38 @@ Wallet.providers.uphold = {
       return { err: ex.toString() }
     }
   },
-  status: async function (info) {
-    let card, cards, currency, currencies, result, uphold, user
-
+  user: async function (info) {
+    const uphold = this.createUpholdSDK(info.parameters.access_token)
+    debug('uphold api', uphold.api)
+    const operation = '/me'
     try {
-      uphold = this.createUpholdSDK(info.parameters.access_token)
-      debug('uphold api', uphold.api)
-      user = await uphold.api('/me')
-      if (user.status !== 'pending') cards = await uphold.api('/me/cards')
+      const data = await uphold.api(operation)
+      return data
     } catch (ex) {
-      debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
+      debug('status', {
+        provider: 'uphold',
+        reason: ex.toString(),
+        operation
+      })
+      throw ex
+    }
+  },
+  status: async function (info) {
+    let card, cards, currency, currencies, result
+
+    const uphold = this.createUpholdSDK(info.parameters.access_token)
+    const user = await this.user(info)
+    const operation = '/me/cards'
+    try {
+      if (user.status !== 'pending') {
+        cards = await uphold.api(operation)
+      }
+    } catch (ex) {
+      debug('status', {
+        provider: 'uphold',
+        reason: ex.toString(),
+        operation
+      })
       throw ex
     }
 
@@ -490,6 +515,11 @@ Wallet.providers.mock = {
       throw new Error('wallet mock balances for ' + info.altcurrency + ' not supported')
     }
   },
+  user: async function () {
+    return {
+      id: uuid.v4()
+    }
+  },
   unsignedTx: async function (info, amount, currency, balance) {
     if (info.altcurrency === 'BAT' && info.provider === 'mockHttpSignature') {
       return { 'requestType': 'httpSignature',
@@ -532,5 +562,19 @@ function selectGrants (grants_ = []) {
 
   function extractExpiryTime (grant) {
     return braveUtils.extractJws(grant.token).expiryTime
+  }
+}
+
+function wrapEndpoint (key) {
+  return function (info) {
+    const { provider } = info
+    const { providers } = Wallet
+    const provided = providers[provider]
+    const fn = provided[key]
+    if (!fn) {
+      throw new Error(`provider ${provider} ${key} not supported`)
+    }
+    const bound = fn.bind(this)
+    return bound(info)
   }
 }
