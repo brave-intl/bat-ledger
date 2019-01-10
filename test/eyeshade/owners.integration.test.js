@@ -25,7 +25,7 @@ test.beforeEach(async (t) => {
 })
 
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(13)
+  t.plan(14)
   const { owners } = t.context
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33b'
   const SCOPE = 'cards:read user:read'
@@ -61,6 +61,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   const {
     authorized,
     isMember,
+    id,
     availableCurrencies,
     possibleCurrencies,
     scope
@@ -68,6 +69,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
 
   t.is(authorized, true, 'sanity')
   t.is(isMember, true, 'sanity')
+  t.true(_.isString(id), 'an id is returned on the wallet object')
   t.is(Array.isArray(availableCurrencies), true, 'get wallet returns currencies we have a card for')
   // since we're reusing the test ledger wallet, this should always be true
   t.is(availableCurrencies.indexOf('BAT') !== -1, true, 'wallet has a BAT card')
