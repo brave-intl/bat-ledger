@@ -34,7 +34,7 @@ v1.getWallet = {
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {
-          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies', 'possibleCurrencies', 'address', 'status', 'isMember' ])
+          result.wallet = underscore.pick(result.wallet, [ 'provider', 'authorized', 'defaultCurrency', 'availableCurrencies', 'possibleCurrencies', 'address', 'status', 'isMember', 'id' ])
           if (entry.parameters.scope) {
             result.wallet.scope = entry.parameters.scope
           }
@@ -77,6 +77,7 @@ v1.getWallet = {
     schema: Joi.object().keys({
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
       wallet: Joi.object().keys({
+        id: Joi.string().required().description('the provider identifier'),
         provider: Joi.string().required().description('wallet provider'),
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
         defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
@@ -177,44 +178,24 @@ v1.putWallet = {
     return async (request, reply) => {
       const owner = request.params.owner
       const payload = request.payload
+      const provider = payload.provider
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
 
-      const {
-        provider,
-        parameters
-      } = payload
       const state = {
-        $currentDate: {
-          timestamp: { $type: 'timestamp' }
-        },
-        $set: {
-          provider,
-          parameters,
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $set: underscore.extend(underscore.pick(payload, [ 'provider', 'parameters' ]), {
           defaultCurrency: payload.defaultCurrency,
           visible: payload.show_verification_status,
           verified: true,
           altcurrency: altcurrency,
           authorized: true,
           authority: provider
-        }
+        })
       }
-      await owners.update({
-        owner
-      }, state, {
-        upsert: true
-      })
+      await owners.update({ owner }, state, { upsert: true })
 
-      const {
-        id
-      } = await runtime.wallet.user({
-        provider,
-        parameters
-      })
-
-      reply({
-        id
-      })
+      reply({})
     }
   },
 
@@ -237,9 +218,7 @@ v1.putWallet = {
   },
 
   response: {
-    schema: Joi.object().keys({
-      id: Joi.string().guid().description('user id from provider like uphold')
-    })
+    schema: Joi.object().length(0)
   }
 }
 

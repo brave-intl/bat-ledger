@@ -467,6 +467,7 @@ Wallet.providers.uphold = {
     } else currency = undefined
 
     result = {
+      id: user.id,
       provider: info.provider,
       authorized: user.status === 'ok',
       status: user.status,
