@@ -78,6 +78,54 @@ ORDER BY created_at
 }
 
 /*
+   GET /v1/accounts/balances/top
+*/
+
+const accountTypes = ['channel', 'owner', 'uphold']
+v1.getTopBalances =
+{ handler: (runtime) => {
+  return async (request, reply) => {
+    let { limit } = request.query
+
+    const query1 = `SELECT *
+    FROM account_balances
+    WHERE account_type = any($2::text[])
+    ORDER BY balance DESC
+    LIMIT $1;`
+
+    const transactions = await runtime.postgres.query(query1, [ limit, accountTypes ])
+    reply(transactions.rows)
+  }
+},
+
+  auth: {
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
+    mode: 'required'
+  },
+
+  description: 'Used by publishers for retrieving a list of balances e.g. for an owner and their channels',
+
+  tags: [ 'api', 'publishers' ],
+
+  validate: {
+    query: {
+      limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
+    }
+  },
+
+  response: {
+    schema: Joi.array().items(
+      Joi.object().keys({
+        account_id: Joi.string(),
+        account_type: Joi.string().valid(accountTypes),
+        balance: Joi.number().description('balance in BAT')
+      })
+    )
+  }
+}
+
+/*
    GET /v1/accounts/balances
 */
 
@@ -300,6 +348,7 @@ v1.adTransactions = {
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
+  braveHapi.routes.async().path('/v1/accounts/balances/top').whitelist().config(v1.getTopBalances),
   braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances),
   braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)

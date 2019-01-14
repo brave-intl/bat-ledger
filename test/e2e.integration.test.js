@@ -800,6 +800,30 @@ test('check stats endpoint after funds move', async t => {
   }])
 })
 
+test('ensure top balances are available', async t => {
+  t.plan(2)
+  const limit = 2
+  const query = {
+    limit
+  }
+  const balanceLimitURL = '/v1/accounts/balances/top'
+  const {
+    body: limited
+  } = await eyeshadeAgent
+    .get(balanceLimitURL)
+    .query(query)
+    .expect(ok)
+
+  t.is(limited.length, 2)
+
+  const {
+    body: unlimited
+  } = await eyeshadeAgent
+    .get(balanceLimitURL)
+    .expect(ok)
+  t.is(unlimited.length, 10)
+})
+
 async function getCached (id, group) {
   const card = await cache.get(id, group)
   const couldBeJSON = card && card[0] === '{'
