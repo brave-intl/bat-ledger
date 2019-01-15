@@ -702,13 +702,13 @@ function getStats (getQuery = defaultQuery) {
 }
 
 module.exports.routes = [
+  braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
+  braveHapi.routes.async().path('/v1/wallet/stats').whitelist().config(v1.getStats),
   braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
-  braveHapi.routes.async().path('/v2/wallet').config(v2.lookup),
-  braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
-  braveHapi.routes.async().path('/v1/wallet/stats').whitelist().config(v1.getStats)
+  braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
