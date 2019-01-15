@@ -254,6 +254,13 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
    PUT /v2/wallet/{paymentId}
  */
 
+function voteValueFromSurveyor (surveyor) {
+  const { votes, probi } = surveyor.payload.adFree
+  const bigProbi = new BigNumber(probi)
+  const minimum = bigProbi.dividedBy(votes).dividedBy(1e18).toString()
+  return minimum
+}
+
 const write = function (runtime, apiVersion) {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
@@ -272,18 +279,21 @@ const write = function (runtime, apiVersion) {
 
     const txn = JSON.parse(signedTx.octets)
 
+    surveyor = await surveyors.findOne({ surveyorId, surveyorType: 'contribution' })
+    if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
+    if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
+
+    const minimum = voteValueFromSurveyor(surveyor)
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
-      runtime.wallet.validateTxSignature(info, signedTx)
+      runtime.wallet.validateTxSignature(info, signedTx, {
+        minimum
+      })
     } catch (ex) {
       debug('validateTxSignature', { reason: ex.toString(), stack: ex.stack })
       runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
       return reply(boom.badData(ex.toString()))
     }
-
-    surveyor = await surveyors.findOne({ surveyorId: surveyorId, surveyorType: 'contribution' })
-    if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
-    if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
 
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support

@@ -64,6 +64,11 @@ test('validateTxSignature: works', async t => {
   body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.5' } }
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
 
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.5' } }
+  wallet.validateTxSignature(info, signTxn(keypair, body), {
+    minimum: 0.1
+  })
+
   // Missing field
   body = { destination: settlementAddress, denomination: { amount: '20' } }
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
