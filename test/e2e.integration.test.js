@@ -352,7 +352,19 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 
   viewingCredential.finalize(response.body.verification)
 
-  const votes = ['wikipedia.org', 'reddit.com', 'youtube.com', 'ycombinator.com', 'google.com', braveYoutubePublisher]
+  const votes = [
+    'wikipedia.org',
+    'reddit.com',
+    'youtube.com',
+    'ycombinator.com',
+    'google.com',
+    'facebook.com',
+    'gab.ai',
+    'bit.tube',
+    'duckduckgo.com',
+    'everipedia.org',
+    braveYoutubePublisher
+  ]
   for (let i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
     response = await ledgerAgent
@@ -806,7 +818,8 @@ test('ensure top balances are available', async t => {
   const query = {
     limit
   }
-  const balanceLimitURL = '/v1/accounts/balances/top'
+  const originalType = 'channel'
+  const balanceLimitURL = `/v1/accounts/balances/${originalType}/top`
   const {
     body: limited
   } = await eyeshadeAgent
@@ -821,7 +834,16 @@ test('ensure top balances are available', async t => {
   } = await eyeshadeAgent
     .get(balanceLimitURL)
     .expect(ok)
+
   t.is(unlimited.length, 10)
+
+  unlimited.forEach(({
+    account_type: type
+  }) => {
+    if (type !== originalType) {
+      throw new Error(`type returned does not match`)
+    }
+  })
 })
 
 async function getCached (id, group) {

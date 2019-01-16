@@ -78,7 +78,7 @@ ORDER BY created_at
 }
 
 /*
-   GET /v1/accounts/balances/top
+   GET /v1/accounts/balances/{type}/top
 */
 
 const accountTypes = ['channel', 'owner', 'uphold']
@@ -86,14 +86,15 @@ v1.getTopBalances =
 { handler: (runtime) => {
   return async (request, reply) => {
     let { limit } = request.query
+    const { type } = request.params
 
     const query1 = `SELECT *
     FROM account_balances
-    WHERE account_type = any($2::text[])
+    WHERE account_type = $1::text
     ORDER BY balance DESC
-    LIMIT $1;`
+    LIMIT $2;`
 
-    const transactions = await runtime.postgres.query(query1, [ limit, accountTypes ])
+    const transactions = await runtime.postgres.query(query1, [ type, limit ])
     reply(transactions.rows)
   }
 },
@@ -109,6 +110,9 @@ v1.getTopBalances =
   tags: [ 'api', 'publishers' ],
 
   validate: {
+    params: Joi.object().keys({
+      type: Joi.string().required().valid(accountTypes).description('balance types to retrieve')
+    }),
     query: {
       limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
     }
@@ -348,7 +352,7 @@ v1.adTransactions = {
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
-  braveHapi.routes.async().path('/v1/accounts/balances/top').whitelist().config(v1.getTopBalances),
+  braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').whitelist().config(v1.getTopBalances),
   braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances),
   braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
