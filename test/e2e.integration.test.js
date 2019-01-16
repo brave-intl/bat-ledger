@@ -101,7 +101,6 @@ test('ledger: create a surveyor', async t => {
   t.not(prevSurveyorId, surveyorId)
 })
 
-
 test('ledger: create promotion', async t => {
   t.plan(0)
   const grants = {
