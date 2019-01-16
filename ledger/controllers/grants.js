@@ -188,6 +188,18 @@ v3.all = {
 const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/g
 const getGrant = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
+    // Only support requests from Chrome versions > 70
+    if (protocolVersion === 2) {
+      let userAgent = request.headers['user-agent']
+      let userAgentIsChrome = userAgent.split('Chrome/').length > 1
+      if (userAgentIsChrome) {
+        let chromeVersion = parseInt(userAgent.split('Chrome/')[1].substring(0,2)) 
+        if (chromeVersion < 70) {
+          return reply(boom.notFound('promotion not available for browser-laptop.'))
+        }
+      }
+    }
+
     const lang = request.query.lang
     const paymentId = request.query.paymentId
     const languages = l10nparser.parse(lang)
@@ -286,8 +298,10 @@ v2.read = {
   handler: getGrant(2),
   description: 'See if a v2 promotion is available',
   tags: [ 'api' ],
-
   validate: {
+    headers: Joi.object().keys({
+      'user-agent': Joi.string().required().description('the browser user agent')
+    }).unknown(true),
     query: {
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')

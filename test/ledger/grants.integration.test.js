@@ -174,6 +174,24 @@ test('attestation returns a random value for the same paymentId', async (t) => {
   t.not(body.nonce, second.nonce)
 })
 
+test('get /v2/grants returns 404 for browser-laptop', async (t) => {
+
+  const browserLaptopUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69 Safari/537.36'
+  const braveCoreUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3581.0 Safari/537.36'
+  var response = await ledgerAgent
+      .get(`/v2/grants`)
+      .set('user-agent', browserLaptopUserAgent)
+      .expect(404)
+  t.is(response.body.message, 'promotion not available for browser-laptop.', 'identifies and rejects browser-laptop')
+
+
+  var response = await ledgerAgent
+      .get(`/v2/grants`)
+      .set('user-agent', braveCoreUserAgent)
+      .expect(404)
+  t.not(response.body.message, 'promotion not available for browser-laptop.', 'does not reject browser-laptop')
+})
+
 test('claim grants with attestations', async (t) => {
   // t.plan(10)
   t.true(true)
