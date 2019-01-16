@@ -538,7 +538,7 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
         return boom.forbidden('must first request correct captcha version')
       }
     } else {
-      if (promotion.protocolVersion !== 1) {
+      if (promotion.protocolVersion !== 2) {
         return boom.forbidden('must first request correct captcha version')
       }
     }
@@ -879,12 +879,12 @@ module.exports.initialize = async (debug, runtime) => {
         batchId: '',
         timestamp: bson.Timestamp.ZERO,
 
-        protocolVersion: 1
+        protocolVersion: 2
       },
       unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
                 { batchId: 1 }, { timestamp: 1 },
-                { protocolVersion: 1 } ]
+                { protocolVersion: 2 } ]
     }
   ])
 
