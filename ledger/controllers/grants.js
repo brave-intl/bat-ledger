@@ -564,7 +564,7 @@ const grantsUploadSchema = {
    POST /v2/grants
 */
 
-const uploadGrants = function (runtime) {
+const uploadGrants = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
     const batchId = uuid.v4().toLowerCase()
     const debug = braveHapi.debug(module, request)
@@ -600,7 +600,6 @@ const uploadGrants = function (runtime) {
     await grants.insert(grantsToInsert)
 
     for (let entry of payload.promotions) {
-      let protocolVersion = 1
       let $set = underscore.assign({
         protocolVersion
       }, underscore.omit(entry, ['promotionId']))
@@ -620,7 +619,7 @@ const uploadGrants = function (runtime) {
 }
 
 v2.create =
-{ handler: uploadGrants,
+{ handler: uploadGrants(2),
 
   auth: {
     strategy: 'session',

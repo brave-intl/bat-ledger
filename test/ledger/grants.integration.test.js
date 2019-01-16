@@ -31,7 +31,7 @@ const BAT_CAPTCHA_BRAVE_TOKEN = 'eyJhbGciOiJSUzI1NiIsIng1YyI6WyJNSUlGa2pDQ0JIcWd
 test('grants: add expired grant and make sure it does not add to wallet', async t => {
   t.plan(10)
   let body, item
-  const url = '/v1/grants'
+  const url = '/v2/grants'
   await ledgerAgent.post(url).send(expired).expect(ok)
 
   const personaId = v4().toLowerCase()
@@ -70,11 +70,13 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
 
   // get available grant
   await ledgerAgent
-    .get('/v1/grants')
+    .get('/v2/grants')
+    // .set('user-agent', 'Chrome/72')
     .expect(ok)
 
   await ledgerAgent
-    .get(`/v1/captchas/${paymentId}`)
+    .get(`/v2/captchas/${paymentId}`)
+    .set('brave-product', 'brave-core')
     .expect(ok)
 
   const ledgerDB = await connectToDb('ledger')
@@ -85,7 +87,7 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
 
   // request grant
   response = await ledgerAgent
-      .put(`/v1/grants/${paymentId}`)
+      .put(`/v2/grants/${paymentId}`)
       .send({
         promotionId,
         captchaResponse: {
@@ -95,7 +97,7 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
       })
       .expect(ok)
 
-  ;({ body } = await ledgerAgent.get('/v1/promotions').expect(ok))
+  ;({ body } = await ledgerAgent.get('/v2/promotions').expect(ok))
   t.true(_.isArray(body))
   ;([ item ] = body)
   t.true(_.isObject(item))
@@ -106,7 +108,7 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
   // different for each one
   t.true(_.isNumber(item.minimumReconcileTimestamp))
   t.is(item.priority, 0)
-  t.is(item.protocolVersion, 1)
+  t.is(item.protocolVersion, 2)
 
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
   const desired = donateAmt.toString()
@@ -126,9 +128,9 @@ test('getting grant from v2', async t => {
   const url = '/v2/promotions'
   const protocolVersion = 2
   const db = await connectToDb('ledger')
-  const newPromotionId = promotionId + 'nu'
+  // const newPromotionId = promotionId + 'nu'
   const where = {
-    promotionId: newPromotionId,
+    promotionId,
     protocolVersion
   }
   const $set = Object.assign({
@@ -144,7 +146,7 @@ test('getting grant from v2', async t => {
   item = body[0]
   t.true(_.isObject(item))
   t.is(_.keys(item).length, 6)
-  t.is(item.promotionId, newPromotionId)
+  t.is(item.promotionId, promotionId)
   t.is(item.active, true)
   t.is(item.count, 0)
   // different for each one
@@ -195,7 +197,7 @@ test('claim grants with attestations', async (t) => {
   // t.plan(10)
   t.true(true)
   let body, item, wallet
-  const url = '/v1/grants'
+  const url = '/v2/grants'
   const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
   const grants = {
     'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
