@@ -72,6 +72,19 @@ npm run docker-build
 ```sh
 npm run docker-up
 ```
+### Postgres migrations
+
+You can run all migrations to upgrade the schema to the latest version using:
+
+```sh
+npm run docker-migrate-up
+```
+
+You can reverse a particular migration by running:
+
+```sh
+npm run docker-migrate-down -- migrations/0001_transactions/down.sql
+```
 
 ### Run tests
 best to do in another terminal
@@ -88,21 +101,7 @@ You can do this by running bellow command when ledger service is running.
 curl -X POST --header 'Authorization: Bearer foobarfoobar' --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"adFree":{"fee":{"USD":5},"votes":50,"altcurrency":"BAT","probi":"27116311373482831368"}}' 'http://127.0.0.1:3001/v2/surveyor/contribution'
 ```
 
-### Postgres migrations
-
-You can run all migrations to upgrade the schema to the latest version using:
-
-```sh
-npm run docker-migrate-up
-```
-
-You can reverse a particular migration by running:
-
-```sh
-npm run docker-migrate-down -- migrations/0001_transactions/down.sql
-```
-
-### Debugging
+## Debugging
 ```sh
 docker-compose run --rm -p 9229:9229 eyeshade-web npm run start-eyeshade -- --inspect=0.0.0.0
 ```
