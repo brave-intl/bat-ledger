@@ -710,7 +710,6 @@ v2.cohorts = { handler: (runtime) => {
 }
 
 /*
-   GET /v1/captchas/{paymentId}
    GET /v2/captchas/{paymentId}
  */
 
@@ -727,10 +726,6 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
     const productEndpoints = {
-      'browser-laptop': {
-        1: '/v1/captchas/target',
-        2: '/v1/captchas/colortarget'
-      },
       'brave-core': {
         2: '/v2/captchas/colortarget'
       }
@@ -760,23 +755,6 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: underscore.extend(solution, {version: protocolVersion}) } })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
-  }
-}
-
-v1.getCaptcha = {
-  handler: getCaptcha(1),
-  description: 'Get a claim time captcha',
-  tags: [ 'api' ],
-
-  plugins: {
-    rateLimit: {
-      enabled: rateLimitEnabled && !qalist.addresses,
-      rate: (request) => captchaRate
-    }
-  },
-
-  validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') }
   }
 }
 
@@ -861,7 +839,6 @@ module.exports.routes = [
   braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
-  braveHapi.routes.async().path('/v1/captchas/{paymentId}').config(v1.getCaptcha),
   braveHapi.routes.async().path('/v2/captchas/{paymentId}').config(v2.getCaptcha)
 ]
 
