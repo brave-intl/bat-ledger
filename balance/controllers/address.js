@@ -6,6 +6,7 @@ const SDebug = require('sdebug')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { bottlenecks } = utils.extras.utils
 
 const expireIn = process.env.BALANCE_CACHE_TTL_S || 60 // 1 minute default
 const expireSettings = {
@@ -43,7 +44,11 @@ v2.walletBalance =
       try {
         const url = `${runtime.config.ledger.url}/v2/wallet/${paymentId}?refresh=true`
         debug('GET', url)
-        walletInfo = await braveHapi.wreck.get(url, { useProxyP: true })
+        walletInfo = await bottlenecks.ledger.schedule(() => {
+          return braveHapi.wreck.get(url, {
+            useProxyP: true
+          })
+        })
         if (Buffer.isBuffer(walletInfo)) walletInfo = JSON.parse(walletInfo)
       } catch (ex) {
         if (ex.isBoom) {

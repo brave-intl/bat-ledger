@@ -10,15 +10,15 @@ const braveHapi = require('./extras-hapi')
 const braveJoi = require('./extras-joi')
 const braveUtils = require('./extras-utils')
 const whitelist = require('./hapi-auth-whitelist')
-
 const Currency = require('./runtime-currency')
 
 const debug = new SDebug('wallet')
-
 const upholdBaseUrls = {
   prod: 'https://api.uphold.com',
   sandbox: 'https://api-sandbox.uphold.com'
 }
+
+const { bottlenecks } = braveUtils
 
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
@@ -338,7 +338,9 @@ Wallet.providers.uphold = {
     let cardInfo
 
     try {
-      cardInfo = await this.uphold.getCard(info.providerId)
+      cardInfo = await bottlenecks.uphold.schedule(() => {
+        return this.uphold.getCard(info.providerId)
+      })
     } catch (ex) {
       debug('balances', { provider: 'uphold', reason: ex.toString(), operation: 'getCard' })
       throw ex

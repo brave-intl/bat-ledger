@@ -2,13 +2,23 @@ const getPublisherProps = require('bat-publisher').getPublisherProps
 // this can be abstracted elsewhere as soon as we finish #274
 const BigNumber = require('bignumber.js')
 const dotenv = require('dotenv')
+const Bottleneck = require('bottleneck/es5')
 dotenv.config()
+const config = require('../../config')
+
 BigNumber.config({
   EXPONENTIAL_AT: 28,
   DECIMAL_PLACES: 18
 })
 
+const bottlenecks = createBottlenecks({
+  clientOptions: config.cache.redis
+})
+bottlenecks.createBottlenecks = createBottlenecks
+bottlenecks.createBottleneck = createBottleneck
+
 module.exports = {
+  bottlenecks,
   timeout,
   extractJws,
   utf8ify,
@@ -75,4 +85,40 @@ function normalizeChannel (channel) {
 
 function justDate (date) {
   return (new Date(date)).toISOString().split('T')[0]
+}
+
+function createBottlenecks (options) {
+  return {
+    ledger: createBottleneck(Object.assign({
+      id: 'ledger'
+    }, options)),
+    uphold: createBottleneck(Object.assign({
+      id: 'uphold'
+    }, options))
+  }
+}
+
+function createBottleneck (options) {
+  const opts = Object.assign({
+    reservoir: 2000, // initial value
+    reservoirRefreshAmount: 1000,
+    reservoirRefreshInterval: 2000, // must be divisible by 250
+    // also use maxConcurrent and / or minTime for safety
+    maxConcurrent: 64,
+    minTime: 5,
+    /* Clustering */
+    datastore: 'redis',
+    clearDatastore: true
+  }, options)
+  const bottleneck = new Bottleneck(opts)
+  const instOpts = {
+    expiration: 30 * 1000
+  }
+  return {
+    schedule: (fn) => bottleneck.schedule(instOpts, fn),
+    wrap: (fn) => function () {
+      const args = [instOpts].concat(arguments, [fn])
+      return bottleneck.schedule.apply(bottleneck, args)
+    }
+  }
 }

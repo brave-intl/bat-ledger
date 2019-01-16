@@ -69,6 +69,7 @@
     "bitcoinjs-lib": "^3.2.0",
     "bluebird": "3.5.0",
     "boom": "5.2.0",
+    "bottleneck": "^2.15.3",
     "bs58check": "^2.0.2",
     "bson": "1.0.5",
     "country-list": "1.1.0",

@@ -6,6 +6,7 @@ branches:
   - master
 env:
   global:
+    - "SERVICE=ledger"
     - "BAT_ADS_PAYOUT_ADDRESS=fb599883-c30c-4428-91be-ba901e69a0b2"
     - "BAT_BALANCE_SERVER=http://localhost:3003"
     - "BAT_EYESHADE_SERVER=http://localhost:3002"
