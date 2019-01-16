@@ -724,7 +724,7 @@ const getCaptcha = (protocolVersion) => (runtime) => {
 
     const productEndpoints = {
       'brave-core': {
-        2: '/v2/captchas/colortarget'
+        2: '/v2/captchas/variableshapetarget'
       }
     }
 
