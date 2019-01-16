@@ -179,7 +179,6 @@ v3.all = {
 }
 
 /*
-   GET /v1/grants
    GET /v2/grants
    GET /v3/grants
  */
@@ -273,24 +272,6 @@ const getGrant = (protocolVersion) => (runtime) => {
     l10n(promotion)
 
     reply(underscore.omit(promotion, [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]))
-  }
-}
-v1.read = {
-  handler: getGrant(1),
-  description: 'See if a v1 promotion is available',
-  tags: [ 'api' ],
-
-  validate: {
-    query: {
-      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
-      paymentId: Joi.string().guid().optional().description('identity of the wallet')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier')
-    }).unknown(true).description('promotion properties')
   }
 }
 
@@ -910,7 +891,6 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v2/promotions').config(v2.all),
   braveHapi.routes.async().path('/v3/promotions').config(v3.all),
-  braveHapi.routes.async().path('/v1/grants').config(v1.read),
   braveHapi.routes.async().path('/v2/grants').config(v2.read),
   braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.claimGrant),
