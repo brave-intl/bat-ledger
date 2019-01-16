@@ -105,10 +105,9 @@ const grants = {
   'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
   'promotions': [{'active': true, 'priority': 0, 'promotionId': '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'}]
 }
-
 test('ledger: create promotion', async t => {
   t.plan(0)
-  const url = '/v1/grants'
+  const url = '/v2/grants'
   // valid grant
   await ledgerAgent.post(url).send(grants).expect(ok)
 })
@@ -368,7 +367,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
 })
 
 test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t => {
-  const url = '/v1/grants'
+  const url = '/v2/grants'
   // valid grant
   const promotionId = 'b91d63c7-b6d1-43e2-8ef2-c3f9bf0b1010'
   const grants = {'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIxODg0NTI0Ny1jZjQyLTQzZjctOWNkZS0yMThhYTU1ZjQwMGIiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJiOTFkNjNjNy1iNmQxLTQzZTItOGVmMi1jM2Y5YmYwYjEwMTAiLCJtYXR1cml0eVRpbWUiOjE1MzgzNTIwMDAsImV4cGlyeVRpbWUiOjE2NTE5NjgwMDB9.iz8fpszEHsRhbsNvnQ1aKYz8nlSmZ9Wb9gR6kKS2DR2RJa18mH-KIhEqSMUoWX6stBNCbQwcwjtmdBiIVmRcBg'], 'promotions': [{promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1538352000000, 'protocolVersion': 2}]}
@@ -451,6 +450,7 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
 
   await ledgerAgent
     .get(`/v2/captchas/${paymentId}`)
+    .set('brave-product', 'brave-core')
     .expect(ok)
 
   const ledgerDB = await connectToDb('ledger')

@@ -30,7 +30,6 @@ const joiGrantSubset = Joi.object().keys({
   probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
 }).unknown(true).description('grant properties')
 
-const v1 = {}
 const v2 = {}
 const v3 = {}
 
@@ -65,7 +64,6 @@ const qaOnlyP = (request) => {
 }
 
 /*
-   GET /v1/promotions
    GET /v2/promotions
    GET /v3/promotions
  */
@@ -141,18 +139,6 @@ const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
   promotionId: Joi.string().required().description('the promotion-identifier')
 }).unknown(true).description('promotion properties'))
 
-v1.all = {
-  handler: getPromotions(1),
-  description: 'See if a v1 promotion is available',
-  tags: [ 'api' ],
-
-  validate: { query: {} },
-
-  response: {
-    schema: promotionsGetResponseSchema
-  }
-}
-
 v2.all = {
   handler: getPromotions(2),
   description: 'See if a v2 promotion is available',
@@ -178,7 +164,6 @@ v3.all = {
 }
 
 /*
-   GET /v1/grants
    GET /v2/grants
    GET /v3/grants
  */
@@ -187,6 +172,18 @@ v3.all = {
 const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/g
 const getGrant = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
+    // Only support requests from Chrome versions > 70
+    if (protocolVersion === 2) {
+      let userAgent = request.headers['user-agent']
+      let userAgentIsChrome = userAgent.split('Chrome/').length > 1
+      if (userAgentIsChrome) {
+        let chromeVersion = parseInt(userAgent.split('Chrome/')[1].substring(0, 2))
+        if (chromeVersion < 70) {
+          return reply(boom.notFound('promotion not available for browser-laptop.'))
+        }
+      }
+    }
+
     const lang = request.query.lang
     const paymentId = request.query.paymentId
     const languages = l10nparser.parse(lang)
@@ -262,31 +259,15 @@ const getGrant = (protocolVersion) => (runtime) => {
     reply(underscore.omit(promotion, [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]))
   }
 }
-v1.read = {
-  handler: getGrant(1),
-  description: 'See if a v1 promotion is available',
-  tags: [ 'api' ],
-
-  validate: {
-    query: {
-      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
-      paymentId: Joi.string().guid().optional().description('identity of the wallet')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier')
-    }).unknown(true).description('promotion properties')
-  }
-}
 
 v2.read = {
   handler: getGrant(2),
   description: 'See if a v2 promotion is available',
   tags: [ 'api' ],
-
   validate: {
+    headers: Joi.object().keys({
+      'user-agent': Joi.string().required().description('the browser user agent')
+    }).unknown(true),
     query: {
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
@@ -331,11 +312,10 @@ const checkBounds = (v1, v2, tol) => {
 }
 
 /*
-   PUT /v1/grants/{paymentId}
    PUT /v2/grants/{paymentId}
  */
 
-v1.claimGrant = {
+v2.claimGrant = {
   handler: claimGrant(captchaCheck),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
@@ -362,7 +342,6 @@ v1.claimGrant = {
     schema: joiGrantSubset
   }
 }
-v2.claimGrant = v1.claimGrant
 
 /*
    PUT /v3/grants/{paymentId}
@@ -557,7 +536,7 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
         return boom.forbidden('must first request correct captcha version')
       }
     } else {
-      if (promotion.protocolVersion !== 1) {
+      if (promotion.protocolVersion !== 2) {
         return boom.forbidden('must first request correct captcha version')
       }
     }
@@ -580,11 +559,10 @@ const grantsUploadSchema = {
 }
 
 /*
-   POST /v1/grants
    POST /v2/grants
 */
 
-const uploadGrants = function (runtime) {
+const uploadGrants = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
     const batchId = uuid.v4().toLowerCase()
     const debug = braveHapi.debug(module, request)
@@ -620,7 +598,6 @@ const uploadGrants = function (runtime) {
     await grants.insert(grantsToInsert)
 
     for (let entry of payload.promotions) {
-      let protocolVersion = 1
       let $set = underscore.assign({
         protocolVersion
       }, underscore.omit(entry, ['promotionId']))
@@ -639,28 +616,8 @@ const uploadGrants = function (runtime) {
   }
 }
 
-v1.create =
-{ handler: uploadGrants,
-
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
-    mode: 'required'
-  },
-
-  description: 'Create one or more grants',
-  tags: [ 'api' ],
-
-  validate: { payload: Joi.object().keys(grantsUploadSchema).required().description('data for bulk upload') },
-
-  payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
-
-  response:
-    { schema: Joi.object().length(0) }
-}
-
 v2.create =
-{ handler: uploadGrants,
+{ handler: uploadGrants(2),
 
   auth: {
     strategy: 'session',
@@ -750,7 +707,6 @@ v2.cohorts = { handler: (runtime) => {
 }
 
 /*
-   GET /v1/captchas/{paymentId}
    GET /v2/captchas/{paymentId}
  */
 
@@ -767,10 +723,6 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
     const productEndpoints = {
-      'browser-laptop': {
-        1: '/v1/captchas/target',
-        2: '/v1/captchas/colortarget'
-      },
       'brave-core': {
         2: '/v2/captchas/colortarget'
       }
@@ -800,23 +752,6 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: underscore.extend(solution, {version: protocolVersion}) } })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
-  }
-}
-
-v1.getCaptcha = {
-  handler: getCaptcha(1),
-  description: 'Get a claim time captcha',
-  tags: [ 'api' ],
-
-  plugins: {
-    rateLimit: {
-      enabled: rateLimitEnabled && !qalist.addresses,
-      rate: (request) => captchaRate
-    }
-  },
-
-  validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') }
   }
 }
 
@@ -883,20 +818,15 @@ v3.attestations = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v2/promotions').config(v2.all),
   braveHapi.routes.async().path('/v3/promotions').config(v3.all),
-  braveHapi.routes.async().path('/v1/grants').config(v1.read),
   braveHapi.routes.async().path('/v2/grants').config(v2.read),
   braveHapi.routes.async().path('/v3/grants').config(v3.read),
-  braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.claimGrant),
   braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
   braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
-  braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
   braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
-  braveHapi.routes.async().path('/v1/captchas/{paymentId}').config(v1.getCaptcha),
   braveHapi.routes.async().path('/v2/captchas/{paymentId}').config(v2.getCaptcha)
 ]
 
@@ -938,12 +868,12 @@ module.exports.initialize = async (debug, runtime) => {
         batchId: '',
         timestamp: bson.Timestamp.ZERO,
 
-        protocolVersion: 1
+        protocolVersion: 2
       },
       unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
                 { batchId: 1 }, { timestamp: 1 },
-                { protocolVersion: 1 } ]
+                { protocolVersion: 2 } ]
     }
   ])
 
