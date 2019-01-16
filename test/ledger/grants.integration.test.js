@@ -71,7 +71,6 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
   // get available grant
   await ledgerAgent
     .get('/v2/grants')
-    // .set('user-agent', 'Chrome/72')
     .expect(ok)
 
   await ledgerAgent
