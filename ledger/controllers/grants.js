@@ -1,5 +1,4 @@
 const Joi = require('joi')
-const uuidv5 = require('uuid/v5')
 const Netmask = require('netmask').Netmask
 const l10nparser = require('accept-language-parser')
 const boom = require('boom')
@@ -859,23 +858,14 @@ v3.attestations = {
     }).required().description('Request parameters')
   },
   handler: (runtime) => async (request, reply) => {
-    const {
-      id,
-      params
-    } = request
-    const {
-      paymentId
-    } = params
-    const {
-      database
-    } = runtime
+    const { paymentId } = request.params
+    const { database } = runtime
 
     const debug = braveHapi.debug(module, request)
     const wallets = database.get('wallets', debug)
 
-    const requested = (new Date()).toISOString()
-    const key = `${paymentId}_${requested}_${id}_android`
-    const nonce = uuidv5(key, '90f167b8-0c44-4ae9-a97d-4fd211d5693d')
+    const nonce = uuid.v4()
+
     const $set = {
       nonce: Buffer.from(nonce).toString('base64')
     }
