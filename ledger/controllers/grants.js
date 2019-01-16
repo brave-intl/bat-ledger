@@ -31,7 +31,6 @@ const joiGrantSubset = Joi.object().keys({
   probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
 }).unknown(true).description('grant properties')
 
-const v1 = {}
 const v2 = {}
 const v3 = {}
 
@@ -179,7 +178,7 @@ const getGrant = (protocolVersion) => (runtime) => {
       let userAgent = request.headers['user-agent']
       let userAgentIsChrome = userAgent.split('Chrome/').length > 1
       if (userAgentIsChrome) {
-        let chromeVersion = parseInt(userAgent.split('Chrome/')[1].substring(0,2)) 
+        let chromeVersion = parseInt(userAgent.split('Chrome/')[1].substring(0, 2))
         if (chromeVersion < 70) {
           return reply(boom.notFound('promotion not available for browser-laptop.'))
         }

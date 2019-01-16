@@ -185,8 +185,7 @@ test('get /v2/grants returns 404 for browser-laptop', async (t) => {
       .expect(404)
   t.is(response.body.message, 'promotion not available for browser-laptop.', 'identifies and rejects browser-laptop')
 
-
-  var response = await ledgerAgent
+  response = await ledgerAgent
       .get(`/v2/grants`)
       .set('user-agent', braveCoreUserAgent)
       .expect(404)
