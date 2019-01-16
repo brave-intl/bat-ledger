@@ -66,7 +66,6 @@ const qaOnlyP = (request) => {
 }
 
 /*
-   GET /v1/promotions
    GET /v2/promotions
    GET /v3/promotions
  */
@@ -141,18 +140,6 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
 const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
   promotionId: Joi.string().required().description('the promotion-identifier')
 }).unknown(true).description('promotion properties'))
-
-v1.all = {
-  handler: getPromotions(1),
-  description: 'See if a v1 promotion is available',
-  tags: [ 'api' ],
-
-  validate: { query: {} },
-
-  response: {
-    schema: promotionsGetResponseSchema
-  }
-}
 
 v2.all = {
   handler: getPromotions(2),
@@ -327,11 +314,10 @@ const checkBounds = (v1, v2, tol) => {
 }
 
 /*
-   PUT /v1/grants/{paymentId}
    PUT /v2/grants/{paymentId}
  */
 
-v1.claimGrant = {
+v2.claimGrant = {
   handler: claimGrant(captchaCheck),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
@@ -358,7 +344,6 @@ v1.claimGrant = {
     schema: joiGrantSubset
   }
 }
-v2.claimGrant = v1.claimGrant
 
 /*
    PUT /v3/grants/{paymentId}
@@ -576,7 +561,6 @@ const grantsUploadSchema = {
 }
 
 /*
-   POST /v1/grants
    POST /v2/grants
 */
 
@@ -633,26 +617,6 @@ const uploadGrants = function (runtime) {
 
     reply({})
   }
-}
-
-v1.create =
-{ handler: uploadGrants,
-
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
-    mode: 'required'
-  },
-
-  description: 'Create one or more grants',
-  tags: [ 'api' ],
-
-  validate: { payload: Joi.object().keys(grantsUploadSchema).required().description('data for bulk upload') },
-
-  payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
-
-  response:
-    { schema: Joi.object().length(0) }
 }
 
 v2.create =
@@ -888,15 +852,12 @@ v3.attestations = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/promotions').config(v1.all),
   braveHapi.routes.async().path('/v2/promotions').config(v2.all),
   braveHapi.routes.async().path('/v3/promotions').config(v3.all),
   braveHapi.routes.async().path('/v2/grants').config(v2.read),
   braveHapi.routes.async().path('/v3/grants').config(v3.read),
-  braveHapi.routes.async().put().path('/v1/grants/{paymentId}').config(v1.claimGrant),
   braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
   braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
-  braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
   braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
