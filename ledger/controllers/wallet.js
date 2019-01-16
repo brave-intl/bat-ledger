@@ -254,10 +254,10 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
    PUT /v2/wallet/{paymentId}
  */
 
-function voteValueFromSurveyor (surveyor) {
+function voteValueFromSurveyor (surveyor, decimalShift) {
   const { votes, probi } = surveyor.payload.adFree
   const bigProbi = new BigNumber(probi)
-  const minimum = bigProbi.dividedBy(votes).dividedBy(1e18).toString()
+  const minimum = bigProbi.dividedBy(votes).dividedBy(decimalShift).toString()
   return minimum
 }
 
@@ -283,7 +283,8 @@ const write = function (runtime, apiVersion) {
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
     if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
 
-    const minimum = voteValueFromSurveyor(surveyor)
+    const decimalShift = runtime.currency.alt2scale(wallet.altcurrency)
+    const minimum = voteValueFromSurveyor(surveyor, decimalShift)
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
       runtime.wallet.validateTxSignature(info, signedTx, {
