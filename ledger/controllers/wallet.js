@@ -257,8 +257,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
 function voteValueFromSurveyor (surveyor, decimalShift) {
   const { votes, probi } = surveyor.payload.adFree
   const bigProbi = new BigNumber(probi)
-  const minimum = bigProbi.dividedBy(votes).dividedBy(decimalShift).toString()
-  return minimum
+  return bigProbi.dividedBy(votes).dividedBy(decimalShift)
 }
 
 const write = function (runtime, apiVersion) {
