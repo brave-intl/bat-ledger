@@ -124,6 +124,10 @@ v2.invalidateWalletBalance =
   response: { schema: Joi.object().length(0) }
 }
 
+/*
+   POST /v2/card
+ */
+
 v2.invalidateCardBalance =
 { handler: (runtime) => {
   return async (request, reply) => {
@@ -152,7 +156,7 @@ v2.invalidateCardBalance =
     payload: Joi.object({
       payload: Joi.object().keys({
         id: Joi.string().guid().required().description('identity of the card')
-      })
+      }).unknown(true)
     }).unknown(true)
   },
 

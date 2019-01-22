@@ -668,7 +668,12 @@ test('payments are cached and can be removed', async t => {
 
   await balanceAgent.post(cardDeleteUrl).send({
     payload: {
-      id: cardId
+      id: cardId,
+      context: {
+        transaction: {
+          id: 'id-goes-here'
+        }
+      }
     }
   }).expect(ok)
   t.is(await getCached(cardId, balanceCacheConfig.link), paymentId)
