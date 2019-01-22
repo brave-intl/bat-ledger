@@ -65,4 +65,7 @@ before_script:
   - npm run docker-up-detached
   # let the detached up command start up
   - sleep 20
+after_failure:
+  - npm run docker-log-detached
+
 after_success: npx codecov --file=./coverage/lcov.info

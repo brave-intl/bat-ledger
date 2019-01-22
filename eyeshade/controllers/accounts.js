@@ -1,7 +1,12 @@
 const Joi = require('joi')
+const { getPublisherProps } = require('bat-publisher')
 const boom = require('boom')
 const utils = require('bat-utils')
+const BigNumber = require('bignumber.js')
 const _ = require('underscore')
+const {
+  normalizeChannel
+} = require('bat-utils/lib/extras-utils')
 const queries = require('../lib/queries')
 const transactions = require('../lib/transaction')
 const braveHapi = utils.extras.hapi
@@ -13,6 +18,27 @@ const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').
 const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
 const joiPaid = Joi.number().description('amount paid out in BAT')
 
+const selectAccountBalances = `
+SELECT *
+FROM account_balances
+WHERE account_id = any($1::text[]);
+`
+const selectPendingAccountVotes = `
+SELECT
+  channel,
+  SUM(votes.tally * surveyor.price)::TEXT as balance
+FROM votes, (
+  SELECT id, price
+  FROM surveyor_groups
+  WHERE NOT surveyor_groups.frozen
+) surveyor
+WHERE
+    votes.surveyor_id = surveyor.id
+AND votes.channel = any($1::text[])
+AND NOT votes.transacted
+AND NOT votes.excluded
+GROUP BY channel;
+`
 /*
    GET /v1/accounts/{account}/transactions
 */
@@ -133,22 +159,44 @@ v1.getTopBalances =
    GET /v1/accounts/balances
 */
 
-v1.getBalances =
-{ handler: (runtime) => {
-  return async (request, reply) => {
-    let accounts = request.query.account
-    if (!accounts) return reply(boom.badData())
+v1.getBalances = {
+  handler: (runtime) => async (request, reply) => {
+    let {
+      account: accounts,
+      pending: includePending
+    } = request.query
+    if (!accounts) {
+      return reply(boom.badData())
+    }
 
     if (!Array.isArray(accounts)) {
       accounts = [accounts]
     }
+    accounts = accounts.map((account) => normalizeChannel(account))
+    const args = [accounts]
+    const checkVotes = includePending && (accounts
+      .find((account) => {
+        // provider name is known as publishers
+        // on brave-intl/publishers's server
+        const props = getPublisherProps(account)
+        return props.providerName !== 'publishers'
+      }))
 
-    const query1 = `select * from account_balances where account_id = any($1::text[])`
+    console.log('checking', checkVotes)
 
-    const transactions = await runtime.postgres.query(query1, [ accounts ])
-    reply(transactions.rows)
-  }
-},
+    const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args) : {
+      rows: []
+    }
+    const balancePromise = runtime.postgres.query(selectAccountBalances, args)
+    const promises = [votesPromise, balancePromise]
+    const results = await Promise.all(promises)
+
+    const votesRows = results[0].rows
+    const balanceRows = results[1].rows
+    const body = votesRows.reduce(mergeVotes, balanceRows)
+
+    reply(body)
+  },
 
   auth: {
     strategy: 'simple-scoped-token',
@@ -161,10 +209,13 @@ v1.getBalances =
   tags: [ 'api', 'publishers' ],
 
   validate: {
-    query: { account: Joi.alternatives().try(
-      Joi.string().description('account (channel or owner)'),
-      Joi.array().items(Joi.string().required().description('account (channel or owner)'))
-    ).required()}
+    query: {
+      pending: Joi.boolean().default(false).description('whether or not a query should be done for outstanding votes'),
+      account: Joi.alternatives().try(
+        Joi.string().description('account (channel or owner)'),
+        Joi.array().items(Joi.string().required().description('account (channel or owner)'))
+      ).required()
+    }
   },
 
   response: {
@@ -176,6 +227,30 @@ v1.getBalances =
        })
      )
   }
+}
+
+function mergeVotes (_memo, {
+  channel: accountId,
+  balance: voteBalance
+}) {
+  let memo = _memo
+  const found = _.findWhere(memo, {
+    account_id: accountId
+  })
+  if (found) {
+    const amount = new BigNumber(found.balance)
+    const balance = amount.plus(voteBalance).toString()
+    Object.assign(found, {
+      balance
+    })
+  } else {
+    memo = memo.concat([{
+      account_id: accountId,
+      account_type: 'channel',
+      balance: voteBalance
+    }])
+  }
+  return memo
 }
 
 /*

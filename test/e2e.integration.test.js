@@ -702,6 +702,43 @@ test('payments are cached and can be removed', async t => {
   t.is(await getCached(paymentId, balanceCacheConfig.wallet), null)
 })
 
+test('check pending tx endpoint', async (t) => {
+  t.plan(3)
+  const url = '/v1/accounts/balances'
+  let body = []
+  while (!body.length) {
+    await timeout(2000)
+    ;({
+      body
+    } = await eyeshadeAgent.get(url)
+      .query({
+        pending: true,
+        account: braveYoutubePublisher
+      })
+      .expect(ok))
+  }
+  t.deepEqual(body, [{
+    account_id: braveYoutubePublisher,
+    account_type: 'channel',
+    balance: '2.000000000000000000'
+  }], 'pending votes show up after small delay')
+  ;({
+    body
+  } = await eyeshadeAgent.get(url)
+    .query({
+      pending: false,
+      account: braveYoutubePublisher
+    }))
+  t.deepEqual(body, [], 'pending votes are not counted if pending is not true')
+  ;({
+    body
+  } = await eyeshadeAgent.get(url)
+    .query({
+      account: braveYoutubePublisher
+    }))
+  t.deepEqual(body, [], 'endpoint defaults pending to false')
+})
+
 test('ensure contribution balances are computed correctly', async t => {
   t.plan(3)
 
