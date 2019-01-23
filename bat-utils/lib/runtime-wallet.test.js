@@ -11,7 +11,7 @@ import utils from './extras-utils'
 dotenv.config()
 
 test('validateTxSignature: works', async t => {
-  t.plan(9)
+  t.plan(10)
 
   const settlementAddress = '0xcafe'
   const wallet = new Wallet({wallet: {settlementAddress: {BAT: settlementAddress}}}, {})
