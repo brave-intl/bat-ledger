@@ -73,7 +73,17 @@ const runtime = {
 }
 
 const cardDeleteUrl = `/v2/card`
-const statsURL = '/v1/wallet/stats'
+const dateObj = new Date()
+const dateISO = dateObj.toISOString()
+const date = dateISO.split('T')[0]
+const dateObj2 = new Date(date)
+const DAY = 1000 * 60 * 60 * 24
+// two days just in case this happens at midnight
+// and the tests occur just after
+const dateFuture = new Date(+dateObj2 + (2 * DAY))
+const futureISO = dateFuture.toISOString()
+const future = futureISO.split('T')[0]
+const statsURL = `/v2/wallet/stats/${date}/${future}`
 const probi12 = (new BigNumber(12)).times(1e18).toString()
 
 test.after(cleanDbs)

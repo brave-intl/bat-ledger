@@ -489,24 +489,8 @@ v2.lookup = { handler: (runtime) => {
 }
 
 /*
-   GET /v1/wallet/stats
+   GET /v2/wallet/stats/{from}/{until?}
  */
-
-v1.getStats =
-{ handler: getStats(),
-
-  auth: {
-    strategy: 'simple',
-    mode: 'required'
-  },
-
-  description: 'Retrieves information about wallets',
-  tags: [ 'api' ],
-
-  response: {
-    schema: walletStatsList
-  }
-}
 
 v2.getStats = {
   handler: getStats(singleDateQuery),
@@ -703,7 +687,6 @@ function getStats (getQuery = defaultQuery) {
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
-  braveHapi.routes.async().path('/v1/wallet/stats').whitelist().config(v1.getStats),
   braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
