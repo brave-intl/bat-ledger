@@ -8,6 +8,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const defaultCohorts = ['control', 'grant', 'ads']
 const v2 = {}
 
 const slop = 35
@@ -472,8 +473,9 @@ const provision = async (debug, runtime, surveyorId, bump) => {
     return
   }
 
+  const { VOTING_COHORTS } = process.env
+  const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : defaultCohorts
   await Promise.all(contributionSurveyors.map(async (cSurveyor) => {
-    const cohorts = process.env.VOTING_COHORTS ? process.env.VOTING_COHORTS.split(',') : ['control', 'grant']
     let count, vSurveyor
 
     if (!cSurveyor.cohorts) cSurveyor.cohorts = {}
