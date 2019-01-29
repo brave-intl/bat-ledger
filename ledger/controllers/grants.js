@@ -742,14 +742,27 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const { res, payload } = await wreck.get(runtime.config.captcha.url + endpoint, {
       headers: {
         'Authorization': 'Bearer ' + runtime.config.captcha.access_token,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': whitelist.ipaddr(request)
       }
     })
 
     const { headers } = res
 
     const solution = JSON.parse(headers['captcha-solution'])
-    await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: underscore.extend(solution, {version: protocolVersion}) } })
+    const validIp = headers['x-forwarded-valid'] === 'true'
+    const captcha = underscore.extend(solution, {
+      validIp: validIp,
+      version: protocolVersion
+    })
+
+    await wallets.findOneAndUpdate({
+      paymentId
+    }, {
+      $set: {
+        captcha
+      }
+    })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
   }
