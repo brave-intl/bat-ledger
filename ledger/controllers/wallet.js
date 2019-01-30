@@ -305,7 +305,7 @@ const write = function (runtime, apiVersion) {
 
     if (votes < 1) votes = 1
 
-    const possibleCohorts = ['control', 'grant']
+    const possibleCohorts = ['control', 'grant', 'ads']
 
     for (let cohort of possibleCohorts) {
       const cohortSurveyors = surveyor.cohorts[cohort]
