@@ -51,7 +51,7 @@ test('required cohorts are added to surveyors', async (t) => {
 
   const ledger = await connectToDb('ledger')
   const surveyors = ledger.collection('surveyors', () => {})
-  const privateSurveyor = await querySurveyor('findOne')
+  const privateSurveyor = await querySurveyor('findOne', id)
 
   const {
     surveyorType
@@ -64,19 +64,19 @@ test('required cohorts are added to surveyors', async (t) => {
 
   await timeout(5000)
 
-  const privateFullSurveyor = await querySurveyor('findOne')
+  const privateFullSurveyor = await querySurveyor('findOne', id)
   cohorts.map((cohort) => {
     const surveyorCohortGrants = privateFullSurveyor.cohorts[cohort]
     t.true(_.isArray(surveyorCohortGrants), 'an array is present')
     t.true(surveyorCohortGrants.length > 0, 'the array is not empty')
   })
 
-  await querySurveyor('remove')
+  await querySurveyor('remove', id)
   await postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [id])
 
-  function querySurveyor (method) {
+  function querySurveyor (method, surveyorId) {
     return surveyors[method]({
-      surveyorId: id
+      surveyorId
     })
   }
 })
