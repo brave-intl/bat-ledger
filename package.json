@@ -32,7 +32,6 @@
     "test-integration": "ava -v -s test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
     "test-unit": "ava -v",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
-    "docker-down": "npm run db-reset && docker-compose down",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockerservices",
     "docker-up-dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up $npm_package_config_dockerservices $npm_package_config_dockermonitors",
