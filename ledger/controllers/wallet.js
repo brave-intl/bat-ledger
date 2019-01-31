@@ -271,7 +271,10 @@ const write = function (runtime, apiVersion) {
     const surveyors = runtime.database.get('surveyors', debug)
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let cohort, fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
+
+    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi, grantsProbiBeforeTx
+    let totalFee, grantFee, nonGrantFee
+    let totalVotes, grantVotes, nonGrantVotes
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -300,7 +303,7 @@ const write = function (runtime, apiVersion) {
         return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
       } else {
         // new contribution surveyor not yet populated with voting surveyors
-        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + totalVotes
         runtime.captureException(errMsg, { req: request })
 
         const resp = boom.serverUnavailable(errMsg)
@@ -310,21 +313,21 @@ const write = function (runtime, apiVersion) {
     }
 
     params = surveyor.payload.adFree
+    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
+    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
-    votes = runtime.wallet.getTxProbi(wallet, txn).dividedBy(params.probi).times(params.votes).round().toNumber()
-
-    if (votes < 1) votes = 1
+    if (totalVotes < 1) totalVotes = 1
 
     const possibleCohorts = ['control', 'grant', 'ads']
 
     for (let cohort of possibleCohorts) {
       const cohortSurveyors = surveyor.cohorts[cohort]
 
-      if (votes > cohortSurveyors.length) {
-        state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
+      if (totalVotes > cohortSurveyors.length) {
+        state = { payload: request.payload, result: result, votes: totalVotes, message: 'insufficient surveyors' }
         debug('wallet', state)
 
-        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + votes
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + totalVotes
         runtime.captureException(errMsg, { req: request })
 
         const resp = boom.serverUnavailable(errMsg)
@@ -332,6 +335,9 @@ const write = function (runtime, apiVersion) {
         return reply(resp)
       }
     }
+
+    let { grants } = wallet
+    grantsProbiBeforeTx = grants ? (await sumActiveGrants(runtime, null, wallet, grants))[0] : new BigNumber(0)
 
     try {
       result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
@@ -351,25 +357,37 @@ const write = function (runtime, apiVersion) {
     if (!result) {
       result = await runtime.wallet.submitTx(wallet, txn, signedTx)
     }
+    totalFee = result.fee
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
-    cohort = 'control'
-
     const grantIds = result.grantIds
     if (grantIds) {
-      cohort = wallet.cohort || 'grant'
       await markGrantsAsRedeemed(grantIds)
+      let grantsProbiAfterTx = (await sumActiveGrants(runtime, null, wallet, grants))[0]
+      let grantsProbiUsedInTx = grantsProbiBeforeTx - grantsProbiAfterTx
+      grantVotes = new BigNumber(grantsProbiUsedInTx).dividedBy(params.probi).times(params.votes).round().toNumber()
+      nonGrantVotes = totalVotes - grantVotes
+
+      let grantProbiRate = grantsProbiUsedInTx / txnProbi
+      grantFee = totalFee * grantProbiRate
+      nonGrantFee = totalFee - grantFee
+
+      let grantSurveyorIds = surveyor.cohorts['grant'].slice(0, grantVotes)
+      let nonGrantSurveyorIds = surveyor.cohorts['control'].slice(0, nonGrantVotes)
+      surveyorIds = underscore.shuffle(grantSurveyorIds.concat(nonGrantSurveyorIds))
       result = underscore.omit(result, ['grantIds'])
+    } else {
+      grantVotes = 0
+      grantFee = 0
+      nonGrantVotes = totalVotes
+      nonGrantFee = totalFee
+      surveyorIds = underscore.shuffle(surveyor.cohorts['control']).slice(0, totalVotes)
     }
 
     now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
     await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-
-    fee = result.fee
-
-    surveyorIds = underscore.shuffle(surveyor.cohorts[cohort]).slice(0, votes)
 
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -379,28 +397,39 @@ const write = function (runtime, apiVersion) {
         surveyorIds: surveyorIds,
         altcurrency: wallet.altcurrency,
         probi: result.probi,
-        count: votes
+        count: totalVotes
       }
     }
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
     const picked = ['votes', 'probi', 'altcurrency']
     result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
-    if (apiVersion === 1) {
-      reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))
-    } else {
-      reply(result)
+
+    reply(result)
+
+    if (grantVotes > 0) {
+      await runtime.queue.send(debug, 'contribution-report', underscore.extend({
+        paymentId: paymentId,
+        address: wallet.addresses[result.altcurrency],
+        surveyorId: surveyorId,
+        viewingId: viewingId,
+        fee: grantFee,
+        votes: grantVotes,
+        cohort: 'grant'
+      }, result))
     }
 
-    await runtime.queue.send(debug, 'contribution-report', underscore.extend({
-      paymentId: paymentId,
-      address: wallet.addresses[result.altcurrency],
-      surveyorId: surveyorId,
-      viewingId: viewingId,
-      fee: fee,
-      votes: votes,
-      cohort: cohort
-    }, result))
+    if (nonGrantVotes > 0) {
+      await runtime.queue.send(debug, 'contribution-report', underscore.extend({
+        paymentId: paymentId,
+        address: wallet.addresses[result.altcurrency],
+        surveyorId: surveyorId,
+        viewingId: viewingId,
+        fee: nonGrantFee,
+        votes: nonGrantVotes,
+        cohort: 'control'
+      }, result))
+    }
 
     async function markGrantsAsRedeemed (grantIds) {
       await Promise.all(grantIds.map((grantId) => {

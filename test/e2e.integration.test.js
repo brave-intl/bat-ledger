@@ -214,7 +214,7 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
     wallets: 1
   }])
 
-  do { // This depends on currency conversion rates being available, retry until then are available
+  do { // This depends on currency conversion rates being available, retry until they are available
     response = await ledgerAgent
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
@@ -487,7 +487,6 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
         }
       })
       .expect(ok)
-  console.log(response.body)
   t.true(response.body.hasOwnProperty('probi'))
 
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
@@ -572,6 +571,22 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
   t.true(response.body.hasOwnProperty('surveyorIds'))
   const surveyorIds = response.body.surveyorIds
   t.true(surveyorIds.length >= 5)
+
+  // look up surveyorIds to ensure that they belong to the correct cohorts
+  const surveyors = ledgerDB.collection('surveyors')
+  let numControlSurveryors = 0
+  let numGrantSurveyors = 0
+  for (let surveyorId of surveyorIds) {
+    let cohort = (await surveyors.findOne({surveyorId: surveyorId})).payload.cohort
+    if (cohort === 'control') {
+      numControlSurveryors += 1
+    } else if (cohort === 'grant') {
+      numGrantSurveyors += 1
+    }
+  }
+
+  // t.true(numControlSurveryors === )
+  // t.true(numGrantSurveyors === )
 
   viewingCredential.finalize(response.body.verification)
 
