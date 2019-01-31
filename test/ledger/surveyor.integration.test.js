@@ -1,4 +1,5 @@
 import { serial as test } from 'ava'
+import Postgres from 'bat-utils/lib/runtime-postgres'
 import _ from 'underscore'
 import {
   timeout
@@ -10,6 +11,12 @@ import {
   cleanDbs,
   ok
 } from '../utils'
+
+const postgres = new Postgres({
+  postgres: {
+    url: process.env.BAT_POSTGRES_URL
+  }
+})
 
 test.after.always(cleanDbs)
 
@@ -36,20 +43,20 @@ test('required cohorts are added to surveyors', async (t) => {
   const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : []
   console.log('testing cohorts', cohorts)
   t.plan((cohorts.length * 2) + 1)
-  t.true(cohorts.length >= 1)
+  t.true(cohorts.length >= 1, 'more than one cohort is expected')
   const {
     body: publicSurveyor
   } = await createSurveyor()
+  const { surveyorId: id } = publicSurveyor
 
   const ledger = await connectToDb('ledger')
   const surveyors = ledger.collection('surveyors', () => {})
-  const privateSurveyor = await getSurveyor()
+  const privateSurveyor = await querySurveyor('findOne', id)
 
   const {
-    surveyorId,
     surveyorType
   } = privateSurveyor
-  const url = `/v2/surveyor/${surveyorType}/${surveyorId}`
+  const url = `/v2/surveyor/${surveyorType}/${encodeURIComponent(id)}`
 
   await ledgerAgent
     .get(url)
@@ -57,16 +64,19 @@ test('required cohorts are added to surveyors', async (t) => {
 
   await timeout(5000)
 
-  const privateFullSurveyor = await getSurveyor()
+  const privateFullSurveyor = await querySurveyor('findOne', id)
   cohorts.map((cohort) => {
     const surveyorCohortGrants = privateFullSurveyor.cohorts[cohort]
     t.true(_.isArray(surveyorCohortGrants), 'an array is present')
     t.true(surveyorCohortGrants.length > 0, 'the array is not empty')
   })
 
-  function getSurveyor () {
-    return surveyors.findOne({
-      surveyorId: publicSurveyor.surveyorId
+  await querySurveyor('remove', id)
+  await postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [id])
+
+  function querySurveyor (method, surveyorId) {
+    return surveyors[method]({
+      surveyorId
     })
   }
 })
