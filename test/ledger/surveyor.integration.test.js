@@ -43,7 +43,7 @@ test('required cohorts are added to surveyors', async (t) => {
   const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : []
   console.log('testing cohorts', cohorts)
   t.plan((cohorts.length * 2) + 1)
-  t.true(cohorts.length >= 1)
+  t.true(cohorts.length >= 1, 'more than one cohort is expected')
   const {
     body: publicSurveyor
   } = await createSurveyor()
