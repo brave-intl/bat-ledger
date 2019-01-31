@@ -200,13 +200,6 @@ exports.workers = {
       if (surveyorQ.rowCount !== 1) {
         throw new Error('surveyor does not exist')
       }
-      debug('voting-report-info', {
-        frozen: surveyorQ.rows[0].frozen,
-        publisher,
-        cohort,
-        surveyorId,
-        testingCohorts: runtime.config.testingCohorts
-      })
       if (!surveyorQ.rows[0].frozen) {
         const update = `
         insert into votes (id, cohort, tally, excluded, channel, surveyor_id) values ($1, $2, 1, $3, $4, $5)

@@ -720,7 +720,7 @@ test('check pending tx endpoint', async (t) => {
   t.deepEqual(body, [{
     account_id: braveYoutubePublisher,
     account_type: 'channel',
-    balance: '2.000000000000000000'
+    balance: '1.000000000000000000'
   }], 'pending votes show up after small delay')
   ;({
     body
