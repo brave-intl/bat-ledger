@@ -308,3 +308,95 @@ test('claim grants with attestations', async (t) => {
   if (err) throw err
   t.is(response.body.balance, '30.0000')
 })
+
+test('protocolVersion 4', async (t) => {
+  t.plan(1)
+  let body
+  const url = '/v3/grants'
+  const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
+  const grants = {
+    'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
+    'promotions': [{
+      'protocolVersion': 4,
+      'active': true,
+      'priority': 0,
+      promotionId,
+      minimumReconcileTimestamp: 1526941400000
+    }]
+  }
+  await ledgerAgent.post(url).send(grants).expect(ok)
+
+  const personaId = v4().toLowerCase()
+
+  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
+
+  const keypair = tweetnacl.sign.keyPair()
+  body = {
+    label: v4().toLowerCase(),
+    currency: 'BAT',
+    publicKey: uint8tohex(keypair.publicKey)
+  }
+  var octets = JSON.stringify(body)
+  var headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers.signature = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, { algorithm: 'ed25519' })
+
+  var payload = { requestType: 'httpSignature',
+    request: {
+      body: body,
+      headers: headers,
+      octets: octets
+    },
+    proof: personaCredential.request()
+  }
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+    .send(payload).expect(ok)
+  const paymentId = response.body.wallet.paymentId
+
+  // get available grant
+  await ledgerAgent
+    .get('/v4/grants')
+    .expect(ok)
+
+  await ledgerAgent
+    .get(`/v4/captchas/${paymentId}`)
+    .set('brave-product', 'brave-core')
+    .expect(ok)
+
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+  const {
+    captcha
+  } = await wallets.findOne({ paymentId })
+
+  // request grant
+  response = await ledgerAgent
+      .put(`/v4/grants/${paymentId}`)
+      .send({
+        promotionId,
+        captchaResponse: {
+          x: captcha.x,
+          y: captcha.y
+        }
+      })
+      .expect(ok)
+
+  const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
+  const desired = donateAmt.toString()
+
+  do {
+    response = await ledgerAgent
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+  } while (response.status === 503)
+  var err = ok(response)
+  if (err) throw err
+  t.is(response.body.balance, '30.0000')
+})

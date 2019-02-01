@@ -16,40 +16,6 @@ const whitelist = utils.hapi.auth.whitelist
 const rateLimitEnabled = process.env.NODE_ENV === 'production'
 const unnecessaryPromotionDetails = [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]
 
-const grantTypeValidator = Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use')
-const grantProviderIdValidator = Joi.string().guid().when('type', {
-  is: 'ads',
-  then: Joi.required(),
-  otherwise: Joi.forbidden()
-})
-
-const grantSchema = Joi.object().keys({
-  grantId: Joi.string().guid().required().description('the grant-identifier'),
-  promotionId: Joi.string().guid().required().description('the associated promotion'),
-  altcurrency: braveJoi.string().altcurrencyCode().required().description('the grant altcurrency'),
-  probi: braveJoi.string().numeric().required().description('the grant amount in probi'),
-  maturityTime: Joi.number().positive().required().description('the time the grant becomes redeemable'),
-  expiryTime: Joi.number().positive().required().description('the time the grant expires')
-})
-const grantContentV4Validator = grantSchema.keys({
-  type: grantTypeValidator,
-  providerId: grantProviderIdValidator
-})
-const publicGrantValidator = Joi.object().keys({
-  altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
-  expiryTime: Joi.number().optional().description('the expiration time of the grant'),
-  probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
-}).unknown(true).description('grant properties')
-const publicGrantV4Validator = publicGrantValidator.keys({
-  type: grantTypeValidator,
-  providerId: grantProviderIdValidator
-})
-
-const v1 = {}
-const v2 = {}
-const v3 = {}
-const v4 = {}
-
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
 
 const claimRate = {
@@ -79,6 +45,50 @@ const qaOnlyP = (request) => {
   return (qalist.authorizedAddrs) && (qalist.authorizedAddrs.indexOf(ipaddr) === -1) &&
     (!underscore.find(qalist.authorizedBlocks, (block) => { return block.contains(ipaddr) }))
 }
+
+const rateLimitPlugin = {
+  enabled: rateLimitEnabled && !qalist.addresses,
+  rate: (request) => captchaRate
+}
+const joiBraveProductEnum = Joi.string().valid(['browser-laptop', 'brave-core']).default('browser-laptop').optional().description('the brave product requesting the captcha')
+const grantTypeValidator = Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use')
+const grantProviderIdValidator = Joi.string().guid().when('type', {
+  is: 'ads',
+  then: Joi.required(),
+  otherwise: Joi.forbidden()
+})
+const joiPaymentId = Joi.string().guid().required().description('identity of the wallet')
+const joiPromotionId = Joi.string().required().description('the promotion-identifier')
+const captchaResponseStructure = Joi.object().optional().keys({
+  x: Joi.number().required(),
+  y: Joi.number().required()
+})
+const grantSchema = Joi.object().keys({
+  grantId: Joi.string().guid().required().description('the grant-identifier'),
+  promotionId: Joi.string().guid().required().description('the associated promotion'),
+  altcurrency: braveJoi.string().altcurrencyCode().required().description('the grant altcurrency'),
+  probi: braveJoi.string().numeric().required().description('the grant amount in probi'),
+  maturityTime: Joi.number().positive().required().description('the time the grant becomes redeemable'),
+  expiryTime: Joi.number().positive().required().description('the time the grant expires')
+})
+const grantContentV4Validator = grantSchema.keys({
+  type: grantTypeValidator,
+  providerId: grantProviderIdValidator
+})
+const publicGrantValidator = Joi.object().keys({
+  altcurrency: braveJoi.string().altcurrencyCode().optional().default('BAT').description('the grant altcurrency'),
+  expiryTime: Joi.number().optional().description('the expiration time of the grant'),
+  probi: braveJoi.string().numeric().optional().description('the grant amount in probi')
+}).unknown(true).description('grant properties')
+const publicGrantV4Validator = publicGrantValidator.keys({
+  type: grantTypeValidator,
+  providerId: grantProviderIdValidator
+})
+
+const v1 = {}
+const v2 = {}
+const v3 = {}
+const v4 = {}
 
 /*
    GET /v2/promotions
@@ -171,6 +181,18 @@ v2.all = {
 v3.all = {
   handler: getPromotions(3),
   description: 'See if a v3 promotion is available',
+  tags: [ 'api' ],
+
+  validate: {},
+
+  response: {
+    schema: promotionsGetResponseSchema
+  }
+}
+
+v4.all = {
+  handler: getPromotions(4),
+  description: 'See if a v4 promotion is available',
   tags: [ 'api' ],
 
   validate: {},
@@ -325,14 +347,11 @@ v3.read = {
 */
 
 v4.read = {
-  handler: safetynetPassthrough(getGrantV4(4, chooseFromAvailablePromotionsByType)),
+  handler: getGrantV4(4, chooseFromAvailablePromotionsByType),
   description: 'See if a v4 promotion is available',
   tags: [ 'api' ],
 
   validate: {
-    headers: Joi.object().keys({
-      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
-    }).unknown(true),
     query: {
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
@@ -426,7 +445,7 @@ v3.claimGrant = {
  */
 
 v4.claimGrant = {
-  handler: claimGrant(safetynetCheck, v4CreateGrantQuery),
+  handler: claimGrant(captchaCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -438,14 +457,12 @@ v4.claimGrant = {
   },
 
   validate: {
-    params: {
-      paymentId: Joi.string().guid().required().description('identity of the wallet')
-    },
-    headers: Joi.object().keys({
-      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
-    }).unknown(true),
+    params: Joi.object().keys({
+      paymentId: joiPaymentId
+    }),
     payload: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier')
+      promotionId: joiPromotionId,
+      captchaResponse: captchaResponseStructure
     }).required().description('promotion details')
   },
 
@@ -618,7 +635,7 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
     if (!captchaResponse) return boom.badData()
 
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $unset: { captcha: {} } })
-
+    console.log(wallet.captcha, promotion)
     if (wallet.captcha.version) {
       if (wallet.captcha.version !== promotion.protocolVersion) {
         return boom.forbidden('must first request correct captcha version')
@@ -867,6 +884,7 @@ v2.cohorts = { handler: (runtime) => {
 
 /*
    GET /v2/captchas/{paymentId}
+   GET /v4/captchas/{paymentId}
  */
 
 const getCaptcha = (protocolVersion) => (runtime) => {
@@ -883,7 +901,8 @@ const getCaptcha = (protocolVersion) => (runtime) => {
 
     const productEndpoints = {
       'brave-core': {
-        2: '/v2/captchas/variableshapetarget'
+        2: '/v2/captchas/variableshapetarget',
+        4: '/v2/captchas/variableshapetarget'
       }
     }
 
@@ -921,16 +940,34 @@ v2.getCaptcha = {
   tags: [ 'api' ],
 
   plugins: {
-    rateLimit: {
-      enabled: rateLimitEnabled && !qalist.addresses,
-      rate: (request) => captchaRate
-    }
+    rateLimit: rateLimitPlugin
   },
 
   validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
+    params: {
+      paymentId: joiPaymentId
+    },
     headers: Joi.object().keys({
-      'brave-product': Joi.string().valid(['browser-laptop', 'brave-core']).default('browser-laptop').optional().description('the brave product requesting the captcha')
+      'brave-product': joiBraveProductEnum
+    }).unknown(true).description('headers')
+  }
+}
+
+v4.getCaptcha = {
+  handler: getCaptcha(4),
+  description: 'Get a claim time v4 captcha',
+  tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: rateLimitPlugin
+  },
+
+  validate: {
+    params: {
+      paymentId: joiPaymentId
+    },
+    headers: Joi.object().keys({
+      'brave-product': joiBraveProductEnum
     }).unknown(true).description('headers')
   }
 }
@@ -991,7 +1028,8 @@ module.exports.routes = [
   braveHapi.routes.async().post().path('/v3/grants').config(v3.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
-  braveHapi.routes.async().path('/v2/captchas/{paymentId}').config(v2.getCaptcha)
+  braveHapi.routes.async().path('/v2/captchas/{paymentId}').config(v2.getCaptcha),
+  braveHapi.routes.async().path('/v4/captchas/{paymentId}').config(v4.getCaptcha)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
