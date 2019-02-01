@@ -92,7 +92,6 @@ const v4 = {}
 
 /*
    GET /v2/promotions
-   GET /v3/promotions
  */
 
 const getPromotions = (protocolVersion) => (runtime) => async (request, reply) => {
@@ -635,7 +634,6 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
     if (!captchaResponse) return boom.badData()
 
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $unset: { captcha: {} } })
-    console.log(wallet.captcha, promotion)
     if (wallet.captcha.version) {
       if (wallet.captcha.version !== promotion.protocolVersion) {
         return boom.forbidden('must first request correct captcha version')
@@ -789,11 +787,11 @@ v2.create =
 }
 
 /*
-  POST /v3/grants
+  POST /v4/grants
 */
 
-v3.create =
-{ handler: uploadV4Grants(grantsUploadV4Validator, grantContentV4Validator),
+v4.create =
+{ handler: uploadV4Grants(4, grantsUploadV4Validator, grantContentV4Validator),
 
   auth: {
     strategy: 'session',
@@ -1025,7 +1023,7 @@ module.exports.routes = [
   braveHapi.routes.async().put().path('/v4/grants/{paymentId}').config(v4.claimGrant),
   braveHapi.routes.async().post().path('/v1/grants').config(v1.create),
   braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
-  braveHapi.routes.async().post().path('/v3/grants').config(v3.create),
+  braveHapi.routes.async().post().path('/v4/grants').config(v4.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
   braveHapi.routes.async().path('/v2/captchas/{paymentId}').config(v2.getCaptcha),
@@ -1217,7 +1215,7 @@ function getGrantV4 (protocolVersion, createPayload) {
   }
 }
 
-function uploadV4Grants (uploadSchema, contentSchema) {
+function uploadV4Grants (protocolVersion, uploadSchema, contentSchema) {
   return (runtime) => async (request, reply) => {
     const batchId = uuid.v4().toLowerCase()
     const debug = braveHapi.debug(module, request)
@@ -1278,7 +1276,7 @@ function uploadV4Grants (uploadSchema, contentSchema) {
     for (let entry of payload.promotions) {
       let $set = underscore.assign({
         type: promoType,
-        protocolVersion: 1
+        protocolVersion
       }, underscore.omit(entry, ['promotionId']))
       let { promotionId } = entry
       const state = {
