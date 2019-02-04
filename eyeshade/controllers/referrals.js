@@ -108,7 +108,7 @@ v1.createReferrals = {
         altcurrency,
         transactionId
       }
-      await insertReferrals(runtime, options, referrals)
+      await insertReferrals(runtime, options, referrals, true)
       const created = await getByTransactionIds(runtime, [transactionId])
 
       reply(created)
@@ -171,11 +171,13 @@ DELETE FROM transactions WHERE document_id = $1;`
   return runtime.postgres.query(query, [transactionId])
 }
 
-async function insertReferrals (runtime, options, referrals) {
+async function insertReferrals (runtime, options, referrals, shouldUpdateBalances) {
   return runtime.postgres.transaction(async (client) => {
     const inserter = insertReferral(runtime, client, options)
     const result = await Promise.all(referrals.map(inserter))
-    await updateBalances(runtime, client)
+    if (shouldUpdateBalances) {
+      await updateBalances(runtime, client)
+    }
     return result
   })
 }

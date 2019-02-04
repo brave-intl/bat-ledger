@@ -10,7 +10,7 @@ import {
   ledgerAgent,
   cleanDbs,
   ok
-} from 'bat-utils/test'
+} from '../utils'
 
 test.after(cleanDbs)
 

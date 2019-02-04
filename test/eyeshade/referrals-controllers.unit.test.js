@@ -10,10 +10,10 @@ import {
   braveYoutubePublisher,
   braveYoutubeOwner,
   eyeshadeAgent
-} from 'bat-utils/test'
+} from '../utils'
 import {
   removeReferral
-} from './referrals'
+} from '../../eyeshade/controllers/referrals'
 import {
   Runtime
 } from 'bat-utils'

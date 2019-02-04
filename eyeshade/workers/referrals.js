@@ -1,4 +1,3 @@
-const { updateBalances } = require('../lib/transaction.js')
 const { insertReferrals } = require('../controllers/referrals')
 
 exports.initialize = async (debug, runtime) => {
@@ -47,14 +46,7 @@ async function referralReport (debug, runtime, payload) {
   const documents = await backfillReferrals(debug, runtime, docs)
 
   try {
-    await runtime.postgres.transaction(async (client) => {
-      const inserter = insertReferrals(runtime, client, options)
-      await Promise.all(documents.map(inserter))
-      if (!shouldUpdateBalances) {
-        return
-      }
-      await updateBalances(runtime, client)
-    })
+    await insertReferrals(runtime, options, documents, shouldUpdateBalances)
   } catch (e) {
     runtime.captureException(e, {
       extra: {

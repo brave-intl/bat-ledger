@@ -13,7 +13,7 @@ import {
   ok,
   cleanDbs,
   connectToDb
-} from 'bat-utils/test'
+} from '../utils'
 import {
   timeout,
   uint8tohex

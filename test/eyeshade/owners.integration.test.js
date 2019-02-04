@@ -9,7 +9,7 @@ import {
   cleanEyeshadeDb,
   braveYoutubeOwner,
   ok
-} from 'bat-utils/test'
+} from '../utils'
 
 import dotenv from 'dotenv'
 dotenv.config()

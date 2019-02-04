@@ -5,16 +5,16 @@ import Postgres from 'bat-utils/lib/runtime-postgres'
 import Queue from 'bat-utils/lib/runtime-queue'
 import {
   workers
-} from './wallet'
+} from '../../eyeshade/workers/wallet'
 import {
   freezeOldSurveyors
-} from './reports'
+} from '../../eyeshade/workers/reports'
 import {
   createSurveyor,
   getSurveyor,
   debug,
   cleanPgDb
-} from 'bat-utils/test'
+} from '../utils'
 import {
   timeout
 } from 'bat-utils/lib/extras-utils'
