@@ -316,7 +316,6 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-
     if (totalVotes < 1) totalVotes = 1
 
     const possibleCohorts = ['control', 'grant', 'ads']
