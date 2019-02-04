@@ -272,7 +272,7 @@ const write = function (runtime, apiVersion) {
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
 
-    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi, grantsProbiBeforeTx
+    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi
     let totalFee, grantFee, nonGrantFee
     let totalVotes, grantVotes, nonGrantVotes
 
@@ -336,9 +336,6 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    let { grants } = wallet
-    grantsProbiBeforeTx = grants ? (await sumActiveGrants(runtime, null, wallet, grants))[0] : new BigNumber(0)
-
     try {
       result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
     } catch (err) {
@@ -362,14 +359,15 @@ const write = function (runtime, apiVersion) {
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
     const grantIds = result.grantIds
+    const grantTotal = result.grantTotal
+
     if (grantIds) {
       await markGrantsAsRedeemed(grantIds)
-      let grantsProbiAfterTx = (await sumActiveGrants(runtime, null, wallet, grants))[0]
-      let grantsProbiUsedInTx = grantsProbiBeforeTx - grantsProbiAfterTx
-      grantVotes = new BigNumber(grantsProbiUsedInTx).dividedBy(params.probi).times(params.votes).round().toNumber()
+
+      grantVotes = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
       nonGrantVotes = totalVotes - grantVotes
 
-      let grantProbiRate = grantsProbiUsedInTx / txnProbi
+      let grantProbiRate = grantTotal / txnProbi
       grantFee = totalFee * grantProbiRate
       nonGrantFee = totalFee - grantFee
 

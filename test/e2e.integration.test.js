@@ -585,8 +585,8 @@ test('ledger: v2 grant contribution workflow with uphold BAT wallet', async t =>
     }
   }
 
-  // t.true(numControlSurveryors === )
-  // t.true(numGrantSurveyors === )
+  t.true(numControlSurveryors === 0)
+  t.true(numGrantSurveyors === 30)
 
   viewingCredential.finalize(response.body.verification)
 
