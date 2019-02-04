@@ -361,21 +361,31 @@ const write = function (runtime, apiVersion) {
     const grantIds = result.grantIds
     const grantTotal = result.grantTotal
 
-    if (grantIds) {
+    if (grantIds) { // some grants were redeemed
       await markGrantsAsRedeemed(grantIds)
+      let grantCohort = wallet.cohort || 'grant'
+      let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
 
-      grantVotes = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
-      nonGrantVotes = totalVotes - grantVotes
+      if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
+        nonGrantVotes = 0
+        nonGrantFee = 0
+        grantVotes = totalVotes
+        grantFee = totalFee
+        surveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
+      } else { // some of the transaction value will be covered by grant
+        grantVotes = grantVotesAvailable
+        nonGrantVotes = totalVotes - grantVotes
 
-      let grantProbiRate = grantTotal / txnProbi
-      grantFee = totalFee * grantProbiRate
-      nonGrantFee = totalFee - grantFee
+        let grantProbiRate = grantTotal / txnProbi
+        grantFee = totalFee * grantProbiRate
+        nonGrantFee = totalFee - grantFee
 
-      let grantSurveyorIds = surveyor.cohorts['grant'].slice(0, grantVotes)
-      let nonGrantSurveyorIds = surveyor.cohorts['control'].slice(0, nonGrantVotes)
-      surveyorIds = underscore.shuffle(grantSurveyorIds.concat(nonGrantSurveyorIds))
-      result = underscore.omit(result, ['grantIds'])
-    } else {
+        let grantSurveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
+        let nonGrantSurveyorIds = surveyor.cohorts['control'].slice(0, nonGrantVotes)
+        surveyorIds = underscore.shuffle(grantSurveyorIds.concat(nonGrantSurveyorIds))
+        result = underscore.omit(result, ['grantIds'])
+      }
+    } else { // no grants were used in the transaction
       grantVotes = 0
       grantFee = 0
       nonGrantVotes = totalVotes
