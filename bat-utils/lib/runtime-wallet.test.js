@@ -11,7 +11,7 @@ import utils from './extras-utils'
 dotenv.config()
 
 test('validateTxSignature: works', async t => {
-  t.plan(9)
+  t.plan(10)
 
   const settlementAddress = '0xcafe'
   const wallet = new Wallet({wallet: {settlementAddress: {BAT: settlementAddress}}}, {})
@@ -63,6 +63,19 @@ test('validateTxSignature: works', async t => {
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
   body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.5' } }
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
+
+  // test adjusting minimum amount
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.5' } }
+  wallet.validateTxSignature(info, signTxn(keypair, body), {
+    minimum: 0.1
+  })
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.0999999999999' } }
+  const signed = signTxn(keypair, body)
+  t.throws(() => {
+    wallet.validateTxSignature(info, signed, {
+      minimum: 0.1
+    })
+  })
 
   // Missing field
   body = { destination: settlementAddress, denomination: { amount: '20' } }

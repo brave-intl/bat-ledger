@@ -77,7 +77,15 @@ Wallet.prototype.getTxProbi = function (info, txn) {
   }
 }
 
-Wallet.prototype.validateTxSignature = function (info, signature) {
+Wallet.prototype.validateTxSignature = function (info, signature, options = {}) {
+  const {
+    minimum = 1
+  } = options
+  const bigMinimum = new BigNumber(minimum)
+  if (bigMinimum.lessThanOrEqualTo(0)) {
+    throw new Error('minimum must be greater than 0')
+  }
+
   const upholdTxnSchema = Joi.object().keys({
     denomination: Joi.object().keys({
       amount: braveJoi.string().numeric().required(),
@@ -96,7 +104,10 @@ Wallet.prototype.validateTxSignature = function (info, signature) {
 
     const tmp = Joi.validate(txn, upholdTxnSchema).error
     if (tmp !== null) throw new Error('the signed transaction failed to validate')
-    if (+txn.denomination.amount < 1) throw new Error('amount is less than minimum')
+
+    if (bigMinimum.greaterThan(txn.denomination.amount)) {
+      throw new Error('amount is less than minimum')
+    }
 
     const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(signature.octets, 'utf8').digest('base64')
     if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
