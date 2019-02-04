@@ -360,6 +360,24 @@ test('ledger : v2 contribution workflow with uphold BAT wallet', async t => {
   const surveyorIds = response.body.surveyorIds
   t.true(surveyorIds.length >= 5)
 
+ // look up surveyorIds to ensure that they belong to the correct cohorts
+  const ledgerDB = await connectToDb('ledger')
+  const surveyors = ledgerDB.collection('surveyors')
+
+  let numControlSurveryors = 0
+  let numGrantSurveyors = 0
+  for (let surveyorId of surveyorIds) {
+    let cohort = (await surveyors.findOne({surveyorId: surveyorId})).payload.cohort
+    if (cohort === 'control') {
+      numControlSurveryors += 1
+    } else if (cohort === 'grant') {
+      numGrantSurveyors += 1
+    }
+  }
+
+  t.true(numControlSurveryors === 12)
+  t.true(numGrantSurveyors === 0)
+
   viewingCredential.finalize(response.body.verification)
 
   const votes = [
