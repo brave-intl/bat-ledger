@@ -70,7 +70,6 @@ test('required cohorts are added to surveyors', async (t) => {
     t.true(_.isArray(surveyorCohortGrants), 'an array is present')
     t.true(surveyorCohortGrants.length > 0, 'the array is not empty')
   })
-
   await querySurveyor('remove', id)
   await postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [id])
 
