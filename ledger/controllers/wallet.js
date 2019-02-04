@@ -302,6 +302,10 @@ const write = function (runtime, apiVersion) {
     txnProbi = runtime.wallet.getTxProbi(wallet, txn)
     totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
+    if (totalVotes < 1) {
+      throw new Error('Too low vote value for transaction. PaymentId: ' + paymentId)
+    }
+
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support
         return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
@@ -315,8 +319,6 @@ const write = function (runtime, apiVersion) {
         return reply(resp)
       }
     }
-
-    if (totalVotes < 1) totalVotes = 1
 
     const possibleCohorts = ['control', 'grant', 'ads']
 
