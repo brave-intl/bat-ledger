@@ -298,6 +298,10 @@ const write = function (runtime, apiVersion) {
       return reply(boom.badData(ex.toString()))
     }
 
+    params = surveyor.payload.adFree
+    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
+    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
+
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support
         return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
@@ -312,9 +316,6 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    params = surveyor.payload.adFree
-    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
-    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (totalVotes < 1) totalVotes = 1
 
