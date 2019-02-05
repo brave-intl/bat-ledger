@@ -376,6 +376,59 @@ v1.getPaidTotals =
 }
 
 /*
+  PUT /v1/accounts/{account_type}/{account_id}/transactions/{transaction_type}/{transaction_id}
+*/
+
+v1.manualTransaction = {
+  handler: (runtime) => async (request, reply) => {
+    const { params, payload } = request
+    const { postgres } = runtime
+    const { account_id, transaction_type, payment_id } = params
+    const { amount } = payload
+
+    let txs = await transactions.insertFromManual(runtime, postgres, payment_id, account_id, amount)
+    txs = _.map(txs, (tx) => {
+      return _.omit(tx, (value) => value == null)
+    })
+
+    reply(txs)
+  },
+  auth: {
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
+    mode: 'required'
+  },
+
+  description: 'Used by Publishers to manually create balances for publisher partners',
+  tags: ['api', 'publishers'],
+
+  validate: {
+    params: {
+      account_type: Joi.string().required().valid(['owner']).description('The account_type of the destination account'),
+      account_id: braveJoi.string().owner().required().description('The owner account identifier'),
+      payment_id: Joi.string().guid().required().description('The payment id to hold the transaction under'),
+      transaction_type: Joi.string().required().valid(['manual'])
+    },
+    payload: {
+      amount: Joi.number().min(0).required()
+    }
+  },
+  response: {
+    schema: Joi.array().items(Joi.object().keys({
+      id: Joi.string().guid().required(),
+      created_at: Joi.date().iso().required().description('when the transaction was created'),
+      description: Joi.string().required().description('description of the transaction'),
+      transaction_type: Joi.string().valid(['manual']).required().description('type of the transaction'),
+      from_account_type: Joi.string().required().valid(['uphold']),
+      from_account: Joi.string().guid().required(),
+      to_account_type: Joi.string().required().valid(['owner']),
+      to_account: braveJoi.string().owner().required(),
+      amount: Joi.number().required().description('amount in BAT'),
+    }))
+  }
+}
+
+/*
   PUT /v1/accounts/{payment_id}/transactions/ads/{token_id}
 */
 v1.adTransactions = {
@@ -429,6 +482,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
   braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').whitelist().config(v1.getTopBalances),
   braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances),
+  braveHapi.routes.async().put().path('/v1/accounts/{account_type}/{account_id}/transactions/{transaction_type}/{payment_id}').whitelist().config(v1.manualTransaction),
   braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
 ]

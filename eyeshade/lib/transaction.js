@@ -12,6 +12,7 @@ const SETTLEMENT_NAMESPACE = {
 }
 
 module.exports = {
+  insertFromManual,
   insertFromSettlement,
   insertFromVoting,
   insertFromReferrals,
@@ -53,6 +54,35 @@ function monthsFromSeconds (created) {
 
 function seconds () {
   return +(new Date()) / 1000
+}
+
+async function insertFromManual (runtime, client, paymentId, toAccount, amount) {
+  const createdAt = (new Date).getTime()
+  const description = 'manual payout to partner'
+  const transactionType = 'manual'
+  const fromAccount = process.env.BAT_SETTLEMENT_ADDRESS
+  const fromAccountType = 'uphold'
+  const toAccountType = 'owner'
+
+  const insertTransactionQuery = `
+    insert into transactions ( id, created_at, description, transaction_type, from_account, from_account_type, to_account, to_account_type, amount )
+    VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9 )
+    RETURNING *;
+  `
+
+  const { rows } = await client.query(insertTransactionQuery, [
+    paymentId,
+    createdAt,
+    description,
+    transactionType,
+    fromAccount,
+    fromAccountType,
+    toAccount,
+    toAccountType,
+    amount,
+  ])
+
+  return rows
 }
 
 async function insertFromSettlement (runtime, client, settlement) {

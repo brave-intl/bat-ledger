@@ -238,3 +238,28 @@ test('ads payment api inserts a transaction into the table and errs on subsequen
     .send(payload)
     .expect(409)
 })
+
+test('Publishers can insert manual transactions', async(t) => {
+  const ownerId = 'publishers#uuid:' + uuid.v4().toLowerCase()
+  const paymentId = uuid.v4().toLowerCase()
+  const url = `/v1/accounts/owner/${encodeURIComponent(ownerId)}/transactions/manual/${paymentId}`
+  const payload = {
+    amount: 50
+  }
+
+  const response = await eyeshadeAgent
+    .put(url)
+    .send(payload)
+    .expect(200)
+
+  t.true(response.body.length === 1)
+  const transaction = response.body[0]
+  t.true(Object.keys(transaction).length === 9)
+  t.true(transaction['id'] === paymentId)
+  t.true(transaction['description'] === 'manual payout to partner')
+  t.true(transaction['from_account_type'] === 'uphold')
+  t.true(transaction['from_account'] === process.env.BAT_SETTLEMENT_ADDRESS)
+  t.true(transaction['to_account_type'] === 'owner')
+  t.true(transaction['to_account'] === ownerId)
+  t.true(transaction['amount'] === '50.000000000000000000')
+})
