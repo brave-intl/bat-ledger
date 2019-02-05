@@ -926,7 +926,11 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const { headers } = res
 
     const solution = JSON.parse(headers['captcha-solution'])
-    await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha: underscore.extend(solution, {version: protocolVersion}) } })
+    const captcha = underscore.extend(solution, {
+      version: protocolVersion
+    })
+    debug('captcha info', captcha)
+    await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha } })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
   }
@@ -1196,17 +1200,17 @@ function getGrantV4 (protocolVersion, createPayload) {
       type
     })
 
-    const promotionIds = result.map(({ promotionId }) => promotionId)
-
-    if (promotionIds.length) {
-      const counted = await grants.count({
-        promotionId: {
-          $in: promotionIds
+    try {
+      await Promise.all(result.map(async ({
+        promotionId
+      }) => {
+        const counted = await grants.count({ promotionId })
+        if (!counted) {
+          throw boom.notFound('promotion not available')
         }
-      })
-      if (counted === 0) {
-        return reply(boom.notFound('promotion not available'))
-      }
+      }))
+    } catch (e) {
+      return reply(e)
     }
 
     return reply({
