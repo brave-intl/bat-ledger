@@ -1151,7 +1151,7 @@ async function chooseFromAvailablePromotionsByType (debug, runtime, {
   const ugpPromotions = await chooseFromAvailablePromotions(debug, runtime, {
     entries: ugp
   })
-  return adsPromotions.concat(ugpPromotions)
+  return [].concat(adsPromotions, ugpPromotions)
 }
 
 function getGrantV4 (protocolVersion, createPayload) {
