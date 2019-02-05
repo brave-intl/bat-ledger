@@ -383,7 +383,7 @@ v1.manualTransaction = {
   handler: (runtime) => async (request, reply) => {
     const { params, payload } = request
     const { postgres } = runtime
-    const { account_id, transaction_type, payment_id } = params
+    const { account_id, payment_id } = params
     const { amount } = payload
 
     let txs = await transactions.insertFromManual(runtime, postgres, payment_id, account_id, amount)
@@ -423,7 +423,7 @@ v1.manualTransaction = {
       from_account: Joi.string().guid().required(),
       to_account_type: Joi.string().required().valid(['owner']),
       to_account: braveJoi.string().owner().required(),
-      amount: Joi.number().required().description('amount in BAT'),
+      amount: Joi.number().required().description('amount in BAT')
     }))
   }
 }

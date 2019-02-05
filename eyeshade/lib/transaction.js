@@ -57,7 +57,7 @@ function seconds () {
 }
 
 async function insertFromManual (runtime, client, paymentId, toAccount, amount) {
-  const createdAt = (new Date).getTime()
+  const createdAt = (new Date()).getTime()
   const description = 'manual payout to partner'
   const transactionType = 'manual'
   const fromAccount = process.env.BAT_SETTLEMENT_ADDRESS
@@ -79,7 +79,7 @@ async function insertFromManual (runtime, client, paymentId, toAccount, amount) 
     fromAccountType,
     toAccount,
     toAccountType,
-    amount,
+    amount
   ])
 
   return rows
