@@ -742,7 +742,8 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const { res, payload } = await wreck.get(runtime.config.captcha.url + endpoint, {
       headers: {
         'Authorization': 'Bearer ' + runtime.config.captcha.access_token,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': whitelist.ipaddr(request)
       }
     })
 
