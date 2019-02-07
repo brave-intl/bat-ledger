@@ -1,4 +1,3 @@
-
 const BigNumber = require('bignumber.js')
 const getPublisherProps = require('bat-publisher').getPublisherProps
 const uuidv5 = require('uuid/v5')
