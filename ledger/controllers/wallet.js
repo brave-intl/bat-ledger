@@ -11,7 +11,6 @@ const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
 
-const v1 = {}
 const v2 = {}
 
 const walletStatsList = Joi.array().items(
@@ -27,7 +26,6 @@ const walletStatsList = Joi.array().items(
 )
 
 /*
-   GET /v1/wallet/{paymentId}
    GET /v2/wallet/{paymentId}
  */
 
@@ -60,11 +58,9 @@ const read = function (runtime, apiVersion) {
       rates: underscore.mapObject(rates, (value) => +value)
     }
 
-    if (apiVersion === 2) {
-      result = underscore.extend(result, { addresses: wallet.addresses })
-      if (runtime.registrars.persona) {
-        result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
-      }
+    result = underscore.extend(result, { addresses: wallet.addresses })
+    if (runtime.registrars.persona) {
+      result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
     }
 
     if ((refreshP) || (balanceP && !wallet.balances)) {
@@ -147,9 +143,6 @@ const read = function (runtime, apiVersion) {
 
       if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }
-    if (apiVersion === 1) {
-      result = underscore.omit(underscore.extend(result, { satoshis: Number(result.probi) }), ['altcurrency', 'probi', 'requestType'])
-    }
 
     reply(result)
   }
@@ -172,37 +165,6 @@ async function sumActiveGrants (runtime, info, wallet, grants) {
     }
   }
   return [total, results]
-}
-
-v1.read = { handler: (runtime) => { return read(runtime, 1) },
-  description: 'Returns information about the BTC wallet associated with the user',
-  tags: [ 'api' ],
-
-  validate: {
-    params: {
-      paymentId: Joi.string().guid().required().description('identity of the wallet')
-    },
-    query: {
-      amount: Joi.number().positive().optional().description('the payment amount in the fiat currency'),
-      balance: Joi.boolean().optional().default(false).description('return balance information'),
-      currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
-      refresh: Joi.boolean().optional().default(false).description('return balance and transaction information')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      balance: Joi.number().min(0).optional().description('the (confirmed) wallet balance in BTC'),
-      unconfirmed: Joi.number().min(0).optional().description('the unconfirmed wallet balance in BTC'),
-      buyURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for an initial payment'),
-      recurringURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for recurring payments'),
-      paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful payment'),
-      rates: Joi.object().pattern(/^[A-Z]{2,}$/i, Joi.number()).required().description('current exchange rates from BTC to various currencies'),
-      httpSigningPubKey: Joi.string().description('public signing key from uphold wallet'),
-      satoshis: Joi.number().integer().min(0).optional().description('the wallet balance in satoshis'),
-      unsignedTx: Joi.object().optional().description('unsigned transaction')
-    }).unknown(true)
-  }
 }
 
 v2.read = { handler: (runtime) => { return read(runtime, 2) },
@@ -250,7 +212,6 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
 }
 
 /*
-   PUT /v1/wallet/{paymentId}
    PUT /v2/wallet/{paymentId}
  */
 
@@ -457,29 +418,6 @@ const write = function (runtime, apiVersion) {
         redeemed: true
       })
     }
-  }
-}
-
-v1.write = { handler: (runtime) => { return write(runtime, 1) },
-  description: 'Makes a contribution using the BTC wallet associated with the user',
-  tags: [ 'api' ],
-
-  validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-    payload: {
-      viewingId: Joi.string().guid().required().description('unique-identifier for voting'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      signedTx: Joi.string().hex().required().description('signed transaction')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful contribution'),
-      satoshis: Joi.number().integer().min(0).optional().description('the contribution amount in satoshis'),
-      votes: Joi.number().integer().min(0).optional().description('the corresponding number of publisher votes'),
-      hash: Joi.string().hex().required().description('transaction hash')
-    })
   }
 }
 
@@ -736,9 +674,7 @@ function getStats (getQuery = defaultQuery) {
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
-  braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
-  braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
 ]
