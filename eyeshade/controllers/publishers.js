@@ -59,7 +59,7 @@ v2.settlement = {
   validate: {
     payload: Joi.array().min(1).items(Joi.object().keys({
       owner: braveJoi.string().owner().required().description('the owner identity'),
-      publisher: braveJoi.string().publisher().optional().description('the publisher identity'), // TODO make publisher required when type != 'manual'
+      publisher: braveJoi.string().publisher().when('type', { is: Joi.string().valid('manual'), then: Joi.optional().allow(''), otherwise: Joi.required() }).description('the publisher identity'),
       address: Joi.string().guid().required().description('settlement address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),

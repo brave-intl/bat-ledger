@@ -28,6 +28,28 @@ test('unauthed requests cannot post settlement', async t => {
   t.true(response.status === 401)
 })
 
+test('cannot post payouts if the publisher field is blank and type is not manual', async t => {
+  const url = `/v2/publishers/settlement`
+  const manualSettlement = {
+    owner: 'publishers#uuid:' + uuid.v4().toLowerCase(),
+    publisher: '',
+    address: uuid.v4().toLowerCase(),
+    altcurrency: 'BAT',
+    probi: '5000000000000000000',
+    fees: '0',
+    currency: 'BAT',
+    amount: '5',
+    commission: '0.0',
+    transactionId: uuid.v4().toLowerCase(),
+    type: 'contribution',
+    documentId: uuid.v4().toLowerCase(),
+    hash: uuid.v4().toLowerCase()
+  }
+
+  const reponse = await eyeshadeAgent.post(url).send([manualSettlement])
+  t.true(reponse.status === 400)
+})
+
 test('can post a manual settlement from publisher app using token auth', async t => {
   const url = `/v2/publishers/settlement`
   const eyeshadeMongo = await connectToDb('eyeshade')
@@ -36,7 +58,7 @@ test('can post a manual settlement from publisher app using token auth', async t
 
   const manualSettlement = {
     owner: 'publishers#uuid:' + uuid.v4().toLowerCase(),
-    publisher: 'lol',
+    publisher: '',
     address: uuid.v4().toLowerCase(),
     altcurrency: 'BAT',
     probi: '5000000000000000000',
