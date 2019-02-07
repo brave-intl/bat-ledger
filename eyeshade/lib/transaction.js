@@ -1,3 +1,4 @@
+
 const BigNumber = require('bignumber.js')
 const getPublisherProps = require('bat-publisher').getPublisherProps
 const uuidv5 = require('uuid/v5')
@@ -8,7 +9,8 @@ const {
 
 const SETTLEMENT_NAMESPACE = {
   'contribution': '4208cdfc-26f3-44a2-9f9d-1f6657001706',
-  'referral': '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a'
+  'referral': '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a',
+  'manual': 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
 
 module.exports = {
@@ -116,6 +118,9 @@ async function insertFromSettlement (runtime, client, settlement) {
             normalizedChannel
           ])
         }
+      } else if (settlement.type === 'manual') {
+        // first insert the brave -> owner transaction
+        await insertManual(runtime, client, settlement.settlementId, created, settlement.documentId, settlement.owner, settlement.probi)
       }
 
       // owner -> owner uphold for probi
@@ -129,7 +134,7 @@ async function insertFromSettlement (runtime, client, settlement) {
         (created / 1000) + 2,
         `payout for ${settlement.type}`,
         `${settlement.type}_settlement`,
-        settlement._id.toString(),
+        settlement.type === 'manual' ? settlement.documentId : settlement._id.toString(),
         settlement.owner,
         'owner',
         settlement.address,
@@ -145,6 +150,35 @@ async function insertFromSettlement (runtime, client, settlement) {
   } else {
     throw new Error('Missing probi or owner field')
   }
+}
+
+async function insertManual (runtime, client, settlementId, created, documentId, toAccount, probi) {
+  const description = 'handshake agreement with business developement'
+  const transactionType = 'manual'
+  const fromAccount = runtime.config.wallet.settlementAddress['BAT']
+  const fromAccountType = 'uphold'
+  const toAccountType = 'owner'
+
+  const BATtoProbi = runtime.currency.alt2scale('BAT')
+  const amountBAT = (new BigNumber(probi.toString())).dividedBy(BATtoProbi).toString()
+
+  const insertTransactionQuery = `
+    insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount )
+    VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10 )
+    RETURNING *;
+  `
+  await client.query(insertTransactionQuery, [
+    uuidv5(settlementId + toAccount, '734a27cd-0834-49a5-8d4c-77da38cdfb22'),
+    created,
+    description,
+    transactionType,
+    documentId,
+    fromAccount,
+    fromAccountType,
+    toAccount,
+    toAccountType,
+    amountBAT
+  ])
 }
 
 async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
