@@ -5,21 +5,88 @@ const {
   createdTimestamp,
   normalizeChannel
 } = require('bat-utils/lib/extras-utils')
-
 const getYoutubeChannelId = require('bat-utils/lib/youtube')
 
+const knownChains = {
+  ETH: 'ethereum',
+  BTC: 'bitcoin',
+  LTC: 'litecoin'
+}
 const SETTLEMENT_NAMESPACE = {
   'contribution': '4208cdfc-26f3-44a2-9f9d-1f6657001706',
   'referral': '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a',
   'manual': 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
-
 module.exports = {
+  knownChains: Object.assign({}, knownChains),
+  insertTransaction,
+  insertUserDepositFromChain,
   insertFromSettlement,
   insertFromVoting,
   insertFromReferrals,
   updateBalances,
   insertFromAd
+}
+
+async function insertTransaction (client, options = {}) {
+  const args = [
+    options.id,
+    options.createdAt,
+    options.description,
+    options.transactionType,
+    options.documentId,
+    options.fromAccount,
+    options.fromAccountType,
+    options.toAccount,
+    options.toAccountType,
+    options.amount,
+    options.settlementCurrency || null,
+    options.settlementAmount || null,
+    options.channel || null
+  ]
+  const query = `
+INSERT INTO transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, settlement_currency, settlement_amount, channel )
+VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 )
+RETURNING *;
+`
+  const { rows } = await client.query(query, args)
+  return rows
+}
+
+async function insertUserDepositFromChain (runtime, client, chainDoc = {}) {
+  let {
+    id,
+    amount,
+    chain,
+    cardId,
+    createdAt,
+    address
+  } = chainDoc
+
+  // using this so that we can pass in ticker / full name for now
+  chain = knownChains[chain] || chain
+
+  if (!amount) {
+    throw new Error('Missing amount field')
+  }
+
+  amount = new BigNumber(amount)
+  if (amount.lessThanOrEqualTo(0)) {
+    return [] // skip because we don't track tx's that don't have an accounting purpose
+  }
+
+  return insertTransaction(client, {
+    id: uuidv5(`${chain}-${id}`, 'f7a8b983-2383-48f2-9e4f-717f6fe3225d'),
+    createdAt: createdAt / 1000,
+    description: `deposits from ${chain} chain`,
+    transactionType: 'user_deposit',
+    documentId: id,
+    fromAccount: address,
+    fromAccountType: chain,
+    toAccount: cardId,
+    toAccountType: 'uphold',
+    amount: amount.toString()
+  })
 }
 
 async function insertFromAd (runtime, client, {

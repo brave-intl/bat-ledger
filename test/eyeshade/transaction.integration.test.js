@@ -1,12 +1,18 @@
 'use strict'
 
 import { serial as test } from 'ava'
-
+import uuidV4 from 'uuid/v4'
 import { createdTimestamp } from 'bat-utils/lib/extras-utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import Currency from 'bat-utils/lib/runtime-currency'
-import { insertFromSettlement, insertFromReferrals, insertFromVoting, updateBalances } from '../../eyeshade/lib/transaction'
-import uuidV4 from 'uuid/v4'
+import {
+  knownChains,
+  insertUserDepositFromChain,
+  insertFromSettlement,
+  insertFromReferrals,
+  insertFromVoting,
+  updateBalances
+} from '../../eyeshade/lib/transaction'
 import _ from 'underscore'
 
 import {
@@ -32,7 +38,7 @@ const runtime = {
   postgres
 }
 
-test.afterEach(cleanPgDb(postgres))
+test.afterEach.always(cleanPgDb(postgres))
 
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
@@ -318,5 +324,51 @@ test('referral and referral settlement transaction', async t => {
     t.true(Number(ownerBalance.rows[0].balance) === 0.0)
   } finally {
     client.release()
+  }
+})
+
+test('can add transactions for different account types', async (t) => {
+  t.plan(6)
+
+  const client = await runtime.postgres.connect()
+  await t.throwsAsync(insertUserDepositFromChain(runtime, client), Error, 'amount is required')
+  await t.throwsAsync(insertUserDepositFromChain(runtime, client, {
+    amount: {}
+  }), Error, 'amount goes through bignumber')
+  const fakeAddress = '0xbloop'
+  const noValueTransferred = await insertUserDepositFromChain(runtime, client, {
+    amount: '0'
+  })
+  t.deepEqual([], noValueTransferred, 'when no value is transferred, we skip inserting the tx')
+  for (let ticker in knownChains) {
+    const chain = knownChains[ticker]
+    const createdAt = new Date()
+    const id = uuidV4().toLowerCase()
+    const cardId = uuidV4()
+    const txs = await insertUserDepositFromChain(runtime, client, {
+      // should be the transaction id from the chain
+      id,
+      amount: 1,
+      chain,
+      cardId,
+      createdAt,
+      address: fakeAddress
+    })
+    const expectedResults = [{
+      created_at: createdAt,
+      description: `deposits from ${chain} chain`,
+      transaction_type: 'user_deposit',
+      document_id: id,
+      from_account: fakeAddress,
+      from_account_type: chain,
+      to_account: cardId,
+      to_account_type: 'uphold',
+      amount: '1.000000000000000000',
+      settlement_amount: null,
+      channel: null,
+      settlement_currency: null
+    }]
+    const subResults = txs.map((row) => _.omit(row, ['id']))
+    t.deepEqual(expectedResults, subResults, `chain ${chain} is a valid from_account type`)
   }
 })
