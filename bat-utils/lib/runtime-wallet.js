@@ -249,7 +249,7 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
   })
   if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
 
-  return underscore.extend(result, { grantIds: grantIds })
+  return underscore.extend(result, { grantIds: grantIds, grantTotal: grantTotal })
 }
 
 Wallet.prototype.purchaseBAT = async function (info, amount, currency, language) {

@@ -11,7 +11,6 @@ const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
 
-const v1 = {}
 const v2 = {}
 
 const walletStatsList = Joi.array().items(
@@ -27,7 +26,6 @@ const walletStatsList = Joi.array().items(
 )
 
 /*
-   GET /v1/wallet/{paymentId}
    GET /v2/wallet/{paymentId}
  */
 
@@ -60,11 +58,9 @@ const read = function (runtime, apiVersion) {
       rates: underscore.mapObject(rates, (value) => +value)
     }
 
-    if (apiVersion === 2) {
-      result = underscore.extend(result, { addresses: wallet.addresses })
-      if (runtime.registrars.persona) {
-        result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
-      }
+    result = underscore.extend(result, { addresses: wallet.addresses })
+    if (runtime.registrars.persona) {
+      result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
     }
 
     if ((refreshP) || (balanceP && !wallet.balances)) {
@@ -147,9 +143,6 @@ const read = function (runtime, apiVersion) {
 
       if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }
-    if (apiVersion === 1) {
-      result = underscore.omit(underscore.extend(result, { satoshis: Number(result.probi) }), ['altcurrency', 'probi', 'requestType'])
-    }
 
     reply(result)
   }
@@ -172,37 +165,6 @@ async function sumActiveGrants (runtime, info, wallet, grants) {
     }
   }
   return [total, results]
-}
-
-v1.read = { handler: (runtime) => { return read(runtime, 1) },
-  description: 'Returns information about the BTC wallet associated with the user',
-  tags: [ 'api' ],
-
-  validate: {
-    params: {
-      paymentId: Joi.string().guid().required().description('identity of the wallet')
-    },
-    query: {
-      amount: Joi.number().positive().optional().description('the payment amount in the fiat currency'),
-      balance: Joi.boolean().optional().default(false).description('return balance information'),
-      currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
-      refresh: Joi.boolean().optional().default(false).description('return balance and transaction information')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      balance: Joi.number().min(0).optional().description('the (confirmed) wallet balance in BTC'),
-      unconfirmed: Joi.number().min(0).optional().description('the unconfirmed wallet balance in BTC'),
-      buyURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for an initial payment'),
-      recurringURL: Joi.string().uri({ scheme: /https?/ }).optional().description('the URL for recurring payments'),
-      paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful payment'),
-      rates: Joi.object().pattern(/^[A-Z]{2,}$/i, Joi.number()).required().description('current exchange rates from BTC to various currencies'),
-      httpSigningPubKey: Joi.string().description('public signing key from uphold wallet'),
-      satoshis: Joi.number().integer().min(0).optional().description('the wallet balance in satoshis'),
-      unsignedTx: Joi.object().optional().description('unsigned transaction')
-    }).unknown(true)
-  }
 }
 
 v2.read = { handler: (runtime) => { return read(runtime, 2) },
@@ -250,7 +212,6 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
 }
 
 /*
-   PUT /v1/wallet/{paymentId}
    PUT /v2/wallet/{paymentId}
  */
 
@@ -271,7 +232,10 @@ const write = function (runtime, apiVersion) {
     const surveyors = runtime.database.get('surveyors', debug)
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let cohort, fee, now, params, result, state, surveyor, surveyorIds, votes, wallet
+
+    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi, grantCohort
+    let totalFee, grantFee, nonGrantFee
+    let totalVotes, grantVotes, nonGrantVotes
 
     wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
@@ -295,12 +259,20 @@ const write = function (runtime, apiVersion) {
       return reply(boom.badData(ex.toString()))
     }
 
+    params = surveyor.payload.adFree
+    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
+    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
+
+    if (totalVotes < 1) {
+      throw new Error('Too low vote value for transaction. PaymentId: ' + paymentId)
+    }
+
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support
         return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
       } else {
         // new contribution surveyor not yet populated with voting surveyors
-        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + votes
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + totalVotes
         runtime.captureException(errMsg, { req: request })
 
         const resp = boom.serverUnavailable(errMsg)
@@ -309,22 +281,16 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    params = surveyor.payload.adFree
-
-    votes = runtime.wallet.getTxProbi(wallet, txn).dividedBy(params.probi).times(params.votes).round().toNumber()
-
-    if (votes < 1) votes = 1
-
     const possibleCohorts = ['control', 'grant', 'ads']
 
     for (let cohort of possibleCohorts) {
       const cohortSurveyors = surveyor.cohorts[cohort]
 
-      if (votes > cohortSurveyors.length) {
-        state = { payload: request.payload, result: result, votes: votes, message: 'insufficient surveyors' }
+      if (totalVotes > cohortSurveyors.length) {
+        state = { payload: request.payload, result: result, votes: totalVotes, message: 'insufficient surveyors' }
         debug('wallet', state)
 
-        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + votes
+        const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + totalVotes
         runtime.captureException(errMsg, { req: request })
 
         const resp = boom.serverUnavailable(errMsg)
@@ -351,25 +317,48 @@ const write = function (runtime, apiVersion) {
     if (!result) {
       result = await runtime.wallet.submitTx(wallet, txn, signedTx)
     }
+    totalFee = result.fee
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
 
-    cohort = 'control'
-
     const grantIds = result.grantIds
-    if (grantIds) {
-      cohort = wallet.cohort || 'grant'
+    const grantTotal = result.grantTotal
+
+    if (grantIds) { // some grants were redeemed
       await markGrantsAsRedeemed(grantIds)
-      result = underscore.omit(result, ['grantIds'])
+      grantCohort = wallet.cohort || 'grant'
+      let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
+
+      if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
+        nonGrantVotes = 0
+        nonGrantFee = 0
+        grantVotes = totalVotes
+        grantFee = totalFee
+        surveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
+      } else { // some of the transaction value will be covered by grant
+        grantVotes = grantVotesAvailable
+        nonGrantVotes = totalVotes - grantVotes
+
+        let grantProbiRate = grantTotal / txnProbi
+        grantFee = totalFee * grantProbiRate
+        nonGrantFee = totalFee - grantFee
+
+        let grantSurveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
+        let nonGrantSurveyorIds = surveyor.cohorts['control'].slice(0, nonGrantVotes)
+        surveyorIds = underscore.shuffle(grantSurveyorIds.concat(nonGrantSurveyorIds))
+        result = underscore.omit(result, ['grantIds'])
+      }
+    } else { // no grants were used in the transaction
+      grantVotes = 0
+      grantFee = 0
+      nonGrantVotes = totalVotes
+      nonGrantFee = totalFee
+      surveyorIds = underscore.shuffle(surveyor.cohorts['control']).slice(0, totalVotes)
     }
 
     now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
     await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-
-    fee = result.fee
-
-    surveyorIds = underscore.shuffle(surveyor.cohorts[cohort]).slice(0, votes)
 
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -379,28 +368,39 @@ const write = function (runtime, apiVersion) {
         surveyorIds: surveyorIds,
         altcurrency: wallet.altcurrency,
         probi: result.probi,
-        count: votes
+        count: totalVotes
       }
     }
     await viewings.update({ viewingId: viewingId }, state, { upsert: true })
 
     const picked = ['votes', 'probi', 'altcurrency']
     result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
-    if (apiVersion === 1) {
-      reply(underscore.omit(underscore.extend(result, {satoshis: Number(result.probi)}), ['probi', 'altcurrency']))
-    } else {
-      reply(result)
+
+    reply(result)
+
+    if (grantVotes > 0) {
+      await runtime.queue.send(debug, 'contribution-report', underscore.extend({
+        paymentId: paymentId,
+        address: wallet.addresses[result.altcurrency],
+        surveyorId: surveyorId,
+        viewingId: viewingId,
+        fee: grantFee,
+        votes: grantVotes,
+        cohort: grantCohort
+      }, result))
     }
 
-    await runtime.queue.send(debug, 'contribution-report', underscore.extend({
-      paymentId: paymentId,
-      address: wallet.addresses[result.altcurrency],
-      surveyorId: surveyorId,
-      viewingId: viewingId,
-      fee: fee,
-      votes: votes,
-      cohort: cohort
-    }, result))
+    if (nonGrantVotes > 0) {
+      await runtime.queue.send(debug, 'contribution-report', underscore.extend({
+        paymentId: paymentId,
+        address: wallet.addresses[result.altcurrency],
+        surveyorId: surveyorId,
+        viewingId: viewingId,
+        fee: nonGrantFee,
+        votes: nonGrantVotes,
+        cohort: 'control'
+      }, result))
+    }
 
     async function markGrantsAsRedeemed (grantIds) {
       await Promise.all(grantIds.map((grantId) => {
@@ -418,29 +418,6 @@ const write = function (runtime, apiVersion) {
         redeemed: true
       })
     }
-  }
-}
-
-v1.write = { handler: (runtime) => { return write(runtime, 1) },
-  description: 'Makes a contribution using the BTC wallet associated with the user',
-  tags: [ 'api' ],
-
-  validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-    payload: {
-      viewingId: Joi.string().guid().required().description('unique-identifier for voting'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      signedTx: Joi.string().hex().required().description('signed transaction')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful contribution'),
-      satoshis: Joi.number().integer().min(0).optional().description('the contribution amount in satoshis'),
-      votes: Joi.number().integer().min(0).optional().description('the corresponding number of publisher votes'),
-      hash: Joi.string().hex().required().description('transaction hash')
-    })
   }
 }
 
@@ -697,9 +674,7 @@ function getStats (getQuery = defaultQuery) {
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
-  braveHapi.routes.async().path('/v1/wallet/{paymentId}').config(v1.read),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
-  braveHapi.routes.async().put().path('/v1/wallet/{paymentId}').config(v1.write),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
 ]
