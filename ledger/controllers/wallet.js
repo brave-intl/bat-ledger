@@ -233,7 +233,7 @@ const write = function (runtime, apiVersion) {
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
 
-    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi
+    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi, grantCohort
     let totalFee, grantFee, nonGrantFee
     let totalVotes, grantVotes, nonGrantVotes
 
@@ -326,7 +326,7 @@ const write = function (runtime, apiVersion) {
 
     if (grantIds) { // some grants were redeemed
       await markGrantsAsRedeemed(grantIds)
-      let grantCohort = wallet.cohort || 'grant'
+      grantCohort = wallet.cohort || 'grant'
       let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
 
       if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
@@ -386,7 +386,7 @@ const write = function (runtime, apiVersion) {
         viewingId: viewingId,
         fee: grantFee,
         votes: grantVotes,
-        cohort: 'grant'
+        cohort: grantCohort
       }, result))
     }
 
