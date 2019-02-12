@@ -207,7 +207,9 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   amount = new BigNumber(entry.balance).times(1e18)
   fees = amount.times(0.05)
   probi = amount.times(0.95)
+  const newYear = new Date('2019-01-01')
   const settlement = {
+    executedAt: newYear.toISOString(),
     fees: fees.toString(),
     probi: probi.toString(),
     amount: amount.dividedBy(1e18).toString(),
@@ -235,6 +237,28 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   const { balance } = entry
   t.true(balance.length > 1)
   t.is(+balance, 0)
+
+  const select = `
+SELECT *
+FROM transactions
+WHERE
+    transaction_type = 'contribution_settlement';
+`
+  const {
+    rows
+  } = await postgres.query(select)
+
+  t.deepEqual(rows.map((entry) => _.omit(entry, ['from_account', 'to_account', 'document_id', 'id'])), [{
+    created_at: newYear,
+    description: 'payout for contribution',
+    transaction_type: 'contribution_settlement',
+    from_account_type: 'owner',
+    to_account_type: 'uphold',
+    amount: '0.950000000000000000',
+    channel: braveYoutubePublisher,
+    settlement_currency: 'USD',
+    settlement_amount: '1.000000000000000000'
+  }])
 
   // ensure referral balances are computed correctly
   let transactions

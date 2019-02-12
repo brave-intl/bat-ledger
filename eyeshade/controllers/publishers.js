@@ -23,26 +23,36 @@ v2.settlement = {
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
       const fields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
-      let entry, state
+      let transactionId = null
 
-      for (entry of payload) {
+      for (let entry of payload) {
         if (entry.altcurrency !== altcurrency) return reply(boom.badData('altcurrency should be ' + altcurrency))
       }
 
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: {}
-      }
-      for (entry of payload) {
+      const $currentDate = { timestamp: { $type: 'timestamp' } }
+      const executedTime = new Date()
+      for (let entry of payload) {
+        const {
+          executedAt,
+          transactionId: settlementId
+        } = entry
+        transactionId = settlementId
+        const $set = {}
+        const state = {
+          $currentDate,
+          $set
+        }
         entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
-        fields.forEach((field) => { state.$set[field] = bson.Decimal128.fromString(entry[field].toString()) })
-        underscore.extend(state.$set,
-                          underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]))
+        fields.forEach((field) => { $set[field] = bson.Decimal128.fromString(entry[field].toString()) })
+        underscore.extend($set, {
+          executedAt: new Date(executedAt || executedTime)
+        }, underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]))
 
-        await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
+        await settlements.update({ settlementId, publisher: entry.publisher }, state, { upsert: true })
       }
 
-      await runtime.queue.send(debug, 'settlement-report', { settlementId: entry.transactionId, shouldUpdateBalances: true })
+      await runtime.queue.send(debug, 'settlement-report', { settlementId: transactionId, shouldUpdateBalances: true })
+
       reply({})
     }
   },
@@ -58,6 +68,7 @@ v2.settlement = {
 
   validate: {
     payload: Joi.array().min(1).items(Joi.object().keys({
+      executedAt: braveJoi.date().iso().optional().description('the timestamp the settlement was executed'),
       owner: braveJoi.string().owner().required().description('the owner identity'),
       publisher: braveJoi.string().publisher().when('type', { is: Joi.string().valid('manual'), then: Joi.optional().allow(''), otherwise: Joi.required() }).description('the publisher identity'),
       address: Joi.string().guid().required().description('settlement address'),
@@ -148,12 +159,13 @@ module.exports.initialize = async (debug, runtime) => {
         commission: bson.Decimal128.POSITIVE_ZERO,    // conversion fee (i.e., for settlement)
         fee: bson.Decimal128.POSITIVE_ZERO,           // network fee (i.e., for settlement)
         type: '',
+        executedAt: new Date(0),              // When the settlement was executed
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
       others: [ { address: 1 },
                 { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { fees: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-                { fee: 1 }, { type: 1 }, { timestamp: 1 } ]
+                { fee: 1 }, { type: 1 }, { timestamp: 1 }, { executedAt: 1 } ]
     },
     {
       category: runtime.database.get('publishersV2', debug),
