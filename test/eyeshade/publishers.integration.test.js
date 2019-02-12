@@ -16,9 +16,9 @@ import Postgres from 'bat-utils/lib/runtime-postgres'
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 
-test.afterEach(t => {
-  cleanPgDb(postgres)()
-  cleanDbs()
+test.afterEach.always(async t => {
+  await cleanPgDb(postgres)()
+  await cleanDbs()
 })
 
 test('unauthed requests cannot post settlement', async t => {
