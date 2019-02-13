@@ -60,8 +60,9 @@ const promotionIdValidator = Joi.string().guid().description('the promotion-iden
 const altcurrencyValidator = braveJoi.string().altcurrencyCode().description('the grant altcurrency')
 const probiValidator = braveJoi.string().numeric().description('the grant amount in probi')
 const minimumReconcileTimestampValidator = Joi.number().description('time when the promotion can be reconciled')
-const grantValidator = Joi.string().description('the jws encoded grant')
-const grantsValidator = Joi.array().min(0).items(grantValidator).description('grants for bulk upload')
+const encodedGrantValidator = Joi.string().description('the jws encoded grant')
+const grantsValidator = Joi.array().min(0).items(encodedGrantValidator).description('grants for bulk upload')
+const expiryTimeValidator = Joi.number().positive().description('the time the grant expires')
 const grantProviderIdValidator = Joi.string().guid().when('type', {
   is: 'ads',
   then: Joi.required(),
@@ -72,21 +73,21 @@ const captchaResponseValidator = Joi.object().keys({
   x: Joi.number().required(),
   y: Joi.number().required()
 })
-const oldGrantValidator = Joi.object().keys({
+const grantContentValidator = Joi.object().keys({
   grantId: Joi.string().guid().required().description('the grant-identifier'),
   promotionId: promotionIdValidator.required(),
   altcurrency: altcurrencyValidator.required(),
   probi: probiValidator.required(),
   maturityTime: Joi.number().positive().required().description('the time the grant becomes redeemable'),
-  expiryTime: Joi.number().positive().required().description('the time the grant expires')
+  expiryTime: expiryTimeValidator.required()
 })
-const grantContentTypedValidator = oldGrantValidator.keys({
+const grantContentTypedValidator = grantContentValidator.keys({
   type: grantTypeValidator,
   providerId: grantProviderIdValidator
 })
 const publicGrantValidator = Joi.object().keys({
   altcurrency: altcurrencyValidator.optional().default('BAT'),
-  expiryTime: Joi.number().optional().description('the expiration time of the grant'),
+  expiryTime: expiryTimeValidator.optional(),
   probi: probiValidator.optional()
 }).unknown(true).description('grant properties')
 const publicGrantTypedValidator = publicGrantValidator.keys({
@@ -703,7 +704,7 @@ const uploadGrants = (protocolVersion) => (runtime) => {
     const promotionCounts = {}
     for (let entry of payload.grants) {
       const grantContent = braveUtils.extractJws(entry)
-      const validity = Joi.validate(grantContent, oldGrantValidator)
+      const validity = Joi.validate(grantContent, grantContentValidator)
       if (validity.error) {
         return reply(boom.badData(validity.error))
       }
