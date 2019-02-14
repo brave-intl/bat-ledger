@@ -20,7 +20,7 @@ import {
 } from 'bat-utils/lib/extras-utils'
 
 test.before(cleanDbs)
-test.after(cleanDbs)
+// test.after(cleanDbs)
 
 const promotionId = 'c96c39c8-77dd-4b2d-a8df-2ecf824bc9e9'
 // expired grant
@@ -310,25 +310,23 @@ test('claim grants with attestations', async (t) => {
 })
 
 test('protocolVersion 4', async (t) => {
-  t.plan(1)
+  t.plan(2)
   let body
+  let response
+  let octets
+  let headers
+  let balance = 0
+
   const url = '/v4/grants'
   const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
-  const grants = {
-    'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
-    'promotions': [{
-      'protocolVersion': 4,
-      'active': true,
-      'priority': 0,
-      promotionId,
-      minimumReconcileTimestamp: 1526941400000
-    }]
-  }
-  await ledgerAgent.post(url).send(grants).expect(ok)
-
+  const adPromotionId = 'bad49132-de38-47e7-8003-986af88eeb1c'
+  const providerId = '6e3824f6-9eec-4f56-9719-8addaffe3ff1'
   const personaId = v4().toLowerCase()
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+
+  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -337,8 +335,8 @@ test('protocolVersion 4', async (t) => {
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
-  var octets = JSON.stringify(body)
-  var headers = {
+  octets = JSON.stringify(body)
+  headers = {
     digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
@@ -358,20 +356,79 @@ test('protocolVersion 4', async (t) => {
   }
   response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
-  const paymentId = response.body.wallet.paymentId
+  let paymentId = response.body.wallet.paymentId
+
+  const nextPaymentId = '73b8e65a-2810-4c21-a3f6-74969ba7eaf3'
+
+  await wallets.update({
+    paymentId
+  }, {
+    $set: {
+      'paymentId': nextPaymentId,
+      'addresses': {
+        'BAT': '0x96394730f1B583B4Bb23eA1B8c9CF84c306C72f1',
+        'BTC': 'mz6GHnUCTBPcy6gAZkhfZeJnTrKtSGP4xE',
+        'CARD_ID': providerId,
+        'ETH': '0x96394730f1B583B4Bb23eA1B8c9CF84c306C72f1',
+        'LTC': 'myjzYWGTmsnkzVGUz8MWjHh25c5NWJ3uPW'
+      },
+      'altcurrency': 'BAT',
+      'httpSigningPubKey': 'c8b4ad40ad2c38367edbc9509302f2bcc851bdb68a1cded9932e30667d7796fc',
+      'provider': 'uphold',
+      'providerId': providerId
+    }
+  })
+  paymentId = nextPaymentId
+
+  const grants = {
+    'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
+    'promotions': [{
+      'protocolVersion': 4,
+      'active': true,
+      'priority': 0,
+      promotionId,
+      minimumReconcileTimestamp: 1526941400000
+    }]
+  }
+
+  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIyMDBmZGE3ZS0yNzBhLTQ4MDAtYmEyYy0wY2I0MTNhMTFkMjMiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1MDEwMjQwMCwiZXhwaXJ5VGltZSI6MTU1MDEwMjQwMCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.pd5M3_fNKqDk4b06-qeCT7uGKMpTMmsn931e9z2SkFhRZH9hmY-ky5p-RNbnGotn-F62TUPjeZxd94Kdf0DnCA']}
+
+  await ledgerAgent.post(url).send(grants).expect(ok)
+  await ledgerAgent.post(url).send(adGrants).expect(ok)
 
   // get available grant
   await ledgerAgent
-    .get('/v4/grants')
+    .get(`/v4/grants`)
+    .query({ paymentId })
     .expect(ok)
+
+  const steps = {
+    [promotionId]: '30',
+    [adPromotionId]: '31'
+  }
+  for (let promotionId in steps) {
+    const finalBalance = steps[promotionId]
+    balance = await resolveCaptcha(wallets, {
+      paymentId,
+      promotionId,
+      balance
+    })
+    t.is(balance.toString(), finalBalance)
+  }
+})
+
+async function resolveCaptcha (wallets, {
+  paymentId,
+  promotionId,
+  balance = 0
+}) {
+  let response
 
   await ledgerAgent
     .get(`/v4/captchas/${paymentId}`)
     .set('brave-product', 'brave-core')
     .expect(ok)
 
-  const ledgerDB = await connectToDb('ledger')
-  const wallets = ledgerDB.collection('wallets')
   const {
     captcha
   } = await wallets.findOne({ paymentId })
@@ -390,13 +447,15 @@ test('protocolVersion 4', async (t) => {
 
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
   const desired = donateAmt.toString()
+  const total = (new BigNumber(balance)).plus(desired)
 
   do {
     response = await ledgerAgent
-      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
+      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${total}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
   var err = ok(response)
   if (err) throw err
-  t.is(response.body.balance, '30.0000')
-})
+
+  return total
+}
