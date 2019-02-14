@@ -6,7 +6,7 @@ exports.initialize = async (debug, runtime) => {
 }
 
 exports.workers = {
-/* sent by POST /v1/publishers/settlement
+/* sent by POST /v2/publishers/settlement
 
     { queue            : 'settlement-report'
     , message          :
@@ -18,7 +18,6 @@ exports.workers = {
       const settlements = runtime.database.get('settlements', debug)
       const { settlementId, shouldUpdateBalances } = payload
       const docs = await settlements.find({ settlementId, owner: { $exists: true } })
-
       const client = await runtime.postgres.connect()
       try {
         await client.query('BEGIN')

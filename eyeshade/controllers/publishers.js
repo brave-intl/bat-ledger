@@ -37,20 +37,19 @@ v2.settlement = {
         entry.commission = new BigNumber(entry.commission).plus(new BigNumber(entry.fee)).toString()
         fields.forEach((field) => { state.$set[field] = bson.Decimal128.fromString(entry[field].toString()) })
         underscore.extend(state.$set,
-                          underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner' ]))
+                          underscore.pick(entry, [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]))
 
         await settlements.update({ settlementId: entry.transactionId, publisher: entry.publisher }, state, { upsert: true })
       }
 
       await runtime.queue.send(debug, 'settlement-report', { settlementId: entry.transactionId, shouldUpdateBalances: true })
-
       reply({})
     }
   },
 
   auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
+    strategies: ['session', 'simple-scoped-token'],
+    scope: ['ledger', 'publishers'],
     mode: 'required'
   },
 
@@ -60,7 +59,7 @@ v2.settlement = {
   validate: {
     payload: Joi.array().min(1).items(Joi.object().keys({
       owner: braveJoi.string().owner().required().description('the owner identity'),
-      publisher: braveJoi.string().publisher().required().description('the publisher identity'),
+      publisher: braveJoi.string().publisher().when('type', { is: Joi.string().valid('manual'), then: Joi.optional().allow(''), otherwise: Joi.required() }).description('the publisher identity'),
       address: Joi.string().guid().required().description('settlement address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),
@@ -70,7 +69,7 @@ v2.settlement = {
       commission: braveJoi.string().numeric().default('0.00').description('settlement commission'),
       fee: braveJoi.string().numeric().default('0.00').description('fee in addition to settlement commission'),
       transactionId: Joi.string().guid().required().description('the transactionId'),
-      type: Joi.string().valid('contribution', 'referral').default('contribution').description('settlement input'),
+      type: Joi.string().valid('contribution', 'referral', 'manual').default('contribution').description('settlement input'),
       hash: Joi.string().guid().required().description('settlement-identifier')
     }).unknown(true)).required().description('publisher settlement report')
   },
