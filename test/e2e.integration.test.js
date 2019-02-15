@@ -319,7 +319,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
     contributed: 1,
     created: justDate(new Date()),
     walletProviderBalance: '0',
-    walletProviderFunded: 1,
+    walletProviderFunded: 0,
     wallets: 1
   }])
 
@@ -399,7 +399,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   // TODO test settlement flow
 })
 
-test.only('ledger : user + grant contribution workflow with uphold BAT wallet', async t => {
+test('ledger : user + grant contribution workflow with uphold BAT wallet', async t => {
   // Create surveyors
   const surveyorId = (await createSurveyor({ rate: 1, votes: 12 })).body.surveyorId
 
