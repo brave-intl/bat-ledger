@@ -1079,6 +1079,7 @@ function v4CreateGrantQuery ({
   }
   return query
 }
+
 function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
   return (runtime) => async (request, reply) => {
     const batchId = uuid.v4().toLowerCase()
