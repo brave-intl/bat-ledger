@@ -1,3 +1,5 @@
+select execute($$
+
 delete from migrations where id = '0003';
 
 drop materialized view account_balances;
@@ -90,3 +92,5 @@ create materialized view account_balances(
 create unique index on account_balances(account_type, account_id);
 
 refresh materialized view account_balances;
+
+$$) where exists (select * from migrations where id = '0003');
