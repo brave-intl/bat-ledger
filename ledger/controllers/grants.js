@@ -14,7 +14,6 @@ const braveUtils = utils.extras.utils
 const whitelist = utils.hapi.auth.whitelist
 
 const rateLimitEnabled = process.env.NODE_ENV === 'production'
-const unnecessaryPromotionDetails = [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]
 
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
 
@@ -265,33 +264,13 @@ const getGrant = (protocolVersion) => (runtime) => {
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let candidates, entries, priority, promotion, promotionIds
-
-    const l10n = (o) => {
-      const labels = [ 'greeting', 'message', 'text' ]
-
-      for (let key in o) {
-        let f = {
-          object: () => {
-            l10n(o[key])
-          },
-          string: () => {
-            if ((labels.indexOf(key) === -1) && !(key.endsWith('Button') || key.endsWith('Markup') || key.endsWith('Text'))) {
-//            return
-            }
-
-            // TBD: localization here...
-          }
-        }[typeof o[key]]
-        if (f) f()
-      }
-    }
+    let entries, promotionIds, wallet
 
     if (qaOnlyP(request)) return reply(boom.notFound())
 
     if (paymentId) {
       promotionIds = []
-      const wallet = await wallets.findOne({ paymentId: paymentId })
+      wallet = await wallets.findOne({ paymentId: paymentId })
       if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
       if (wallet.grants) {
         wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
@@ -299,33 +278,43 @@ const getGrant = (protocolVersion) => (runtime) => {
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
     }
 
+    if (protocolVersion === 4 && !paymentId) {
+      underscore.extend(query, { type: 'ugp' })
+    }
+
     entries = await promotions.find(query)
     if ((!entries) || (!entries[0])) return reply(boom.notFound('no promotions available'))
 
-    candidates = []
-    priority = Number.POSITIVE_INFINITY
-    entries.forEach((entry) => {
-      if (entry.priority > priority) return
+    if (protocolVersion < 4) {
+      entries = [entries[0]]
+    }
 
-      if (priority < entry.priority) {
-        candidates = []
-        priority = entry.priority
+    const filteredPromotions = []
+    for (let { promotionId, type } of entries) {
+      const query = { promotionId }
+      if (type === 'ads') {
+        if (!wallet) {
+          continue
+        }
+        underscore.extend(query, { providerId: wallet.addresses.CARD_ID })
       }
-      candidates.push(entry)
-    })
-    promotion = underscore.shuffle(candidates)[0]
+      const counted = await grants.count(query)
+      if (counted !== 0) {
+        filteredPromotions.push({ promotionId, type })
+      }
+    }
 
-    const counted = await grants.count({
-      promotionId: promotion.promotionId
-    })
-    if (counted === 0) {
+    if (filteredPromotions.length === 0) {
       return reply(boom.notFound('promotion not available'))
     }
 
-    debug('grants', { languages: languages })
-    l10n(promotion)
+    if (protocolVersion < 4) {
+      return reply(filteredPromotions[0])
+    }
 
-    reply(underscore.omit(promotion, [ '_id', 'priority', 'active', 'count', 'batchId', 'timestamp' ]))
+    reply({ grants: filteredPromotions })
+
+    debug('grants', { languages: languages })
   }
 }
 
@@ -377,7 +366,7 @@ v3.read = {
 */
 
 v4.read = {
-  handler: getGrantList(4, chooseFromAvailablePromotionsByType),
+  handler: getGrant(4),
   description: 'See if a v4 promotion is available',
   tags: [ 'api' ],
 
@@ -1090,109 +1079,6 @@ function v4CreateGrantQuery ({
   }
   return query
 }
-
-async function chooseFromAvailablePromotions (debug, runtime, {
-  entries
-}) {
-  let priority = Number.POSITIVE_INFINITY
-  const candidates = entries.reduce((memo, entry) => {
-    let candidates = memo
-    if (entry.priority > priority) {
-      return candidates
-    }
-    if (priority < entry.priority) {
-      candidates = []
-      priority = entry.priority
-    }
-    return candidates.concat(entry)
-  }, [])
-  if (!candidates.length) {
-    return candidates
-  }
-
-  const promotion = underscore.shuffle(candidates)[0]
-  return underscore.omit(promotion, unnecessaryPromotionDetails)
-}
-
-async function chooseFromAvailablePromotionsByType (debug, runtime, {
-  entries
-}) {
-  const ads = underscore.filter(entries, ({
-    type
-  }) => type === 'ads')
-  const ugp = underscore.filter(entries, ({
-    type
-  }) => {
-    return type === '' || type == null || type === 'ugp'
-  })
-  const adsPromotions = await chooseFromAvailablePromotions(debug, runtime, {
-    entries: ads
-  })
-  const ugpPromotions = await chooseFromAvailablePromotions(debug, runtime, {
-    entries: ugp
-  })
-  return [].concat(adsPromotions, ugpPromotions)
-}
-
-function getGrantList (protocolVersion, createPayload) {
-  return (runtime) => async (request, reply) => {
-    const {
-      paymentId
-    } = request.query
-    const query = {
-      active: true,
-      count: { $gt: 0 },
-      protocolVersion
-    }
-    const debug = braveHapi.debug(module, request)
-    const grants = runtime.database.get('grants', debug)
-    const promotions = runtime.database.get('promotions', debug)
-    const wallets = runtime.database.get('wallets', debug)
-
-    if (qaOnlyP(request)) {
-      return reply(boom.notFound())
-    }
-
-    if (paymentId) {
-      const promotionIds = []
-      const wallet = await wallets.findOne({ paymentId: paymentId })
-      if (!wallet) {
-        return reply(boom.notFound('no such wallet: ' + paymentId))
-      }
-      if (wallet.grants) {
-        wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
-      }
-      underscore.extend(query, { promotionId: { $nin: promotionIds } })
-    }
-
-    const entries = await promotions.find(query)
-    if (!entries || !entries[0]) {
-      return reply(boom.notFound('no promotions available'))
-    }
-
-    const result = await createPayload(debug, runtime, {
-      entries
-    })
-
-    try {
-      await Promise.all(result.map(async ({
-        promotionId
-      }) => {
-        const counted = await grants.count({ promotionId })
-        if (!counted) {
-          throw boom.notFound('promotion not available')
-        }
-      }))
-    } catch (e) {
-      return reply(e)
-    }
-
-    return reply({
-      grants: result
-    })
-  }
-}
-
 function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
   return (runtime) => async (request, reply) => {
     const batchId = uuid.v4().toLowerCase()
