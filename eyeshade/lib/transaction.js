@@ -6,6 +6,8 @@ const {
   normalizeChannel
 } = require('bat-utils/lib/extras-utils')
 
+const getYoutubeChannelId = require('bat-utils/lib/youtube')
+
 const SETTLEMENT_NAMESPACE = {
   'contribution': '4208cdfc-26f3-44a2-9f9d-1f6657001706',
   'referral': '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a',
@@ -186,11 +188,11 @@ async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
     const fees = new BigNumber(voteDoc.fees.toString())
 
     if (amount.greaterThan(new BigNumber(0))) {
-      const normalizedChannel = normalizeChannel(voteDoc.channel)
+      let normalizedChannel = normalizeChannel(voteDoc.channel)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
-        // skip for now, we will reprocess later
-        return
+        const youtubeChannelId = await getYoutubeChannelId(props.providerValue)
+        normalizedChannel = 'youtube#channel:' + youtubeChannelId
       }
 
       const query = `
