@@ -70,3 +70,4 @@ services:
       - UPHOLD_DONOR_CARD_ID
       - UPHOLD_ENVIRONMENT
       - VOTING_COHORTS
+      - YOUTUBE_API_KEY
