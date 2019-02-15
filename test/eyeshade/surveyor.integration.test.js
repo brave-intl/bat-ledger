@@ -4,7 +4,6 @@ import {
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import Queue from 'bat-utils/lib/runtime-queue'
 import SDebug from 'sdebug'
-import uuid from 'uuid'
 import {
   workers
 } from '../../eyeshade/workers/wallet'
@@ -72,7 +71,7 @@ test.only('replaces invalid youtube user ids with youtube channel ids when inser
     txs = (await postgres.query('select * from transactions;', [])).rows
   }
 
-  t.true(txs[0].to_account === 'youtube#channel:UCqFzWxSCi39LnW1JKFR3efg' )
+  t.true(txs[0].to_account === 'youtube#channel:UCqFzWxSCi39LnW1JKFR3efg')
 })
 
 async function tryFreeze (t, dayShift, expect, surveyorId) {
@@ -108,4 +107,3 @@ async function voteAndCheckTally (t, publisher, surveyorId, count) {
   t.is(votes.rowCount, 1)
   t.is(votes.rows[0].tally, count)
 }
-
