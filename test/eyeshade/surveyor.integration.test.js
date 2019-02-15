@@ -58,7 +58,7 @@ test('verify frozen occurs when daily is run', async t => {
   await voteAndCheckTally(t, publisher, surveyorId, 3)
 })
 
-test.only('replaces invalid youtube user ids with youtube channel ids when inserting into transaction table', async t => {
+test('replaces invalid youtube user ids with youtube channel ids when inserting into transaction table', async t => {
   await createSurveyor()
   const surveyorId = (await getSurveyor()).body.surveyorId
   await waitUntilPropagated(querySurveyor, surveyorId)
