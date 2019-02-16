@@ -15,7 +15,7 @@ services:
       - "BAT_POSTGRES_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
       - "BAT_REDIS_URL=redis://redis:6379"
-      - "DEBUG=${DEBUG-*,-babel,-eslint:*,-mongo:*,mongo:queries,-ava}"
+      - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "ENABLE_ADS_PAYOUT=1"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
