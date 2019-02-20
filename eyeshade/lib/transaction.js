@@ -73,8 +73,8 @@ async function insertFromSettlement (runtime, client, settlement) {
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
         throw new Error('Unexpected provider suffix: youtube#user')
       }
-
-      const created = createdTimestamp(settlement._id)
+      const { executedAt } = settlement
+      const created = executedAt ? new Date(executedAt) : createdTimestamp(settlement._id)
       const month = new Date(created).toDateString().split(' ')[1]
 
       if (settlement.type === 'contribution') {
@@ -86,7 +86,7 @@ async function insertFromSettlement (runtime, client, settlement) {
         await client.query(query1, [
           // settlementId and channel pair should be unique per settlement type
           uuidv5(settlement.settlementId + normalizedChannel, 'eb296f6d-ab2a-489f-bc75-a34f1ff70acb'),
-          created / 1000,
+          (created / 1000) - 2,
           `contributions through ${month}`,
           'contribution',
           settlement._id.toString(),
@@ -107,7 +107,7 @@ async function insertFromSettlement (runtime, client, settlement) {
           await client.query(query2, [
             // settlementId and channel pair should be unique per settlement type
             uuidv5(settlement.settlementId + normalizedChannel, '1d295e60-e511-41f5-8ae0-46b6b5d33333'),
-            (created / 1000) + 1,
+            (created / 1000) - 1,
             'settlement fees',
             'fees',
             settlement._id.toString(),
@@ -132,7 +132,7 @@ async function insertFromSettlement (runtime, client, settlement) {
       await client.query(query3, [
         // settlementId and channel pair should be unique per settlement type
         uuidv5(settlement.settlementId + normalizedChannel, SETTLEMENT_NAMESPACE[settlement.type]),
-        (created / 1000) + 2,
+        (created / 1000),
         `payout for ${settlement.type}`,
         `${settlement.type}_settlement`,
         settlement.type === 'manual' ? settlement.documentId : settlement._id.toString(),
@@ -170,7 +170,7 @@ async function insertManual (runtime, client, settlementId, created, documentId,
   `
   await client.query(insertTransactionQuery, [
     uuidv5(settlementId + toAccount, '734a27cd-0834-49a5-8d4c-77da38cdfb22'),
-    created,
+    created / 1000,
     description,
     transactionType,
     documentId,
