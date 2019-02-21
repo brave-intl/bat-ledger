@@ -3,7 +3,7 @@ const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
-const surveyors = require('../lib/surveyors')
+const surveyors = require('../lib/surveyor')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -743,7 +743,6 @@ module.exports.initialize = async (debug, runtime) => {
 function getVoteRate () {
   return (runtime) => async (request, reply) => {
     const surveyor = await server(request, reply, runtime)
-    console.log(surveyor)
     const voteRate = surveyors.voteValueFromSurveyor(runtime, surveyor)
 
     reply({

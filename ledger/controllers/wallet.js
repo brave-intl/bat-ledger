@@ -6,7 +6,7 @@ const bson = require('bson')
 const timestamp = require('monotonic-timestamp')
 const underscore = require('underscore')
 
-const surveyorsLib = require('../lib/surveyors')
+const surveyorsLib = require('../lib/surveyor')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
