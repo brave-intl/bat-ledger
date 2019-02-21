@@ -153,7 +153,6 @@ const cleanRedisDb = async () => {
 }
 
 module.exports = {
-  makeSettlement,
   createSurveyor,
   getSurveyor,
   fetchReport,
@@ -233,23 +232,4 @@ function statsUrl () {
   const futureISO = dateFuture.toISOString()
   const future = futureISO.split('T')[0]
   return `/v2/wallet/stats/${date}/${future}`
-}
-
-function makeSettlement (type, balance, overwrites = {}) {
-  const amount = new BigNumber(balance).times(1e18)
-  const fees = amount.times(0.05)
-  const probi = amount.times(0.95)
-  return Object.assign({
-    type,
-    currency: 'USD',
-    altcurrency: 'BAT',
-    fees: fees.toString(),
-    probi: probi.toString(),
-    amount: amount.dividedBy(1e18).toString(),
-    publisher: braveYoutubePublisher,
-    owner: braveYoutubeOwner,
-    transactionId: uuid.v4(),
-    address: uuid.v4(),
-    hash: uuid.v4()
-  }, overwrites)
 }
