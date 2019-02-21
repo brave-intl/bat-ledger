@@ -18,6 +18,7 @@ import {
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import Queue from 'bat-utils/lib/runtime-queue'
 import {
+  makeSettlement,
   cleanDbs,
   cleanPgDb,
   eyeshadeAgent,
@@ -27,8 +28,8 @@ import {
   braveYoutubePublisher,
   createSurveyor,
   debug,
-  connectToDb,
-  statsUrl
+  statsUrl,
+  connectToDb
 } from './utils'
 import {
   freezeOldSurveyors
@@ -186,7 +187,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     .send({ 'provider': 'uphold', 'parameters': {} })
     .expect(ok)
 
-  let amount, probi, fees, entry
+  let amount, entry
   const account = [braveYoutubePublisher]
   const query = { account }
 
@@ -204,24 +205,10 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   t.true(entry.balance > 0)
 
-  amount = new BigNumber(entry.balance).times(1e18)
-  fees = amount.times(0.05)
-  probi = amount.times(0.95)
   const newYear = new Date('2019-01-01')
-  const settlement = {
-    executedAt: newYear.toISOString(),
-    fees: fees.toString(),
-    probi: probi.toString(),
-    amount: amount.dividedBy(1e18).toString(),
-    currency: 'USD',
-    owner: braveYoutubeOwner,
-    publisher: braveYoutubePublisher,
-    address: uuid.v4(),
-    altcurrency: 'BAT',
-    transactionId: uuid.v4(),
-    type: 'contribution',
-    hash: uuid.v4()
-  }
+  const settlement = makeSettlement('contribution', entry.balance, {
+    executedAt: newYear.toISOString()
+  })
 
   await eyeshadeAgent.post(settlementURL).send([settlement]).expect(ok)
 

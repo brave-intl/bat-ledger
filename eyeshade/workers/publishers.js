@@ -8,16 +8,31 @@ exports.initialize = async (debug, runtime) => {
 exports.workers = {
 /* sent by POST /v2/publishers/settlement
 
-    { queue            : 'settlement-report'
-    , message          :
-      { settlementId   : '...', shouldUpdateBalances: false }
+    { queue   : 'settlement-report'
+    , message :
+      { shouldUpdateBalances : false,
+        settlementId         : '',
+        type                 : '',
+      }
     }
 */
   'settlement-report':
     async (debug, runtime, payload) => {
-      const settlements = runtime.database.get('settlements', debug)
-      const { settlementId, shouldUpdateBalances } = payload
-      const docs = await settlements.find({ settlementId, owner: { $exists: true } })
+      const settlementsCollection = runtime.database.get('settlements', debug)
+      const {
+        shouldUpdateBalances,
+        settlementId,
+        type
+      } = payload
+
+      const docs = await settlementsCollection.find({
+        type,
+        settlementId,
+        owner: {
+          $exists: true
+        }
+      })
+
       const client = await runtime.postgres.connect()
       try {
         await client.query('BEGIN')
