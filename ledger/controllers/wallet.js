@@ -6,6 +6,8 @@ const bson = require('bson')
 const timestamp = require('monotonic-timestamp')
 const underscore = require('underscore')
 
+const surveyorsLib = require('../lib/surveyor')
+
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
@@ -215,12 +217,6 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
    PUT /v2/wallet/{paymentId}
  */
 
-function voteValueFromSurveyor (surveyor, decimalShift) {
-  const { votes, probi } = surveyor.payload.adFree
-  const bigProbi = new BigNumber(probi)
-  return bigProbi.dividedBy(votes).dividedBy(decimalShift)
-}
-
 const write = function (runtime, apiVersion) {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
@@ -246,8 +242,7 @@ const write = function (runtime, apiVersion) {
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
     if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
 
-    const decimalShift = runtime.currency.alt2scale(wallet.altcurrency)
-    const minimum = voteValueFromSurveyor(surveyor, decimalShift)
+    const minimum = surveyorsLib.voteValueFromSurveyor(runtime, surveyor, wallet.altcurrency)
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
       runtime.wallet.validateTxSignature(info, signedTx, {
