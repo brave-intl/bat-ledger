@@ -2,7 +2,7 @@ const boom = require('boom')
 const bson = require('bson')
 const Joi = require('joi')
 const underscore = require('underscore')
-
+const BigNumber = require('bignumber.js')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
@@ -41,10 +41,11 @@ v1.getWallet = {
           rates = result.rates
 
           const fxrates = await runtime.currency.all()
-          underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
+          const bigUSD = new BigNumber(rates.USD)
+          underscore.union([result.wallet.defaultCurrency], result.wallet.availableCurrencies).forEach((currency) => {
             if ((rates[currency]) || (!rates.USD) || (!fxrates[currency])) return
 
-            rates[currency] = (rates.USD * fxrates[currency]) + ''
+            rates[currency] = bigUSD.times(fxrates[currency]).toString()
           })
         }
       } catch (ex) {
