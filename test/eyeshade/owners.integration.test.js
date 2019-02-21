@@ -83,7 +83,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
-  t.plan(0)
+  t.plan(12 * 2)
   const encodedOwner = encodeURIComponent(braveYoutubeOwner)
 
   const walletUrl = `/v1/owners/${encodedOwner}/wallet`
@@ -98,8 +98,29 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
   }
   await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
 
-  const currency = 'BAT'
+  await createCard(braveYoutubeOwner, 'BAT')
+  const { body: wallet1 } = await eyeshadeAgent.get(walletUrl)
+    .send().expect(200)
+  checkRates(wallet1)
+
+  await createCard(braveYoutubeOwner, 'XAU')
+  const { body: wallet2 } = await eyeshadeAgent.get(walletUrl)
+    .send().expect(200)
+  checkRates(wallet2)
+
+  function checkRates (wallet) {
+    console.log(wallet)
+    const { rates } = wallet
+    const keys = _.keys(rates)
+    for (let ticker of keys) {
+      t.true(_.isString(rates[ticker]), 'is a string')
+    }
+  }
+})
+
+function createCard (owner, currency) {
+  const encodedOwner = encodeURIComponent(owner)
   const createCardData = { currency }
   const cardUrl = `/v3/owners/${encodedOwner}/wallet/card`
-  await eyeshadeAgent.post(cardUrl).send(createCardData).expect(ok)
-})
+  return eyeshadeAgent.post(cardUrl).send(createCardData).expect(ok)
+}
