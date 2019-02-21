@@ -44,7 +44,7 @@ v1.getWallet = {
           underscore.union([ result.wallet.defaultCurrency ], result.wallet.availableCurrencies).forEach((currency) => {
             if ((rates[currency]) || (!rates.USD) || (!fxrates[currency])) return
 
-            rates[currency] = rates.USD * fxrates[currency]
+            rates[currency] = (rates.USD * fxrates[currency]) + ''
           })
         }
       } catch (ex) {
