@@ -1,19 +1,29 @@
 'use strict'
 import { serial as test } from 'ava'
 import uuidV4 from 'uuid/v4'
-import {
-  cleanDbs,
-  cleanPgDb,
-  eyeshadeAgent,
-  connectToDb
-} from '../utils'
+import fs from 'fs'
+import path from 'path'
+import BigNumber from 'bignumber.js'
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import { agent } from 'supertest'
 import {
   timeout
 } from 'bat-utils/lib/extras-utils'
-import { agent } from 'supertest'
-import Postgres from 'bat-utils/lib/runtime-postgres'
+import {
+  makeSettlement,
+  cleanDbs,
+  cleanPgDb,
+  braveYoutubePublisher,
+  eyeshadeAgent,
+  connectToDb,
+  ok
+} from '../utils'
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const postgres = new Postgres({
+  postgres: {
+    url: process.env.BAT_POSTGRES_URL
+  }
+})
 
 test.afterEach.always(async t => {
   await cleanPgDb(postgres)()
@@ -120,4 +130,48 @@ test('can post a manual settlement from publisher app using token auth', async t
   t.true(manualSettlementTx.settlement_amount === '5.000000000000000000')
 
   t.true(manualTx.to_account === manualSettlementTx.from_account)
+})
+
+test('settlement receives a file', async (t) => {
+  t.plan(2)
+  const jsonFile = path.join(__dirname, `publishers-${uuidV4()}.json`)
+  const selectByAddress = 'SELECT * FROM transactions WHERE to_account = $1;'
+  const deleteByChannel = 'DELETE FROM transactions WHERE channel = $1;'
+  const amount = 20
+
+  // setup
+  const settlement1 = makeSettlement('contribution', amount)
+  const settlementAddress1 = settlement1.address
+  const settlements = [settlement1]
+  const settlementBinary = JSON.stringify(settlements)
+  fs.writeFileSync(jsonFile, settlementBinary.toString())
+
+  // test
+  await eyeshadeAgent
+    .post('/v3/publishers/settlement')
+    .attach(jsonFile, jsonFile)
+    .set('Content-Type', 'application/json')
+    .expect(ok)
+
+  let rows = null
+  do {
+    await timeout(2000)
+    const result = await postgres.query(selectByAddress, [settlementAddress1])
+    rows = result.rows
+  } while (!rows || !rows.length)
+  const sentAmount = (new BigNumber(amount)).times(0.95)
+  const transactedAmount = rows.reduce((memo, tx) => {
+    return memo.plus(tx.amount)
+  }, new BigNumber(0))
+  t.true(amount > 1)
+  t.is(sentAmount.toString(), transactedAmount.toString())
+
+  // cleanup
+  fs.unlinkSync(jsonFile)
+  await postgres.query(deleteByChannel, [braveYoutubePublisher])
+  const eyeshade = await connectToDb('eyeshade')
+  const settlementsCollection = eyeshade.collection('settlements')
+  await settlementsCollection.remove({
+    address: settlementAddress1
+  })
 })

@@ -9,86 +9,35 @@ const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
 const v2 = {}
+const v3 = {}
 
 let altcurrency
 
 /*
    POST /v2/publishers/settlement
  */
+const V2SettlementPayload = Joi.array().min(1).items(Joi.object().keys({
+  owner: braveJoi.string().owner().required().description('the owner identity'),
+  publisher: braveJoi.string().publisher().when('type', {
+    is: Joi.string().valid('manual'),
+    then: Joi.optional().allow(''),
+    otherwise: Joi.required()
+  }).description('the publisher identity'),
+  address: Joi.string().guid().required().description('settlement address'),
+  altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
+  probi: braveJoi.string().numeric().required().description('the settlement in probi'),
+  fees: braveJoi.string().numeric().default('0.00').description('processing fees'),
+  currency: braveJoi.string().anycurrencyCode().default('USD').description('the deposit currency'),
+  amount: braveJoi.string().numeric().required().description('the amount in the deposit currency'),
+  commission: braveJoi.string().numeric().default('0.00').description('settlement commission'),
+  fee: braveJoi.string().numeric().default('0.00').description('fee in addition to settlement commission'),
+  transactionId: Joi.string().guid().required().description('the transactionId'),
+  type: Joi.string().valid('contribution', 'referral', 'manual').default('contribution').description('settlement input'),
+  hash: Joi.string().guid().required().description('settlement-identifier')
+}).unknown(true)).required().description('publisher settlement report')
 
 v2.settlement = {
-  handler: (runtime) => {
-    return async (request, reply) => {
-      const {
-        payload
-      } = request
-      const { fromString } = bson.Decimal128
-      const debug = braveHapi.debug(module, request)
-      const settlements = runtime.database.get('settlements', debug)
-      const numberFields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
-      const mappedFields = [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]
-
-      if (payload.find((entry) => entry.altcurrency !== altcurrency)) {
-        return reply(boom.badData('altcurrency should be ' + altcurrency))
-      }
-
-      const $currentDate = { timestamp: { $type: 'timestamp' } }
-      const executedTime = new Date()
-      const settlementGroups = {}
-      for (let entry of payload) {
-        const {
-          commission,
-          fee,
-          type,
-          publisher,
-          executedAt,
-          transactionId: settlementId
-        } = entry
-
-        const bigFee = new BigNumber(fee)
-        const bigCom = new BigNumber(commission)
-        const bigComPlusFee = bigCom.plus(bigFee)
-
-        let picked = underscore.pick(entry, mappedFields)
-        picked.commission = fromString(bigComPlusFee.toString())
-        picked.executedAt = new Date(executedAt || executedTime)
-        const $set = numberFields.reduce((memo, field) => {
-          memo[field] = fromString(entry[field].toString())
-          return memo
-        }, picked)
-
-        const state = {
-          $set,
-          $currentDate
-        }
-
-        await settlements.update({
-          settlementId,
-          publisher
-        }, state, { upsert: true })
-
-        let entries = settlementGroups[type]
-        if (!entries) {
-          entries = []
-          settlementGroups[type] = entries
-        }
-        entries.push(settlementId)
-      }
-
-      for (let type in settlementGroups) {
-        const settlementIds = underscore.uniq(settlementGroups[type])
-        for (let settlementId of settlementIds) {
-          await runtime.queue.send(debug, 'settlement-report', {
-            type,
-            settlementId,
-            shouldUpdateBalances: true
-          })
-        }
-      }
-
-      reply({})
-    }
-  },
+  handler: V2Settlement,
 
   auth: {
     strategies: ['session', 'simple-scoped-token'],
@@ -100,30 +49,58 @@ v2.settlement = {
   tags: [ 'api' ],
 
   validate: {
-    payload: Joi.array().min(1).items(Joi.object().keys({
-      executedAt: braveJoi.date().iso().optional().description('the timestamp the settlement was executed'),
-      owner: braveJoi.string().owner().required().description('the owner identity'),
-      publisher: braveJoi.string().publisher().when('type', { is: Joi.string().valid('manual'), then: Joi.optional().allow(''), otherwise: Joi.required() }).description('the publisher identity'),
-      address: Joi.string().guid().required().description('settlement address'),
-      altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
-      probi: braveJoi.string().numeric().required().description('the settlement in probi'),
-      fees: braveJoi.string().numeric().default('0.00').description('processing fees'),
-      currency: braveJoi.string().anycurrencyCode().default('USD').description('the deposit currency'),
-      amount: braveJoi.string().numeric().required().description('the amount in the deposit currency'),
-      commission: braveJoi.string().numeric().default('0.00').description('settlement commission'),
-      fee: braveJoi.string().numeric().default('0.00').description('fee in addition to settlement commission'),
-      transactionId: Joi.string().guid().required().description('the transactionId'),
-      type: Joi.string().valid('contribution', 'referral', 'manual').default('contribution').description('settlement input'),
-      hash: Joi.string().guid().required().description('settlement-identifier')
-    }).unknown(true)).required().description('publisher settlement report')
+    payload: V2SettlementPayload
   },
 
   response:
     { schema: Joi.object().length(0) }
 }
 
+/*
+   POST /v3/publishers/settlement
+*/
+v3.settlement = {
+  handler: fileReadySettlement(V2Settlement, V2SettlementPayload),
+
+  auth: {
+    strategy: 'session',
+    scope: [ 'ledger' ],
+    mode: 'required'
+  },
+
+  description: 'Posts a settlement for one or more publishers',
+  tags: [ 'api' ],
+
+  plugins: {
+    'hapi-swagger': {
+      payloadType: 'form',
+      validate: {
+        payload: {
+          file: Joi.any().meta({
+            swaggerType: 'file'
+          }).description('json file')
+        }
+      }
+    }
+  },
+
+  validate: {
+    headers: Joi.object({
+      authorization: Joi.string().optional()
+    }).unknown()
+  },
+  payload: {
+    output: 'data',
+    maxBytes: 1024 * 1024 * 20
+  },
+  response: {
+    schema: Joi.object().length(0)
+  }
+}
+
 module.exports.routes = [
-  braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement)
+  braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement),
+  braveHapi.routes.async().post().path('/v3/publishers/settlement').config(v3.settlement)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
@@ -209,4 +186,102 @@ module.exports.initialize = async (debug, runtime) => {
       others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
     }
   ])
+}
+
+function fileReadySettlement (handler, validator) {
+  return (runtime) => async (request, reply) => {
+    let {
+      payload
+    } = request
+
+    if (!Array.isArray(payload)) {
+      const fileNames = Object.keys(payload)
+      const settlements = fileNames.reduce((memo, key) => {
+        return memo.concat(payload[key])
+      }, [])
+      payload = settlements
+    }
+
+    const {
+      error,
+      value
+    } = Joi.validate(payload, validator)
+    if (error) {
+      return reply(boom.badData(error))
+    }
+    request.payload = value
+
+    await handler(runtime)(request, reply)
+  }
+}
+
+function V2Settlement (runtime) {
+  return async (request, reply) => {
+    const payload = request.payload
+    const { fromString } = bson.Decimal128
+    const debug = braveHapi.debug(module, request)
+    const settlements = runtime.database.get('settlements', debug)
+    const numberFields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
+    const mappedFields = [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]
+
+    if (payload.find((entry) => entry.altcurrency !== altcurrency)) {
+      return reply(boom.badData('altcurrency should be ' + altcurrency))
+    }
+
+    const $currentDate = { timestamp: { $type: 'timestamp' } }
+    const executedTime = new Date()
+    const settlementGroups = {}
+    for (let entry of payload) {
+      const {
+        commission,
+        fee,
+        type,
+        publisher,
+        executedAt,
+        transactionId: settlementId
+      } = entry
+
+      const bigFee = new BigNumber(fee)
+      const bigCom = new BigNumber(commission)
+      const bigComPlusFee = bigCom.plus(bigFee)
+
+      let picked = underscore.pick(entry, mappedFields)
+      picked.commission = fromString(bigComPlusFee.toString())
+      picked.executedAt = new Date(executedAt || executedTime)
+      const $set = numberFields.reduce((memo, field) => {
+        memo[field] = fromString(entry[field].toString())
+        return memo
+      }, picked)
+
+      const state = {
+        $set,
+        $currentDate
+      }
+
+      await settlements.update({
+        settlementId,
+        publisher
+      }, state, { upsert: true })
+
+      let entries = settlementGroups[type]
+      if (!entries) {
+        entries = []
+        settlementGroups[type] = entries
+      }
+      entries.push(settlementId)
+    }
+
+    for (let type in settlementGroups) {
+      const settlementIds = underscore.uniq(settlementGroups[type])
+      for (let settlementId of settlementIds) {
+        await runtime.queue.send(debug, 'settlement-report', {
+          type,
+          settlementId,
+          shouldUpdateBalances: true
+        })
+      }
+    }
+
+    reply({})
+  }
 }
