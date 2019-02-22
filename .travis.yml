@@ -71,4 +71,6 @@ after_failure:
 after_script:
   - npm run docker-migrate-down-all
 
-after_success: npx codecov --file=./coverage/lcov.info
+after_success:
+  - npm run coverage
+  - npx codecov --file=./coverage/lcov.info
