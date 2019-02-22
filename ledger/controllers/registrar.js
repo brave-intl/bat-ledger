@@ -4,7 +4,7 @@ const boom = require('boom')
 const bson = require('bson')
 const crypto = require('crypto')
 const underscore = require('underscore')
-const uuid = require('uuid')
+const uuidV4 = require('uuid/v4')
 const { verify } = require('http-request-signature')
 
 const utils = require('bat-utils')
@@ -179,7 +179,7 @@ const createPersona = function (runtime) {
       return reply(boom.badData('invalid registrar proof: ' + JSON.stringify(proof)))
     }
 
-    const paymentId = uuid.v4().toLowerCase()
+    const paymentId = uuidV4().toLowerCase()
     const wallets = runtime.database.get('wallets', debug)
     let result, wallet, requestBody
 

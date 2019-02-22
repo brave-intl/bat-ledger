@@ -182,8 +182,6 @@ v1.getBalances = {
         return props.providerName !== 'publishers'
       }))
 
-    console.log('checking', checkVotes)
-
     const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args) : {
       rows: []
     }
