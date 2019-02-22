@@ -3,7 +3,7 @@
 import {
   serial as test
 } from 'ava'
-import uuid from 'uuid'
+import uuidV4 from 'uuid/v4'
 import _ from 'underscore'
 import {
   insertFromSettlement,
@@ -24,8 +24,8 @@ const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
 }
 docId.toHexString = docId.toString
-const settlementId = uuid.v4().toLowerCase()
-const ownerId = 'publishers#uuid:' + uuid.v4().toLowerCase()
+const settlementId = uuidV4().toLowerCase()
+const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
 const postgres = new Postgres({
   postgres: {
     url: process.env.BAT_POSTGRES_URL
@@ -60,7 +60,7 @@ const referralSettlement = {
   publisher: 'foo.com',
   owner: ownerId,
   settlementId: settlementId,
-  address: uuid.v4().toLowerCase(),
+  address: uuidV4().toLowerCase(),
   amount: '10',
   currency: 'BAT'
 }
@@ -68,7 +68,7 @@ const referralSettlement = {
 const referrals = {
   probi: '10000000000000000000',
   firstId: docId,
-  transactionId: uuid.v4().toLowerCase(),
+  transactionId: uuidV4().toLowerCase(),
   _id: {
     altcurrency: 'BAT',
     owner: ownerId,
@@ -79,7 +79,7 @@ const referrals = {
 const referralsBar = {
   probi: '12000000000000000000',
   firstId: docId,
-  transactionId: uuid.v4().toLowerCase(),
+  transactionId: uuidV4().toLowerCase(),
   _id: {
     altcurrency: 'BAT',
     owner: ownerId,
@@ -203,8 +203,8 @@ test('check earnings total', async t => {
 test('create ads payment fails if bad values are given', async (t) => {
   t.plan(0)
 
-  const paymentId = uuid.v4().toLowerCase()
-  const transactionId = uuid.v4().toLowerCase()
+  const paymentId = uuidV4().toLowerCase()
+  const transactionId = uuidV4().toLowerCase()
   const url = `/v1/accounts/${paymentId}/transactions/ads/${transactionId}`
 
   await eyeshadeAgent
@@ -221,8 +221,8 @@ test('create ads payment fails if bad values are given', async (t) => {
 test('ads payment api inserts a transaction into the table and errs on subsequent tries', async (t) => {
   t.plan(0)
 
-  const paymentId = uuid.v4().toLowerCase()
-  const transactionId = uuid.v4().toLowerCase()
+  const paymentId = uuidV4().toLowerCase()
+  const transactionId = uuidV4().toLowerCase()
   const url = `/v1/accounts/${paymentId}/transactions/ads/${transactionId}`
   const payload = {
     amount: '1'

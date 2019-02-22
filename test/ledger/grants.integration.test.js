@@ -4,7 +4,7 @@ import {
 import BigNumber from 'bignumber.js'
 import crypto from 'crypto'
 import anonize from 'node-anonize2-relic'
-import { v4 } from 'uuid'
+import uuidV4 from 'uuid/v4'
 import { sign } from 'http-request-signature'
 import tweetnacl from 'tweetnacl'
 import _ from 'underscore'
@@ -34,14 +34,14 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
   const url = '/v2/grants'
   await ledgerAgent.post(url).send(expired).expect(ok)
 
-  const personaId = v4().toLowerCase()
+  const personaId = uuidV4().toLowerCase()
 
   var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
   body = {
-    label: v4().toLowerCase(),
+    label: uuidV4().toLowerCase(),
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
@@ -209,14 +209,14 @@ test('claim grants with attestations', async (t) => {
   }
   await ledgerAgent.post(url).send(grants).expect(ok)
 
-  const personaId = v4().toLowerCase()
+  const personaId = uuidV4().toLowerCase()
 
   var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
   body = {
-    label: v4().toLowerCase(),
+    label: uuidV4().toLowerCase(),
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
@@ -320,7 +320,7 @@ test('protocolVersion 4 does not send back ads when none are available', async (
   const url = '/v4/grants'
   const promotionId = 'cf0075c8-3902-46c0-be77-b8d8f7d83755'
   const adPromotionId = 'bad49132-de38-47e7-8003-986af88eeb1c'
-  const personaId = v4().toLowerCase()
+  const personaId = uuidV4().toLowerCase()
 
   const ledgerDB = await connectToDb('ledger')
   const wallets = ledgerDB.collection('wallets')
@@ -330,7 +330,7 @@ test('protocolVersion 4 does not send back ads when none are available', async (
 
   const keypair = tweetnacl.sign.keyPair()
   body = {
-    label: v4().toLowerCase(),
+    label: uuidV4().toLowerCase(),
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
@@ -402,7 +402,7 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
   const promotionId = 'cf0075c8-3902-46c0-be77-b8d8f7d83755'
   const adPromotionId = 'bad49132-de38-47e7-8003-986af88eeb1c'
   const providerId = '6e3824f6-9eec-4f56-9719-8addaffe3ff1'
-  const personaId = v4().toLowerCase()
+  const personaId = uuidV4().toLowerCase()
 
   const ledgerDB = await connectToDb('ledger')
   const wallets = ledgerDB.collection('wallets')
@@ -412,7 +412,7 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
 
   const keypair = tweetnacl.sign.keyPair()
   body = {
-    label: v4().toLowerCase(),
+    label: uuidV4().toLowerCase(),
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }

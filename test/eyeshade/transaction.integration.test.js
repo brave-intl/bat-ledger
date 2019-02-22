@@ -6,7 +6,7 @@ import { createdTimestamp } from 'bat-utils/lib/extras-utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import Currency from 'bat-utils/lib/runtime-currency'
 import { insertFromSettlement, insertFromReferrals, insertFromVoting, updateBalances } from '../../eyeshade/lib/transaction'
-import uuid from 'uuid'
+import uuidV4 from 'uuid/v4'
 import _ from 'underscore'
 
 import {
@@ -38,8 +38,8 @@ const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
 }
 docId.toHexString = docId.toString
-const settlementId = uuid.v4().toLowerCase()
-const ownerId = 'publishers#uuid:' + uuid.v4().toLowerCase()
+const settlementId = uuidV4().toLowerCase()
+const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
 
 const contributionSettlement = {
   probi: '9500000000000000000',
@@ -50,7 +50,7 @@ const contributionSettlement = {
   publisher: 'foo.com',
   owner: ownerId,
   settlementId: settlementId,
-  address: uuid.v4().toLowerCase(),
+  address: uuidV4().toLowerCase(),
   amount: '9.5',
   currency: 'BAT'
 }
@@ -64,7 +64,7 @@ const referralSettlement = {
   publisher: 'foo.com',
   owner: ownerId,
   settlementId: settlementId,
-  address: uuid.v4().toLowerCase(),
+  address: uuidV4().toLowerCase(),
   amount: '10',
   currency: 'BAT'
 }
@@ -202,7 +202,7 @@ test('settlement transaction throws on missing owner', async t => {
 const voting = {
   amount: '9.5',
   fees: '0.5',
-  surveyorId: uuid.v4().toLowerCase(),
+  surveyorId: uuidV4().toLowerCase(),
   channel: 'foo.com'
 }
 
@@ -265,7 +265,7 @@ test('voting and contribution settlement transaction', async t => {
 const referrals = {
   probi: '10000000000000000000',
   firstId: docId,
-  transactionId: uuid.v4().toLowerCase(),
+  transactionId: uuidV4().toLowerCase(),
   _id: {
     altcurrency: 'BAT',
     owner: ownerId,

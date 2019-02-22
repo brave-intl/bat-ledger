@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import dotenv from 'dotenv'
 import tweetnacl from 'tweetnacl'
 import test from 'ava'
-import uuid from 'uuid'
+import uuidV4 from 'uuid/v4'
 import { sign } from 'http-request-signature'
 
 import Wallet from './runtime-wallet'
@@ -51,7 +51,7 @@ test('validateTxSignature: works', async t => {
   t.throws(() => { wallet.validateTxSignature(info, signTxn(wrongKeypair, body)) })
 
   // Invalid destination
-  body = { destination: uuid.v4(), denomination: { currency: 'BAT', amount: '20' } }
+  body = { destination: uuidV4(), denomination: { currency: 'BAT', amount: '20' } }
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
 
   // Invalid currency

@@ -4,7 +4,7 @@ const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
-const uuid = require('uuid')
+const uuidV4 = require('uuid/v4')
 const redis = require('redis')
 const BigNumber = require('bignumber.js')
 const {
@@ -13,7 +13,7 @@ const {
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
 
-const braveYoutubeOwner = 'publishers#uuid:' + uuid.v4().toLowerCase()
+const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
 const eyeshadeCollections = [
@@ -248,8 +248,8 @@ function makeSettlement (type, balance, overwrites = {}) {
     amount: amount.dividedBy(1e18).toString(),
     publisher: braveYoutubePublisher,
     owner: braveYoutubeOwner,
-    transactionId: uuid.v4(),
-    address: uuid.v4(),
-    hash: uuid.v4()
+    transactionId: uuidV4(),
+    address: uuidV4(),
+    hash: uuidV4()
   }, overwrites)
 }

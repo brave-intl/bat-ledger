@@ -1,7 +1,7 @@
 import {
   serial as test
 } from 'ava'
-import uuid from 'uuid'
+import uuidV4 from 'uuid/v4'
 import {
   ok,
   cleanDbs,
@@ -97,7 +97,7 @@ async function insert (date) {
   const db = await connectToDb('ledger')
   const wallets = db.collection('wallets', () => {})
   await wallets.insert({
-    paymentId: uuid.v4(),
+    paymentId: uuidV4(),
     _id: ObjectID.createFromTime((date || new Date()) / 1000),
     balances: {
       confirmed: '0'

@@ -4,7 +4,7 @@ const l10nparser = require('accept-language-parser')
 const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
-const uuid = require('uuid')
+const uuidV4 = require('uuid/v4')
 const wreck = require('wreck')
 
 const utils = require('bat-utils')
@@ -673,7 +673,7 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
 
 const uploadGrants = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
-    const batchId = uuid.v4().toLowerCase()
+    const batchId = uuidV4().toLowerCase()
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
@@ -965,7 +965,7 @@ v3.attestations = {
     const debug = braveHapi.debug(module, request)
     const wallets = database.get('wallets', debug)
 
-    const nonce = uuid.v4()
+    const nonce = uuidV4()
 
     const $set = {
       nonce: Buffer.from(nonce).toString('base64')
@@ -1082,7 +1082,7 @@ function v4CreateGrantQuery ({
 
 function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
   return (runtime) => async (request, reply) => {
-    const batchId = uuid.v4().toLowerCase()
+    const batchId = uuidV4().toLowerCase()
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)

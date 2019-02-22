@@ -3,7 +3,7 @@
 import { serial as test } from 'ava'
 import dotenv from 'dotenv'
 import Cache from './runtime-cache'
-import { v4 } from 'uuid'
+import uuidV4 from 'uuid/v4'
 
 dotenv.config()
 
@@ -30,8 +30,8 @@ test('cache.accessor', (t) => {
   t.is(cache.accessor(), undefined)
 })
 
-const key = v4()
-const unique = v4()
+const key = uuidV4()
+const unique = uuidV4()
 // this can all be done without prefixes
 runDelGetSet()
 // prefixed does not collide with non prefixed

@@ -1,6 +1,6 @@
 'use strict'
 import { serial as test } from 'ava'
-import uuid from 'uuid'
+import uuidV4 from 'uuid/v4'
 import {
   cleanDbs,
   cleanPgDb,
@@ -30,19 +30,19 @@ test('unauthed requests cannot post settlement', async t => {
 test('cannot post payouts if the publisher field is blank and type is not manual', async t => {
   const url = `/v2/publishers/settlement`
   const manualSettlement = {
-    owner: 'publishers#uuid:' + uuid.v4().toLowerCase(),
+    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
     publisher: '',
-    address: uuid.v4().toLowerCase(),
+    address: uuidV4().toLowerCase(),
     altcurrency: 'BAT',
     probi: '5000000000000000000',
     fees: '0',
     currency: 'BAT',
     amount: '5',
     commission: '0.0',
-    transactionId: uuid.v4().toLowerCase(),
+    transactionId: uuidV4().toLowerCase(),
     type: 'contribution',
-    documentId: uuid.v4().toLowerCase(),
-    hash: uuid.v4().toLowerCase()
+    documentId: uuidV4().toLowerCase(),
+    hash: uuidV4().toLowerCase()
   }
 
   const reponse = await eyeshadeAgent.post(url).send([manualSettlement])
@@ -56,19 +56,19 @@ test('can post a manual settlement from publisher app using token auth', async t
   const client = await postgres.connect()
 
   const manualSettlement = {
-    owner: 'publishers#uuid:' + uuid.v4().toLowerCase(),
+    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
     publisher: '',
-    address: uuid.v4().toLowerCase(),
+    address: uuidV4().toLowerCase(),
     altcurrency: 'BAT',
     probi: '5000000000000000000',
     fees: '0',
     currency: 'BAT',
     amount: '5',
     commission: '0.0',
-    transactionId: uuid.v4().toLowerCase(),
+    transactionId: uuidV4().toLowerCase(),
     type: 'manual',
-    documentId: uuid.v4().toLowerCase(),
-    hash: uuid.v4().toLowerCase()
+    documentId: uuidV4().toLowerCase(),
+    hash: uuidV4().toLowerCase()
   }
 
   await eyeshadeAgent.post(url).send([manualSettlement]).expect(200)

@@ -6,7 +6,7 @@ import anonize from 'node-anonize2-relic'
 import crypto from 'crypto'
 import { serial as test } from 'ava'
 import tweetnacl from 'tweetnacl'
-import uuid from 'uuid'
+import uuidV4 from 'uuid/v4'
 import { sign } from 'http-request-signature'
 import _ from 'underscore'
 import dotenv from 'dotenv'
@@ -251,12 +251,12 @@ WHERE
   let transactions
   const encoded = encodeURIComponent(braveYoutubeOwner)
   const transactionsURL = `/v1/accounts/${encoded}/transactions`
-  const referralKey = uuid.v4().toLowerCase()
+  const referralKey = uuidV4().toLowerCase()
   const referralURL = '/v1/referrals/' + referralKey
   const referral = {
     ownerId: braveYoutubeOwner,
     channelId: braveYoutubePublisher,
-    downloadId: uuid.v4(),
+    downloadId: uuidV4(),
     platform: 'android',
     finalized: (new Date()).toISOString()
   }
@@ -481,8 +481,8 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
 })
 
 async function createUserWallet (t) {
-  const personaId = uuid.v4().toLowerCase()
-  const viewingId = uuid.v4().toLowerCase()
+  const personaId = uuidV4().toLowerCase()
+  const viewingId = uuidV4().toLowerCase()
   let response, octets, headers, payload
 
   response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
@@ -490,7 +490,7 @@ async function createUserWallet (t) {
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
   const keypair = tweetnacl.sign.keyPair()
   let body = {
-    label: uuid.v4().toLowerCase(),
+    label: uuidV4().toLowerCase(),
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }

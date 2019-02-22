@@ -109,7 +109,6 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
   checkRates(wallet2)
 
   function checkRates (wallet) {
-    console.log(wallet)
     const { rates } = wallet
     const keys = _.keys(rates)
     for (let ticker of keys) {
