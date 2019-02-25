@@ -32,7 +32,7 @@
     "lint-fix": "npm run lint -- --fix",
     "security": "npm run lint && npm audit",
     "test-integration": "ava -v -s test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
-    "test-unit": "ava -v",
+    "test-unit": "ava -v bat-utils/**/*.test.js",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockerservices",
@@ -135,11 +135,24 @@
     ],
     "parser": "babel-eslint"
   },
-  "ava": {
-    "files": [
-      "**/*.test.js",
-      "!test/**/*.test.js",
-      "!dist/**/*.test.js"
+  "nyc": {
+    "per-file": true,
+    "all": true,
+    "watermarks": {
+      "lines": [90, 100],
+      "functions": [90, 100],
+      "branches": [90, 100],
+      "statements": [90, 100]
+    },
+    "include": [
+      "eyeshade/**/*.js",
+      "ledger/**/*.js",
+      "balance/**/*.js",
+      "bat-utils/**/*.js"
+    ],
+    "reporter": [
+      "lcov",
+      "text-summary"
     ]
   }
 }
