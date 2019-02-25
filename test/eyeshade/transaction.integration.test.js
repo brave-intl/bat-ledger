@@ -345,7 +345,7 @@ test('can add transactions for different account types', async (t) => {
     const createdAt = new Date()
     const id = uuidV4().toLowerCase()
     const cardId = uuidV4()
-    const type = (Math.random() < 1 / 3) ? 'transfer' : (Math.random() < 0.5 ? 'deposit' : 'withdrawal')
+    const type = (Math.random() < (1 / 3)) ? 'transfer' : (Math.random() < 0.5 ? 'deposit' : 'withdrawal')
     const inputs = {
       // should be the transaction id from the chain
       id,
