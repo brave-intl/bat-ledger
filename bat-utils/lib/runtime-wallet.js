@@ -232,7 +232,8 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
       address: txn.destination,
       fee: 0,
       status: 'accepted',
-      grantIds: grantIds
+      grantIds: grantIds,
+      grantTotal: new BigNumber(0)
     }
   }
 
