@@ -56,6 +56,7 @@ RETURNING *;
 async function insertUserDepositFromChain (runtime, client, chainDoc = {}) {
   let {
     id,
+    type,
     amount,
     chain,
     cardId,
@@ -79,7 +80,7 @@ async function insertUserDepositFromChain (runtime, client, chainDoc = {}) {
     id: uuidv5(`${chain}-${id}`, 'f7a8b983-2383-48f2-9e4f-717f6fe3225d'),
     createdAt: createdAt / 1000,
     description: `deposits from ${chain} chain`,
-    transactionType: 'user_deposit',
+    transactionType: `user_${type}`,
     documentId: id,
     fromAccount: address,
     fromAccountType: chain,

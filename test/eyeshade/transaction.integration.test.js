@@ -345,19 +345,22 @@ test('can add transactions for different account types', async (t) => {
     const createdAt = new Date()
     const id = uuidV4().toLowerCase()
     const cardId = uuidV4()
-    const txs = await insertUserDepositFromChain(runtime, client, {
+    const type = (Math.random() < 1 / 3) ? 'transfer' : (Math.random() < 0.5 ? 'deposit' : 'withdrawal')
+    const inputs = {
       // should be the transaction id from the chain
       id,
+      type,
       amount: 1,
       chain,
       cardId,
       createdAt,
       address: fakeAddress
-    })
+    }
+    const txs = await insertUserDepositFromChain(runtime, client, inputs)
     const expectedResults = [{
       created_at: createdAt,
       description: `deposits from ${chain} chain`,
-      transaction_type: 'user_deposit',
+      transaction_type: `user_${type}`,
       document_id: id,
       from_account: fakeAddress,
       from_account_type: chain,
