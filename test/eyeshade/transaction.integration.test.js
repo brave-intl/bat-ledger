@@ -360,7 +360,7 @@ test('can add transactions for different account types', async (t) => {
     const expectedResults = [{
       created_at: createdAt,
       description: `deposits from ${chain} chain`,
-      transaction_type: `user_${type}`,
+      transaction_type: `user_deposit`,
       document_id: id,
       from_account: fakeAddress,
       from_account_type: chain,
