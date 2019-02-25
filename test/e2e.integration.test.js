@@ -681,13 +681,6 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
     viewingId: viewingId
   }
 
-  // TODO re add in this test
-  // first post to an old contribution surveyor, this should fail
-  // response = await ledgerAgent.put('/v2/wallet/' + paymentId).send(payload)
-  // t.true(response.status === 410)
-
-  // payload.surveyorId = surveyorId
-
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
