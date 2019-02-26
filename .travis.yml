@@ -68,5 +68,7 @@ before_script:
   - sleep 20
 after_failure:
   - npm run docker-log-detached
+after_script:
+  - npm run docker-migrate-down-all
 
 after_success: npx codecov --file=./coverage/lcov.info

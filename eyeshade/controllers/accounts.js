@@ -14,6 +14,11 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 
+const settlementDestinationTypes = ['uphold']
+const accountTypes = ['channel', 'owner'].concat(settlementDestinationTypes)
+const transactionTypes = ['contribution', 'referral', 'contribution_settlement', 'referral_settlement', 'fees', 'scaleup', 'manual', 'user_deposit', 'manual_payout']
+
+const accountTypeValidation = Joi.string().valid(accountTypes)
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
 const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
 const joiPaid = Joi.number().description('amount paid out in BAT')
@@ -96,9 +101,9 @@ ORDER BY created_at
       amount: Joi.number().required().description('amount in BAT'),
       settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
       settlement_amount: Joi.number().optional().description('amount in settlement_currency'),
-      settlement_destination_type: Joi.string().optional().valid(['uphold']).description('type of address settlement was paid to'),
+      settlement_destination_type: Joi.string().optional().valid(settlementDestinationTypes).description('type of address settlement was paid to'),
       settlement_destination: Joi.string().optional().description('destination address of the settlement'),
-      transaction_type: Joi.string().valid(['contribution', 'referral', 'contribution_settlement', 'referral_settlement', 'fees', 'scaleup', 'manual']).required().description('type of the transaction')
+      transaction_type: Joi.string().valid(transactionTypes).required().description('type of the transaction')
     }))
   }
 }
@@ -107,7 +112,6 @@ ORDER BY created_at
    GET /v1/accounts/balances/{type}/top
 */
 
-const accountTypes = ['channel', 'owner', 'uphold']
 v1.getTopBalances =
 { handler: (runtime) => {
   return async (request, reply) => {
@@ -137,7 +141,7 @@ v1.getTopBalances =
 
   validate: {
     params: Joi.object().keys({
-      type: Joi.string().required().valid(accountTypes).description('balance types to retrieve')
+      type: accountTypeValidation.required().description('balance types to retrieve')
     }),
     query: {
       limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
@@ -148,7 +152,7 @@ v1.getTopBalances =
     schema: Joi.array().items(
       Joi.object().keys({
         account_id: Joi.string(),
-        account_type: Joi.string().valid(accountTypes),
+        account_type: accountTypeValidation,
         balance: Joi.number().description('balance in BAT')
       })
     )
@@ -220,7 +224,7 @@ v1.getBalances = {
     schema: Joi.array().items(
        Joi.object().keys({
          account_id: Joi.string(),
-         account_type: Joi.string().valid(['channel', 'owner', 'uphold']),
+         account_type: Joi.string().valid(accountTypes),
          balance: Joi.number().description('balance in BAT')
        })
      )

@@ -38,6 +38,7 @@
     "docker-up-detached": "docker-compose up -d $npm_package_config_dockerservices",
     "docker-migrate-up": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -w /usr/src/app/eyeshade eyeshade-worker ./bin/migrate-up.sh",
     "docker-migrate-down": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -w /usr/src/app/eyeshade eyeshade-worker ./bin/migrate-down.sh",
+    "docker-migrate-down-all": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -w /usr/src/app/eyeshade eyeshade-worker bash ./bin/migrate-down-all.sh",
     "docker-log-detached": "declare -a array=(\"$npm_package_config_dockerservices\"); { for item in $array; do echo ${item} && docker logs ${item}; done }",
     "postinstall": "test -e .git && { for file in `ls .git-hooks`; do ln -sf ../../.git-hooks/${file} .git/hooks/${file}; done } || true"
   },
