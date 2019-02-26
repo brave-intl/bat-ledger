@@ -345,8 +345,9 @@ Wallet.providers.uphold = {
       throw ex
     }
 
-    const balanceProbi = new BigNumber(cardInfo.balance).times(this.currency.alt2scale(info.altcurrency))
-    const spendableProbi = new BigNumber(cardInfo.available).times(this.currency.alt2scale(info.altcurrency))
+    const altScale = this.currency.alt2scale(info.altcurrency)
+    const balanceProbi = new BigNumber(cardInfo.balance || 0).times(altScale)
+    const spendableProbi = new BigNumber(cardInfo.available || 0).times(altScale)
     return {
       balance: balanceProbi.toString(),
       spendable: spendableProbi.toString(),
