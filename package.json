@@ -21,7 +21,9 @@
     "start-eyeshade-worker": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "start-ledger": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node ledger/server.js",
     "start-ledger-worker": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
-    "test": "npm run test-unit && npm run test-integration",
+    "test": "nyc --reporter=html --reporter=text npm run test-all",
+    "coverage": "nyc report --reporter=text-lcov | coveralls",
+    "test-all": "npm run test-unit && npm run test-integration",
     "docker-test": "docker-compose run --rm -v $(pwd)/test:/usr/src/app/test ledger-web npm run test",
     "mongo-reset": "docker exec -it ledger-mongo mongo eyeshade --eval \"db.dropDatabase()\" && docker exec -it ledger-mongo mongo ledger --eval \"db.dropDatabase()\"",
     "redis-flush": "docker exec -it grant-redis redis-cli flushdb",
@@ -30,7 +32,7 @@
     "lint-fix": "npm run lint -- --fix",
     "security": "npm run lint && npm audit",
     "test-integration": "ava -v -s test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
-    "test-unit": "ava -v",
+    "test-unit": "ava -v bat-utils/**/*.test.js",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockerservices",
@@ -121,6 +123,8 @@
   "devDependencies": {
     "ava": "^1.0.0-beta.0",
     "babel-eslint": "^8.2.3",
+    "coveralls": "^3.0.3",
+    "nyc": "^13.3.0",
     "standard": "^10.0.3",
     "supertest": "github:brave-intl/supertest"
   },
@@ -131,11 +135,24 @@
     ],
     "parser": "babel-eslint"
   },
-  "ava": {
-    "files": [
-      "**/*.test.js",
-      "!test/**/*.test.js",
-      "!dist/**/*.test.js"
+  "nyc": {
+    "per-file": true,
+    "all": true,
+    "watermarks": {
+      "lines": [90, 100],
+      "functions": [90, 100],
+      "branches": [90, 100],
+      "statements": [90, 100]
+    },
+    "include": [
+      "eyeshade/**/*.js",
+      "ledger/**/*.js",
+      "balance/**/*.js",
+      "bat-utils/**/*.js"
+    ],
+    "reporter": [
+      "lcov",
+      "text-summary"
     ]
   }
 }
