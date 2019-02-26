@@ -4,9 +4,7 @@ const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
 const surveyors = require('../lib/surveyor')
-const {
-  BigNumber
-} = require('bat-utils/lib/extras-utils')
+const BigNumber = require('bignumber.js')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
