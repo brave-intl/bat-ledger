@@ -20,6 +20,11 @@ const upholdBaseUrls = {
   sandbox: 'https://api-sandbox.uphold.com'
 }
 
+const cardInfoSchema = Joi.object().keys({
+  balance: braveJoi.string().numeric().required(),
+  available: braveJoi.string().numeric().required()
+}).unknown(true).description('a pared down version of card info from uphold')
+
 const Wallet = function (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
 
@@ -345,8 +350,19 @@ Wallet.providers.uphold = {
       throw ex
     }
 
-    const balanceProbi = new BigNumber(cardInfo.balance).times(this.currency.alt2scale(info.altcurrency))
-    const spendableProbi = new BigNumber(cardInfo.available).times(this.currency.alt2scale(info.altcurrency))
+    const altScale = this.currency.alt2scale(info.altcurrency)
+    const { error } = Joi.validate(cardInfo, cardInfoSchema)
+    if (error) {
+      this.runtime.captureException(error, {
+        extra: {
+          providerId: info.providerId,
+          card: cardInfo
+        }
+      })
+      throw error
+    }
+    const balanceProbi = new BigNumber(cardInfo.balance).times(altScale)
+    const spendableProbi = new BigNumber(cardInfo.available).times(altScale)
     return {
       balance: balanceProbi.toString(),
       spendable: spendableProbi.toString(),
