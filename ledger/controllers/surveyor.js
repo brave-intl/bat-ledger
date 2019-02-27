@@ -295,23 +295,6 @@ v2.update =
 /*
    GET /v2/surveyor/{surveyorType}/{surveyorId}/{uId}
  */
-const currencyPattern = /^[0-9A-Z]{2,}$/
-const joiSurveyor = Joi.object().keys({
-  surveyorId: Joi.string().required().description('identifier for the surveyor'),
-  surveyVK: Joi.string().required().description('public key for the surveyor'),
-  registrarVK: Joi.string().required().description('public key for the associated registrar'),
-  signature: Joi.string().required().description('initialization response for the surveyor'),
-  payload: Joi.object().keys({
-    cohort: Joi.string().allow(['control', 'grant', 'test']),
-    adFree: Joi.object().keys({
-      fee: Joi.object().pattern(currencyPattern, Joi.number()).min(1).description('value after fees'),
-      choices: Joi.object().pattern(currencyPattern, Joi.array().items(Joi.number().required()).min(1)).description('currencies to choose to send'),
-      votes: Joi.number().optional().description('number of votes for distribution'),
-      altcurrency: Joi.string().regex(currencyPattern).optional().description('currency to be distributed'),
-      probi: Joi.string().regex(/\d+/).optional().description('amount of the altcurrency to be distributed')
-    }).required().description('settings for ad free mode')
-  }).required().description('additional information')
-}).required().description('response payload')
 
 v2.phase1 =
 { handler: (runtime) => {
@@ -361,12 +344,8 @@ v2.phase1 =
     })
 
     const payload = surveyor.payload
-    const surveyorJSON = underscore.extend({
-      signature,
-      payload
-    }, surveyor.publicInfo())
 
-    reply(surveyorJSON)
+    reply(underscore.extend({ signature: signature, payload: payload }, surveyor.publicInfo()))
   }
 },
 
@@ -383,7 +362,13 @@ v2.phase1 =
   },
 
   response: {
-    schema: joiSurveyor
+    schema: Joi.object().keys({
+      surveyorId: Joi.string().required().description('identifier for the surveyor'),
+      surveyVK: Joi.string().required().description('public key for the surveyor'),
+      registrarVK: Joi.string().required().description('public key for the associated registrar'),
+      signature: Joi.string().required().description('initialization response for the surveyor'),
+      payload: Joi.object().optional().description('additional information')
+    })
   }
 }
 
@@ -688,14 +673,15 @@ v2.batchSurveyor =
 
     const now = underscore.now()
 
-    const payload = surveyors.map((surveyor) => {
+    let payload = []
+    surveyors.forEach(surveyor => {
       signature = surveyor.sign(uId)
       runtime.newrelic.recordCustomEvent('sign', {
         surveyorId: surveyor.surveyorId,
         surveyorType: surveyor.surveyorType,
         duration: underscore.now() - now
       })
-      return underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo())
+      payload.push(underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo()))
     })
 
     reply(payload)
@@ -715,7 +701,13 @@ v2.batchSurveyor =
   response: {
     schema: Joi.alternatives().try(
       Joi.array().items(
-        joiSurveyor
+        Joi.object().keys({
+          surveyorId: Joi.string().required().description('identifier for the surveyor'),
+          surveyVK: Joi.string().required().description('public key for the surveyor'),
+          registrarVK: Joi.string().required().description('public key for the associated registrar'),
+          signature: Joi.string().required().description('initialization response for the surveyor'),
+          payload: Joi.object().optional().description('additional information')
+        })
       ),
       Joi.object().keys({
         statusCode: Joi.number().min(400).max(599).required(),
