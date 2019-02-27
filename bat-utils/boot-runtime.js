@@ -31,6 +31,7 @@ const hash = {
 module.exports = Object.assign(Runtime, hash)
 
 Runtime.prototype = {
+  shutdown,
   setup: function (config) {
     const debug = new SDebug('boot')
     _.assign(this, {
@@ -62,6 +63,12 @@ function Runtime (config) {
   sanity(config)
 
   this.setup(config)
+}
+
+async function shutdown () {
+  const runtime = this
+  await runtime.database.db.close()
+  await runtime.queue.rsmq.quit()
 }
 
 function reduction (config) {

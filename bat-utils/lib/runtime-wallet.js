@@ -543,6 +543,7 @@ Wallet.providers.mock = {
   }
 }
 Wallet.providers.mockHttpSignature = Wallet.providers.mock
+Wallet.upholdBaseUrls = upholdBaseUrls
 
 module.exports = Wallet
 

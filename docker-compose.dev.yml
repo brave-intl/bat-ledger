@@ -4,25 +4,30 @@ services:
   ledger-web:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
+      - "./bin:/usr/src/app/bin"
       - "./ledger:/usr/src/app/ledger"
     command: "npm run start-ledger"
   ledger-worker:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
+      - "./bin:/usr/src/app/bin"
       - "./ledger:/usr/src/app/ledger"
     command: "npm run start-ledger-worker"
   eyeshade-web:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
+      - "./bin:/usr/src/app/bin"
       - "./eyeshade:/usr/src/app/eyeshade"
     command: "npm run start-eyeshade"
   eyeshade-worker:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
+      - "./bin:/usr/src/app/bin"
       - "./eyeshade:/usr/src/app/eyeshade"
     command: "npm run start-eyeshade-worker"
   balance-web:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
+      - "./bin:/usr/src/app/bin"
       - "./balance:/usr/src/app/balance"
     command: "npm run start-balance"
