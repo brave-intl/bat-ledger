@@ -774,8 +774,8 @@ function choicesPrices (ratio) {
     [6, 10, 14, 20, 40],
     [9, 12, 20, 35, 50],
     [15, 25, 35, 50, 100],
-    [20, 35, 50, 85, 175],
-    [30, 50, 70, 100, 200]
+    [20, 35, 50, 85],
+    [30, 50, 70, 100]
   ]
   const priceIncrements = [1, 0.8, 0.6, 0.5, 0.35, 0.2, 0.15, 0.1]
   let index = underscore.findIndex(priceIncrements, (increment) => {
