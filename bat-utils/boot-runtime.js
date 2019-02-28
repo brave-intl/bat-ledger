@@ -1,6 +1,4 @@
-
 const path = require('path')
-
 const SDebug = require('sdebug')
 const _ = require('underscore')
 
@@ -67,8 +65,10 @@ function Runtime (config) {
 
 async function shutdown () {
   const runtime = this
-  await runtime.database.db.close()
-  await runtime.queue.rsmq.quit()
+  if (runtime.database) await runtime.database.db.close()
+  if (runtime.queue) await runtime.queue.rsmq.quit()
+  if (runtime.cache) await runtime.cache.cache.quit()
+  if (runtime.prometheus) await runtime.prometheus.publisher.quit()
 }
 
 function reduction (config) {
