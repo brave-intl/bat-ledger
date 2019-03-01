@@ -228,13 +228,40 @@ test('ads payment api inserts a transaction into the table and errs on subsequen
     .expect(409)
 })
 
+test('a uuid can be sent as an account id', async (t) => {
+  t.plan(2)
+  let response
+
+  const uuid = uuidV4()
+  const url = `/v1/accounts/${uuid}/transactions`
+  response = await eyeshadeAgent.get(url).send().expect(ok)
+  t.deepEqual(response.body, [], 'no txs matched')
+
+  const transaction = {
+    id: uuidV4(),
+    createdAt: +(new Date()) / 1000,
+    description: 'a random manual tx',
+    transactionType: 'manual',
+    documentId: uuidV4(),
+    fromAccount: toOwnerId,
+    fromAccountType: 'uphold',
+    toAccount: uuid,
+    toAccountType: 'uphold',
+    amount: 1
+  }
+  await insertTransaction(runtime.postgres, transaction)
+  response = await eyeshadeAgent.get(url).send().expect(ok)
+  const { body } = response
+  t.is(body.length, 1, 'one tx is matched')
+})
+
 test('an empty channel can exist', async (t) => {
   t.plan(3)
   let response
 
   const url = `/v1/accounts/${encodeURIComponent(ownerId)}/transactions`
   response = await eyeshadeAgent.get(url).send().expect(ok)
-  t.deepEqual(response.body, [])
+  t.deepEqual(response.body, [], 'no tx matched')
 
   const transaction = {
     id: uuidV4(),
