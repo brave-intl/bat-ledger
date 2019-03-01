@@ -71,7 +71,8 @@ ORDER BY created_at
     const transactions = result.rows
 
     const txs = _.map(transactions, (tx) => {
-      return _.omit(tx, (value) => value == null)
+      const omitted = _.omit(tx, (value) => value == null)
+      return Object.assign({ channel: '' }, omitted)
     })
 
     reply(txs)
@@ -97,7 +98,10 @@ ORDER BY created_at
     schema: Joi.array().items(Joi.object().keys({
       created_at: Joi.date().iso().required().description('when the transaction was created'),
       description: Joi.string().required().description('description of the transaction'),
-      channel: braveJoi.string().publisher().required().description('channel transaction is for'),
+      channel: Joi.alternatives().try(
+        braveJoi.string().publisher().required().description('channel transaction is for'),
+        Joi.string().default('').allow(['']).description('empty string returned')
+      ),
       amount: Joi.number().required().description('amount in BAT'),
       settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
       settlement_amount: Joi.number().optional().description('amount in settlement_currency'),
