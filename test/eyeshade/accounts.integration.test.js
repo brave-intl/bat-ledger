@@ -6,11 +6,12 @@ import {
 import uuidV4 from 'uuid/v4'
 import _ from 'underscore'
 import {
+  insertTransaction,
   insertFromSettlement,
   insertFromReferrals
 } from '../../eyeshade/lib/transaction'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import Currency from 'bat-utils/lib/runtime-currency'
+
+import { Runtime } from 'bat-utils'
 import {
   eyeshadeAgent,
   cleanPgDb,
@@ -26,30 +27,18 @@ const docId = {
 docId.toHexString = docId.toString
 const settlementId = uuidV4().toLowerCase()
 const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
-const postgres = new Postgres({
-  postgres: {
-    url: process.env.BAT_POSTGRES_URL
+const toOwnerId = 'publishers#uuid:' + uuidV4().toLowerCase()
+const runtime = new Runtime({
+  postgres: { url: process.env.BAT_POSTGRES_URL },
+  currency: {
+    url: process.env.BAT_RATIOS_URL,
+    access_token: process.env.BAT_RATIOS_TOKEN
+  },
+  wallet: {
+    settlementAddress: { 'BAT': '0xdeadbeef' },
+    adsPayoutAddress: { 'BAT': '0xdeadbeef' }
   }
 })
-const runtime = {
-  config: {
-    wallet: {
-      settlementAddress: {
-        'BAT': '0xdeadbeef'
-      },
-      adsPayoutAddress: {
-        'BAT': '0xdeadbeef'
-      }
-    }
-  },
-  currency: new Currency({
-    currency: {
-      url: process.env.BAT_RATIOS_URL,
-      access_token: process.env.BAT_RATIOS_TOKEN
-    }
-  }),
-  postgres
-}
 
 const referralSettlement = {
   probi: '10000000000000000000',
@@ -87,7 +76,7 @@ const referralsBar = {
   }
 }
 
-test.afterEach(cleanPgDb(postgres))
+test.afterEach(cleanPgDb(runtime.postgres))
 
 const auth = (agent) => agent.set('Authorization', 'Bearer foobarfoobar')
 
@@ -237,4 +226,32 @@ test('ads payment api inserts a transaction into the table and errs on subsequen
     .put(url)
     .send(payload)
     .expect(409)
+})
+
+test('an empty channel can exist', async (t) => {
+  t.plan(3)
+  let response
+
+  const url = `/v1/accounts/${encodeURIComponent(ownerId)}/transactions`
+  response = await eyeshadeAgent.get(url).send().expect(ok)
+  t.deepEqual(response.body, [])
+
+  const transaction = {
+    id: uuidV4(),
+    createdAt: +(new Date()) / 1000,
+    description: 'a random manual tx',
+    transactionType: 'manual',
+    documentId: uuidV4(),
+    fromAccount: toOwnerId,
+    fromAccountType: 'uphold',
+    toAccount: ownerId,
+    toAccountType: 'uphold',
+    amount: 1
+  }
+  await insertTransaction(runtime.postgres, transaction)
+  response = await eyeshadeAgent.get(url).send().expect(ok)
+  const { body } = response
+  const tx = body[0]
+  t.is(body.length, 1, 'only one tx')
+  t.is(tx.channel, '', 'channel can be empty')
 })
