@@ -89,8 +89,11 @@ ORDER BY created_at
   tags: [ 'api', 'publishers' ],
 
   validate: {
-    params: { account:
-      braveJoi.string().owner().required().description('the owner identity')
+    params: {
+      account: Joi.alternatives().try(
+        braveJoi.string().owner(),
+        Joi.string().guid()
+      ).required().description('the owner identity')
     }
   },
 
