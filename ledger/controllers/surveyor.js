@@ -8,6 +8,7 @@ const surveyors = require('../lib/surveyor')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { surveyorChoices } = utils.extras.utils
 
 const defaultCohorts = ['control', 'grant', 'ads']
 const v1 = {}
@@ -36,8 +37,7 @@ const server = async (request, reply, runtime) => {
     surveyor.payload = entry.payload
     surveyor.parentId = entry.parentId
   }
-
-  return surveyor
+  return surveyor && addSurveyorChoices(runtime, surveyor)
 }
 
 const registrarType = (surveyorType) => {
@@ -740,6 +740,8 @@ module.exports.initialize = async (debug, runtime) => {
   }
 }
 
+module.exports.addSurveyorChoices = addSurveyorChoices
+
 function getVoteRate () {
   return (runtime) => async (request, reply) => {
     const surveyor = await server(request, reply, runtime)
@@ -749,4 +751,18 @@ function getVoteRate () {
       rate: voteRate.toString()
     })
   }
+}
+
+async function addSurveyorChoices (runtime, surveyor = {}) {
+  const payload = surveyor.payload || {}
+  surveyor.payload = payload
+  const adFree = payload.adFree || {}
+  payload.adFree = adFree
+  adFree.choices = await getAdjustedChoices(runtime, 'BAT', ['USD'])
+  return surveyor
+}
+
+async function getAdjustedChoices (runtime, base, currencies) {
+  const rates = await runtime.currency.rates(base, currencies)
+  return underscore.mapObject(rates, surveyorChoices)
 }

@@ -2,6 +2,7 @@ const getPublisherProps = require('bat-publisher').getPublisherProps
 // this can be abstracted elsewhere as soon as we finish #274
 const BigNumber = require('bignumber.js')
 const dotenv = require('dotenv')
+const _ = require('underscore')
 dotenv.config()
 BigNumber.config({
   EXPONENTIAL_AT: 28,
@@ -9,6 +10,7 @@ BigNumber.config({
 })
 
 module.exports = {
+  surveyorChoices,
   timeout,
   extractJws,
   utf8ify,
@@ -75,4 +77,25 @@ function normalizeChannel (channel) {
 
 function justDate (date) {
   return (new Date(date)).toISOString().split('T')[0]
+}
+
+function surveyorChoices (ratio) {
+  const table = [
+    [3, 5, 7, 10, 20],
+    [4, 6, 9, 12, 25],
+    [5, 8, 11, 17, 35],
+    [6, 10, 14, 20, 40],
+    [9, 12, 20, 35, 50],
+    [15, 25, 35, 50, 100],
+    [20, 35, 50, 85],
+    [30, 50, 70, 100]
+  ]
+  const priceIncrements = [1, 0.8, 0.6, 0.5, 0.35, 0.2, 0.15, 0.1]
+  let index = _.findIndex(priceIncrements, (increment) => {
+    return increment <= ratio
+  })
+  if (index < 0) {
+    index = priceIncrements.length - 1
+  }
+  return table[index]
 }

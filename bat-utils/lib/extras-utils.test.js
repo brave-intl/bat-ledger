@@ -4,6 +4,7 @@ import {
   ObjectID
 } from 'mongodb'
 import {
+  surveyorChoices,
   createdTimestamp,
   timeout,
   documentOlderThan,
@@ -61,4 +62,12 @@ test('normalizeChannel', (t) => {
   t.is(normalizeChannel('youtube#channel:Brave'), 'youtube#user:Brave')
   t.is(normalizeChannel('twitch#channel:Brave'), 'twitch#author:Brave')
   t.is(normalizeChannel('www.brave.com'), 'www.brave.com')
+})
+
+test('surveyorChoices', (t) => {
+  t.plan(4)
+  t.deepEqual(surveyorChoices(0.55), [6, 10, 14, 20, 40], 'increment is less than')
+  t.deepEqual(surveyorChoices(0.5), [6, 10, 14, 20, 40], 'increment is equal to')
+  t.deepEqual(surveyorChoices(2), [3, 5, 7, 10, 20], 'increment can be above range')
+  t.deepEqual(surveyorChoices(0.02), [30, 50, 70, 100], 'increment can be below range')
 })

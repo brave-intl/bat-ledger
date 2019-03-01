@@ -1,42 +1,78 @@
 import { serial as test } from 'ava'
-import Postgres from 'bat-utils/lib/runtime-postgres'
+import {
+  Runtime
+} from 'bat-utils'
 import _ from 'underscore'
 import {
   timeout
 } from 'bat-utils/lib/extras-utils'
 import BigNumber from 'bignumber.js'
 import {
+  addSurveyorChoices
+} from '../../ledger/controllers/surveyor'
+import {
+  getSurveyor,
   connectToDb,
   createSurveyor,
   ledgerAgent,
   cleanDbs,
+  cleanPgDb,
   ok
 } from '../utils'
 
-const postgres = new Postgres({
+const runtime = new Runtime({
   postgres: {
     url: process.env.BAT_POSTGRES_URL
+  },
+  currency: {
+    url: process.env.BAT_RATIOS_URL,
+    access_token: process.env.BAT_RATIOS_TOKEN
   }
 })
 
-test.after.always(cleanDbs)
+test.afterEach.always(cleanDbs)
+test.afterEach.always(cleanPgDb(runtime.postgres))
 
 test('verify voting batching endpoint does not error', async t => {
+  t.plan(0)
   const surveyorType = 'voting'
   const url = `/v2/batch/surveyor/${surveyorType}`
   const data = [ { surveyorId: '...', proof: '...' } ]
 
   await ledgerAgent.post(url).send(data).expect(ok)
 
-  t.true(true)
+  const getURL = `/v2/batch/surveyor/16457ddb9913cd7928d3205ab455ecd`
+
+  await ledgerAgent.get(getURL).expect(ok)
 })
 
-test('verify surveyor batching endpoint does not error', async t => {
-  const url = `/v2/batch/surveyor/16457ddb9913cd7928d3205ab455ecd`
+test('verify surveyor sends back choices', async t => {
+  let response
 
-  await ledgerAgent.get(url).expect(ok)
+  const added = await addSurveyorChoices(runtime)
+  response = await createSurveyor()
+  checkResponse(response)
+  response = await getSurveyor()
+  const { choices } = added.payload.adFree
+  console.log('choices', choices) // eslint-disable-line
+  checkResponse(response, choices)
+  t.plan(2 + choices.USD.length)
+  for (let number of choices.USD) {
+    t.true(_.isNumber(number), 'each item is a number')
+  }
+  /*
+  {
+    USD: [20, 35, 50, 85]
+  }
+  */
 
-  t.true(true)
+  function checkResponse (response, expectation) {
+    const { body } = response
+    const { payload } = body
+    const { adFree } = payload
+    const { choices } = adFree
+    t.deepEqual(choices, expectation)
+  }
 })
 
 test('check votes ratio', async (t) => {
@@ -110,7 +146,7 @@ test('required cohorts are added to surveyors', async (t) => {
   await surveyors.remove({
     surveyorId
   })
-  await postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [surveyorId])
+  await runtime.postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [surveyorId])
 
   function findOneSurveyor () {
     return surveyors.findOne({
