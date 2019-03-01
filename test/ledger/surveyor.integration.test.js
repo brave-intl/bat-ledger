@@ -47,7 +47,6 @@ test('verify voting batching endpoint does not error', async t => {
 })
 
 test('verify surveyor sends back choices', async t => {
-  t.plan(7)
   let response
 
   const added = await addSurveyorChoices(runtime)
@@ -57,6 +56,7 @@ test('verify surveyor sends back choices', async t => {
   const { choices } = added.payload.adFree
   console.log('choices', choices) // eslint-disable-line
   checkResponse(response, choices)
+  t.plan(2 + choices.USD.length)
   for (let number of choices.USD) {
     t.true(_.isNumber(number), 'each item is a number')
   }
