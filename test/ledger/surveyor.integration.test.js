@@ -62,7 +62,7 @@ test('verify surveyor sends back choices', async t => {
   }
   /*
   {
-    USD: [20, 35, 50, 85, 175]
+    USD: [20, 35, 50, 85]
   }
   */
 
