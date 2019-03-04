@@ -258,13 +258,8 @@ async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
       let normalizedChannel = normalizeChannel(voteDoc.channel)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
-        const youtubeChannelId = await getYoutubeChannelId(props.providerValue)
-        if (youtubeChannelId === null) {
-          // skip if we can't find the correct youtube channel id
-          return
-        } else {
-          normalizedChannel = 'youtube#channel:' + youtubeChannelId
-        }
+        // skip for now
+        return
       }
 
       const query = `
