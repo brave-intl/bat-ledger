@@ -5,7 +5,6 @@ const {
   createdTimestamp,
   normalizeChannel
 } = require('bat-utils/lib/extras-utils')
-const getYoutubeChannelId = require('bat-utils/lib/youtube')
 
 const knownChains = {
   ETH: 'ethereum',
