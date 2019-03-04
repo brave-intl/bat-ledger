@@ -58,22 +58,6 @@ test('verify frozen occurs when daily is run', async t => {
   await voteAndCheckTally(t, publisher, surveyorId, 3)
 })
 
-test('replaces invalid youtube user ids with youtube channel ids when inserting into transaction table', async t => {
-  await createSurveyor()
-  const surveyorId = (await getSurveyor()).body.surveyorId
-  await waitUntilPropagated(querySurveyor, surveyorId)
-  await voteAndCheckTally(t, 'youtube#user:SaturdayNightLive', surveyorId, 1)
-  await tryFreeze(t, -1, true, surveyorId)
-
-  let txs = []
-  while (txs.length !== 1) { // wait for surveyor-frozen-report to insert from voting
-    await timeout(2000)
-    txs = (await postgres.query('select * from transactions;', [])).rows
-  }
-
-  t.true(txs[0].to_account === 'youtube#channel:UCqFzWxSCi39LnW1JKFR3efg')
-})
-
 async function tryFreeze (t, dayShift, expect, surveyorId) {
   await freezeOldSurveyors(debug, runtime, dayShift)
   // beware of cursor
