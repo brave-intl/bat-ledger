@@ -4,11 +4,12 @@ const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
 const surveyorsLib = require('../lib/surveyor')
-
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
-const { surveyorChoices } = utils.extras.utils
+const {
+  surveyorChoices
+} = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
@@ -369,6 +370,8 @@ v2.phase2 =
 // NB: in case of a network error on the response (or a premature Heroku 503, etc.)
       return reply(entry.response)
     }
+
+    data = await replacePublisher(runtime, data)
 
     response = { submissionId: submissionId }
     f = {
@@ -764,4 +767,19 @@ async function addSurveyorChoices (runtime, surveyor = {}) {
 async function getAdjustedChoices (runtime, base, currencies) {
   const rates = await runtime.currency.rates(base, currencies)
   return underscore.mapObject(rates, surveyorChoices)
+}
+
+async function replacePublisher (runtime, data) {
+  let { publisher } = data
+  try {
+    publisher = await surveyorsLib.fixChannel(publisher)
+  } catch (e) {
+    console.log('failed for publisher', publisher, e)
+    runtime.captureException(e, {
+      extra: { publisher }
+    })
+  }
+  return Object.assign({}, data, {
+    publisher
+  })
 }

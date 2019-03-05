@@ -11,6 +11,9 @@ import {
   addSurveyorChoices
 } from '../../ledger/controllers/surveyor'
 import {
+  surveyor
+} from '../../ledger/lib'
+import {
   getSurveyor,
   connectToDb,
   createSurveyor,
@@ -158,4 +161,21 @@ test('required cohorts are added to surveyors', async (t) => {
     const privateFullSurveyor = await findOneSurveyor()
     return !privateFullSurveyor.cohorts
   }
+})
+
+test('lib/fixChannel: does nothing to valid publishers', async (t) => {
+  t.plan(1)
+  const original = 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg'
+  const fixed = await surveyor.fixChannel(original)
+  t.is(original, fixed, 'the original channel matches')
+})
+test('lib/fixChannel: updates user publishers', async (t) => {
+  t.plan(1)
+  const original = `youtube#user:SaturdayNightLive`
+  const fixed = await surveyor.fixChannel(original)
+  t.is(fixed, 'youtube#channel:UCqFzWxSCi39LnW1JKFR3efg')
+})
+test('lib/fixChannel: errors must be caught', async (t) => {
+  t.plan(1)
+  await t.throwsAsync(() => surveyor.fixChannel(`youtube#user:${({}).toString()}`))
 })

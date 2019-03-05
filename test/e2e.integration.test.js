@@ -109,6 +109,8 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   t.true(numControlSurveryors === parseInt(amountFunded))
   t.true(numGrantSurveyors === 0)
 
+  const snlUser = 'youtube#user:SaturdayNightLive'
+  const snlChannel = 'youtube#channel:UCqFzWxSCi39LnW1JKFR3efg'
   // Submit votes
   const channels = [
     'wikipedia.org',
@@ -120,7 +122,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     'gab.ai',
     'bit.tube',
     'duckduckgo.com',
-    'everipedia.org',
+    snlUser,
     braveYoutubePublisher
   ]
 
@@ -182,6 +184,26 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     }))
   t.deepEqual(body, [], 'endpoint defaults pending to false')
 
+  ;({
+    body
+  } = await eyeshadeAgent.get(balanceURL)
+    .query({
+      pending: true,
+      account: snlUser
+    }))
+  t.deepEqual(body, [], 'conversions happen at the first step')
+  ;({
+    body
+  } = await eyeshadeAgent.get(balanceURL)
+    .query({
+      pending: true,
+      account: snlChannel
+    }))
+  t.deepEqual(body, [{
+    account_id: snlChannel,
+    account_type: 'channel',
+    balance: '1.000000000000000000'
+  }], 'conversions turn users into the first available channel')
   // Create a publisher owner and settle balances to that owner
   await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
     .send({ 'provider': 'uphold', 'parameters': {} })
