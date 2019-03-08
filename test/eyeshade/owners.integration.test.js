@@ -83,14 +83,13 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
 })
 
 test('eyeshade: create brave youtube channel and owner, verify with uphold, add BAT card', async t => {
-  t.plan(12 * 2)
   const encodedOwner = encodeURIComponent(braveYoutubeOwner)
 
   const walletUrl = `/v1/owners/${encodedOwner}/wallet`
   const parameters = {
     access_token: process.env.UPHOLD_ACCESS_TOKEN,
     show_verification_status: false,
-    defaultCurrency: 'USD'
+    defaultCurrency: 'DASH'
   }
   const data = {
     provider: 'uphold',
