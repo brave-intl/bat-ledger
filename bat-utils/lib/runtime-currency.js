@@ -10,17 +10,7 @@ const oneMin = 1000 * 60
 const ms5min = 5 * oneMin
 const failureDebounceTime = oneMin
 
-const knownRateKeys = [
-  'BTC',
-  'ETH',
-  'XRP',
-  'BCH',
-  'LTC',
-  'DASH',
-  'BTG',
-  'USD',
-  'EUR'
-]
+const knownRateKeys = [ 'AED', 'ARS', 'AUD', 'BAT', 'BCH', 'BRL', 'BTC', 'BTG', 'CAD', 'CHF', 'CNY', 'DASH', 'DKK', 'ETH', 'EUR', 'GBP', 'HKD', 'ILS', 'INR', 'JPY', 'KES', 'LBA', 'LTC', 'MXN', 'NOK', 'NZD', 'PHP', 'PLN', 'SEK', 'SGD', 'USD', 'XAG', 'XAU', 'XPD', 'XPT', 'XRP' ]
 // satoshis, wei, etc.
 const decimals = {
   BAT: 18,
@@ -126,8 +116,8 @@ Currency.prototype = {
   },
 
   rates: async function (against, currencies) {
-    const rateCurrencies = currencies || knownRateKeys
     const context = this
+    const rateCurrencies = currencies || context.knownRateKeys
     const rates = await context.all()
     const number = rates[against]
     const base = new BigNumber(number.toString())
