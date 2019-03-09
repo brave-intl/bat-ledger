@@ -28,21 +28,33 @@ module.exports = {
 }
 
 async function insertTransaction (client, options = {}) {
-  const args = [
-    options.id,
-    options.createdAt,
-    options.description,
-    options.transactionType,
-    options.documentId,
-    options.fromAccount,
-    options.fromAccountType,
-    options.toAccount,
-    options.toAccountType,
-    options.amount,
-    options.settlementCurrency || null,
-    options.settlementAmount || null,
-    options.channel || null
-  ]
+  let {
+    id,
+    createdAt,
+    description,
+    transactionType,
+    documentId,
+    fromAccount,
+    fromAccountType,
+    toAccount,
+    toAccountType,
+    amount,
+    settlementCurrency = null,
+    settlementAmount = null,
+    channel = null
+  } = options
+
+  if (!amount) {
+    throw new Error('Missing amount field')
+  }
+
+  amount = new BigNumber(amount)
+  if (amount.lessThanOrEqualTo(0)) {
+    return [] // skip because we don't track tx's that don't have an accounting purpose
+  }
+  amount = amount.toString()
+
+  const args = [ id, createdAt, description, transactionType, documentId, fromAccount, fromAccountType, toAccount, toAccountType, amount, settlementCurrency, settlementAmount, channel ]
   const query = `
 INSERT INTO transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, settlement_currency, settlement_amount, channel )
 VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 )
@@ -65,15 +77,6 @@ async function insertUserDepositFromChain (runtime, client, chainDoc = {}) {
   // using this so that we can pass in ticker / full name for now
   chain = knownChains[chain] || chain
 
-  if (!amount) {
-    throw new Error('Missing amount field')
-  }
-
-  amount = new BigNumber(amount)
-  if (amount.lessThanOrEqualTo(0)) {
-    return [] // skip because we don't track tx's that don't have an accounting purpose
-  }
-
   return insertTransaction(client, {
     id: uuidv5(`${chain}-${id}`, 'f7a8b983-2383-48f2-9e4f-717f6fe3225d'),
     createdAt: createdAt / 1000,
@@ -93,27 +96,23 @@ async function insertFromAd (runtime, client, {
   token_id: tokenId,
   amount
 }) {
-  const query = `
- insert into transactions ( id, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount )
- VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 )
- RETURNING *;`
   const created = seconds()
   const { config } = runtime
   const id = uuidv5(`${paymentId}:${tokenId}`, '2ca02950-084f-475f-bac3-42a3c99dec95')
   const month = monthsFromSeconds(created)
-  const replacements = [
+  const options = {
     id,
-    `ad payments through ${month}`,
-    'ad',
-    tokenId,
-    config.wallet.adsPayoutAddress.BAT,
-    'uphold',
-    paymentId,
-    'payment_id',
+    createdAt: created,
+    description: `ad payments through ${month}`,
+    transactionType: 'ad',
+    documentId: tokenId,
+    fromAccount: config.wallet.adsPayoutAddress.BAT,
+    fromAccountType: 'uphold',
+    toAccount: paymentId,
+    toAccountType: 'payment_id',
     amount
-  ]
-  const { rows } = await client.query(query, replacements)
-  return rows
+  }
+  return insertTransaction(client, options)
 }
 
 function monthsFromSeconds (created) {
