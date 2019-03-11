@@ -95,7 +95,9 @@ v2.settlement = {
     scope: ['ledger', 'publishers'],
     mode: 'required'
   },
-
+  payload: {
+    maxBytes: 1024 * 1024 * 20 // 20 MB
+  },
   description: 'Posts a settlement for one or more publishers',
   tags: [ 'api' ],
 
