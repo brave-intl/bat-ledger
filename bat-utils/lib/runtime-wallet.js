@@ -454,14 +454,8 @@ Wallet.providers.uphold = {
       debug('uphold api', uphold.api)
       user = await uphold.api('/me')
       if (user.status !== 'pending') {
-        let paginator = await uphold.getCards()
-        let card
-        while (paginator) {
-          const page = await paginator.getPage()
-          card = page.items.find((e) => e.currency === info.defaultCurrency)
-          if (card) break
-          paginator = await paginator.getNextPage()
-        }
+        let paginator = await uphold.getCards(1, 1000)
+        let card = page.items.find((e) => e.currency === info.defaultCurrency)
       }
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
