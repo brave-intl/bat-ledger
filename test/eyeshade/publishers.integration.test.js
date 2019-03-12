@@ -121,3 +121,48 @@ test('can post a manual settlement from publisher app using token auth', async t
 
   t.true(manualTx.to_account === manualSettlementTx.from_account)
 })
+
+test('only can post settlement files under to 20mbs', async t => {
+  const url = `/v2/publishers/settlement`
+
+  let bigSettlement = {
+    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    publisher: '',
+    address: '🌝',
+    altcurrency: '🚀'.repeat(256 * 1024 * 20), // rocket is 4 bytes
+    probi: '5000000000000000000',
+    fees: '0',
+    currency: 'BAT',
+    amount: '5',
+    commission: '0.0',
+    transactionId: uuidV4().toLowerCase(),
+    type: 'manual',
+    documentId: uuidV4().toLowerCase(),
+    hash: uuidV4().toLowerCase()
+  }
+
+  let smallSettlement = {
+    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    publisher: '',
+    address: uuidV4().toLowerCase(),
+    altcurrency: 'BAT',
+    probi: '5000000000000000000',
+    fees: '0',
+    currency: 'BAT',
+    amount: '5',
+    commission: '0.0',
+    transactionId: uuidV4().toLowerCase(),
+    type: 'manual',
+    documentId: uuidV4().toLowerCase(),
+    hash: uuidV4().toLowerCase()
+  }
+
+  // ensure settlement files > 20mb fail
+  let response = await eyeshadeAgent.post(url).send([bigSettlement])
+  t.true(response.statusCode === 413)
+  t.true(response.body.message === 'Payload content length greater than maximum allowed: 20971520')
+
+  // ensure small settlement files succeed
+  response = await eyeshadeAgent.post(url).send([smallSettlement])
+  t.true(response.statusCode === 200)
+})
