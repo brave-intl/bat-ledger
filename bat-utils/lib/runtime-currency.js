@@ -123,8 +123,10 @@ Currency.prototype = {
     const base = new BigNumber(number.toString())
     return _.reduce(rateCurrencies, (memo, key) => {
       const value = rates[key]
-      const price = new BigNumber(value.toString())
-      memo[key] = price.dividedBy(base).toString()
+      if (value) {
+        const price = new BigNumber(value.toString())
+        memo[key] = price.dividedBy(base).toString()
+      }
       return memo
     }, {})
   },
