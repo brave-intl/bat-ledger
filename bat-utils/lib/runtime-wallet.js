@@ -447,22 +447,13 @@ Wallet.providers.uphold = {
     }
   },
   status: async function (info) {
-    let card, currency, currencies, result, uphold, user
+    let card, cards, currency, currencies, result, uphold, user
 
     try {
       uphold = this.createUpholdSDK(info.parameters.access_token)
       debug('uphold api', uphold.api)
       user = await uphold.api('/me')
-      if (user.status !== 'pending') {
-        let paginator = await uphold.getCards()
-        let card
-        while (paginator) {
-          const page = await paginator.getPage()
-          card = page.items.find((e) => e.currency === info.defaultCurrency)
-          if (card) break
-          paginator = await paginator.getNextPage()
-        }
-      }
+      if (user.status !== 'pending') cards = await uphold.api('/me/cards')
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
       throw ex
@@ -479,7 +470,6 @@ Wallet.providers.uphold = {
     } else currency = undefined
 
     result = {
-      address: card && card.id,
       id: user.id,
       provider: info.provider,
       authorized: user.status === 'ok',
@@ -488,6 +478,10 @@ Wallet.providers.uphold = {
       defaultCurrency: info.defaultCurrency || currency,
       availableCurrencies: currencies,
       possibleCurrencies: user.currencies
+    }
+    if (result.authorized) {
+      card = underscore.findWhere(cards, { currency: result.defaultCurrency })
+      result.address = card && card.id
     }
 
     return result
