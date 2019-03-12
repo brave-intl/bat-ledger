@@ -399,9 +399,12 @@ v1.adTransactions = {
     if (typeof process.env.ENABLE_ADS_PAYOUT === 'undefined') {
       return reply(boom.serverUnavailable())
     }
+    if (amount <= 0) {
+      reply(boom.badData('amount must be greater than 0'))
+    }
 
     try {
-      await transactions.insertFromAd(runtime, postgres, Object.assign(params, { amount }))
+      await transactions.insertFromAd(runtime, postgres, Object.assign({}, params, { amount }))
       reply({})
     } catch (e) {
       if (e.code && e.code === '23505') { // Unique constraint violation

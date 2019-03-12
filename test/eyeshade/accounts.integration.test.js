@@ -203,6 +203,11 @@ test('create ads payment fails if bad values are given', async (t) => {
 
   await eyeshadeAgent
     .put(url)
+    .send({ amount: 0 })
+    .expect(400)
+
+  await eyeshadeAgent
+    .put(url)
     .send({ amount: 5 })
     .expect(400)
 })

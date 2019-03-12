@@ -7,6 +7,7 @@ import Postgres from 'bat-utils/lib/runtime-postgres'
 import Currency from 'bat-utils/lib/runtime-currency'
 import {
   knownChains,
+  insertTransaction,
   insertUserDepositFromChain,
   insertFromSettlement,
   insertFromReferrals,
@@ -374,4 +375,56 @@ test('can add transactions for different account types', async (t) => {
     const subResults = txs.map((row) => _.omit(row, ['id']))
     t.deepEqual(expectedResults, subResults, `chain ${chain} is a valid from_account type`)
   }
+  await client.release()
+})
+
+test('common insertion fn', async (t) => {
+  t.plan(2)
+  const id = uuidV4()
+  const createdAt = new Date()
+  const description = 'a known description'
+  const transactionType = 'contribution'
+  const documentId = uuidV4()
+  const fromAccount = uuidV4()
+  const fromAccountType = 'uphold'
+  const toAccount = uuidV4()
+  const toAccountType = 'uphold'
+  const amount = '1.000000000000000000'
+  const inputs = {
+    id,
+    createdAt: createdAt / 1000,
+    description,
+    transactionType,
+    documentId,
+    fromAccount,
+    fromAccountType,
+    toAccount,
+    toAccountType,
+    amount
+  }
+  const client = await runtime.postgres.connect()
+  const txs = await insertTransaction(client, inputs)
+  const zeroAmount = Object.assign({}, inputs, { amount: '0' })
+  await insertTransaction(client, zeroAmount)
+  const negativeAmount = Object.assign({}, inputs, { amount: '-1' })
+  await insertTransaction(client, negativeAmount)
+  const noAmount = Object.assign({}, inputs, { amount: null })
+  await t.throwsAsync(() => insertTransaction(client, noAmount))
+  const expectedResults = [{
+    id,
+    amount,
+    created_at: createdAt,
+    description,
+    transaction_type: transactionType,
+    document_id: documentId,
+    from_account: fromAccount,
+    from_account_type: fromAccountType,
+    to_account: toAccount,
+    to_account_type: toAccountType,
+    channel: null,
+    settlement_amount: null,
+    settlement_currency: null
+  }]
+  t.deepEqual(expectedResults, txs, `transactions are inserted`)
+  await client.release()
 })
