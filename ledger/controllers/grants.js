@@ -868,17 +868,14 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const wallet = await wallets.findOne({ 'paymentId': paymentId })
     if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
 
-    const productEndpoints = {
-      'brave-core': {
-        2: '/v2/captchas/variableshapetarget',
-        4: '/v2/captchas/variableshapetarget'
-      }
+    const braveProduct = request.headers['brave-product'] || 'browser-laptop'
+    if (protocolVersion === 2 && braveProduct !== 'brave-core') {
+      return reply(boom.notFound('no captcha endpoints'))
     }
 
-    const braveProduct = request.headers['brave-product'] || 'browser-laptop'
-    const captchaEndpoints = productEndpoints[braveProduct]
-    if (!captchaEndpoints) {
-      return reply(boom.notFound('no captcha endpoints'))
+    const captchaEndpoints = {
+      2: '/v2/captchas/variableshapetarget',
+      4: '/v2/captchas/variableshapetarget'
     }
 
     const endpoint = captchaEndpoints[protocolVersion]
