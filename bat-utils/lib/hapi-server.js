@@ -225,11 +225,7 @@ const Server = async (options, runtime) => {
   })
 
   server.ext('onRequest', (request, reply) => {
-    const headers = options.headersP &&
-          underscore.omit(request.headers, (value, key, object) => {
-            if ([ 'authorization', 'cookie' ].indexOf(key) !== -1) return true
-            return /^x-forwarded-/i.test(key)
-          })
+    const headers = options.headersP && underscore.pick(request.headers, ['user-agent'])
     const query = underscore.omit(request.url.query, (value, key, object) => {
       return ([ 'publisher' ].indexOf(key) !== -1)
     })
