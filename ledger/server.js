@@ -26,7 +26,7 @@ const options = {
   routes: controllers.index,
   controllers: controllers,
   module: module,
-  headersP: false,
+  headersP: true,
   remoteP: false
 }
 
