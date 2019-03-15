@@ -64,7 +64,7 @@ v1.findReferrals = {
 
 /*
    PUT /v1/referrals/{transactionID}
-       [ used by referrals ]
+       [ used by promo ]
  */
 
 v1.createReferrals = {
@@ -74,29 +74,36 @@ v1.createReferrals = {
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
       const referrals = runtime.database.get('referrals', debug)
-      let entries, matches, probi, query
-
-      entries = await referrals.find({ transactionId: transactionId })
-      if (entries.length > 0) return reply(boom.badData('existing transaction-identifier: ' + transactionId))
+      const downloadIdsToBeConfirmed = []
+      let entries, existingDownloadIds, probi
 
       probi = await runtime.currency.fiat2alt(runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
       probi = bson.Decimal128.fromString(probi.toString())
-      query = { $or: [] }
+
+      // Get all download ids promo wants to finalize
       for (let referral of payload) {
         underscore.extend(referral, { altcurrency: altcurrency, probi: probi })
-        query.$or.push({ downloadId: referral.downloadId })
+        downloadIdsToBeConfirmed.push(referral.downloadId)
       }
-      entries = await referrals.find(query)
+
+      // Check if any already are confirmed
+      entries = await referrals.find({'downloadId': {$in: downloadIdsToBeConfirmed}})
+
+      // Find which downloadIds are already accounted for
+      existingDownloadIds = []
       if (entries.length > 0) {
-        matches = []
-        entries.forEach((referral) => { matches.push(referral.downloadId) })
-        return reply(boom.badData('existing download-identifier' + ((entries.length > 1) ? 's' : '') + ': ' +
-                                  matches.join(', ')))
+        entries.forEach((referral) => { existingDownloadIds.push(referral.downloadId) })
       }
 
       for (let referral of payload) {
         let state
 
+        // Don't insert referrals already accounted for
+        if (existingDownloadIds.includes(referral.downloadId)) {
+          continue
+        }
+
+        underscore.extend(referral, { altcurrency: altcurrency, probi: probi })
         state = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
           $set: underscore.extend({
