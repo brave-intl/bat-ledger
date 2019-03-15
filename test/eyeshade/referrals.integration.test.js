@@ -66,16 +66,43 @@ test('duplicate referrals will not be inserted into mongo', async t => {
   let referralDocs = await referralCollection.find({downloadId: referral.downloadId}).toArray()
   t.true(referralDocs.length === 1)
 
-  // post the same referral again
+  // post the same referral again and ensure no more were created
   await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
   referralDocs = await referralCollection.find({downloadId: referral.downloadId}).toArray()
   t.true(referralDocs.length === 1)
 
-  // post the same referral again under different txId but same downloadId
+  // post the same referral again under different txId but same downloadId and ensure no more were created
   const txId2 = uuidV4().toLowerCase()
   await eyeshadeAgent.put(`/v1/referrals/${txId2}`).send([referral]).expect(200)
   referralDocs = await referralCollection.find({downloadId: referral.downloadId}).toArray()
 
   t.true(referralDocs.length === 1)
   t.true(referralDocs[0].transactionId === txId)
+})
+
+test('if promo sends mix of duplicate and valid referrals with same tx id, only insert the valid referrals', async t => {
+  const eyeshadeMongo = await connectToDb('eyeshade')
+  const txId = uuidV4().toLowerCase()
+  const referral = {
+    downloadId: uuidV4().toLowerCase(),
+    channelId: braveYoutubePublisher,
+    platform: 'ios',
+    finalized: new Date(),
+    ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
+  }
+
+  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
+
+  const referral2 = {
+    downloadId: uuidV4().toLowerCase(),
+    channelId: braveYoutubePublisher,
+    platform: 'ios',
+    finalized: new Date(),
+    ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
+  }
+
+  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral, referral2]).expect(200)
+  const referralCollection = await eyeshadeMongo.collection('referrals')
+  const referralDocs = await referralCollection.find({transactionId: txId}).toArray()
+  t.true(referralDocs.length === 2)
 })

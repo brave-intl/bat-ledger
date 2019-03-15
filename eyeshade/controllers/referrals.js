@@ -77,9 +77,6 @@ v1.createReferrals = {
       const downloadIdsToBeConfirmed = []
       let entries, existingDownloadIds, probi
 
-      entries = await referrals.find({ transactionId: transactionId })
-      if (entries.length > 0) return reply({})
-
       probi = await runtime.currency.fiat2alt(runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
       probi = bson.Decimal128.fromString(probi.toString())
 
