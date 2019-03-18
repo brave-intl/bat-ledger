@@ -59,6 +59,14 @@ exports.workers = {
         await client.query('COMMIT')
       } finally {
         client.release()
+        // Update prometheus counter
+        const Prometheus = require('../../bat-utils/lib/runtime-prometheus')
+        const prometheus = new Prometheus({
+          prometheus: {
+            label: process.env.SERVICE + '.' + process.env.DYNO,
+            redis: process.env.REDIS2_URL || process.env.REDIS_URL
+        }}, runtime)
+        await prometheus.incrCounter('referral_confirmations_counter', 'this is the help parameter', docs.length)
       }
     }
 }
