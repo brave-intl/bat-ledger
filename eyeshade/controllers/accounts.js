@@ -400,7 +400,7 @@ v1.adTransactions = {
       return reply(boom.serverUnavailable())
     }
     if (amount <= 0) {
-      reply(boom.badData('amount must be greater than 0'))
+      return reply(boom.badData('amount must be greater than 0'))
     }
 
     try {
