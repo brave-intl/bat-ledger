@@ -1,4 +1,5 @@
 const Joi = require('joi')
+const querystring = require('querystring')
 const Netmask = require('netmask').Netmask
 const l10nparser = require('accept-language-parser')
 const boom = require('boom')
@@ -858,6 +859,7 @@ v2.cohorts = { handler: (runtime) => {
 
 const getCaptcha = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
+    const type = request.header('promotion-type')
     const paymentId = request.params.paymentId.toLowerCase()
     const debug = braveHapi.debug(module, request)
     const wallets = runtime.database.get('wallets', debug)
@@ -886,7 +888,10 @@ const getCaptcha = (protocolVersion) => (runtime) => {
       return reply(boom.notFound('no protocol version'))
     }
 
-    const { res, payload } = await wreck.get(runtime.config.captcha.url + endpoint, {
+    let qs = querystring.stringify({ type })
+    qs = qs ? `?${qs}` : qs
+    const url = runtime.config.captcha.url + endpoint + qs
+    const { res, payload } = await wreck.get(url, {
       headers: {
         'Authorization': 'Bearer ' + runtime.config.captcha.access_token,
         'Content-Type': 'application/json',
@@ -934,6 +939,9 @@ v4.getCaptcha = {
   },
 
   validate: {
+    query: Joi.object().keys({
+      type: Joi.string().optional().default('ugp').description('the type of grant being claimed')
+    }).unknown(true),
     params: {
       paymentId: paymentIdValidator.required()
     },
