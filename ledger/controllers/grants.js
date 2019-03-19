@@ -858,7 +858,7 @@ v2.cohorts = { handler: (runtime) => {
 
 const getCaptcha = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
-    const type = request.headers['promotion-type']
+    const type = request.headers['promotion-type'] || 'ugp'
     const paymentId = request.params.paymentId.toLowerCase()
     const debug = braveHapi.debug(module, request)
     const wallets = runtime.database.get('wallets', debug)
@@ -938,9 +938,7 @@ v4.getCaptcha = {
     params: {
       paymentId: paymentIdValidator.required()
     },
-    headers: captchaHeadersValidator.keys({
-      'promotion-type': Joi.string().optional().default('ugp').description('the type of grant being claimed')
-    })
+    headers: captchaHeadersValidator
   }
 }
 
