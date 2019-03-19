@@ -447,27 +447,24 @@ Wallet.providers.uphold = {
     }
   },
   status: async function (info) {
-    let card, cards, currency, currencies, result, uphold, user
+    let result, uphold, user, desiredCard, desiredCardCurrency, possibleCurrencies, availableCurrencies
+
+    desiredCardCurrency = info.defaultCurrency // Set by Publishers
 
     try {
       uphold = this.createUpholdSDK(info.parameters.access_token)
       debug('uphold api', uphold.api)
       user = await uphold.api('/me')
-      if (user.status !== 'pending') cards = await uphold.api('/me/cards')
+      if (user.status !== 'pending') {
+        desiredCard = (await uphold.api('/me/cards?q=currency:' + desiredCardCurrency))[0]
+      }
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
       throw ex
     }
 
-    currency = user.settings.currency
-    if (currency) {
-      currencies = underscore.keys(user.balances.currencies) || []
-      currencies.sort((a, b) => {
-        return ((b === currency) ? 1
-                : ((a === currency) || (a < b)) ? (-1)
-                : (a > b) ? 1 : 0)
-      })
-    } else currency = undefined
+    availableCurrencies = underscore.keys(user.balances.currencies) || []  // TODO remove available currencies when https://github.com/brave-intl/publishers/issues/1725 is complete
+    possibleCurrencies = user.currencies
 
     result = {
       id: user.id,
@@ -475,13 +472,12 @@ Wallet.providers.uphold = {
       authorized: user.status === 'ok',
       status: user.status,
       isMember: !!user.memberAt,
-      defaultCurrency: info.defaultCurrency || currency,
-      availableCurrencies: currencies,
-      possibleCurrencies: user.currencies
+      defaultCurrency: desiredCardCurrency,
+      availableCurrencies: availableCurrencies,
+      possibleCurrencies: possibleCurrencies
     }
     if (result.authorized) {
-      card = underscore.findWhere(cards, { currency: result.defaultCurrency })
-      result.address = card && card.id
+      result.address = desiredCard && desiredCard.id
     }
 
     return result
