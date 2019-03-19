@@ -858,6 +858,7 @@ v2.cohorts = { handler: (runtime) => {
 
 const getCaptcha = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
+    const type = request.headers['promotion-type'] || 'ugp'
     const paymentId = request.params.paymentId.toLowerCase()
     const debug = braveHapi.debug(module, request)
     const wallets = runtime.database.get('wallets', debug)
@@ -885,6 +886,7 @@ const getCaptcha = (protocolVersion) => (runtime) => {
 
     const { res, payload } = await wreck.get(runtime.config.captcha.url + endpoint, {
       headers: {
+        'Promotion-Type': type,
         'Authorization': 'Bearer ' + runtime.config.captcha.access_token,
         'Content-Type': 'application/json',
         'X-Forwarded-For': whitelist.ipaddr(request)
@@ -897,7 +899,6 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const captcha = underscore.extend(solution, {
       version: protocolVersion
     })
-    debug('captcha info', captcha)
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha } })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
