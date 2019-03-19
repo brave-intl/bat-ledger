@@ -902,7 +902,6 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const captcha = underscore.extend(solution, {
       version: protocolVersion
     })
-    debug('captcha info', captcha)
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha } })
 
     return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
