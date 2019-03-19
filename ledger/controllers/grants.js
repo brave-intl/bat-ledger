@@ -936,13 +936,12 @@ v4.getCaptcha = {
   },
 
   validate: {
-    query: Joi.object().keys({
-      type: Joi.string().optional().default('ugp').description('the type of grant being claimed')
-    }).unknown(true),
     params: {
       paymentId: paymentIdValidator.required()
     },
-    headers: captchaHeadersValidator
+    headers: captchaHeadersValidator.keys({
+      type: Joi.string().optional().default('ugp').description('the type of grant being claimed')
+    })
   }
 }
 
