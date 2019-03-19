@@ -939,7 +939,7 @@ v4.getCaptcha = {
       paymentId: paymentIdValidator.required()
     },
     headers: captchaHeadersValidator.keys({
-      type: Joi.string().optional().default('ugp').description('the type of grant being claimed')
+      'Promotion-Type': Joi.string().optional().default('ugp').description('the type of grant being claimed')
     })
   }
 }
