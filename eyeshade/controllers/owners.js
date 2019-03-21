@@ -55,7 +55,6 @@ v1.getWallet = {
       } catch (ex) {
         debug('status', { reason: ex.toString(), stack: ex.stack })
         runtime.captureException(ex, { req: request, extra: { owner: owner } })
-        return reply(boom.boomify(ex))
       }
       if ((provider) && (!result.wallet)) {
         result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }

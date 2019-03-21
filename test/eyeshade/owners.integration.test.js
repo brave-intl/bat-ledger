@@ -117,7 +117,7 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
 })
 
 test('eyeshade: missing owners send back proper status', async (t) => {
-  t.plan(0)
+  t.plan(1)
   const id = uuidV4()
   const badOwner = `publishers#uuid:${id}`
   const badEncoding = encodeURIComponent(badOwner)
@@ -140,10 +140,14 @@ test('eyeshade: missing owners send back proper status', async (t) => {
     .send(dataOwnerWalletParams)
     .expect(200)
 
-  await eyeshadeAgent
+  const { body } = await eyeshadeAgent
     .get(badURL)
     .send()
-    .expect(500)
+    .expect(200)
+  t.deepEqual(body.status, {
+    provider: 'uphold',
+    action: 're-authorize'
+  }, 'let client know a reauthorize is needed / that the token is bad')
 })
 
 function createCard (owner, currency) {
