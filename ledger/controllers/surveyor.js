@@ -10,7 +10,7 @@ const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const { surveyorChoices } = utils.extras.utils
 
-const defaultCohorts = ['control', 'grant', 'ads']
+const defaultCohorts = ['control', 'grant', 'ads', 'safetynet']
 const v1 = {}
 const v2 = {}
 

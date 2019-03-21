@@ -276,7 +276,7 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    const possibleCohorts = ['control', 'grant', 'ads']
+    const possibleCohorts = ['control', 'grant', 'ads', 'safetynet']
 
     for (let cohort of possibleCohorts) {
       const cohortSurveyors = surveyor.cohorts[cohort]

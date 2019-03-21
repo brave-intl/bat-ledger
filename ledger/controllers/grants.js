@@ -631,9 +631,6 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
   await wallets.findOneAndUpdate({
     paymentId
   }, {
-    $set: {
-      cohort: 'safetynet'
-    },
     $unset: {
       nonce: {}
     }
@@ -642,6 +639,14 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
   if (wallet.nonce !== data.nonce) {
     return boom.forbidden('safetynet nonce does not match')
   }
+
+  await wallets.findOneAndUpdate({
+    paymentId
+  }, {
+    $set: {
+      cohort: 'safetynet'
+    }
+  })
 }
 
 async function captchaCheck (debug, runtime, request, promotion, wallet) {
