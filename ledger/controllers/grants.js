@@ -631,6 +631,9 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
   await wallets.findOneAndUpdate({
     paymentId
   }, {
+    $set: {
+      cohort: 'safetynet'
+    },
     $unset: {
       nonce: {}
     }
