@@ -118,13 +118,32 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
 
 test('eyeshade: missing owners send back proper status', async (t) => {
   t.plan(0)
-  const badOwner = `publishers#uuid:${uuidV4()}`
+  const id = uuidV4()
+  const badOwner = `publishers#uuid:${id}`
   const badEncoding = encodeURIComponent(badOwner)
   const badURL = `/v1/owners/${badEncoding}/wallet`
+
   await eyeshadeAgent
     .get(badURL)
     .send()
     .expect(404)
+
+  const SCOPE = 'cards:read user:read'
+  const dataOwnerWalletParams = {
+    provider: 'uphold',
+    parameters: {
+      access_token: process.env.UPHOLD_ACCESS_TOKEN + 'fake',
+      scope: SCOPE
+    }
+  }
+  await eyeshadeAgent.put(badURL)
+    .send(dataOwnerWalletParams)
+    .expect(200)
+
+  await eyeshadeAgent
+    .get(badURL)
+    .send()
+    .expect(500)
 })
 
 function createCard (owner, currency) {
