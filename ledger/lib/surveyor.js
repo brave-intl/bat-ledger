@@ -1,7 +1,9 @@
 const BigNumber = require('bignumber.js')
+const cohorts = ['control', 'grant', 'ads', 'safetynet']
 
 module.exports = {
-  voteValueFromSurveyor
+  voteValueFromSurveyor,
+  cohorts
 }
 
 function voteValueFromSurveyor (runtime, surveyor, alt) {
