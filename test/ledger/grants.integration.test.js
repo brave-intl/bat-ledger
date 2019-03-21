@@ -192,8 +192,6 @@ test('get /v2/grants returns 404 for browser-laptop', async (t) => {
 })
 
 test('claim grants with attestations', async (t) => {
-  // t.plan(10)
-  t.true(true)
   let body, item, wallet
   const url = '/v2/grants'
   const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
@@ -262,6 +260,7 @@ test('claim grants with attestations', async (t) => {
 
   t.not(wallet.nonce, undefined, 'a random nonce was set')
   t.is(wallet.nonce, nonce, 'a random nonce was set on the wallet object')
+  t.is(wallet.cohort, undefined, 'wallet has not been assigned a cohort')
 
   await wallets.update({
     paymentId
@@ -280,6 +279,7 @@ test('claim grants with attestations', async (t) => {
 
   wallet = await wallets.findOne({ paymentId })
   t.is(wallet.nonce, undefined, 'nonce was unset from wallet object after use')
+  t.is(wallet.cohort, 'safetynet', 'wallet was assigned to safetynet cohort')
 
   ;({ body } = await ledgerAgent
       .get('/v3/promotions')

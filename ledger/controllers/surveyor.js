@@ -3,14 +3,13 @@ const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
-const surveyors = require('../lib/surveyor')
+const surveyorsLib = require('../lib/surveyor')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const { surveyorChoices } = utils.extras.utils
 
-const defaultCohorts = ['control', 'grant', 'ads']
 const v1 = {}
 const v2 = {}
 
@@ -504,7 +503,7 @@ const provision = async (debug, runtime, surveyorId, bump) => {
   }
 
   const { VOTING_COHORTS } = process.env
-  const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : defaultCohorts
+  const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : surveyorsLib.cohorts
   await Promise.all(contributionSurveyors.map(async (cSurveyor) => {
     let count, vSurveyor
 
@@ -745,7 +744,7 @@ module.exports.addSurveyorChoices = addSurveyorChoices
 function getVoteRate () {
   return (runtime) => async (request, reply) => {
     const surveyor = await server(request, reply, runtime)
-    const voteRate = surveyors.voteValueFromSurveyor(runtime, surveyor)
+    const voteRate = surveyorsLib.voteValueFromSurveyor(runtime, surveyor)
 
     reply({
       rate: voteRate.toString()

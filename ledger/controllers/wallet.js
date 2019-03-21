@@ -276,9 +276,7 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    const possibleCohorts = ['control', 'grant', 'ads']
-
-    for (let cohort of possibleCohorts) {
+    for (let cohort of surveyorsLib.cohorts) {
       const cohortSurveyors = surveyor.cohorts[cohort]
 
       if (totalVotes > cohortSurveyors.length) {
