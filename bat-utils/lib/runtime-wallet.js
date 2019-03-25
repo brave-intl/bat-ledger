@@ -110,8 +110,9 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
     const tmp = Joi.validate(txn, upholdTxnSchema).error
     if (tmp !== null) throw new Error('the signed transaction failed to validate')
 
-    if (bigMinimum.greaterThan(txn.denomination.amount)) {
-      throw new Error('amount is less than minimum')
+    const { amount } = txn.denomination
+    if (bigMinimum.greaterThan(amount)) {
+      throw new Error(`amount: ${amount} is less than minimum: ${minimum}`)
     }
 
     const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(signature.octets, 'utf8').digest('base64')
