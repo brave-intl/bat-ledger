@@ -629,16 +629,18 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
   const data = JSON.parse(payload.toString())
 
   let validNonce = wallet.nonce === data.nonce
-  const $set = validNonce ? {
-    cohort: 'safetynet'
-  } : {}
+  const updates = {
+    $unset: { nonce: {} }
+  }
+  if (validNonce) {
+    updates.$set = {
+      cohort: 'safetynet'
+    }
+  }
 
   await wallets.findOneAndUpdate({
     paymentId
-  }, {
-    $set,
-    $unset: { nonce: {} }
-  })
+  }, updates)
 
   if (!validNonce) {
     return boom.forbidden('safetynet nonce does not match')
