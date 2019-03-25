@@ -36,7 +36,7 @@ const server = async (request, reply, runtime) => {
     surveyor.payload = entry.payload
     surveyor.parentId = entry.parentId
   }
-  return surveyor && addSurveyorChoices(runtime, surveyor)
+  return surveyor && addSurveyorChoices(debug, runtime, surveyor)
 }
 
 const registrarType = (surveyorType) => {
@@ -57,7 +57,7 @@ const validateV2 = (surveyorType, payload) => {
 
 module.exports.validate = validateV2
 
-const enumerate = async (runtime, surveyorType, payload) => {
+const enumerate = async (debug, runtime, surveyorType, payload) => {
   payload.adFree.altcurrency = payload.adFree.altcurrency || 'BTC'
   let params = (payload || {}).adFree
 
@@ -76,7 +76,7 @@ const enumerate = async (runtime, surveyorType, payload) => {
       const currency = feeKeys[i]
       const amount = fee[currency]
       if (amount) {
-        probi = await runtime.currency.fiat2alt(currency, amount, altcurrency).toString()
+        probi = await runtime.currency.fiat2alt(debug, currency, amount, altcurrency).toString()
         if (probi) {
           params.probi = probi
           break
@@ -147,7 +147,7 @@ v2.create =
 
     if (validity.error) return reply(boom.badData(validity.error))
 
-    payload = await enumerate(runtime, surveyorType, payload)
+    payload = await enumerate(debug, runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
 
     surveyor = await create(debug, runtime, surveyorType, payload)
@@ -205,7 +205,7 @@ v2.update =
 
     if (validity.error) return reply(boom.badData(validity.error))
 
-    payload = await enumerate(runtime, surveyorType, payload)
+    payload = await enumerate(debug, runtime, surveyorType, payload)
     if (!payload) return reply(boom.badData('no available currencies'))
 
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
@@ -752,16 +752,16 @@ function getVoteRate () {
   }
 }
 
-async function addSurveyorChoices (runtime, surveyor = {}) {
+async function addSurveyorChoices (debug, runtime, surveyor = {}) {
   const payload = surveyor.payload || {}
   surveyor.payload = payload
   const adFree = payload.adFree || {}
   payload.adFree = adFree
-  adFree.choices = await getAdjustedChoices(runtime, 'BAT', ['USD'])
+  adFree.choices = await getAdjustedChoices(debug, runtime, 'BAT', ['USD'])
   return surveyor
 }
 
-async function getAdjustedChoices (runtime, base, currencies) {
-  const rates = await runtime.currency.rates(base, currencies)
+async function getAdjustedChoices (debug, runtime, base, currencies) {
+  const rates = await runtime.currency.rates(debug, base, currencies)
   return underscore.mapObject(rates, surveyorChoices)
 }

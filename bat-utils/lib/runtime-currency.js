@@ -49,7 +49,7 @@ Currency.prototype = {
     return JSON.parse(buffer.toString())
   },
 
-  request: async function (endpoint) {
+  request: async function (debug, endpoint) {
     const context = this
     const {
       config
@@ -65,10 +65,11 @@ Currency.prototype = {
         'content-type': 'application/json'
       }
     }
+    debug('ratios-request', endpoint)
     return braveHapi.wreck.get(endpoint, options)
   },
 
-  access: async function (path) {
+  access: async function (debug, path) {
     const context = this
     const {
       config,
@@ -99,7 +100,7 @@ Currency.prototype = {
       }
     }
     try {
-      const body = await context.request(endpoint)
+      const body = await context.request(debug, endpoint)
       data = context.parser(body)
     } catch (err) {
       context.captureException(err)
@@ -111,14 +112,14 @@ Currency.prototype = {
     return data.payload
   },
 
-  all: function () {
-    return this.access('./')
+  all: function (debug) {
+    return this.access(debug, './')
   },
 
-  rates: async function (against, currencies) {
+  rates: async function (debug, against, currencies) {
     const context = this
     const rateCurrencies = currencies || context.knownRateKeys
-    const rates = await context.all()
+    const rates = await context.all(debug)
     const number = rates[against]
     const base = new BigNumber(number.toString())
     return _.reduce(rateCurrencies, (memo, key) => {
@@ -131,8 +132,8 @@ Currency.prototype = {
     }, {})
   },
 
-  ratio: function (a, b) {
-    return this.access(`${a}/${b}`)
+  ratio: function (debug, a, b) {
+    return this.access(debug, `${a}/${b}`)
   },
 
   // satoshis, wei, etc.
@@ -144,8 +145,8 @@ Currency.prototype = {
     }
   },
 
-  alt2fiat: async function (altcurrency, probi, currency, floatP) {
-    let rate = await singleton.ratio(altcurrency, currency)
+  alt2fiat: async function (debug, altcurrency, probi, currency, floatP) {
+    let rate = await singleton.ratio(debug, altcurrency, currency)
     if (!rate) {
       return
     }
@@ -169,7 +170,7 @@ Currency.prototype = {
   },
 
   captureException: function (e) {
-    debug('accessing currency ratios failed', {
+    this.debug('accessing currency ratios failed', {
       message: e.message,
       code: e.statusCode,
       stack: e.stack
@@ -177,12 +178,12 @@ Currency.prototype = {
     this.runtime.captureException(e)
   },
 
-  fiat2alt: async function (currency, amount, altcurrency) {
+  fiat2alt: async function (debug, currency, amount, altcurrency) {
     if (!amount) {
       return
     }
 
-    let rate = await singleton.ratio(altcurrency, currency)
+    let rate = await singleton.ratio(debug, altcurrency, currency)
     if (!rate) {
       return
     }

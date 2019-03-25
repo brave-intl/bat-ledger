@@ -32,7 +32,7 @@ v1.getWallet = {
       }
 
       result = {
-        rates: await runtime.currency.rates(altcurrency)
+        rates: await runtime.currency.rates(debug, altcurrency)
       }
 
       try {
@@ -44,7 +44,7 @@ v1.getWallet = {
           }
           rates = result.rates
 
-          const fxrates = await runtime.currency.all()
+          const fxrates = await runtime.currency.all(debug)
           const bigUSD = new BigNumber(rates.USD)
           underscore.union([result.wallet.defaultCurrency], result.wallet.availableCurrencies).forEach((currency) => {
             if ((rates[currency]) || (!rates.USD) || (!fxrates[currency])) return

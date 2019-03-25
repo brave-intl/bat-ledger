@@ -52,7 +52,7 @@ const read = function (runtime, apiVersion) {
     }
 
     const subset = currency ? [currency.toUpperCase()] : null
-    const rates = await runtime.currency.rates(wallet.altcurrency, subset)
+    const rates = await runtime.currency.rates(debug, wallet.altcurrency, subset)
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
@@ -97,11 +97,11 @@ const read = function (runtime, apiVersion) {
       if (refreshP) {
         if (currency) {
           try {
-            await runtime.currency.ratio('USD', currency)
+            await runtime.currency.ratio(debug, 'USD', currency)
           } catch (e) {
             return reply(boom.notFound('no such currency: ' + currency))
           }
-          const rates = await runtime.currency.rates(wallet.altcurrency)
+          const rates = await runtime.currency.rates(debug, wallet.altcurrency)
           if (!rates || !rates[currency.toUpperCase()]) {
             const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
             const resp = boom.serverUnavailable(errMsg)

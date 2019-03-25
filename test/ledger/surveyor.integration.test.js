@@ -49,7 +49,7 @@ test('verify voting batching endpoint does not error', async t => {
 test('verify surveyor sends back choices', async t => {
   let response
 
-  const added = await addSurveyorChoices(runtime)
+  const added = await addSurveyorChoices(() => {}, runtime)
   response = await createSurveyor()
   checkResponse(response)
   response = await getSurveyor()

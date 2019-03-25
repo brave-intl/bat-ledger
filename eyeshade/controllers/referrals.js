@@ -77,7 +77,7 @@ v1.createReferrals = {
       const downloadIdsToBeConfirmed = []
       let entries, existingDownloadIds, probi
 
-      probi = await runtime.currency.fiat2alt(runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
+      probi = await runtime.currency.fiat2alt(debug, runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
       probi = bson.Decimal128.fromString(probi.toString())
 
       // Get all download ids promo wants to finalize
