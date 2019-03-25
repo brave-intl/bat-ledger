@@ -25,12 +25,16 @@ v1.getWallet = {
       const owners = runtime.database.get('owners', debug)
       let entry, provider, rates, result
 
+      entry = await owners.findOne({ owner })
+      provider = entry && entry.provider
+      if (!provider) {
+        return reply(boom.notFound('owner does not exist'))
+      }
+
       result = {
         rates: await runtime.currency.rates(altcurrency)
       }
 
-      entry = await owners.findOne({ owner: owner })
-      provider = entry && entry.provider
       try {
         if (provider && entry.parameters) result.wallet = await runtime.wallet.status(entry)
         if (result.wallet) {

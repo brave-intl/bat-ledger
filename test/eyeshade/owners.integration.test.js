@@ -2,7 +2,7 @@
 
 import { serial as test } from 'ava'
 import _ from 'underscore'
-
+import uuidV4 from 'uuid/v4'
 import {
   eyeshadeAgent,
   cleanDbs,
@@ -114,6 +114,40 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
       t.true(_.isString(rates[ticker]), 'is a string')
     }
   }
+})
+
+test('eyeshade: missing owners send back proper status', async (t) => {
+  t.plan(1)
+  const id = uuidV4()
+  const badOwner = `publishers#uuid:${id}`
+  const badEncoding = encodeURIComponent(badOwner)
+  const badURL = `/v1/owners/${badEncoding}/wallet`
+
+  await eyeshadeAgent
+    .get(badURL)
+    .send()
+    .expect(404)
+
+  const SCOPE = 'cards:read user:read'
+  const dataOwnerWalletParams = {
+    provider: 'uphold',
+    parameters: {
+      access_token: process.env.UPHOLD_ACCESS_TOKEN + 'fake',
+      scope: SCOPE
+    }
+  }
+  await eyeshadeAgent.put(badURL)
+    .send(dataOwnerWalletParams)
+    .expect(200)
+
+  const { body } = await eyeshadeAgent
+    .get(badURL)
+    .send()
+    .expect(200)
+  t.deepEqual(body.status, {
+    provider: 'uphold',
+    action: 're-authorize'
+  }, 'let client know a reauthorize is needed / that the token is bad')
 })
 
 function createCard (owner, currency) {
