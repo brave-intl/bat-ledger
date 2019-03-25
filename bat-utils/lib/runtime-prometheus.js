@@ -78,9 +78,9 @@ Prometheus.prototype.plugin = function () {
         if (!metric) {
           metric = new client.Histogram({
             name: 'http_request_buckets_milliseconds',
-            help: 'request duration buckets for 500 and 2000 milliseconds',
+            help: 'request duration buckets in milliseconds',
             labelNames: ['method', 'path', 'cardinality', 'status'],
-            buckets: [ 500, 2000 ]
+            buckets: [ 125, 250, 500, 1000, 2000, 4000, 8000, 16000 ]
           })
         }
         metric.labels(method, path, cardinality, statusCode).observe(duration)
