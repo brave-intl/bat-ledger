@@ -7,6 +7,16 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const plugins = {
+  rateLimit: {
+    enabled: true,
+    rate: () => ({
+      limit: 60000,
+      window: 60
+    })
+  }
+}
+
 const expireIn = process.env.BALANCE_CACHE_TTL_S || 60 // 1 minute default
 const expireSettings = {
   EX: expireIn
@@ -149,6 +159,7 @@ v2.invalidateCardBalance =
     reply({})
   }
 },
+  plugins,
   description: 'Invalidate the cached balance of a ledger wallet',
   tags: [ 'api' ],
 
