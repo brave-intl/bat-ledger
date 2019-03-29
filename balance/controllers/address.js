@@ -122,7 +122,6 @@ v2.invalidateWalletBalance =
     mode: 'required'
   },
 
-  plugins,
   description: 'Invalidate the cached balance of a ledger wallet',
   tags: [ 'api' ],
 
