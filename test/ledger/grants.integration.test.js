@@ -18,11 +18,16 @@ import {
   timeout,
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
+import {
+  defaultCooldownHrs,
+  cooldownOffset
+} from '../../ledger/lib/grants'
 
 test.before(cleanDbs)
 test.after(cleanDbs)
 test.afterEach.always(cleanDbs)
 
+const bypassCooldown = process.env.WALLET_COOLDOWN_BYPASS_TOKEN
 const promotionId = 'c96c39c8-77dd-4b2d-a8df-2ecf824bc9e9'
 // expired grant
 const expired = {'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI0Y2ZjMzFmYy1mYjE1LTRmMTUtOTc0Zi0zNzJiMmI0YzBkYjYiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJjOTZjMzljOC03N2RkLTRiMmQtYThkZi0yZWNmODI0YmM5ZTkiLCJtYXR1cml0eVRpbWUiOjE1MjY5NDE0MDAsImV4cGlyeVRpbWUiOjE1MjUxNzYwMDB9.iZBTNb9zilKubYYwYuc9MIUHZq0iv-7DsmnNu0GakeiEjcNqgbgbg-Wc2dowlMmMyjRbXjDUIC8rK4FiIqH8CQ'], 'promotions': [{promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1526941400000}]}
@@ -366,13 +371,17 @@ test('protocolVersion 4 does not send back ads when none are available', async (
   await ledgerAgent.post(url).send(adGrants).expect(ok)
 
   // get available grant
+  await ledgerAgent
+    .get('/v4/grants')
+    .query({ paymentId })
+    .expect(404)
   const {
     body: {
       grants: promotions
     }
   } = await ledgerAgent
     .get(`/v4/grants`)
-    .query({ paymentId })
+    .query({ paymentId, bypassCooldown })
     .expect(ok)
   t.is(promotions.length, 1, 'only one promotion should be sent back')
 
@@ -470,13 +479,17 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
   await ledgerAgent.post(url).send(adGrants).expect(ok)
 
   // get available grant
+  await ledgerAgent
+    .get('/v4/grants')
+    .query({ paymentId })
+    .expect(404)
   const {
     body: {
       grants: promotions
     }
   } = await ledgerAgent
     .get(`/v4/grants`)
-    .query({ paymentId })
+    .query({ paymentId, bypassCooldown })
     .expect(ok)
   t.is(promotions.length, 2, '2 promotions should be sent back')
 
@@ -598,6 +611,20 @@ test('protocolVersion 4 can claim both ads and ugp grants even on claim v2', asy
     })
     t.is(balance.toString(), finalBalance)
   }
+})
+
+test('default cooldown hrs', async (t) => {
+  t.is(defaultCooldownHrs(), defaultCooldownHrs(process.env.WALLET_COOLDOWN_HRS), 'uses env var for default')
+  t.is(defaultCooldownHrs(12), 12, 'can be passed number')
+  t.is(defaultCooldownHrs('12'), 12, 'can be passed numeric string')
+  t.is(defaultCooldownHrs('0'), 0, 'can be passed falsey numeric string')
+  t.is(defaultCooldownHrs('a'), 0, 'defaults to 0 if passed non numeric values')
+})
+
+test('cooldown offset', async (t) => {
+  t.is(cooldownOffset(), cooldownOffset(defaultCooldownHrs()), 'calculates hours to offset in terms of milliseconds')
+  t.is(cooldownOffset(12), 12 * 60 * 60 * 1000, 'gives back in ms')
+  t.is(cooldownOffset({}), NaN, 'only takes numeric values')
 })
 
 async function resolveCaptcha (wallets, {
