@@ -369,7 +369,7 @@ module.exports.initialize = async (debug, runtime) => {
 
   altcurrency = runtime.config.altcurrency || 'BAT'
 
-  runtime.database.checkIndices(debug, [
+  await runtime.database.checkIndices(debug, [
     {
       category: registrars,
       name: 'registrars',

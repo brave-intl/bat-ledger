@@ -151,7 +151,7 @@ module.exports.routes = [
 module.exports.initialize = async (debug, runtime) => {
   altcurrency = runtime.config.altcurrency || 'BAT'
 
-  runtime.database.checkIndices(debug, [
+  await runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('referrals', debug),
       name: 'referrals',
