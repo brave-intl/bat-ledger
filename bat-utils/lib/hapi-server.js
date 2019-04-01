@@ -80,8 +80,9 @@ const Server = async (options, runtime) => {
   if (runtime.config.prometheus) server.register(runtime.prometheus.plugin())
   else epimetheus.instrument(server)
 
-  server.register(
-    [ bell,
+  await new Promise((resolve, reject) => {
+    server.register([
+      bell,
       asyncHandler,
       authBearerToken,
       authCookie,
@@ -145,82 +146,85 @@ const Server = async (options, runtime) => {
         }
       }
     ], (err) => {
-    if (err) {
-      debug('unable to register extensions', err)
-      throw err
-    }
+      if (err) {
+        debug('unable to register extensions', err)
+        reject(err)
+        throw err
+      }
 
-    if (process.env.NODE_ENV === 'production') {
-      server.register({ register: require('hapi-require-https'), options: { proxy: true } }, (err) => {
-        if (err) debug('unable to register hapi-require-https', err)
-      })
-    }
-
-    debug('extensions registered')
-
-    if (runtime.login) {
-      if (runtime.login.github) {
-        server.auth.strategy('github', 'bell', {
-          provider: 'github',
-          password: cryptiles.randomString(64),
-          clientId: runtime.login.github.clientId,
-          clientSecret: runtime.login.github.clientSecret,
-          isSecure: runtime.login.github.isSecure,
-          forceHttps: runtime.login.github.isSecure,
-          scope: ['user:email', 'read:org']
+      if (process.env.NODE_ENV === 'production') {
+        server.register({ register: require('hapi-require-https'), options: { proxy: true } }, (err) => {
+          if (err) debug('unable to register hapi-require-https', err)
         })
+      }
 
-        debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
+      debug('extensions registered')
 
-        server.auth.strategy('session', 'cookie', {
-          password: runtime.login.github.ironKey,
-          cookie: 'sid',
-          isSecure: runtime.login.github.isSecure
-        })
-        debug('session authentication strategy via cookie')
-      } else {
-        debug('github authentication disabled')
-        if (process.env.NODE_ENV === 'production') {
-          throw new Error('github authentication was not enabled yet we are in production mode')
-        }
+      if (runtime.login) {
+        if (runtime.login.github) {
+          server.auth.strategy('github', 'bell', {
+            provider: 'github',
+            password: cryptiles.randomString(64),
+            clientId: runtime.login.github.clientId,
+            clientSecret: runtime.login.github.clientSecret,
+            isSecure: runtime.login.github.isSecure,
+            forceHttps: runtime.login.github.isSecure,
+            scope: ['user:email', 'read:org']
+          })
 
-        const bearerAccessTokenConfig = {
-          allowQueryToken: true,
-          allowMultipleHeaders: false,
-          validateFunc: (token, callback) => {
-            const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-            callback(null, (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
+          debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
+
+          server.auth.strategy('session', 'cookie', {
+            password: runtime.login.github.ironKey,
+            cookie: 'sid',
+            isSecure: runtime.login.github.isSecure
+          })
+          debug('session authentication strategy via cookie')
+        } else {
+          debug('github authentication disabled')
+          if (process.env.NODE_ENV === 'production') {
+            throw new Error('github authentication was not enabled yet we are in production mode')
           }
+
+          const bearerAccessTokenConfig = {
+            allowQueryToken: true,
+            allowMultipleHeaders: false,
+            validateFunc: (token, callback) => {
+              const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
+              callback(null, (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
+            }
+          }
+
+          server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
+          server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
+
+          debug('session authentication strategy via bearer-access-token')
+          debug('github authentication strategy via bearer-access-token')
         }
-
-        server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
-        server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
-
-        debug('session authentication strategy via bearer-access-token')
-        debug('github authentication strategy via bearer-access-token')
       }
-    }
 
-    server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
-      allowQueryToken: true,
-      allowMultipleHeaders: false,
-      validateFunc: (token, callback) => {
-        const scope = pushScopedTokens(token)
-        const valid = !!scope.length
-        callback(null, valid, {
-          token,
-          scope
-        }, null)
-      }
-    })
+      server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
+        allowQueryToken: true,
+        allowMultipleHeaders: false,
+        validateFunc: (token, callback) => {
+          const scope = pushScopedTokens(token)
+          const valid = !!scope.length
+          callback(null, valid, {
+            token,
+            scope
+          }, null)
+        }
+      })
 
-    server.auth.strategy('simple', 'bearer-access-token', {
-      allowQueryToken: true,
-      allowMultipleHeaders: false,
-      validateFunc: (token, callback) => {
-        const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-        callback(null, braveHapi.isSimpleTokenValid(tokenlist, token), { token: token }, null)
-      }
+      server.auth.strategy('simple', 'bearer-access-token', {
+        allowQueryToken: true,
+        allowMultipleHeaders: false,
+        validateFunc: (token, callback) => {
+          const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
+          callback(null, braveHapi.isSimpleTokenValid(tokenlist, token), { token: token }, null)
+        }
+      })
+      resolve()
     })
   })
 

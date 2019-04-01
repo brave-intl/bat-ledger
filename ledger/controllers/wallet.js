@@ -673,7 +673,7 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  runtime.database.checkIndices(debug, [
+  await runtime.database.checkIndices(debug, [
     {
       category: runtime.database.get('wallets', debug),
       name: 'wallets',

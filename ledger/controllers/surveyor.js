@@ -697,7 +697,7 @@ module.exports.initialize = async (debug, runtime) => {
   const surveyors = runtime.database.get('surveyors', debug)
   let entry, i, service, services, surveyor, surveyorType
 
-  runtime.database.checkIndices(debug, [
+  await runtime.database.checkIndices(debug, [
     {
       category: surveyors,
       name: 'surveyors',
