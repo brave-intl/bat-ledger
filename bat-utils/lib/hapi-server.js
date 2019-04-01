@@ -77,8 +77,18 @@ const Server = async (options, runtime) => {
     })
   }
 
-  if (runtime.config.prometheus) server.register(runtime.prometheus.plugin())
-  else epimetheus.instrument(server)
+  if (runtime.config.prometheus) {
+    await new Promise((resolve, reject) => {
+      server.register(runtime.prometheus.plugin(), (err) => {
+        if (err) {
+          reject(err)
+          throw err
+        } else {
+          resolve()
+        }
+      })
+    })
+  } else epimetheus.instrument(server)
 
   await new Promise((resolve, reject) => {
     server.register([
@@ -145,7 +155,7 @@ const Server = async (options, runtime) => {
           }
         }
       }
-    ], (err) => {
+    ], async (err) => {
       if (err) {
         debug('unable to register extensions', err)
         reject(err)
@@ -153,8 +163,16 @@ const Server = async (options, runtime) => {
       }
 
       if (process.env.NODE_ENV === 'production') {
-        server.register({ register: require('hapi-require-https'), options: { proxy: true } }, (err) => {
-          if (err) debug('unable to register hapi-require-https', err)
+        await new Promise((resolve, reject) => {
+          server.register({ register: require('hapi-require-https'), options: { proxy: true } }, (err) => {
+            if (err) {
+              debug('unable to register hapi-require-https', err)
+              reject(err)
+              throw err
+            } else {
+              resolve()
+            }
+          })
         })
       }
 
