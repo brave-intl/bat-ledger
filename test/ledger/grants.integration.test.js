@@ -593,7 +593,7 @@ test('protocolVersion 4 can claim both ads and ugp grants even on claim v2', asy
     }
   } = await ledgerAgent
     .get(`/v4/grants`)
-    .query({ paymentId })
+    .query({ paymentId, bypassCooldown })
     .expect(ok)
   t.is(promotions.length, 2, '2 promotions should be sent back')
 
