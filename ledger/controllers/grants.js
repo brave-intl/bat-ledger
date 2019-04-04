@@ -399,7 +399,9 @@ const checkBounds = (v1, v2, tol) => {
  */
 
 v2.claimGrant = {
-  handler: claimGrant(captchaCheck),
+  handler: claimGrant({
+    $in: [2, 4]
+  }, captchaCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -431,7 +433,7 @@ v2.claimGrant = {
  */
 
 v3.claimGrant = {
-  handler: claimGrant(safetynetCheck),
+  handler: claimGrant(3, safetynetCheck),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -464,7 +466,7 @@ v3.claimGrant = {
  */
 
 v4.claimGrant = {
-  handler: claimGrant(captchaCheck, v4CreateGrantQuery),
+  handler: claimGrant(4, captchaCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -487,7 +489,7 @@ v4.claimGrant = {
   }
 }
 
-function claimGrant (validate, createGrantQuery = defaultCreateGrantQuery) {
+function claimGrant (protocolVersion, validate, createGrantQuery = defaultCreateGrantQuery) {
   return (runtime) => async (request, reply) => {
     const {
       params,
@@ -504,7 +506,10 @@ function claimGrant (validate, createGrantQuery = defaultCreateGrantQuery) {
 
     if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
 
-    const promotion = await promotions.findOne({ promotionId: promotionId })
+    const promotion = await promotions.findOne({
+      promotionId,
+      protocolVersion
+    })
     if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
     if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
 
@@ -1071,15 +1076,12 @@ function v4CreateGrantQuery ({
   addresses
 }) {
   const query = {
-    type: 'ugp',
+    type,
     status: 'active',
     promotionId
   }
   if (type === 'ads') {
-    Object.assign(query, {
-      type,
-      providerId: addresses.CARD_ID
-    })
+    query.providerId = addresses.CARD_ID
   }
   return query
 }
