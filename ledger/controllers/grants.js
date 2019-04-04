@@ -283,7 +283,7 @@ const getGrant = (protocolVersion) => (runtime) => {
         wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
       }
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
-      walletTooYoung = walletCooldown(runtime, wallet, bypassCooldown)
+      walletTooYoung = walletCooldown(wallet, bypassCooldown)
     }
 
     if (protocolVersion === 4 && !paymentId) {
@@ -1173,16 +1173,13 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
   }
 }
 
-function walletCooldown (runtime, wallet, bypassCooldown) {
-  const { paymentId, _id } = wallet
+function walletCooldown (wallet, bypassCooldown) {
+  const { _id } = wallet
   const { WALLET_COOLDOWN_BYPASS_TOKEN } = process.env
-  if (bypassCooldown !== WALLET_COOLDOWN_BYPASS_TOKEN) {
+  if (isProduction || bypassCooldown !== WALLET_COOLDOWN_BYPASS_TOKEN) {
     const offset = cooldownOffset()
     const createdTime = braveUtils.createdTimestamp(_id)
     return createdTime > (new Date() - offset)
-  } else if (WALLET_COOLDOWN_BYPASS_TOKEN && isProduction) {
-    // report to sentry that a bypass is being used
-    runtime.captureException(new Error('wallet bypass used'), { paymentId })
   }
   return false
 }
