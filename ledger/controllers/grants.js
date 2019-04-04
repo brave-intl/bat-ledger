@@ -399,9 +399,7 @@ const checkBounds = (v1, v2, tol) => {
  */
 
 v2.claimGrant = {
-  handler: claimGrant({
-    $in: [null, 2, 4]
-  }, captchaCheck, v4CreateGrantQuery()),
+  handler: claimGrant(4, captchaCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -466,7 +464,7 @@ v3.claimGrant = {
  */
 
 v4.claimGrant = {
-  handler: claimGrant(4, captchaCheck, v4CreateGrantQuery('ugp')),
+  handler: claimGrant(4, captchaCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -1069,28 +1067,21 @@ function defaultCreateGrantQuery ({
   }
 }
 
-function v4CreateGrantQuery (defaultType) {
-  return ({
-    promotionId,
-    type
-  }, {
-    addresses
-  }) => {
-    const query = {
-      status: 'active',
-      promotionId
-    }
-    if (defaultType) {
-      query.type = defaultType
-    }
-    if (type === 'ads') {
-      Object.assign(query, {
-        type,
-        providerId: addresses.CARD_ID
-      })
-    }
-    return query
+function v4CreateGrantQuery ({
+  promotionId,
+  type
+}, {
+  addresses
+}) {
+  const query = {
+    type,
+    status: 'active',
+    promotionId
   }
+  if (type === 'ads') {
+    query.providerId = addresses.CARD_ID
+  }
+  return query
 }
 
 function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
