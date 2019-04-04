@@ -399,7 +399,9 @@ const checkBounds = (v1, v2, tol) => {
  */
 
 v2.claimGrant = {
-  handler: claimGrant(4, captchaCheck, v4CreateGrantQuery),
+  handler: claimGrant({
+    $in: [2, 4]
+  }, captchaCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
