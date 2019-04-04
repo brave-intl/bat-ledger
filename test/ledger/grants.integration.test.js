@@ -21,6 +21,7 @@ import {
 
 test.before(cleanDbs)
 test.after(cleanDbs)
+test.afterEach.always(cleanDbs)
 
 const promotionId = 'c96c39c8-77dd-4b2d-a8df-2ecf824bc9e9'
 // expired grant
@@ -494,7 +495,113 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
   }
 })
 
+test('protocolVersion 4 can claim both ads and ugp grants even on claim v2', async (t) => {
+  t.plan(3)
+  let body
+  let response
+  let octets
+  let headers
+  let balance = 0
+
+  const url = '/v4/grants'
+  const promotionId = 'cf0075c8-3902-46c0-be77-b8d8f7d83755'
+  const adPromotionId = 'bad49132-de38-47e7-8003-986af88eeb1c'
+  const providerId = '6e3824f6-9eec-4f56-9719-8addaffe3ff1'
+  const personaId = uuidV4().toLowerCase()
+
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+
+  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
+
+  const keypair = tweetnacl.sign.keyPair()
+  body = {
+    label: uuidV4().toLowerCase(),
+    currency: 'BAT',
+    publicKey: uint8tohex(keypair.publicKey)
+  }
+  octets = JSON.stringify(body)
+  headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers.signature = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, { algorithm: 'ed25519' })
+
+  var payload = { requestType: 'httpSignature',
+    request: {
+      body: body,
+      headers: headers,
+      octets: octets
+    },
+    proof: personaCredential.request()
+  }
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+    .send(payload).expect(ok)
+  let paymentId = response.body.wallet.paymentId
+
+  const nextPaymentId = '73b8e65a-2810-4c21-a3f6-74969ba7eaf3'
+
+  await wallets.update({
+    paymentId
+  }, {
+    $set: {
+      'paymentId': nextPaymentId,
+      'addresses': {
+        'BAT': '0x96394730f1B583B4Bb23eA1B8c9CF84c306C72f1',
+        'BTC': 'mz6GHnUCTBPcy6gAZkhfZeJnTrKtSGP4xE',
+        'CARD_ID': providerId,
+        'ETH': '0x96394730f1B583B4Bb23eA1B8c9CF84c306C72f1',
+        'LTC': 'myjzYWGTmsnkzVGUz8MWjHh25c5NWJ3uPW'
+      },
+      'altcurrency': 'BAT',
+      'httpSigningPubKey': 'c8b4ad40ad2c38367edbc9509302f2bcc851bdb68a1cded9932e30667d7796fc',
+      'provider': 'uphold',
+      'providerId': providerId
+    }
+  })
+  paymentId = nextPaymentId
+
+  const grants = {'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJiNDBkYjA4YS0yZmExLTQwOWUtOWVmYy1mYzJkOTU1NTQ2YTUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImNmMDA3NWM4LTM5MDItNDZjMC1iZTc3LWI4ZDhmN2Q4Mzc1NSIsIm1hdHVyaXR5VGltZSI6MTU0NjMwMDgwMCwiZXhwaXJ5VGltZSI6MTY3MjM1ODQwMCwidHlwZSI6InVncCJ9.0CsPvRtWhhxI3GG95ClkY3aontogb4vwpdp5D39iH9DDJkRoh7FADMEBAWJ44SwXX-XZhb2qgWD-cAP3Ua5gBg'], 'promotions': [{'promotionId': promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1546300800000, 'protocolVersion': 4}]}
+
+  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIyMDBmZGE3ZS0yNzBhLTQ4MDAtYmEyYy0wY2I0MTNhMTFkMjMiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1MDEwMjQwMCwiZXhwaXJ5VGltZSI6MTU1MDEwMjQwMCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.pd5M3_fNKqDk4b06-qeCT7uGKMpTMmsn931e9z2SkFhRZH9hmY-ky5p-RNbnGotn-F62TUPjeZxd94Kdf0DnCA']}
+
+  await ledgerAgent.post(url).send(grants).expect(ok)
+  await ledgerAgent.post(url).send(adGrants).expect(ok)
+
+  // get available grant
+  const {
+    body: {
+      grants: promotions
+    }
+  } = await ledgerAgent
+    .get(`/v4/grants`)
+    .query({ paymentId })
+    .expect(ok)
+  t.is(promotions.length, 2, '2 promotions should be sent back')
+
+  const steps = {
+    [promotionId]: '1',
+    [adPromotionId]: '2'
+  }
+  for (let promotionId in steps) {
+    const finalBalance = steps[promotionId]
+    balance = await resolveCaptcha(wallets, {
+      version: 2,
+      paymentId,
+      promotionId,
+      balance
+    })
+    t.is(balance.toString(), finalBalance)
+  }
+})
+
 async function resolveCaptcha (wallets, {
+  version = 4,
   paymentId,
   promotionId,
   balance = 0
@@ -512,7 +619,7 @@ async function resolveCaptcha (wallets, {
 
   // request grant
   response = await ledgerAgent
-      .put(`/v4/grants/${paymentId}`)
+      .put(`/v${version}/grants/${paymentId}`)
       .send({
         promotionId,
         captchaResponse: {
