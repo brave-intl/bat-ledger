@@ -399,7 +399,9 @@ const checkBounds = (v1, v2, tol) => {
  */
 
 v2.claimGrant = {
-  handler: claimGrant(2, captchaCheck, v4CreateGrantQuery()),
+  handler: claimGrant({
+    $in: [2, 4]
+  }, captchaCheck, v4CreateGrantQuery()),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -504,7 +506,10 @@ function claimGrant (protocolVersion, validate, createGrantQuery = defaultCreate
 
     if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
 
-    const promotion = await promotions.findOne({ promotionId: promotionId })
+    const promotion = await promotions.findOne({
+      promotionId,
+      protocolVersion
+    })
     if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
     if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
 
