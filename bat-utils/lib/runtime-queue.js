@@ -90,7 +90,7 @@ Queue.prototype.send = async function (debug, name, payload) {
 
       if (!rsp) return reject(new Error('sendMessage failed: unknown response'))
 
-      debug('send', JSON.stringify({ queue: name, message: payload }, null, 2))
+      debug('send', { queue: name, message: payload })
       resolve(rsp)
     })
   })
@@ -114,7 +114,7 @@ Queue.prototype.recv = async function (name) {
       }
       delete rsp.message
 
-      debug('recv', JSON.stringify({ queue: name, message: rsp }, null, 2))
+      debug('recv', { queue: name, message: rsp })
       resolve(rsp)
     })
   })
@@ -162,7 +162,7 @@ Queue.prototype.listen = function (name, callback) {
     try {
       payload = JSON.parse(message)
 
-      ndebug('recv', JSON.stringify({ queue: name, message: payload }, null, 2))
+      ndebug('recv', { queue: name, message: payload })
       callback(null, ndebug, payload)
     } catch (ex) {
       debug('listenMessage ' + name + ' parsing failed', rsp)
