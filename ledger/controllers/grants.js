@@ -6,14 +6,18 @@ const bson = require('bson')
 const underscore = require('underscore')
 const uuidV4 = require('uuid/v4')
 const wreck = require('wreck')
-
+const {
+  cooldownOffset
+} = require('../lib/grants')
 const utils = require('bat-utils')
 const braveJoi = utils.extras.joi
 const braveHapi = utils.extras.hapi
 const braveUtils = utils.extras.utils
 const whitelist = utils.hapi.auth.whitelist
 
-const rateLimitEnabled = process.env.NODE_ENV === 'production'
+const { NODE_ENV } = process.env
+const isProduction = NODE_ENV === 'production'
+const rateLimitEnabled = isProduction
 
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
 
@@ -251,9 +255,11 @@ const getGrant = (protocolVersion) => (runtime) => {
         }
       }
     }
-
-    const lang = request.query.lang
-    const paymentId = request.query.paymentId
+    const {
+      lang,
+      paymentId,
+      bypassCooldown
+    } = request.query
     const languages = l10nparser.parse(lang)
     const query = {
       active: true,
@@ -265,6 +271,7 @@ const getGrant = (protocolVersion) => (runtime) => {
     const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
     let entries, promotionIds, wallet
+    let walletTooYoung = false
 
     if (qaOnlyP(request)) return reply(boom.notFound())
 
@@ -276,6 +283,7 @@ const getGrant = (protocolVersion) => (runtime) => {
         wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
       }
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
+      walletTooYoung = walletCooldown(wallet, bypassCooldown)
     }
 
     if (protocolVersion === 4 && !paymentId) {
@@ -299,7 +307,7 @@ const getGrant = (protocolVersion) => (runtime) => {
         underscore.extend(query, { providerId: wallet.addresses.CARD_ID })
       }
       const counted = await grants.count(query)
-      if (counted !== 0) {
+      if (counted !== 0 && !walletTooYoung) {
         filteredPromotions.push({ promotionId, type })
       }
     }
@@ -372,6 +380,7 @@ v4.read = {
 
   validate: {
     query: {
+      bypassCooldown: Joi.string().guid().optional().description('a token to bypass the wallet cooldown time'),
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
     }
@@ -1162,4 +1171,15 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
 
     reply({})
   }
+}
+
+function walletCooldown (wallet, bypassCooldown) {
+  const { _id } = wallet
+  const { WALLET_COOLDOWN_BYPASS_TOKEN } = process.env
+  if (isProduction || bypassCooldown !== WALLET_COOLDOWN_BYPASS_TOKEN) {
+    const offset = cooldownOffset()
+    const createdTime = braveUtils.createdTimestamp(_id)
+    return createdTime > (new Date() - offset)
+  }
+  return false
 }
