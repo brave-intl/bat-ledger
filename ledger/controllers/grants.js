@@ -1002,8 +1002,8 @@ v3.attestations = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v2/promotions').config(v2.all),
-  braveHapi.routes.async().path('/v3/promotions').config(v3.all),
+  braveHapi.routes.async().path('/v2/promotions').whitelist().config(v2.all),
+  braveHapi.routes.async().path('/v3/promotions').whitelist().config(v3.all),
   braveHapi.routes.async().path('/v2/grants').config(v2.read),
   braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().path('/v4/grants').config(v4.read),
