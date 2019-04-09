@@ -190,6 +190,7 @@ function cleanPgDb (client) {
   return () => {
     return Promise.all([
       client.query('DELETE from transactions;'),
+      client.query('DELETE from grants;'),
       client.query('DELETE from surveyor_groups;'),
       client.query('DELETE from votes;')
     ]).then(() => client.query('REFRESH MATERIALIZED VIEW account_balances;'))

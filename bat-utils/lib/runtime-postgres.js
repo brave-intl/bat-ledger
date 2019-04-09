@@ -6,7 +6,7 @@ const debug = new SDebug('postgres')
 
 const Postgres = function (config, runtime) {
   if (!(this instanceof Postgres)) return new Postgres(config, runtime)
-
+  this.captureException = runtime ? runtime.captureException : () => {}
   if (!config.postgres) return
   this.pool = new Pool({ connectionString: config.postgres.url, ssl: process.env.NODE_ENV === 'production' })
 
@@ -33,12 +33,18 @@ Postgres.prototype = {
   connect: function () {
     return this.pool.connect()
   },
-  query: async function (text, params) {
-    const start = Date.now()
-    const ret = await this.pool.query(text, params)
-    const duration = Date.now() - start
-    debug('executed query', { text, duration, rows: ret.rowCount })
-    return ret
+  query: async function (text, params, passedClient) {
+    const client = passedClient || this.pool
+    try {
+      const start = Date.now()
+      const ret = await client.query(text, params)
+      const duration = Date.now() - start
+      debug('executed query', { text, duration, rows: ret.rowCount })
+      return ret
+    } catch (e) {
+      this.captureException(e, { text, params })
+      throw e
+    }
   }
 }
 

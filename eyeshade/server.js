@@ -8,6 +8,7 @@ const { controllers, server } = hapi
 const config = require('../config.js')
 
 const accountsController = require('./controllers/accounts')
+const grantsController = require('./controllers/grants')
 const ownersController = require('./controllers/owners')
 const publishersController = require('./controllers/publishers')
 const referralsController = require('./controllers/referrals')
@@ -16,6 +17,7 @@ Runtime.newrelic.setupNewrelic(config, __filename)
 
 const parentModules = [
   accountsController,
+  grantsController,
   ownersController,
   publishersController,
   referralsController

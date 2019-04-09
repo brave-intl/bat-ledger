@@ -1,6 +1,13 @@
 const uuidv5 = require('uuid/v5')
 
+const insertGrant = `
+INSERT INTO grants ( id, created_at, type, amount, channel, cohort, promotion_id )
+VALUES ( $1, $2, $3, $4, $5, $6, $7 )
+RETURNING *;
+`
 module.exports = {
+  insertGrant,
+  transaction,
   settlements,
   earnings,
   votesId
@@ -42,4 +49,22 @@ function settlements (options = {}) {
  group by (account_id, channel)
  order by paid ${order}
  limit $2;`
+}
+
+async function transaction ({
+  debug,
+  postgres,
+  runner
+}) {
+  let client
+  try {
+    client = await postgres.connect()
+    await client.query('BEGIN')
+    await runner(client)
+    await client.query('COMMIT')
+  } catch (e) {
+    debug(e)
+    postgres.captureException(e)
+    await client && client.query('ROLLBACK')
+  }
 }
