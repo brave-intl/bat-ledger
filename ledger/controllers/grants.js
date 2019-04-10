@@ -123,6 +123,7 @@ const captchaHeadersValidator = Joi.object().keys({
 const v2 = {}
 const v3 = {}
 const v4 = {}
+const v5 = {}
 
 /*
    GET /v2/promotions
@@ -237,7 +238,7 @@ v4.all = {
 
 /*
    GET /v2/grants
-   GET /v3/grants
+   GET /v5/grants
  */
 
 // from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
@@ -347,7 +348,7 @@ v2.read = {
   }
 }
 
-v3.read = {
+v5.read = {
   handler: safetynetPassthrough(getGrant(3)),
   description: 'See if a v3 promotion is available',
   tags: [ 'api' ],
@@ -438,7 +439,7 @@ v2.claimGrant = {
 }
 
 /*
-   PUT /v3/grants/{paymentId}
+   PUT /v5/grants/{paymentId}
  */
 
 v3.claimGrant = {
@@ -1005,8 +1006,8 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/promotions').whitelist().config(v2.all),
   braveHapi.routes.async().path('/v3/promotions').whitelist().config(v3.all),
   braveHapi.routes.async().path('/v2/grants').config(v2.read),
-  braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().path('/v4/grants').config(v4.read),
+  braveHapi.routes.async().path('/v5/grants').config(v5.read),
   braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
   braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
   braveHapi.routes.async().put().path('/v4/grants/{paymentId}').config(v4.claimGrant),

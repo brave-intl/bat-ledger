@@ -249,7 +249,7 @@ test('claim grants with attestations', async (t) => {
 
   // get available grant
   await ledgerAgent
-    .get('/v3/grants')
+    .get('/v5/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(ok)
 
