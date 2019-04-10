@@ -6,7 +6,7 @@ const debug = new SDebug('postgres')
 
 const Postgres = function (config, runtime) {
   if (!(this instanceof Postgres)) return new Postgres(config, runtime)
-  this.captureException = runtime ? runtime.captureException : () => {}
+  this.captureException = runtime ? (...args) => runtime.captureException(...args) : () => {}
   if (!config.postgres) return
   this.pool = new Pool({ connectionString: config.postgres.url, ssl: process.env.NODE_ENV === 'production' })
 
