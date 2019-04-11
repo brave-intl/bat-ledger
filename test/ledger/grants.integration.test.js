@@ -247,6 +247,11 @@ test('claim grants with attestations', async (t) => {
     .send(payload).expect(ok)
   const paymentId = response.body.wallet.paymentId
 
+  await ledgerAgent
+    .get('/v3/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(404)
+
   // get available grant
   await ledgerAgent
     .get('/v5/grants')
