@@ -69,13 +69,13 @@ test('validateTxSignature: works', async t => {
   wallet.validateTxSignature(info, signTxn(keypair, body), {
     minimum: 0.1
   })
+  body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.1' } }
+  wallet.validateTxSignature(info, signTxn(keypair, body), {
+    minimum: 0.1
+  })
   body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.0999999999999' } }
   const signed = signTxn(keypair, body)
-  t.throws(() => {
-    wallet.validateTxSignature(info, signed, {
-      minimum: 0.1
-    })
-  })
+  t.throws(() => wallet.validateTxSignature(info, signed, { minimum: 0.1 }), Error)
 
   // Missing field
   body = { destination: settlementAddress, denomination: { amount: '20' } }
