@@ -112,7 +112,14 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
 
     const { amount } = txn.denomination
     if (bigMinimum.greaterThan(amount)) {
-      throw new Error(`amount: ${amount} is less than minimum: ${minimum}`)
+      const error = new Error('amount is less than minimum')
+      this.runtime.captureException(error, {
+        extra: {
+          amount,
+          minimum
+        }
+      })
+      throw error
     }
 
     const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(signature.octets, 'utf8').digest('base64')
