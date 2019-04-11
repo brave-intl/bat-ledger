@@ -14,7 +14,9 @@ test('validateTxSignature: works', async t => {
   t.plan(10)
 
   const settlementAddress = '0xcafe'
-  const wallet = new Wallet({wallet: {settlementAddress: {BAT: settlementAddress}}}, {})
+  const wallet = new Wallet({wallet: {settlementAddress: {BAT: settlementAddress}}}, {
+    captureException: () => {}
+  })
   const keypair = tweetnacl.sign.keyPair()
   const wrongKeypair = tweetnacl.sign.keyPair()
 
