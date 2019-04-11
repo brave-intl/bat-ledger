@@ -348,9 +348,33 @@ v2.read = {
   }
 }
 
+v3.read = {
+  handler: safetynetPassthrough((runtime) => (request, reply) => {
+    reply(boom.notFound('promotion not available'))
+  }),
+  description: 'See if a v3 promotion is available',
+  tags: [ 'api' ],
+
+  validate: {
+    headers: Joi.object().keys({
+      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
+    }).unknown(true),
+    query: {
+      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
+      paymentId: Joi.string().guid().optional().description('identity of the wallet')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).unknown(true).description('promotion properties')
+  }
+}
+
 v5.read = {
   handler: safetynetPassthrough(getGrant(3)),
-  description: 'See if a v3 promotion is available',
+  description: 'See if a v5 promotion is available',
   tags: [ 'api' ],
 
   validate: {
@@ -1006,6 +1030,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/promotions').whitelist().config(v2.all),
   braveHapi.routes.async().path('/v3/promotions').whitelist().config(v3.all),
   braveHapi.routes.async().path('/v2/grants').config(v2.read),
+  braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().path('/v4/grants').config(v4.read),
   braveHapi.routes.async().path('/v5/grants').config(v5.read),
   braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
