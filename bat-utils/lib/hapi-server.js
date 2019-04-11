@@ -25,6 +25,7 @@ const npminfo = require('../npminfo')
 const pushScopedTokens = pushTokens({
   // env var       // scope key
   ALLOWED_ADS_TOKENS: 'ads',
+  ALLOWED_GRANTS_TOKENS: 'grants',
   ALLOWED_PUBLISHERS_TOKENS: 'publishers'
 })
 

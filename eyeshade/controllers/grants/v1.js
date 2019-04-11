@@ -7,23 +7,25 @@ const grantValidator = Joi.object().keys({
 const grants = Joi.array().items(grantValidator).description('a list of grants to retrieve')
 const simpleAuth = {
   strategy: 'simple-scoped-token',
-  scope: ['publishers'],
+  scope: ['grants'],
   mode: 'required'
 }
 
-module.exports = {
-  getGrants: {
-    handler: getHandler,
-    auth: simpleAuth,
-    tags: [ 'api', 'grants' ],
-    description: 'get grants for a wallet id',
-    validate: {
-      params: Joi.object().keys({ paymentId }).description('get handler params')
-    },
-    response: {
-      schema: Joi.object().keys({ grants }).description('grants available to the given payment id')
-    }
+const getGrants = {
+  tags: [ 'api', 'grants' ],
+  description: 'get grants for a wallet id',
+  auth: simpleAuth,
+  validate: {
+    params: Joi.object().keys({ paymentId }).description('get handler params')
+  },
+  handler: getHandler,
+  response: {
+    schema: Joi.object().keys({ grants }).description('grants available to the given payment id')
   }
+}
+
+module.exports = {
+  getGrants
 }
 
 function getHandler (runtime) {

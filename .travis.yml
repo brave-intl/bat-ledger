@@ -25,6 +25,7 @@ env:
     - "NODE_PATH=."
     - "CAPTCHA_URL=https://bat-captcha-staging.herokuapp.com"
     - "ALLOWED_ADS_TOKENS=foobarfoobar"
+    - "ALLOWED_GRANTS_TOKENS=foobarfoobar"
     - "ALLOWED_PUBLISHERS_TOKENS=foobarfoobar"
     - "REDEEMER_TOKEN=foobarfoobar"
     - "TESTING_COHORTS=test"

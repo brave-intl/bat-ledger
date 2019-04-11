@@ -20,6 +20,8 @@ import {
   workers
 } from '../../eyeshade/workers/grants'
 
+const grantSuggestionReport = workers['grant-suggestion-report']
+
 const {
   BAT_POSTGRES_URL
 } = process.env
@@ -106,11 +108,19 @@ test('grant worker takes a list of grants', async (t) => {
   const grant1 = createGrant()
   const grant2 = createGrant()
   const inputs = [grant1, grant2]
-  const grantSuggestionReport = workers['grant-suggestion-report']
   await grantSuggestionReport(debug, { postgres }, inputs)
   const { rows } = await client.query(selectAllGrants)
   const grants = rows.map((grant) => _.omit(grant, ['createdAt']))
   t.deepEqual(grants, inputs, 'a list of grants are inserted')
+})
+
+test('promotion id does not have to be unique', async (t) => {
+  t.plan(0)
+  const grant1 = createGrant()
+  const grant2 = createGrant()
+  grant2.promotionId = grant1.promotionId
+  const inputs = [grant1, grant2]
+  await grantSuggestionReport(debug, { postgres }, inputs)
 })
 
 test('grants can be retrieved from endpoint', async (t) => {
