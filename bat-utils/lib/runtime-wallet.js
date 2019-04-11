@@ -114,8 +114,10 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
     if (bigMinimum.greaterThan(amount)) {
       const error = new Error('amount is less than minimum')
       this.runtime.captureException(error, {
-        amount,
-        minimum
+        extra: {
+          amount,
+          minimum
+        }
       })
       throw error
     }
