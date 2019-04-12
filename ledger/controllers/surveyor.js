@@ -350,6 +350,7 @@ v2.phase2 =
     surveyor = await server(request, reply, runtime)
     if (!surveyor) return
 
+    const verifyEnd = runtime.prometheus.timedRequest('anonizeVerify_request_buckets_milliseconds')
     try {
       const now = underscore.now()
       result = surveyor.verify(proof)
@@ -359,7 +360,9 @@ v2.phase2 =
         duration: underscore.now() - now
       })
       data = JSON.parse(result.data)
+      verifyEnd({ erred: false })
     } catch (ex) {
+      verifyEnd({ erred: true })
       return reply(boom.badData('invalid surveyor proof: ' + JSON.stringify(proof)))
     }
     submissionId = result.token

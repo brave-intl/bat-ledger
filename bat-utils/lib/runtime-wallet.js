@@ -1,11 +1,11 @@
 const BigNumber = require('bignumber.js')
 const SDebug = require('sdebug')
-const UpholdSDK = require('@uphold/uphold-sdk-javascript')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
 const Joi = require('joi')
 
+const UpholdSDK = require('./runtime-uphold')
 const braveHapi = require('./extras-hapi')
 const braveJoi = require('./extras-joi')
 const braveUtils = require('./extras-utils')
@@ -46,24 +46,6 @@ Wallet.prototype.createCard = async function () {
   let f = Wallet.providers.mock.createCard
   if (this.config.uphold) {
     f = Wallet.providers.uphold.createCard
-  }
-  if (!f) return {}
-  return f.apply(this, arguments)
-}
-
-Wallet.prototype.createCardAddress = async function () {
-  let f = Wallet.providers.mock.createCardAddress
-  if (this.config.uphold) {
-    f = Wallet.providers.uphold.createCardAddress
-  }
-  if (!f) return {}
-  return f.apply(this, arguments)
-}
-
-Wallet.prototype.api = async function () {
-  let f = Wallet.providers.mock.api
-  if (this.config.uphold) {
-    f = Wallet.providers.uphold.api
   }
   if (!f) return {}
   return f.apply(this, arguments)
@@ -305,12 +287,14 @@ Wallet.prototype.purchaseBAT = async function (info, amount, currency, language)
 }
 
 Wallet.prototype.createUpholdSDK = function (token) {
+  const { config, runtime } = this
+  const { prometheus } = runtime
   const options = {
-    baseUrl: upholdBaseUrls[this.config.uphold.environment],
-    clientId: this.config.uphold.clientId,
-    clientSecret: this.config.uphold.clientSecret
+    baseUrl: upholdBaseUrls[config.uphold.environment],
+    clientId: config.uphold.clientId,
+    clientSecret: config.uphold.clientSecret
   }
-  const uphold = new UpholdSDK.default(options) // eslint-disable-line new-cap
+  const uphold = new UpholdSDK.default(prometheus, options) // eslint-disable-line new-cap
   uphold.storage.setItem(uphold.options.accessTokenKey, token)
   return uphold
 }
@@ -318,51 +302,6 @@ Wallet.prototype.createUpholdSDK = function (token) {
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
-  createCard: async function (info, {
-    currency,
-    label,
-    options
-  }) {
-    const wallet = this
-    const { runtime } = wallet
-    const { prometheus } = runtime
-    const accessToken = info.parameters.access_token
-    const uphold = this.createUpholdSDK(accessToken)
-    const name = 'upholdCreateCard_request_buckets_milliseconds'
-    const opts = Object.assign({
-      authenticate: true
-    }, options)
-    const request = () => uphold.createCard(currency, label, opts)
-    return prometheus.timedRequest(name, request, {
-      currency,
-      label
-    })
-  },
-  createCardAddress: function ({ id }, currency) {
-    const wallet = this
-    const { runtime } = wallet
-    const { prometheus } = runtime
-    const name = 'upholdCreateCardAddress_request_buckets_milliseconds'
-    const create = () => this.uphold.createCardAddress(id, currency)
-    return prometheus.timedRequest(name, create, { currency })
-  },
-  api: function (endpoint, _options, passedClient) {
-    const options = _options || {}
-    const wallet = this
-    const {
-      runtime,
-      uphold
-    } = wallet
-    const client = passedClient || uphold
-    const { prometheus } = runtime
-    const name = 'upholdApi_request_buckets_milliseconds'
-    const { method = 'get' } = options
-    const create = () => client.api(endpoint, options)
-    return prometheus.timedRequest(name, create, {
-      endpoint,
-      method
-    })
-  },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
@@ -370,10 +309,11 @@ Wallet.providers.uphold = {
         let btcAddr, ethAddr, ltcAddr, wallet
 
         try {
-          wallet = await this.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
-          ethAddr = await this.createCardAddress(wallet, 'ethereum')
-          btcAddr = await this.createCardAddress(wallet, 'bitcoin')
-          ltcAddr = await this.createCardAddress(wallet, 'litecoin')
+          wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
+          const { id } = wallet
+          ethAddr = await this.uphold.createCardAddress(id, 'ethereum')
+          btcAddr = await this.uphold.createCardAddress(id, 'bitcoin')
+          ltcAddr = await this.uphold.createCardAddress(id, 'litecoin')
         } catch (ex) {
           debug('create', {
             provider: 'uphold',
