@@ -404,7 +404,7 @@ Wallet.providers.uphold = {
     let cardInfo
 
     try {
-      cardInfo = await this.getCard(info.providerId)
+      cardInfo = await this.uphold.getCard(info.providerId)
     } catch (ex) {
       debug('balances', { provider: 'uphold', reason: ex.toString(), operation: 'getCard' })
       throw ex
@@ -471,7 +471,7 @@ Wallet.providers.uphold = {
       let postedTx
 
       try {
-        postedTx = await this.createCardTransaction(info.providerId,
+        postedTx = await this.uphold.createCardTransaction(info.providerId,
                                                            // this will be replaced below, we're just placating
                                                            underscore.pick(underscore.extend(txn.denomination,
                                                                                              { destination: txn.destination }),
@@ -501,7 +501,7 @@ Wallet.providers.uphold = {
   },
   ping: async function (provider) {
     try {
-      return { result: await this.api('/ticker/BATUSD') }
+      return { result: await this.uphold.api('/ticker/BATUSD') }
     } catch (ex) {
       return { err: ex.toString() }
     }
@@ -514,9 +514,9 @@ Wallet.providers.uphold = {
     try {
       uphold = this.createUpholdSDK(info.parameters.access_token)
       debug('uphold api', uphold.api)
-      user = await this.api('/me', null, uphold)
+      user = await uphold.api('/me')
       if (user.status !== 'pending') {
-        desiredCard = (await this.api('/me/cards?q=currency:' + desiredCardCurrency, null, uphold))[0]
+        desiredCard = (await uphold.api('/me/cards?q=currency:' + desiredCardCurrency))[0]
       }
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })

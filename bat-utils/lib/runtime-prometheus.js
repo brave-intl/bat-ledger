@@ -29,18 +29,23 @@ Prometheus.prototype.plugin = function () {
   const self = this
   const { client } = self
   const { register: registry } = client
-
   const plugin = {
     register: (server, o, done) => {
+      let name
+
+      name = 'http_request_duration_milliseconds'
+      registry.removeSingleMetric(name)
       const httpRequestDurationMilliseconds = new client.Summary({
-        name: 'http_request_duration_milliseconds',
+        name,
         help: 'request duration in milliseconds',
         labelNames: ['method', 'path', 'cardinality', 'status']
       })
       registry.registerMetric(httpRequestDurationMilliseconds)
 
+      name = 'http_request_buckets_milliseconds'
+      registry.removeSingleMetric(name)
       const httpRequestBucketsMilliseconds = new client.Histogram({
-        name: 'http_request_buckets_milliseconds',
+        name,
         help: 'request duration buckets in milliseconds',
         labelNames: ['method', 'path', 'cardinality', 'status'],
         buckets: [ 125, 250, 500, 1000, 2000, 4000, 8000, 16000 ]
@@ -50,7 +55,7 @@ Prometheus.prototype.plugin = function () {
       const upholdCreateCardRequestBucketsMilliseconds = new client.Histogram({
         name: 'upholdCreateCard_request_buckets_milliseconds',
         help: 'request duration buckets in milliseconds',
-        labelNames: ['currency', 'erred'],
+        labelNames: ['currency', 'label', 'erred'],
         buckets: client.exponentialBuckets(2, 2, 14)
       })
       registry.registerMetric(upholdCreateCardRequestBucketsMilliseconds)
@@ -113,7 +118,6 @@ Prometheus.prototype.plugin = function () {
       })
 
       self.subscribeP = true
-
       return done()
     }
   }
@@ -267,7 +271,7 @@ Prometheus.prototype.getMetric = function (name) {
 Prometheus.prototype.timedRequest = async function (name, fn, preObservations) {
   let erred = false
   const metric = this.getMetric(name)
-  const start = process.hrtime()
+  const end = metric.startTimer()
   try {
     const result = await fn()
     return result
@@ -275,9 +279,8 @@ Prometheus.prototype.timedRequest = async function (name, fn, preObservations) {
     erred = true
     throw e
   } finally {
-    const time = process.hrtime(start)
     const observations = Object.assign({}, preObservations, { erred })
-    metric.observe(observations, time)
+    end(observations)
   }
 }
 
