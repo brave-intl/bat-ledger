@@ -76,6 +76,22 @@ Prometheus.prototype.plugin = function () {
       })
       registry.registerMetric(upholdApiRequestBucketsMilliseconds)
 
+      const anonizeVerifyRequestBucketsMilliseconds = new client.Histogram({
+        name: 'anonizeVerify_request_buckets_milliseconds',
+        help: 'request duration buckets in milliseconds',
+        labelNames: ['endpoint', 'method', 'erred'],
+        buckets: client.exponentialBuckets(2, 2, 14)
+      })
+      registry.registerMetric(anonizeVerifyRequestBucketsMilliseconds)
+
+      const anonizeRegisterRequestBucketsMilliseconds = new client.Histogram({
+        name: 'anonizeRegister_request_buckets_milliseconds',
+        help: 'request duration buckets in milliseconds',
+        labelNames: ['endpoint', 'method', 'erred'],
+        buckets: client.exponentialBuckets(2, 2, 14)
+      })
+      registry.registerMetric(anonizeRegisterRequestBucketsMilliseconds)
+
       server.route({
         method: 'GET',
         path: '/metrics',
