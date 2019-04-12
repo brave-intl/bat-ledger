@@ -173,6 +173,6 @@ if (process.env.GITHUB_ORG) {
 }
 
 module.exports.prometheus =
-  { label              : process.env.SERVICE + '.' + process.env.DYNO
+  { label              : process.env.SERVICE + '.' + (process.env.DYNO || 1)
   , redis              : process.env.REDIS2_URL               || process.env.REDIS_URL               ||  false
   }
