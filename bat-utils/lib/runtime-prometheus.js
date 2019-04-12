@@ -11,7 +11,7 @@ const Prometheus = function (config, runtime) {
   if (!(this instanceof Prometheus)) return new Prometheus(config, runtime)
 
   this.metrics = {}
-
+  this.client = client
   if (!config.prometheus) return
 
   this.label = config.prometheus.label
@@ -27,11 +27,50 @@ const Prometheus = function (config, runtime) {
 
 Prometheus.prototype.plugin = function () {
   const self = this
-
-  const registry = client.register
+  const { client } = self
+  const { register: registry } = client
 
   const plugin = {
     register: (server, o, done) => {
+      const httpRequestDurationMilliseconds = new client.Summary({
+        name: 'http_request_duration_milliseconds',
+        help: 'request duration in milliseconds',
+        labelNames: ['method', 'path', 'cardinality', 'status']
+      })
+      registry.registerMetric(httpRequestDurationMilliseconds)
+
+      const httpRequestBucketsMilliseconds = new client.Histogram({
+        name: 'http_request_buckets_milliseconds',
+        help: 'request duration buckets in milliseconds',
+        labelNames: ['method', 'path', 'cardinality', 'status'],
+        buckets: [ 125, 250, 500, 1000, 2000, 4000, 8000, 16000 ]
+      })
+      registry.registerMetric(httpRequestBucketsMilliseconds)
+
+      const upholdCreateCardRequestBucketsMilliseconds = new client.Histogram({
+        name: 'upholdCreateCard_request_buckets_milliseconds',
+        help: 'request duration buckets in milliseconds',
+        labelNames: ['currency', 'erred'],
+        buckets: client.exponentialBuckets(2, 2, 14)
+      })
+      registry.registerMetric(upholdCreateCardRequestBucketsMilliseconds)
+
+      const upholdCreateCardAddressRequestBucketsMilliseconds = new client.Histogram({
+        name: 'upholdCreateCardAddress_request_buckets_milliseconds',
+        help: 'request duration buckets in milliseconds',
+        labelNames: ['currency', 'erred'],
+        buckets: client.exponentialBuckets(2, 2, 14)
+      })
+      registry.registerMetric(upholdCreateCardAddressRequestBucketsMilliseconds)
+
+      const upholdApiRequestBucketsMilliseconds = new client.Histogram({
+        name: 'upholdApi_request_buckets_milliseconds',
+        help: 'request duration buckets in milliseconds',
+        labelNames: ['endpoint', 'method', 'erred'],
+        buckets: client.exponentialBuckets(2, 2, 14)
+      })
+      registry.registerMetric(upholdApiRequestBucketsMilliseconds)
+
       server.route({
         method: 'GET',
         path: '/metrics',
@@ -52,7 +91,7 @@ Prometheus.prototype.plugin = function () {
       server.on('response', (response) => {
         const analysis = response._route._analysis
         const statusCode = response.response.statusCode
-        let cardinality, diff, duration, method, metric, params, path
+        let cardinality, diff, duration, method, params, path
 
         diff = process.hrtime(response.prometheus.start)
         duration = Math.round((diff[0] * 1e9 + diff[1]) / 1000000)
@@ -64,26 +103,13 @@ Prometheus.prototype.plugin = function () {
         for (let i = 0; i < path.length; i++) { if (path[i] === '?') path[i] = '{' + (params.shift() || '?') + '}' }
         path = path.join('/')
 
-        metric = registry._metrics['http_request_buckets_milliseconds']
-        if (!metric) {
-          metric = new client.Summary({
-            name: 'http_request_duration_milliseconds',
-            help: 'request duration in milliseconds',
-            labelNames: ['method', 'path', 'cardinality', 'status']
-          })
-        }
-        metric.labels(method, path, cardinality, statusCode).observe(duration)
+        this.getMetric('http_request_duration_milliseconds')
+          .labels(method, path, cardinality, statusCode)
+          .observe(duration)
 
-        metric = registry._metrics['http_request_buckets_milliseconds']
-        if (!metric) {
-          metric = new client.Histogram({
-            name: 'http_request_buckets_milliseconds',
-            help: 'request duration buckets in milliseconds',
-            labelNames: ['method', 'path', 'cardinality', 'status'],
-            buckets: [ 125, 250, 500, 1000, 2000, 4000, 8000, 16000 ]
-          })
-        }
-        metric.labels(method, path, cardinality, statusCode).observe(duration)
+        this.getMetric('http_request_buckets_milliseconds')
+          .labels(method, path, cardinality, statusCode)
+          .observe(duration)
       })
 
       self.subscribeP = true
@@ -216,24 +242,43 @@ Prometheus.prototype.maintenance = function () {
 }
 
 Prometheus.prototype.setCounter = async function (name, help, value) {
-  if (!this.metrics[name]) this.metrics[name] = new client.Counter({ name: name, help: help })
+  if (!this.metrics[name]) this.metrics[name] = new this.client.Counter({ name: name, help: help })
 
   this.metrics[name].reset()
   this.metrics[name].inc(value)
 }
 
 Prometheus.prototype.incrCounter = async function (name, help, delta) {
-  if (!this.metrics[name]) this.metrics[name] = new client.Counter({ name: name, help: help })
+  if (!this.metrics[name]) this.metrics[name] = new this.client.Counter({ name: name, help: help })
 
   this.metrics[name].inc(delta)
 }
 
 Prometheus.prototype.setGauge = async function (name, help, value) {
-  if (!this.metrics[name]) this.metrics[name] = new client.Gauge({ name: name, help: help })
+  if (!this.metrics[name]) this.metrics[name] = new this.client.Gauge({ name: name, help: help })
 
   this.metrics[name].set(value)
 }
 
-// NB: not doing histograms (yet!)
+Prometheus.prototype.getMetric = function (name) {
+  return this.client.register.getSingleMetric(name)
+}
+
+Prometheus.prototype.timedRequest = async function (name, fn, preObservations) {
+  let erred = false
+  const metric = this.getMetric(name)
+  const start = process.hrtime()
+  try {
+    const result = await fn()
+    return result
+  } catch (e) {
+    erred = true
+    throw e
+  } finally {
+    const time = process.hrtime(start)
+    const observations = Object.assign({}, preObservations, { erred })
+    metric.observe(observations, time)
+  }
+}
 
 module.exports = Prometheus

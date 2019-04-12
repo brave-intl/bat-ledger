@@ -51,6 +51,24 @@ Wallet.prototype.createCard = async function () {
   return f.apply(this, arguments)
 }
 
+Wallet.prototype.createCardAddress = async function () {
+  let f = Wallet.providers.mock.createCardAddress
+  if (this.config.uphold) {
+    f = Wallet.providers.uphold.createCardAddress
+  }
+  if (!f) return {}
+  return f.apply(this, arguments)
+}
+
+Wallet.prototype.api = async function () {
+  let f = Wallet.providers.mock.api
+  if (this.config.uphold) {
+    f = Wallet.providers.uphold.api
+  }
+  if (!f) return {}
+  return f.apply(this, arguments)
+}
+
 Wallet.prototype.create = async function (requestType, request) {
   let f = Wallet.providers.mock.create
   if (this.config.uphold) {
@@ -305,11 +323,45 @@ Wallet.providers.uphold = {
     label,
     options
   }) {
+    const wallet = this
+    const { runtime } = wallet
+    const { prometheus } = runtime
     const accessToken = info.parameters.access_token
     const uphold = this.createUpholdSDK(accessToken)
-    return uphold.createCard(currency, label, Object.assign({
+    const name = 'upholdCreateCard_request_buckets_milliseconds'
+    const opts = Object.assign({
       authenticate: true
-    }, options))
+    }, options)
+    const request = () => uphold.createCard(currency, label, opts)
+    return prometheus.timedRequest(name, request, {
+      currency,
+      label
+    })
+  },
+  createCardAddress: function ({ id }, currency) {
+    const wallet = this
+    const { runtime } = wallet
+    const { prometheus } = runtime
+    const name = 'upholdCreateCardAddress_request_buckets_milliseconds'
+    const create = () => this.uphold.createCardAddress(id, currency)
+    return prometheus.timedRequest(name, create, { currency })
+  },
+  api: function (endpoint, _options, passedClient) {
+    const options = _options || {}
+    const wallet = this
+    const {
+      runtime,
+      uphold
+    } = wallet
+    const client = passedClient || uphold
+    const { prometheus } = runtime
+    const name = 'upholdApi_request_buckets_milliseconds'
+    const { method = 'get' } = options
+    const create = () => client.api(endpoint, options)
+    return prometheus.timedRequest(name, create, {
+      endpoint,
+      method
+    })
   },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
@@ -318,10 +370,10 @@ Wallet.providers.uphold = {
         let btcAddr, ethAddr, ltcAddr, wallet
 
         try {
-          wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
-          ethAddr = await this.uphold.createCardAddress(wallet.id, 'ethereum')
-          btcAddr = await this.uphold.createCardAddress(wallet.id, 'bitcoin')
-          ltcAddr = await this.uphold.createCardAddress(wallet.id, 'litecoin')
+          wallet = await this.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
+          ethAddr = await this.createCardAddress(wallet, 'ethereum')
+          btcAddr = await this.createCardAddress(wallet, 'bitcoin')
+          ltcAddr = await this.createCardAddress(wallet, 'litecoin')
         } catch (ex) {
           debug('create', {
             provider: 'uphold',
@@ -352,7 +404,7 @@ Wallet.providers.uphold = {
     let cardInfo
 
     try {
-      cardInfo = await this.uphold.getCard(info.providerId)
+      cardInfo = await this.getCard(info.providerId)
     } catch (ex) {
       debug('balances', { provider: 'uphold', reason: ex.toString(), operation: 'getCard' })
       throw ex
@@ -419,7 +471,7 @@ Wallet.providers.uphold = {
       let postedTx
 
       try {
-        postedTx = await this.uphold.createCardTransaction(info.providerId,
+        postedTx = await this.createCardTransaction(info.providerId,
                                                            // this will be replaced below, we're just placating
                                                            underscore.pick(underscore.extend(txn.denomination,
                                                                                              { destination: txn.destination }),
@@ -449,7 +501,7 @@ Wallet.providers.uphold = {
   },
   ping: async function (provider) {
     try {
-      return { result: await this.uphold.api('/ticker/BATUSD') }
+      return { result: await this.api('/ticker/BATUSD') }
     } catch (ex) {
       return { err: ex.toString() }
     }
@@ -462,9 +514,9 @@ Wallet.providers.uphold = {
     try {
       uphold = this.createUpholdSDK(info.parameters.access_token)
       debug('uphold api', uphold.api)
-      user = await uphold.api('/me')
+      user = await this.api('/me', null, uphold)
       if (user.status !== 'pending') {
-        desiredCard = (await uphold.api('/me/cards?q=currency:' + desiredCardCurrency))[0]
+        desiredCard = (await this.api('/me/cards?q=currency:' + desiredCardCurrency, null, uphold))[0]
       }
     } catch (ex) {
       debug('status', { provider: 'uphold', reason: ex.toString(), operation: '/me' })
