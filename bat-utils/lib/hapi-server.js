@@ -80,7 +80,6 @@ const Server = async (options, runtime) => {
   if (runtime.config.prometheus) {
     await new Promise((resolve, reject) => {
       server.register(runtime.prometheus.plugin(), (err) => {
-        console.log('plugin err', err)
         if (err) {
           reject(err)
           throw err
