@@ -8,6 +8,7 @@ create table potential_payments_ads(
   payment_id uuid not null,
   provider_id uuid not null,
   amount numeric(28, 18) not null check (amount > 0.0),
-  verdict text
+  verdict text,
+  created_at timestamp with time zone not null default current_timestamp
 )
 $$) where not exists (select * from migrations where id = '0007');
