@@ -1,5 +1,7 @@
 select execute($$
 
+create extension if not exists "uuid-ossp";
+
 insert into migrations (id, description) values ('0006', 'payout_reports_ads');
 
 create table payout_reports_ads(
