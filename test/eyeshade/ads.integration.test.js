@@ -4,12 +4,10 @@ import {
   serial as test
 } from 'ava'
 import uuidV4 from 'uuid/v4'
-import _ from 'underscore'
-import { Runtime } from 'bat-utils'
 import {
-  eyeshadeAgent,
   cleanPgDb,
   connectToDb,
+  cleanDbs
 } from '../utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import { monthly } from '../../eyeshade/workers/ads'
@@ -18,7 +16,7 @@ const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } 
 
 test.afterEach.always(async t => {
   await cleanPgDb(postgres)()
-  // TODO clean eyeshade mongo
+  await cleanDbs()
 })
 
 test('ads payout report cron job takes a snapshot of balances', async t => {
@@ -32,7 +30,7 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
 
   // Create an ad transaction so there is a payment_id with a balance
   const txId = uuidV4()
-  const createdAt = new Date
+  const createdAt = new Date()
   const description = 'funding tx for viewing ads'
   const transactionType = 'ad'
   const fromAccountType = 'uphold'
@@ -47,7 +45,7 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
   await postgres.query(`refresh materialized view account_balances`)
 
   // Run the payout report
-  await monthly({}, {postgres: postgres, database: eyeshadeMongo })
+  await monthly({}, { postgres: postgres, database: eyeshadeMongo })
 
   // Ensure the wallet balance made it in
   const potentialPayments = (await postgres.query(`select * from potential_payments_ads`)).rows
@@ -56,4 +54,5 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
   const potentialPayment = potentialPayments[0]
   t.true(potentialPayment.payment_id === paymentId)
   t.true(potentialPayment.provider_id === providerId)
-});
+  t.true(potentialPayment.amount === '1000.000000000000000000')
+})

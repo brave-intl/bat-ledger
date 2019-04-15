@@ -1,5 +1,6 @@
 const cron = require('cron-parser')
 const uuidV4 = require('uuid/v4')
+const underscore = require('underscore')
 
 const createPayoutReportQuery = `insert into payout_reports_ads (id) values ($1)`
 
@@ -11,11 +12,9 @@ const createPotentialPaymentsQuery = `insert into potential_payments_ads (payout
 // and inserts them into potential_payments
 const monthly = async (debug, runtime) => {
   const client = await runtime.postgres.connect()
-  const walletsCollection = runtime.database.get('wallets', debug)
-  // const walletsCollection = await runtime.database.collection('wallets')
+  // const walletsCollection = runtime.database.get('wallets', debug)
+  const walletsCollection = await runtime.database.collection('wallets')
   const payoutReportId = uuidV4()
-
-  const result = await client.query('select * from transactions;')
 
   try {
     await client.query('BEGIN')
@@ -34,15 +33,15 @@ const monthly = async (debug, runtime) => {
     await client.query('COMMIT')
   } catch (e) {
     await client.query('ROLLBACK')
-    throw e
+    throw (e)
   } finally {
-    client.release
+    client.release()
   }
 }
 
 exports.initialize = async (debug, runtime) => {
-  interval = cron.parseExpression('0 0 1 * *', {})
-  next = interval.next().getTime()
+  const interval = cron.parseExpression('0 0 1 * *', {})
+  const next = interval.next().getTime()
   setTimeout(() => { monthly(debug, runtime) }, next - underscore.now())
 }
 
