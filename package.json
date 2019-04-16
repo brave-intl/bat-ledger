@@ -57,7 +57,7 @@
       "balance": "test/balance/*.integration.test.js",
       "eyeshade": "test/eyeshade/*.integration.test.js"
     },
-    "dockerdeps": "ledger-redis eyeshade-redis balance-redis mongo postgres grant-web",
+    "dockerdeps": "ledger-redis eyeshade-redis balance-redis mongo postgres ledger-worker eyeshade-worker grant-web",
     "dockermonitors": "prometheus grafana",
     "dockerservices": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web"
   },

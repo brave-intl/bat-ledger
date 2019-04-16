@@ -63,6 +63,7 @@ services:
       - "DATABASE_URL=postgres://eyeshade:password@postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
+      - "REDIS_URL=redis://eyeshade-redis:6379"
     depends_on:
       - mongo
       - eyeshade-redis
@@ -81,6 +82,7 @@ services:
       - "DATABASE_URL=postgres://eyeshade:password@postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
+      - "REDIS_URL=redis://eyeshade-redis:6379"
     depends_on:
       - mongo
       - eyeshade-redis
@@ -95,6 +97,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
+      - "REDIS_URL=redis://ledger-redis:6379"
     depends_on:
       - mongo
       - ledger-redis
@@ -110,6 +113,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
+      - "REDIS_URL=redis://ledger-redis:6379"
       - PUBLISHERS_TAKEOVER
     depends_on:
       - mongo
@@ -126,6 +130,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=balance"
+      - "REDIS_URL=redis://balance-redis:6379"
     depends_on:
       - balance-redis
     networks:
@@ -136,7 +141,7 @@ services:
     ports:
       - "3333:3333"
     environment:
-      - "REDIS_URL=${REDIS_URL-redis://grant-redis:6379}"
+      - "REDIS_URL=redis://grant-redis:6379"
       - BAT_SETTLEMENT_ADDRESS
       - GRANT_SIGNATOR_PUBLIC_KEY
       - GRANT_WALLET_CARD_ID

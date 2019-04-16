@@ -1,8 +1,6 @@
 import {
   serial as test
 } from 'ava'
-// import Postgres from 'bat-utils/lib/runtime-postgres'
-// import Queue from 'bat-utils/lib/runtime-queue'
 import SDebug from 'sdebug'
 import {
   workers
