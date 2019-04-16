@@ -12,19 +12,15 @@ const createPotentialPaymentsQuery = `insert into potential_payments_ads (payout
 // and inserts them into potential_payments
 const monthly = async (debug, runtime) => {
   const client = await runtime.postgres.connect()
-  // const walletsCollection = runtime.database.get('wallets', debug)
-  const walletsCollection = await runtime.database.collection('wallets')
+  const walletsCollection = runtime.database.get('wallets', debug)
   const payoutReportId = uuidV4()
 
   try {
     await client.query('BEGIN')
-
     // First create the payout report
     await client.query(createPayoutReportQuery, [payoutReportId])
-
     // Next get all the payment_id, balance pairs for all the wallets
     const walletBalances = (await client.query(selectWalletBalancesQuery, [])).rows
-
     // Now insert the balance snapshots as potential ads payments
     for (let walletBalance of walletBalances) {
       const providerId = (await walletsCollection.findOne({paymentId: walletBalance.account_id})).providerId

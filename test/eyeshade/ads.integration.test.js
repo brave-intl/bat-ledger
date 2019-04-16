@@ -11,8 +11,15 @@ import {
 } from '../utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import { monthly } from '../../eyeshade/workers/ads'
+import Database from 'bat-utils/lib/runtime-database'
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const runtime = {
+  postgres: postgres,
+  database: new Database({
+    database: process.env.MONGODB_URI
+  })
+}
 
 test.afterEach.always(async t => {
   await cleanPgDb(postgres)()
@@ -44,15 +51,14 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
   // Refresh the account balances materialized view so the balance filters through
   await postgres.query(`refresh materialized view account_balances`)
 
-  // Run the payout report
-  await monthly({}, { postgres: postgres, database: eyeshadeMongo })
+  await monthly({}, runtime)
 
   // Ensure the wallet balance made it in
   const potentialPayments = (await postgres.query(`select * from potential_payments_ads`)).rows
-  t.true(potentialPayments.length === 1)
+  t.true(potentialPayments.length, 1, 'the correct number of payments were inserted')
 
   const potentialPayment = potentialPayments[0]
-  t.true(potentialPayment.payment_id === paymentId)
-  t.true(potentialPayment.provider_id === providerId)
-  t.true(potentialPayment.amount === '1000.000000000000000000')
+  t.is(potentialPayment.payment_id, paymentId, 'the inserted payment id matches')
+  t.is(potentialPayment.provider_id, providerId, 'the inserted provider id matches')
+  t.is(potentialPayment.amount, '1000.000000000000000000', 'the inserted amount matches')
 })
