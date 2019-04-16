@@ -55,7 +55,7 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
 
   // Ensure the wallet balance made it in
   const potentialPayments = (await postgres.query(`select * from potential_payments_ads`)).rows
-  t.true(potentialPayments.length, 1, 'the correct number of payments were inserted')
+  t.is(potentialPayments.length, 1, 'the correct number of payments were inserted')
 
   const potentialPayment = potentialPayments[0]
   t.is(potentialPayment.payment_id, paymentId, 'the inserted payment id matches')
