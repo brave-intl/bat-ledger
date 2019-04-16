@@ -7,19 +7,20 @@ import uuidV4 from 'uuid/v4'
 import {
   cleanPgDb,
   connectToDb,
-  cleanDbs
+  cleanDbs,
+  dbUri
 } from '../utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import { monthly } from '../../eyeshade/workers/ads'
-import Database from 'bat-utils/lib/runtime-database'
+import { Runtime } from 'bat-utils'
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-const runtime = {
-  postgres: postgres,
-  database: new Database({
-    database: process.env.MONGODB_URI
-  })
-}
+const runtime = new Runtime({
+  postgres: { url: process.env.BAT_POSTGRES_URL },
+  database: {
+    mongo: dbUri('ledger')
+  }
+})
 
 test.afterEach.always(async t => {
   await cleanPgDb(postgres)()
@@ -27,13 +28,16 @@ test.afterEach.always(async t => {
 })
 
 test('ads payout report cron job takes a snapshot of balances', async t => {
-  const eyeshadeMongo = await connectToDb('eyeshade')
+  const eyeshadeMongo = await connectToDb('ledger')
   const wallets = eyeshadeMongo.collection('wallets')
 
   // Create the wallet that will receive payment
   const paymentId = uuidV4()
   const providerId = uuidV4()
   await wallets.insert({paymentId, providerId})
+  const insertedWallet = await wallets.findOne({paymentId: paymentId})
+  console.log('inserted wallet is')
+  console.log(insertedWallet)
 
   // Create an ad transaction so there is a payment_id with a balance
   const txId = uuidV4()
