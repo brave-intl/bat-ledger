@@ -124,7 +124,7 @@
     "ava": "^1.0.0-beta.0",
     "babel-eslint": "^8.2.3",
     "coveralls": "^3.0.3",
-    "nyc": "^13.3.0",
+    "nyc": "^14.0.0",
     "standard": "^10.0.3",
     "supertest": "github:brave-intl/supertest"
   },
