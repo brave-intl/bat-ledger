@@ -20,7 +20,6 @@ const Queue = function (config, runtime) {
     this.url = this.config
     this.config = { client: redis.createClient(this.config) }
   }
-  debug('connecting', this.url)
   this.rsmq = new Rsmq(this.config)
   this.runtime = runtime
 

@@ -275,6 +275,8 @@ function makeRuntime (service, extension = {}) {
   const REDIS_KEY = `BAT_${service.toUpperCase()}_REDIS_URL`
   const {
     [REDIS_KEY]: BAT_REDIS_URL,
+    SERVICE,
+    DYNO,
     BAT_EYESHADE_REDIS_URL,
     TESTING_COHORTS,
     BAT_RATIOS_URL,
@@ -335,6 +337,10 @@ function makeRuntime (service, extension = {}) {
       slug: HEROKU_SLUG_COMMIT || 'test',
       project: HEROKU_APP_NAME || service
     },
+    prometheus: {
+      label: SERVICE + '.' + (DYNO || 'web.1'),
+      redis: BAT_REDIS_URL || false
+    },
     newrelic: {
       key: false
     },
@@ -352,6 +358,7 @@ function makeRuntime (service, extension = {}) {
         url: BAT_REDIS_URL
       }
     },
+    // all queues go to eyeshade
     queue: {
       rsmq: BAT_EYESHADE_REDIS_URL
     }
