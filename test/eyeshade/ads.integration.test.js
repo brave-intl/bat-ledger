@@ -6,7 +6,6 @@ import {
 import uuidV4 from 'uuid/v4'
 import {
   cleanPgDb,
-  connectToDb,
   cleanDbs,
   dbUri
 } from '../utils'
@@ -28,8 +27,8 @@ test.afterEach.always(async t => {
 })
 
 test('ads payout report cron job takes a snapshot of balances', async t => {
-  const eyeshadeMongo = await connectToDb('ledger')
-  const wallets = eyeshadeMongo.collection('wallets')
+  const ledgerMongo = runtime.database
+  const wallets = ledgerMongo.get('wallets', {})
 
   // Create the wallet that will receive payment
   const paymentId = uuidV4()
