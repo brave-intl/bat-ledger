@@ -9,6 +9,7 @@ import { sign } from 'http-request-signature'
 import tweetnacl from 'tweetnacl'
 import _ from 'underscore'
 import {
+  balanceAgent,
   ledgerAgent,
   ok,
   cleanDbs,
@@ -318,10 +319,16 @@ test('claim grants with attestations', async (t) => {
   var err = ok(response)
   if (err) throw err
   t.is(response.body.balance, '30.0000')
+  t.deepEqual(response.body.grants, [{
+    type: 'ugp',
+    altcurrency: 'BAT',
+    expiryTime: 1830389353,
+    probi: '30000000000000000000'
+  }], 'relevant grant information is sent back')
 })
 
 test('protocolVersion 4 does not send back ads when none are available', async (t) => {
-  t.plan(3)
+  t.plan(5)
   let body
   let response
   let octets
@@ -370,7 +377,7 @@ test('protocolVersion 4 does not send back ads when none are available', async (
 
   const grants = {'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJiNDBkYjA4YS0yZmExLTQwOWUtOWVmYy1mYzJkOTU1NTQ2YTUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImNmMDA3NWM4LTM5MDItNDZjMC1iZTc3LWI4ZDhmN2Q4Mzc1NSIsIm1hdHVyaXR5VGltZSI6MTU0NjMwMDgwMCwiZXhwaXJ5VGltZSI6MTY3MjM1ODQwMCwidHlwZSI6InVncCJ9.0CsPvRtWhhxI3GG95ClkY3aontogb4vwpdp5D39iH9DDJkRoh7FADMEBAWJ44SwXX-XZhb2qgWD-cAP3Ua5gBg'], 'promotions': [{promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1546300800000, 'protocolVersion': 4}]}
 
-  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIyMDBmZGE3ZS0yNzBhLTQ4MDAtYmEyYy0wY2I0MTNhMTFkMjMiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1MDEwMjQwMCwiZXhwaXJ5VGltZSI6MTU1MDEwMjQwMCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.pd5M3_fNKqDk4b06-qeCT7uGKMpTMmsn931e9z2SkFhRZH9hmY-ky5p-RNbnGotn-F62TUPjeZxd94Kdf0DnCA']}
+  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1YTdlOTZhOC0wOWE5LTQ1OGUtODNjYS1jMjYzYTFjNTBiZjUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1NjEyMjMyOCwiZXhwaXJ5VGltZSI6MjE2MDkyNTkyOCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.kcBlRGoOFylPOP3cnCaEhNuePvvOQ6z5a1fNogA6rELoHo_i28elzNLZ8X2VoHcD8LMkcgijgviCOypu3_0AAg']}
 
   await ledgerAgent.post(url).send(grants).expect(ok)
   await ledgerAgent.post(url).send(adGrants).expect(ok)
@@ -390,12 +397,19 @@ test('protocolVersion 4 does not send back ads when none are available', async (
     .expect(ok)
   t.is(promotions.length, 1, 'only one promotion should be sent back')
 
-  balance = await resolveCaptcha(wallets, {
+  const resolved = await resolveCaptcha(wallets, {
     paymentId,
     promotionId,
     balance
   })
-  t.is(balance.toString(), '1')
+  t.is(resolved.balance.toString(), '1')
+  t.deepEqual(resolved.grants, [{
+    type: 'ugp',
+    altcurrency: 'BAT',
+    expiryTime: 1672358400,
+    probi: '1000000000000000000'
+  }], 'relevant grant information is sent back')
+  t.deepEqual(resolved.grants, resolved.balanceGrants, 'balance has the same info')
   await t.throwsAsync(async () => {
     await resolveCaptcha(wallets, {
       paymentId,
@@ -406,7 +420,7 @@ test('protocolVersion 4 does not send back ads when none are available', async (
 })
 
 test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
-  t.plan(3)
+  t.plan(5)
   let body
   let response
   let octets
@@ -478,7 +492,7 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
 
   const grants = {'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJiNDBkYjA4YS0yZmExLTQwOWUtOWVmYy1mYzJkOTU1NTQ2YTUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImNmMDA3NWM4LTM5MDItNDZjMC1iZTc3LWI4ZDhmN2Q4Mzc1NSIsIm1hdHVyaXR5VGltZSI6MTU0NjMwMDgwMCwiZXhwaXJ5VGltZSI6MTY3MjM1ODQwMCwidHlwZSI6InVncCJ9.0CsPvRtWhhxI3GG95ClkY3aontogb4vwpdp5D39iH9DDJkRoh7FADMEBAWJ44SwXX-XZhb2qgWD-cAP3Ua5gBg'], 'promotions': [{'promotionId': 'cf0075c8-3902-46c0-be77-b8d8f7d83755', 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1546300800000, 'protocolVersion': 4}]}
 
-  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIyMDBmZGE3ZS0yNzBhLTQ4MDAtYmEyYy0wY2I0MTNhMTFkMjMiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1MDEwMjQwMCwiZXhwaXJ5VGltZSI6MTU1MDEwMjQwMCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.pd5M3_fNKqDk4b06-qeCT7uGKMpTMmsn931e9z2SkFhRZH9hmY-ky5p-RNbnGotn-F62TUPjeZxd94Kdf0DnCA']}
+  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1YTdlOTZhOC0wOWE5LTQ1OGUtODNjYS1jMjYzYTFjNTBiZjUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1NjEyMjMyOCwiZXhwaXJ5VGltZSI6MjE2MDkyNTkyOCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.kcBlRGoOFylPOP3cnCaEhNuePvvOQ6z5a1fNogA6rELoHo_i28elzNLZ8X2VoHcD8LMkcgijgviCOypu3_0AAg']}
 
   await ledgerAgent.post(url).send(grants).expect(ok)
   await ledgerAgent.post(url).send(adGrants).expect(ok)
@@ -502,19 +516,33 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
     [promotionId]: '1',
     [adPromotionId]: '2'
   }
+  let resolved
   for (let promotionId in steps) {
     const finalBalance = steps[promotionId]
-    balance = await resolveCaptcha(wallets, {
+    resolved = await resolveCaptcha(wallets, {
       paymentId,
       promotionId,
       balance
     })
+    balance = resolved.balance
     t.is(balance.toString(), finalBalance)
   }
+  t.deepEqual(resolved.grants, [{
+    type: 'ugp',
+    altcurrency: 'BAT',
+    expiryTime: 1672358400,
+    probi: '1000000000000000000'
+  }, {
+    altcurrency: 'BAT',
+    expiryTime: 2160925928,
+    probi: '1000000000000000000',
+    type: 'ads'
+  }], 'relevant grant information is sent back')
+  t.deepEqual(resolved.grants, resolved.balanceGrants, 'balance has the same info')
 })
 
 test('protocolVersion 4 can claim both ads and ugp grants even on claim v2', async (t) => {
-  t.plan(3)
+  t.plan(5)
   let body
   let response
   let octets
@@ -586,7 +614,7 @@ test('protocolVersion 4 can claim both ads and ugp grants even on claim v2', asy
 
   const grants = {'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJiNDBkYjA4YS0yZmExLTQwOWUtOWVmYy1mYzJkOTU1NTQ2YTUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImNmMDA3NWM4LTM5MDItNDZjMC1iZTc3LWI4ZDhmN2Q4Mzc1NSIsIm1hdHVyaXR5VGltZSI6MTU0NjMwMDgwMCwiZXhwaXJ5VGltZSI6MTY3MjM1ODQwMCwidHlwZSI6InVncCJ9.0CsPvRtWhhxI3GG95ClkY3aontogb4vwpdp5D39iH9DDJkRoh7FADMEBAWJ44SwXX-XZhb2qgWD-cAP3Ua5gBg'], 'promotions': [{'promotionId': promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1546300800000, 'protocolVersion': 4}]}
 
-  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIyMDBmZGE3ZS0yNzBhLTQ4MDAtYmEyYy0wY2I0MTNhMTFkMjMiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1MDEwMjQwMCwiZXhwaXJ5VGltZSI6MTU1MDEwMjQwMCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.pd5M3_fNKqDk4b06-qeCT7uGKMpTMmsn931e9z2SkFhRZH9hmY-ky5p-RNbnGotn-F62TUPjeZxd94Kdf0DnCA']}
+  const adGrants = {'promotions': [{'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4}], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1YTdlOTZhOC0wOWE5LTQ1OGUtODNjYS1jMjYzYTFjNTBiZjUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1NjEyMjMyOCwiZXhwaXJ5VGltZSI6MjE2MDkyNTkyOCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.kcBlRGoOFylPOP3cnCaEhNuePvvOQ6z5a1fNogA6rELoHo_i28elzNLZ8X2VoHcD8LMkcgijgviCOypu3_0AAg']}
 
   await ledgerAgent.post(url).send(grants).expect(ok)
   await ledgerAgent.post(url).send(adGrants).expect(ok)
@@ -606,16 +634,30 @@ test('protocolVersion 4 can claim both ads and ugp grants even on claim v2', asy
     [promotionId]: '1',
     [adPromotionId]: '2'
   }
+  let resolved
   for (let promotionId in steps) {
     const finalBalance = steps[promotionId]
-    balance = await resolveCaptcha(wallets, {
+    resolved = await resolveCaptcha(wallets, {
       version: 2,
       paymentId,
       promotionId,
       balance
     })
+    balance = resolved.balance
     t.is(balance.toString(), finalBalance)
   }
+  t.deepEqual(resolved.grants, [{
+    type: 'ugp',
+    altcurrency: 'BAT',
+    expiryTime: 1672358400,
+    probi: '1000000000000000000'
+  }, {
+    altcurrency: 'BAT',
+    expiryTime: 2160925928,
+    probi: '1000000000000000000',
+    type: 'ads'
+  }], 'relevant grant information is sent back')
+  t.deepEqual(resolved.grants, resolved.balanceGrants, 'balance has the same info')
 })
 
 test('default cooldown hrs', async (t) => {
@@ -672,6 +714,22 @@ async function resolveCaptcha (wallets, {
   } while (response.status === 503)
   var err = ok(response)
   if (err) throw err
+  const { grants } = response.body
+  // skip the 5 min caching
+  await balanceAgent
+    .del(`/v2/wallet/${paymentId}/balance`)
+    .expect(ok)
+  const {
+    body: {
+      grants: balanceGrants
+    }
+  } = await balanceAgent
+    .get(`/v2/wallet/${paymentId}/balance`)
+    .expect(ok)
 
-  return total
+  return {
+    balance: total,
+    grants,
+    balanceGrants
+  }
 }

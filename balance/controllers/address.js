@@ -95,6 +95,7 @@ v2.walletBalance =
       probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
       parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters'),
       grants: Joi.array().optional().items(Joi.object().keys({
+        type: Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use'),
         probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
         altcurrency: Joi.string().optional().description('the grant currency'),
         expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
