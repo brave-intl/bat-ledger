@@ -163,7 +163,9 @@ async function sumActiveGrants (runtime, info, wallet, grants) {
     } else {
       let content = braveUtils.extractJws(token)
       total = total.plus(content.probi)
-      results.push(underscore.pick(content, ['altcurrency', 'expiryTime', 'probi']))
+      const exposedContent = underscore.pick(content, ['altcurrency', 'expiryTime', 'probi', 'type'])
+      exposedContent.type = exposedContent.type || 'ugp'
+      results.push(exposedContent)
     }
   }
   return [total, results]
@@ -205,6 +207,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
       }),
       grants: Joi.array().optional().items(Joi.object().keys({
+        type: Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use'),
         probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
         altcurrency: Joi.string().optional().description('the grant currency'),
         expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
