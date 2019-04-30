@@ -14,7 +14,7 @@ services:
       - "BAT_GRANT_SERVER=http://grant-web:3333"
       - "BAT_LEDGER_REDIS_URL=redis://ledger-redis:6379"
       - "BAT_LEDGER_SERVER=http://ledger-web:3001"
-      - "BAT_MONGODB_URI=mongodb://mongo:/"
+      - "BAT_MONGODB_URI=mongodb://mongo/"
       - "BAT_POSTGRES_URL=postgres://eyeshade:password@postgres:5432/"
       - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
       - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava}"

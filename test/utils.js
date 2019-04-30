@@ -301,6 +301,7 @@ function makeRuntime (service, extension = {}) {
     BAT_LEDGER_SERVER,
     BAT_MONGODB_URI
   } = process.env
+  // console.trace(BAT_MONGODB_URI, service)
   const config = Object.assign({
     testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
     currency: {
@@ -351,7 +352,7 @@ function makeRuntime (service, extension = {}) {
       github: false
     },
     database: {
-      mongo: BAT_MONGODB_URI + '/' + service
+      mongo: BAT_MONGODB_URI + service
     },
     cache: {
       redis: {

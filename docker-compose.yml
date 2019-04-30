@@ -98,6 +98,7 @@ services:
     environment:
       - "SERVICE=ledger"
       - "REDIS_URL=redis://ledger-redis:6379"
+      - "MONGODB_URI=mongodb://mongo/ledger"
     depends_on:
       - mongo
       - ledger-redis
@@ -115,6 +116,7 @@ services:
       - "SERVICE=ledger"
       - "REDIS_URL=redis://ledger-redis:6379"
       - PUBLISHERS_TAKEOVER
+      - "MONGODB_URI=mongodb://mongo/ledger"
     depends_on:
       - mongo
       - ledger-redis
