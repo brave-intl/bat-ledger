@@ -8,6 +8,7 @@ const referralsWorker = require('./workers/referrals')
 const reportsWorker = require('./workers/reports')
 const surveyorsWorker = require('./workers/surveyors')
 const walletWorker = require('./workers/wallet')
+const adsWorker = require('./workers/ads')
 
 const {
   Runtime,
@@ -27,7 +28,8 @@ const parentModules = [
   referralsWorker,
   reportsWorker,
   surveyorsWorker,
-  walletWorker
+  walletWorker,
+  adsWorker
 ]
 
 const options = {
