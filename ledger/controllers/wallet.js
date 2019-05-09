@@ -262,7 +262,7 @@ const write = function (runtime, apiVersion) {
     totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (totalVotes < 1) {
-      throw new Error('Too low vote value for transaction. PaymentId: ' + paymentId)
+      return reply(boom.rangeNotSatisfiable('Too low vote value for transaction. PaymentId: ' + paymentId))
     }
 
     if (!surveyor.cohorts) {
