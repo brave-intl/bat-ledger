@@ -245,34 +245,24 @@ const write = function (runtime, apiVersion) {
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
     if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
 
-    const minimum = surveyorsLib.voteValueFromSurveyor(runtime, surveyor, wallet.altcurrency)
-    const info = underscore.extend(wallet, { requestType: requestType })
-    try {
-      runtime.wallet.validateTxSignature(info, signedTx, {
-        minimum
-      })
-    } catch (ex) {
-      runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
-      let response = null
-      const exString = ex.toString()
-      const { stack } = ex
-      const { amount } = info.denomination
-      if (ex.amountTooLow) {
-        debug('amountTooLow', { reason: exString, stack, amount, minimum })
-        response = boom.rangeNotSatisfiable(exString)
-      } else {
-        debug('validateTxSignature', { reason: exString, stack })
-        response = boom.badData(exString)
-      }
-      return reply(response)
-    }
-
     params = surveyor.payload.adFree
     txnProbi = runtime.wallet.getTxProbi(wallet, txn)
     totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (totalVotes < 1) {
-      throw new Error('Too low vote value for transaction. PaymentId: ' + paymentId)
+      return reply(boom.rangeNotSatisfiable('Too low vote value for transaction. PaymentId: ' + paymentId))
+    }
+
+    const minimum = surveyorsLib.voteValueFromSurveyor(runtime, surveyor, wallet.altcurrency)
+    try {
+      const info = underscore.extend(wallet, { requestType: requestType })
+      runtime.wallet.validateTxSignature(info, signedTx, {
+        minimum
+      })
+    } catch (ex) {
+      debug('validateTxSignature', { reason: ex.toString(), stack: ex.stack })
+      runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
+      return reply(boom.badData(ex.toString()))
     }
 
     if (!surveyor.cohorts) {
