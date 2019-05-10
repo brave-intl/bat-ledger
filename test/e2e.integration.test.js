@@ -636,7 +636,7 @@ async function requestGrant (t, paymentId, promotionId, ledgerDB) {
 }
 
 async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCardId, keypair, surveyorId, viewingId) {
-  let response, headers, body, octets, payload, err
+  let response, err
   do {
     response = await ledgerAgent
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${txAmount}&altcurrency=BAT`)
@@ -662,24 +662,27 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
     true // commit tx in one swoop
   ))
 
-  octets = JSON.stringify(response.body.unsignedTx)
-  headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
-  }
-  headers['signature'] = sign({
-    headers: headers,
-    keyId: 'primary',
-    secretKey: uint8tohex(keypair.secretKey)
-  }, { algorithm: 'ed25519' })
-  payload = { requestType: 'httpSignature',
-    signedTx: {
-      body: body,
-      headers: headers,
-      octets: octets
-    },
-    surveyorId: surveyorId,
-    viewingId: viewingId
-  }
+  const createPayload = setupCreatePayload({
+    viewingId,
+    surveyorId,
+    keypair
+  })
+  const { unsignedTx } = response.body
+  const { denomination, destination } = unsignedTx
+  const { currency } = denomination
+  const tooLowPayload = createPayload({
+    destination,
+    denomination: {
+      amount: 0.1,
+      currency
+    }
+  })
+  await ledgerAgent
+    .put('/v2/wallet/' + paymentId)
+    .send(tooLowPayload)
+    .expect(416)
+
+  const justRightPayload = createPayload(response.body.unsignedTx)
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
@@ -687,7 +690,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
     }
     response = await ledgerAgent
       .put('/v2/wallet/' + paymentId)
-      .send(payload)
+      .send(justRightPayload)
   } while (response.status === 503)
   err = ok(response)
   if (err) throw err
@@ -696,7 +699,36 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
 
-  return payload
+  return justRightPayload
+}
+
+function setupCreatePayload ({
+  surveyorId,
+  viewingId,
+  keypair
+}) {
+  return (unsignedTx) => {
+    const octets = JSON.stringify(unsignedTx)
+    const headers = {
+      digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+    }
+    headers['signature'] = sign({
+      headers: headers,
+      keyId: 'primary',
+      secretKey: uint8tohex(keypair.secretKey)
+    }, {
+      algorithm: 'ed25519'
+    })
+    return {
+      requestType: 'httpSignature',
+      signedTx: {
+        headers: headers,
+        octets: octets
+      },
+      surveyorId: surveyorId,
+      viewingId: viewingId
+    }
+  }
 }
 
 async function createVotingCredentials (t, viewingId) {

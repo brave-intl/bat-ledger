@@ -245,6 +245,14 @@ const write = function (runtime, apiVersion) {
     if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
     if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
 
+    params = surveyor.payload.adFree
+    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
+    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
+
+    if (totalVotes < 1) {
+      return reply(boom.rangeNotSatisfiable('Too low vote value for transaction. PaymentId: ' + paymentId))
+    }
+
     const minimum = surveyorsLib.voteValueFromSurveyor(runtime, surveyor, wallet.altcurrency)
     try {
       const info = underscore.extend(wallet, { requestType: requestType })
@@ -255,14 +263,6 @@ const write = function (runtime, apiVersion) {
       debug('validateTxSignature', { reason: ex.toString(), stack: ex.stack })
       runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
       return reply(boom.badData(ex.toString()))
-    }
-
-    params = surveyor.payload.adFree
-    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
-    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
-
-    if (totalVotes < 1) {
-      throw new Error('Too low vote value for transaction. PaymentId: ' + paymentId)
     }
 
     if (!surveyor.cohorts) {
