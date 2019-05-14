@@ -139,7 +139,7 @@ test('required cohorts are added to surveyors', async (t) => {
   const privateFullSurveyor = await findOneSurveyor()
   cohorts.forEach((cohort) => {
     const surveyorCohortGrants = privateFullSurveyor.cohorts[cohort]
-    t.true(_.isArray(surveyorCohortGrants), 'an array is present')
+    t.true(_.isArray(surveyorCohortGrants), `an array is present for ${cohort}`)
     t.true(surveyorCohortGrants.length > 0, 'the array is not empty')
   })
 

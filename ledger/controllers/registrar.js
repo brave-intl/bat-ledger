@@ -162,33 +162,32 @@ const createPersona = function (runtime) {
       if (expectedDigest !== request.payload.request.headers.digest) return reply(boom.badData('the digest specified is not valid for the body provided'))
 
       try {
-        await runtime.prometheus.timedRequest('anonizeVerify_request_buckets_milliseconds', () => {
-          const validity = verify({
-            headers: request.payload.request.headers,
-            publicKey: request.payload.request.body.publicKey
-          }, {
-            algorithm: 'ed25519'
-          })
-          if (!validity.verified) {
-            throw boom.badData('wallet creation request failed validation, http signature was not valid')
-          }
+        const validity = verify({
+          headers: request.payload.request.headers,
+          publicKey: request.payload.request.body.publicKey
+        }, {
+          algorithm: 'ed25519'
         })
+        if (!validity.verified) {
+          throw boom.badData('wallet creation request failed validation, http signature was not valid')
+        }
       } catch (e) {
         return reply(e)
       }
     }
 
+    const registerEnd = runtime.prometheus.timedRequest('anonizeRegister_request_buckets_milliseconds')
     try {
-      await runtime.prometheus.timedRequest('anonizeRegister_request_buckets_milliseconds', () => {
-        const now = underscore.now()
-        verification = registrar.register(proof)
-        runtime.newrelic.recordCustomEvent('register', {
-          registrarId: registrar.registrarId,
-          registrarType: registrar.registrarType,
-          duration: underscore.now() - now
-        })
+      const now = underscore.now()
+      verification = registrar.register(proof)
+      runtime.newrelic.recordCustomEvent('register', {
+        registrarId: registrar.registrarId,
+        registrarType: registrar.registrarType,
+        duration: underscore.now() - now
       })
+      registerEnd({ erred: false })
     } catch (ex) {
+      registerEnd({ erred: true })
       return reply(boom.badData('invalid registrar proof: ' + JSON.stringify(proof)))
     }
 

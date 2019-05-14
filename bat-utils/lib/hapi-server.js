@@ -7,7 +7,6 @@ const authCookie = require('hapi-auth-cookie')
 const cryptiles = require('cryptiles')
 const bell = require('bell')
 const boom = require('boom')
-const epimetheus = require('epimetheus')
 const hapi = require('hapi')
 const inert = require('inert')
 const Netmask = require('netmask').Netmask
@@ -77,18 +76,23 @@ const Server = async (options, runtime) => {
     })
   }
 
-  if (runtime.config.prometheus) {
+  if (runtime.prometheus) {
     await new Promise((resolve, reject) => {
-      server.register(runtime.prometheus.plugin(), (err) => {
-        if (err) {
-          reject(err)
-          throw err
-        } else {
-          resolve()
-        }
-      })
+      try {
+        server.register(runtime.prometheus.plugin(), (err) => {
+          if (err) {
+            reject(err)
+            throw err
+          } else {
+            resolve()
+          }
+        })
+      } catch (e) {
+        debug(e)
+        reject(e)
+      }
     })
-  } else epimetheus.instrument(server)
+  }
 
   await new Promise((resolve, reject) => {
     server.register([

@@ -281,7 +281,6 @@ const write = function (runtime, apiVersion) {
 
     for (let cohort of surveyorsLib.cohorts) {
       const cohortSurveyors = surveyor.cohorts[cohort]
-
       if (totalVotes > cohortSurveyors.length) {
         state = { payload: request.payload, result: result, votes: totalVotes, message: 'insufficient surveyors' }
         debug('wallet', state)

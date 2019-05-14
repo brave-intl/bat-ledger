@@ -39,6 +39,7 @@ services:
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
+      - "DYNO=worker.1"
     depends_on:
       - mongo
       - redis
@@ -57,6 +58,7 @@ services:
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
+      - "DYNO=web.1"
     depends_on:
       - mongo
       - redis
@@ -71,6 +73,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
+      - "DYNO=worker.1"
     depends_on:
       - mongo
       - redis
@@ -87,6 +90,7 @@ services:
     environment:
       - "SERVICE=ledger"
       - PUBLISHERS_TAKEOVER
+      - "DYNO=web.1"
     depends_on:
       - mongo
       - redis
@@ -102,6 +106,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=balance"
+      - "DYNO=web.1"
     depends_on:
       - redis
     networks:
