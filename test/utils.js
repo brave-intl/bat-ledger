@@ -189,8 +189,8 @@ function cleanDbs () {
 function cleanPgDb (client) {
   return () => {
     return Promise.all([
-      client.query('DELETE from potential_payments_ads;'),
       client.query('DELETE from payout_reports_ads;'),
+      client.query('DELETE from potential_payments_ads;'),
       client.query('DELETE from transactions;'),
       client.query('DELETE from surveyor_groups;'),
       client.query('DELETE from votes;')
