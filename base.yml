@@ -24,6 +24,7 @@ services:
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDEEMER_URL=${REDEEMER_URL-http://grant-web:3333}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
+      - "ADS_AVAILABLE_LIST=ZZ"
       - ALLOWED_ADS_TOKENS
       - ALLOWED_PUBLISHERS_TOKENS
       - BALANCE_CACHE_TTL_S

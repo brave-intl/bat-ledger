@@ -20,6 +20,7 @@ import {
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
 import {
+  disallowUGP,
   defaultCooldownHrs,
   cooldownOffset
 } from '../../ledger/lib/grants'
@@ -554,6 +555,18 @@ test('cooldown offset', async (t) => {
   t.is(cooldownOffset(), cooldownOffset(defaultCooldownHrs()), 'calculates hours to offset in terms of milliseconds')
   t.is(cooldownOffset(12), 12 * 60 * 60 * 1000, 'gives back in ms')
   t.is(cooldownOffset({}), NaN, 'only takes numeric values')
+})
+
+test('disallowUGP does not allow ugp depending on the ip', async (t) => {
+  const OLD_ADS_AVAILABLE_LIST = process.env.ADS_AVAILABLE_LIST
+  process.env.ADS_AVAILABLE_LIST = 'UK,US,CA'
+  t.is(false, disallowUGP('JP'), 'this ip is not within the supported countries')
+  t.is(true, disallowUGP('US'), 'this ip is within the supported countries')
+
+  process.env.ADS_AVAILABLE_LIST = 'UK,JP,CA'
+  t.is(true, disallowUGP('JP'), 'this ip is within the supported countries')
+  t.is(false, disallowUGP('US'), 'this ip is not within the supported countries')
+  process.env.OLD_ADS_AVAILABLE_LIST = OLD_ADS_AVAILABLE_LIST
 })
 
 async function resolveCaptcha (wallets, {
