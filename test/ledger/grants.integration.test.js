@@ -20,7 +20,7 @@ import {
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
 import {
-  disallowUGP,
+  adsGrantsAvailable,
   defaultCooldownHrs,
   cooldownOffset
 } from '../../ledger/lib/grants'
@@ -129,6 +129,7 @@ test('claim grants with attestations', async (t) => {
     }]
   }
   await ledgerAgent.post(url).send(adGrants).expect(ok)
+  await ledgerAgent.post(url).send(grants).expect(ok)
 
   let paymentId = '73b8e65a-2810-4c21-a3f6-74969ba7eaf3'
   const providerId = '6e3824f6-9eec-4f56-9719-8addaffe3ff1'
@@ -184,7 +185,7 @@ test('claim grants with attestations', async (t) => {
     .get('/v5/grants')
     .query({ paymentId: wrongPaymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .expect(404))
+    .expect(ok))
 
   // try to claim ad grant
   let attestationURL = `/v1/attestations/${wrongPaymentId}`
@@ -208,23 +209,13 @@ test('claim grants with attestations', async (t) => {
     }
   })
 
-  // request grant should fail
-  response = await ledgerAgent
-      .put(`/v3/grants/${wrongPaymentId}`)
-      .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-      .send({promotionId: adPromotionId})
-      .expect(410)
-
-  await ledgerAgent.post(url).send(grants).expect(ok)
-
-  // get available grant
-  ;({ body } = await ledgerAgent
-    .get('/v5/grants')
+  // claim grant should fail
+  await ledgerAgent
+    .put(`/v3/grants/${wrongPaymentId}`)
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .expect(ok))
-
-  t.is(body.promotionId, promotionId)
-  t.is(body.type, 'android')
+    .set('Fastly-GeoIP-Country-Code', 'ZZ')
+    .send({promotionId: adPromotionId})
+    .expect(410)
 
   await wallets.update({ paymentId: wrongPaymentId }, {
     $set: {
@@ -244,17 +235,26 @@ test('claim grants with attestations', async (t) => {
   })
 
   // get available grant - check for ad precidence
+  const { body: outsideBoundsBody } = await ledgerAgent
+    .get('/v5/grants')
+    .query({ paymentId, bypassCooldown })
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-Country-Code', 'AA')
+    .expect(ok)
+
+  // get available grant - check for ad precidence
   ;({ body } = await ledgerAgent
     .get('/v5/grants')
-    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .query({ paymentId, bypassCooldown })
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-Country-Code', 'ZZ')
     .expect(ok))
 
+  t.deepEqual(outsideBoundsBody, body, 'ads are available outside of countries')
   t.is(body.type, 'ads')
 
-  attestationURL = `/v1/attestations/${paymentId}`
   response = await ledgerAgent
-    .get(attestationURL)
+    .get(`/v1/attestations/${paymentId}`)
     .expect(ok)
 
   nonce = Buffer.from(response.body.nonce).toString('base64')
@@ -272,39 +272,29 @@ test('claim grants with attestations', async (t) => {
     }
   })
 
-  // request grant
+  // claim ad grant
   response = await ledgerAgent
-      .put(`/v3/grants/${paymentId}`)
-      .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-      .send({promotionId})
-      .expect(ok)
+    .put(`/v3/grants/${paymentId}`)
+    .set({
+      'Fastly-GeoIP-Country-Code': 'ZZ',
+      'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN
+    })
+    .send({ promotionId: adPromotionId })
+    .expect(ok)
 
   wallet = await wallets.findOne({ paymentId })
   t.is(wallet.nonce, undefined, 'nonce was unset from wallet object after use')
   t.is(wallet.cohort, 'safetynet', 'wallet was assigned to safetynet cohort')
 
-  const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
-  const desired = donateAmt.toString()
-
-  do {
-    response = await ledgerAgent
-      .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
-    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
-  } while (response.status === 503)
-  var err = ok(response)
-  if (err) throw err
-  t.is(response.body.balance, '30.0000')
-  t.deepEqual(response.body.grants, [{
-    type: 'ugp',
+  await checkWalletState(response.body, '1.0000', [{
+    type: 'ads',
     altcurrency: 'BAT',
-    expiryTime: 1830389353,
-    probi: '30000000000000000000'
-  }], 'relevant grant information is sent back')
-  t.deepEqual(response.body.grants, await balanceGrants(paymentId), 'balance has the same info')
+    expiryTime: 2160925928,
+    probi: '1000000000000000000'
+  }])
 
-  attestationURL = `/v1/attestations/${paymentId}`
   response = await ledgerAgent
-    .get(attestationURL)
+    .get(`/v1/attestations/${paymentId}`)
     .expect(ok)
 
   nonce = Buffer.from(response.body.nonce).toString('base64')
@@ -322,12 +312,43 @@ test('claim grants with attestations', async (t) => {
     }
   })
 
-  // request ad grant
+  // claim ugp grant
   response = await ledgerAgent
-      .put(`/v3/grants/${paymentId}`)
-      .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-      .send({ promotionId: adPromotionId })
-      .expect(ok)
+    .put(`/v3/grants/${paymentId}`)
+    .set({
+      'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN,
+      'Fastly-GeoIP-Country-Code': 'ZZ'
+    })
+    .send({ promotionId })
+    .expect(ok)
+
+  await checkWalletState(response.body, '31.0000', [{
+    type: 'ads',
+    altcurrency: 'BAT',
+    expiryTime: 2160925928,
+    probi: '1000000000000000000'
+  }, {
+    type: 'ugp',
+    altcurrency: 'BAT',
+    expiryTime: 1830389353,
+    probi: '30000000000000000000'
+  }])
+
+  async function checkWalletState (body, expected, expectedGrants) {
+    const donateAmt = new BigNumber(body.probi).dividedBy('1e18').toNumber()
+    const desired = donateAmt.toString()
+    let response
+    do {
+      response = await ledgerAgent
+        .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
+      if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+    } while (response.status === 503)
+    var err = ok(response)
+    if (err) throw err
+    t.is(response.body.balance, expected)
+    t.deepEqual(response.body.grants, expectedGrants, 'relevant grant information is sent back')
+    t.deepEqual(response.body.grants, await balanceGrants(paymentId), 'balance has the same info')
+  }
 })
 
 test('protocolVersion 4 does not send back ads when none are available', async (t) => {
@@ -557,16 +578,16 @@ test('cooldown offset', async (t) => {
   t.is(cooldownOffset({}), NaN, 'only takes numeric values')
 })
 
-test('disallowUGP does not allow ugp depending on the ip', async (t) => {
-  const OLD_ADS_AVAILABLE_LIST = process.env.ADS_AVAILABLE_LIST
+test('adsGrantsAvailable does not allow ugp depending on the ip', async (t) => {
+  const cachedAdsAvailableList = process.env.ADS_AVAILABLE_LIST
   process.env.ADS_AVAILABLE_LIST = 'UK,US,CA'
-  t.is(false, disallowUGP('JP'), 'this ip is not within the supported countries')
-  t.is(true, disallowUGP('US'), 'this ip is within the supported countries')
+  t.is(false, adsGrantsAvailable('JP'), 'this ip is not within the supported countries')
+  t.is(true, adsGrantsAvailable('US'), 'this ip is within the supported countries')
 
   process.env.ADS_AVAILABLE_LIST = 'UK,JP,CA'
-  t.is(true, disallowUGP('JP'), 'this ip is within the supported countries')
-  t.is(false, disallowUGP('US'), 'this ip is not within the supported countries')
-  process.env.OLD_ADS_AVAILABLE_LIST = OLD_ADS_AVAILABLE_LIST
+  t.is(true, adsGrantsAvailable('JP'), 'this ip is within the supported countries')
+  t.is(false, adsGrantsAvailable('US'), 'this ip is not within the supported countries')
+  process.env.ADS_AVAILABLE_LIST = cachedAdsAvailableList
 })
 
 async function resolveCaptcha (wallets, {

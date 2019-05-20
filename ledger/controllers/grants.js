@@ -7,7 +7,7 @@ const underscore = require('underscore')
 const uuidV4 = require('uuid/v4')
 const wreck = require('wreck')
 const {
-  disallowUGP,
+  adsGrantsAvailable,
   cooldownOffset
 } = require('../lib/grants')
 const utils = require('bat-utils')
@@ -227,11 +227,7 @@ const getGrant = (protocolVersion, isDesktop) => (runtime) => {
     entries = await promotions.find(query)
     if ((!entries) || (!entries[0])) return reply(boom.notFound('no promotions available'))
 
-    if (protocolVersion < 4) {
-      entries = [entries[0]]
-    }
-
-    const adsAvailable = adsGrantsAvailable(request.headers['fastly-geoip-countrycode'])
+    const adsAvailable = adsGrantsAvailable(request.headers['fastly-geoip-country-code'])
 
     const filteredPromotions = []
     for (let { promotionId, type } of entries) {
@@ -251,7 +247,7 @@ const getGrant = (protocolVersion, isDesktop) => (runtime) => {
       const counted = await grants.count(query)
       if (counted !== 0) {
         const promotion = { promotionId, type }
-        if (type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
+        if (adsAvailable && type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
           return reply(promotion)
         }
         filteredPromotions.push(promotion)
@@ -432,9 +428,17 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
 
     const promotionQuery = { promotionId, protocolVersion }
+    const code = request.headers['fastly-geoip-country-code']
+    const adsAvailable = adsGrantsAvailable(code)
     if (protocolVersion === 3) {
+      if (!adsAvailable) {
+        return reply(boom.badRequest('claim from this area is not allowed'))
+      }
       underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android'] } })
     } else if (protocolVersion === 4) {
+      if (adsAvailable) {
+        return reply(boom.badRequest('claim from this area is not allowed'))
+      }
       underscore.extend(promotionQuery, { type: { $in: ['ugp', 'ads'] } })
     }
 
@@ -835,8 +839,8 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().path('/v4/grants').config(v4.read),
   braveHapi.routes.async().path('/v5/grants').config(v5.read),
-  braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
   braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
+  braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
   braveHapi.routes.async().post().path('/v4/grants').config(v4.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),

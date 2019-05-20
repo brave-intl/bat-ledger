@@ -4,7 +4,7 @@ const {
 } = process.env
 
 module.exports = {
-  disallowUGP,
+  adsGrantsAvailable,
   defaultCooldownHrs,
   cooldownOffset
 }
@@ -18,7 +18,7 @@ function cooldownOffset (hours = defaultCooldownHrs()) {
   return hours * 60 * 60 * 1000
 }
 
-function disallowUGP (code) {
+function adsGrantsAvailable (code) {
   const { ADS_AVAILABLE_LIST } = process.env
   const adsAvailableList = ADS_AVAILABLE_LIST ? ADS_AVAILABLE_LIST.split(',') : []
   return adsAvailableList.includes(code)
