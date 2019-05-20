@@ -3,6 +3,7 @@ const path = require('path')
 const boom = require('boom')
 const Netmask = require('netmask').Netmask
 const underscore = require('underscore')
+const braveHapi = require('./extras-hapi')
 
 const whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
 
@@ -35,11 +36,18 @@ exports.ipaddr = (request) => {
   // Since it is easy to forge an X-Forwarded-For field the given information should be used with care.
   // The last IP address is always the IP address that connects to the last proxy, which means it is the most reliable source of information.
 
-  const forwardedFor = request.headers['x-forwarded-for']
+  const { headers } = request
+  const forwardedFor = headers['x-forwarded-for']
+  const token = headers['fastly-token']
   if (forwardedFor) {
-    const shift = forwardedIPShift()
+    const fastlyTokens = (process.env.FASTLY_TOKEN_LIST && process.env.FASTLY_TOKEN_LIST.split(',')) || []
+    if (!braveHapi.isSimpleTokenValid(fastlyTokens, token)) {
+      throw new Error('invalid fastly token supplied')
+    }
     const forwardedIps = forwardedFor.split(',')
-    return forwardedIps[forwardedIps.length - shift].trim() || request.info.remoteAddress
+    const shift = forwardedIPShift()
+    let target = forwardedIps[forwardedIps.length - shift]
+    return target.trim() || request.info.remoteAddress
   } else {
     return request.info.remoteAddress
   }

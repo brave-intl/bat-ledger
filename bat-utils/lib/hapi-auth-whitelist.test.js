@@ -11,11 +11,18 @@ import {
 import dotenv from 'dotenv'
 dotenv.config()
 
-test('ipaddr', (t) => {
+const validFastlyToken = process.env.FASTLY_TOKEN_LIST
+
+test('ipaddr', async (t) => {
   t.is(ipaddr(req('123.123.123.123', '127.0.0.1,12.12.12.12')), '12.12.12.12')
   t.is(ipaddr(req('123.123.123.123', '127.0.0.1, 12.12.12.12')), '12.12.12.12')
   t.is(ipaddr(req('123.123.123.123')), '123.123.123.123')
   t.is(ipaddr(req('123.123.123.123', ' ')), '123.123.123.123')
+  t.throws(() => ipaddr(req('', ' ', 'invalid')), Error, 'an invalid fastly token throws')
+  await munge('FASTLY_TOKEN_LIST', (set) => {
+    set()
+    t.throws(() => ipaddr(req('123.123.123.123', ' ')), Error, 'should throw when no fastly token set')
+  })
 })
 
 test('ipaddr can be shifted', async (t) => {
@@ -38,9 +45,10 @@ test('shift amount can be retrieved', async (t) => {
   })
 })
 
-function req (remoteAddress, XForwardedFor) {
+function req (remoteAddress, XForwardedFor, token = validFastlyToken) {
   return {
     headers: XForwardedFor ? {
+      'fastly-token': token,
       'x-forwarded-for': XForwardedFor
     } : {},
     info: {
