@@ -8,8 +8,10 @@ BigNumber.config({
   EXPONENTIAL_AT: 28,
   DECIMAL_PLACES: 18
 })
+const PROBI_FACTOR = 1e18
 
 module.exports = {
+  PROBI_FACTOR,
   isUUID,
   surveyorChoices,
   timeout,

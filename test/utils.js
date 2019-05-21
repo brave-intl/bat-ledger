@@ -63,12 +63,16 @@ const status = (expectation) => (res) => {
   if (!res) {
     return new Error('no response object given')
   }
-  const { status, body } = res
+  const { status, body, request } = res
   if (status !== expectation) {
-    return new Error(JSON.stringify(Object.assign({}, body, {
-      url: res.request.url,
-      method: res.request.method
-    }), null, 2).replace(/\\n/g, '\n'))
+    const { url, method } = request
+    return new Error(JSON.stringify({
+      method,
+      url,
+      expectation,
+      status,
+      body
+    }, null, 2).replace(/\\n/g, '\n'))
   }
 }
 
