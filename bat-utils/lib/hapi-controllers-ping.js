@@ -1,4 +1,4 @@
-const Joi = require('joi')
+const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 
 const braveHapi = require('./extras-hapi')

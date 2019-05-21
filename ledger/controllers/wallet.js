@@ -1,5 +1,5 @@
 const BigNumber = require('bignumber.js')
-const Joi = require('joi')
+const Joi = require('@hapi/joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const bson = require('bson')

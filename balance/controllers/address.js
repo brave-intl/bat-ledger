@@ -1,4 +1,4 @@
-const Joi = require('joi')
+const Joi = require('@hapi/joi')
 const boom = require('boom')
 const underscore = require('underscore')
 const SDebug = require('sdebug')
