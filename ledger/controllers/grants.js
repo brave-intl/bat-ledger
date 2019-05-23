@@ -189,12 +189,11 @@ const getGrant = (protocolVersion) => (runtime) => {
     const languages = l10nparser.parse(lang)
     const query = {
       active: true,
-      count: { $gt: 0 }
+      count: { $gt: 0 },
+      protocolVersion
     }
     if (protocolVersion === 3) { // hack - protocolVersion 3 is android grant type
       underscore.extend(query, { protocolVersion: 4 })
-    } else {
-      underscore.extend(query, { protocolVersion })
     }
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
