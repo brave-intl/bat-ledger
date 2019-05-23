@@ -56,7 +56,7 @@ const donorCardId = process.env.UPHOLD_DONOR_CARD_ID
 const statsURL = statsUrl()
 const balanceURL = '/v1/accounts/balances'
 const settlementURL = '/v2/publishers/settlement'
-const grantsURL = '/v2/grants'
+const grantsURL = '/v4/grants'
 
 test.afterEach.always(async t => {
   await cleanDbs()
@@ -299,7 +299,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
   const grants = {
     'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
-    'promotions': [{'active': true, 'priority': 0, 'promotionId': promotionId}]
+    'promotions': [{'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp'}]
   }
   await ledgerAgent.post(grantsURL).send(grants).expect(ok)
 
@@ -418,7 +418,7 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
   const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
   const grants = { // 30 BAT
     'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
-    'promotions': [{'active': true, 'priority': 0, 'promotionId': promotionId}]
+    'promotions': [{'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp'}]
   }
   await ledgerAgent.post(grantsURL).send(grants).expect(ok)
 
@@ -601,14 +601,16 @@ async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
 async function requestGrant (t, paymentId, promotionId, ledgerDB) {
   // see if promotion is available
   let response = await ledgerAgent
-    .get('/v2/grants')
+    .get('/v4/grants')
     .expect(ok)
 
-  t.true(response.body.hasOwnProperty('promotionId'))
-  t.is(response.body.promotionId, promotionId)
+  t.true(response.body.hasOwnProperty('grants'))
+  t.true(response.body.grants.length === 1)
+  t.true(response.body.grants[0].hasOwnProperty('promotionId'))
+  t.is(response.body.grants[0].promotionId, promotionId)
 
   await ledgerAgent
-    .get(`/v2/captchas/${paymentId}`)
+    .get(`/v4/captchas/${paymentId}`)
     .set('brave-product', 'brave-core')
     .expect(ok)
 
@@ -618,7 +620,7 @@ async function requestGrant (t, paymentId, promotionId, ledgerDB) {
   } = await wallets.findOne({ paymentId })
 
   response = await ledgerAgent
-      .put(`/v2/grants/${paymentId}`)
+      .put(`/v4/grants/${paymentId}`)
       .send({
         promotionId,
         captchaResponse: {

@@ -5,6 +5,7 @@ services:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
       - "./ledger:/usr/src/app/ledger"
+      - "./package.json:/usr/src/app/package.json"
     command: "npm run start-ledger"
   ledger-worker:
     volumes:

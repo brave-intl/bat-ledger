@@ -57,7 +57,7 @@ const rateLimitPlugin = {
 const priorityValidator = Joi.number().integer().min(0).description('the promotion priority (lower is better)')
 const activeValidator = Joi.boolean().optional().default(true).description('the promotion status')
 const protocolVersionValidator = Joi.number().integer().min(2).description('the protocol version that the promotion will follow')
-const grantTypeValidator = Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use')
+const grantTypeValidator = Joi.string().allow(['android', 'ugp', 'ads']).default('ugp').description('the type of grant to use')
 const paymentIdValidator = Joi.string().guid().description('identity of the wallet')
 const promotionIdValidator = Joi.string().guid().description('the promotion-identifier')
 const altcurrencyValidator = braveJoi.string().altcurrencyCode().description('the grant altcurrency')
@@ -109,7 +109,8 @@ const grantsUploadValidator = Joi.object().keys({
 }).required().description('data for bulk upload')
 const typedPromotionValidator = promotionValidator.keys({
   protocolVersion: protocolVersionValidator.required(),
-  minimumReconcileTimestamp: minimumReconcileTimestampValidator.optional()
+  minimumReconcileTimestamp: minimumReconcileTimestampValidator.optional(),
+  type: grantTypeValidator.required()
 })
 const promotionsTypedValidator = Joi.array().min(0).items(typedPromotionValidator)
 const grantsUploadTypedValidator = grantsUploadValidator.keys({
@@ -124,41 +125,6 @@ const v2 = {}
 const v3 = {}
 const v4 = {}
 const v5 = {}
-
-/*
-   GET /v2/promotions
- */
-
-const getPromotions = (protocolVersion) => (runtime) => async (request, reply) => {
-  const debug = braveHapi.debug(module, request)
-  const promotions = runtime.database.get('promotions', debug)
-  let entries, where, projection
-
-  if (qaOnlyP(request)) {
-    return reply(boom.notFound())
-  }
-
-  where = {
-    protocolVersion,
-    promotionId: { $ne: '' }
-  }
-
-  projection = {
-    sort: { priority: 1 },
-    fields: {
-      _id: 0,
-      batchId: 0,
-      timestamp: 0
-    }
-  }
-  entries = await promotions.find(where, projection)
-
-  reply(entries)
-}
-
-/*
- GET /v3/promotions
-*/
 
 const safetynetPassthrough = (handler) => (runtime) => async (request, reply) => {
   const endpoint = '/v1/attestations/safetynet'
@@ -196,48 +162,7 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
   }
 }
 
-const promotionsGetResponseSchema = Joi.array().min(0).items(Joi.object().keys({
-  promotionId: Joi.string().required().description('the promotion-identifier')
-}).unknown(true).description('promotion properties'))
-
-v2.all = {
-  handler: getPromotions(2),
-  description: 'See if a v2 promotion is available',
-  tags: [ 'api' ],
-
-  validate: { query: {} },
-
-  response: {
-    schema: promotionsGetResponseSchema
-  }
-}
-
-v3.all = {
-  handler: getPromotions(3),
-  description: 'See if a v3 promotion is available',
-  tags: [ 'api' ],
-
-  validate: {},
-
-  response: {
-    schema: promotionsGetResponseSchema
-  }
-}
-
-v4.all = {
-  handler: getPromotions(4),
-  description: 'See if a v4 promotion is available',
-  tags: [ 'api' ],
-
-  validate: {},
-
-  response: {
-    schema: promotionsGetResponseSchema
-  }
-}
-
 /*
-   GET /v2/grants
    GET /v5/grants
  */
 
@@ -267,6 +192,9 @@ const getGrant = (protocolVersion) => (runtime) => {
       count: { $gt: 0 },
       protocolVersion
     }
+    if (protocolVersion === 3) { // hack - protocolVersion 3 is android grant type
+      underscore.extend(query, { protocolVersion: 4 })
+    }
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
@@ -287,16 +215,16 @@ const getGrant = (protocolVersion) => (runtime) => {
       walletTooYoung = walletCooldown(wallet, bypassCooldown)
     }
 
+    if (walletTooYoung) {
+      return reply(boom.notFound('promotion not available'))
+    }
+
     if (protocolVersion === 4 && !paymentId) {
       underscore.extend(query, { type: 'ugp' })
     }
 
     entries = await promotions.find(query)
     if ((!entries) || (!entries[0])) return reply(boom.notFound('no promotions available'))
-
-    if (protocolVersion < 4) {
-      entries = [entries[0]]
-    }
 
     const filteredPromotions = []
     for (let { promotionId, type } of entries) {
@@ -306,10 +234,18 @@ const getGrant = (protocolVersion) => (runtime) => {
           continue
         }
         underscore.extend(query, { providerId: wallet.addresses.CARD_ID })
+      } else if (type === 'android' && protocolVersion !== 3) { // hack - skip android grants for v4 endpoint
+        continue
+      } else if (type === 'ugp' && protocolVersion === 3) { // hack - skip desktop ugp grants for v3 endpoint
+        continue
       }
       const counted = await grants.count(query)
-      if (counted !== 0 && !walletTooYoung) {
-        filteredPromotions.push({ promotionId, type })
+      if (counted !== 0) {
+        const promotion = { promotionId, type }
+        if (type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
+          return reply(promotion)
+        }
+        filteredPromotions.push(promotion)
       }
     }
 
@@ -324,27 +260,6 @@ const getGrant = (protocolVersion) => (runtime) => {
     reply({ grants: filteredPromotions })
 
     debug('grants', { languages: languages })
-  }
-}
-
-v2.read = {
-  handler: getGrant(2),
-  description: 'See if a v2 promotion is available',
-  tags: [ 'api' ],
-  validate: {
-    headers: Joi.object().keys({
-      'user-agent': Joi.string().required().description('the browser user agent')
-    }).unknown(true),
-    query: {
-      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
-      paymentId: Joi.string().guid().optional().description('identity of the wallet')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier')
-    }).unknown(true).description('promotion properties')
   }
 }
 
@@ -382,6 +297,7 @@ v5.read = {
       'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
     }).unknown(true),
     query: {
+      bypassCooldown: Joi.string().guid().optional().description('a token to bypass the wallet cooldown time'),
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
     }
@@ -429,45 +345,11 @@ const checkBounds = (v1, v2, tol) => {
 }
 
 /*
-   PUT /v2/grants/{paymentId}
- */
-
-v2.claimGrant = {
-  handler: claimGrant({
-    $in: [2, 4]
-  }, captchaCheck, v4CreateGrantQuery),
-  description: 'Request a grant for a wallet',
-  tags: [ 'api' ],
-
-  plugins: {
-    rateLimit: {
-      enabled: rateLimitEnabled,
-      rate: (request) => claimRate
-    }
-  },
-
-  validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-    payload: Joi.object().keys({
-      promotionId: Joi.string().required().description('the promotion-identifier'),
-      captchaResponse: Joi.object().optional().keys({
-        x: Joi.number().required(),
-        y: Joi.number().required()
-      })
-    }).required().description('promotion derails')
-  },
-
-  response: {
-    schema: publicGrantValidator
-  }
-}
-
-/*
    PUT /v5/grants/{paymentId}
  */
 
 v3.claimGrant = {
-  handler: claimGrant(3, safetynetCheck),
+  handler: claimGrant(3, safetynetCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -523,7 +405,7 @@ v4.claimGrant = {
   }
 }
 
-function claimGrant (protocolVersion, validate, createGrantQuery = defaultCreateGrantQuery) {
+function claimGrant (protocolVersion, validate, createGrantQuery) {
   return (runtime) => async (request, reply) => {
     const {
       params,
@@ -540,10 +422,14 @@ function claimGrant (protocolVersion, validate, createGrantQuery = defaultCreate
 
     if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
 
-    const promotion = await promotions.findOne({
-      promotionId,
-      protocolVersion
-    })
+    const promotionQuery = { promotionId, protocolVersion }
+    if (protocolVersion === 3) {
+      underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android'] } })
+    } else if (protocolVersion === 4) {
+      underscore.extend(promotionQuery, { type: { $in: ['ugp', 'ads'] } })
+    }
+
+    const promotion = await promotions.findOne(promotionQuery)
     if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
     if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
 
@@ -710,96 +596,6 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
       return boom.forbidden()
     }
   }
-}
-
-/*
-   POST /v2/grants
-*/
-
-const uploadGrants = (protocolVersion) => (runtime) => {
-  return async (request, reply) => {
-    const batchId = uuidV4().toLowerCase()
-    const debug = braveHapi.debug(module, request)
-    const grants = runtime.database.get('grants', debug)
-    const promotions = runtime.database.get('promotions', debug)
-    let state
-
-    let payload = request.payload
-
-    if (payload.file) {
-      payload = payload.file
-      const validity = Joi.validate(payload, grantsUploadValidator)
-      if (validity.error) {
-        return reply(boom.badData(validity.error))
-      }
-    }
-
-    const grantsToInsert = []
-    const promotionCounts = {}
-    for (let entry of payload.grants) {
-      const grantContent = braveUtils.extractJws(entry)
-      const validity = Joi.validate(grantContent, grantContentValidator)
-      if (validity.error) {
-        return reply(boom.badData(validity.error))
-      }
-      grantsToInsert.push({ grantId: grantContent.grantId, token: entry, promotionId: grantContent.promotionId, status: 'active', batchId: batchId })
-      if (!promotionCounts[grantContent.promotionId]) {
-        promotionCounts[grantContent.promotionId] = 0
-      }
-      promotionCounts[grantContent.promotionId]++
-    }
-
-    await grants.insert(grantsToInsert)
-
-    for (let entry of payload.promotions) {
-      let $set = underscore.assign({
-        protocolVersion
-      }, underscore.omit(entry, ['promotionId']))
-      let { promotionId } = entry
-      state = {
-        $set,
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $inc: { count: promotionCounts[promotionId] }
-      }
-      await promotions.update({
-        promotionId
-      }, state, { upsert: true })
-    }
-
-    reply({})
-  }
-}
-
-v2.create =
-{ handler: uploadGrants(2),
-
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
-    mode: 'required'
-  },
-
-  description: 'Create one or more grants via file upload',
-  tags: [ 'api' ],
-
-  plugins: {
-    'hapi-swagger': {
-      payloadType: 'form',
-      validate: {
-        payload: {
-          file: Joi.any()
-                      .meta({ swaggerType: 'file' })
-                      .description('json file')
-        }
-      }
-    }
-  },
-
-  validate: { headers: Joi.object({ authorization: Joi.string().optional() }).unknown() },
-  payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
-
-  response:
-    { schema: Joi.object().length(0) }
 }
 
 /*
@@ -1027,16 +823,11 @@ v3.attestations = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v2/promotions').whitelist().config(v2.all),
-  braveHapi.routes.async().path('/v3/promotions').whitelist().config(v3.all),
-  braveHapi.routes.async().path('/v2/grants').config(v2.read),
   braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().path('/v4/grants').config(v4.read),
   braveHapi.routes.async().path('/v5/grants').config(v5.read),
-  braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
   braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
   braveHapi.routes.async().put().path('/v4/grants/{paymentId}').config(v4.claimGrant),
-  braveHapi.routes.async().post().path('/v2/grants').config(v2.create),
   braveHapi.routes.async().post().path('/v4/grants').config(v4.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
@@ -1095,15 +886,6 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('redeem-report')
 }
 
-function defaultCreateGrantQuery ({
-  promotionId
-}) {
-  return {
-    status: 'active',
-    promotionId
-  }
-}
-
 function v4CreateGrantQuery ({
   promotionId,
   type
@@ -1139,10 +921,14 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
     }
     payload = value
 
+    let type
+    for (let entry of payload.promotions) {
+      ;({ type } = entry)
+    }
+
     const grantsToInsert = []
     const promotionCounts = {}
     const status = 'active'
-    let promoType = 'ugp'
     for (let token of payload.grants) {
       const grantContent = braveUtils.extractJws(token)
       const {
@@ -1153,7 +939,6 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
         return reply(boom.badData(error))
       }
       const {
-        type,
         grantId,
         promotionId,
         providerId
@@ -1169,7 +954,6 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
       if (type === 'ads') {
         inserting.providerId = providerId
       }
-      promoType = type
       grantsToInsert.push(inserting)
       if (!promotionCounts[promotionId]) {
         promotionCounts[promotionId] = 0
@@ -1181,7 +965,6 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
 
     for (let entry of payload.promotions) {
       let $set = underscore.assign({
-        type: promoType,
         protocolVersion
       }, underscore.omit(entry, ['promotionId']))
       let { promotionId } = entry
