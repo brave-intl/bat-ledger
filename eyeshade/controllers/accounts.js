@@ -21,7 +21,7 @@ const transactionTypes = ['contribution', 'referral', 'contribution_settlement',
 const accountTypeValidation = Joi.string().valid(accountTypes)
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
 const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
-const joiPaid = Joi.number().unsafe(true).description('amount paid out in BAT')
+const joiPaid = braveJoi.string().numeric().description('amount paid out in BAT')
 
 const selectAccountBalances = `
 SELECT *
@@ -105,9 +105,9 @@ ORDER BY created_at
         braveJoi.string().publisher().required().description('channel transaction is for'),
         Joi.string().default('').allow(['']).description('empty string returned')
       ),
-      amount: Joi.number().unsafe(true).required().description('amount in BAT'),
+      amount: braveJoi.string().numeric().required().description('amount in BAT'),
       settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
-      settlement_amount: Joi.number().unsafe(true).optional().description('amount in settlement_currency'),
+      settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
       settlement_destination_type: Joi.string().optional().valid(settlementDestinationTypes).description('type of address settlement was paid to'),
       settlement_destination: Joi.string().optional().description('destination address of the settlement'),
       transaction_type: Joi.string().valid(transactionTypes).required().description('type of the transaction')
