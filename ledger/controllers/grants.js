@@ -1,4 +1,4 @@
-const Joi = require('joi')
+const Joi = require('@hapi/joi')
 const Netmask = require('netmask').Netmask
 const l10nparser = require('accept-language-parser')
 const boom = require('boom')
@@ -242,7 +242,7 @@ v4.all = {
  */
 
 // from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
-const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/g
+const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/
 const getGrant = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
     // Only support requests from Chrome versions > 70

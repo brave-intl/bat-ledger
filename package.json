@@ -61,6 +61,7 @@
   "dependencies": {
     "@babel/cli": "^7.4.3",
     "@babel/node": "^7.2.2",
+    "@hapi/joi": "^15.0.3",
     "@octokit/rest": "^15.5.1",
     "@sentry/node": "^4.6.6",
     "@uphold/uphold-sdk-javascript": "^2.2.1",
@@ -92,7 +93,6 @@
     "hapi-swagger": "github:brave/hapi-swagger",
     "http-request-signature": "0.0.2",
     "inert": "^4.2.1",
-    "joi": "^11.0.3",
     "moment": "^2.22.1",
     "mongodb": "^2.2.35",
     "monk": "6.0.5",
