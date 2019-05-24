@@ -21,7 +21,7 @@ const transactionTypes = ['contribution', 'referral', 'contribution_settlement',
 const accountTypeValidation = Joi.string().valid(accountTypes)
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
 const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
-const joiPaid = braveJoi.string().numeric().description('amount paid out in BAT')
+const joiBAT = braveJoi.string().numeric()
 
 const selectAccountBalances = `
 SELECT *
@@ -160,7 +160,7 @@ v1.getTopBalances =
       Joi.object().keys({
         account_id: Joi.string(),
         account_type: accountTypeValidation,
-        balance: Joi.number().description('balance in BAT')
+        balance: joiBAT.description('balance in BAT')
       })
     )
   }
@@ -232,7 +232,7 @@ v1.getBalances = {
        Joi.object().keys({
          account_id: Joi.string(),
          account_type: Joi.string().valid(accountTypes),
-         balance: Joi.number().description('balance in BAT')
+         balance: joiBAT.description('balance in BAT')
        })
      )
   }
@@ -316,7 +316,7 @@ v1.getEarningsTotals =
     schema: Joi.array().items(
        Joi.object().keys({
          channel: Joi.string(),
-         earnings: Joi.number().description('earnings in BAT'),
+         earnings: joiBAT.description('earnings in BAT'),
          account_id: Joi.string()
        })
      )
@@ -377,7 +377,7 @@ v1.getPaidTotals =
     schema: Joi.array().items(
        Joi.object().keys({
          channel: joiChannel.required(),
-         paid: joiPaid.required(),
+         paid: joiBAT.required().description('amount paid out in BAT'),
          account_id: Joi.string()
        })
      )
