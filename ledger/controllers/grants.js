@@ -512,7 +512,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
     const grantContent = braveUtils.extractJws(grant.token)
 
-    result = underscore.pick(grantContent, [ 'altcurrency', 'probi', 'expiryTime', 'type', 'providerId' ])
+    result = underscore.extend(underscore.pick(grantContent, [ 'altcurrency', 'probi', 'expiryTime', 'providerId' ]), { type: grantProperties.type })
     await runtime.queue.send(debug, 'grant-report', underscore.extend({
       grantId: grantContent.grantId,
       paymentId: paymentId,
