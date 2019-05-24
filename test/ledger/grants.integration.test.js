@@ -557,7 +557,7 @@ test('cooldown offset', async (t) => {
 })
 
 async function resolveCaptcha (wallets, {
-  version = 4,
+  version = 2,
   paymentId,
   promotionId,
   balance = 0

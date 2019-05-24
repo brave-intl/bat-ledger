@@ -827,7 +827,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v4/grants').config(v4.read),
   braveHapi.routes.async().path('/v5/grants').config(v5.read),
   braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
-  braveHapi.routes.async().put().path('/v4/grants/{paymentId}').config(v4.claimGrant),
+  braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v4.claimGrant),
   braveHapi.routes.async().post().path('/v4/grants').config(v4.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
