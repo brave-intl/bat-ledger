@@ -620,7 +620,7 @@ async function requestGrant (t, paymentId, promotionId, ledgerDB) {
   } = await wallets.findOne({ paymentId })
 
   response = await ledgerAgent
-      .put(`/v4/grants/${paymentId}`)
+      .put(`/v2/grants/${paymentId}`)
       .send({
         promotionId,
         captchaResponse: {
