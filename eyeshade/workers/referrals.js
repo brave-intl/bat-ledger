@@ -54,7 +54,7 @@ exports.workers = {
         }
 
         if (shouldUpdateBalances) {
-          await updateBalances(runtime, client)
+          await updateBalances(runtime, client, true)
         }
         await client.query('COMMIT')
       } finally {
