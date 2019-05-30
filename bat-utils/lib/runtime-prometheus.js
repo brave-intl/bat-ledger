@@ -69,7 +69,7 @@ Prometheus.prototype.plugin = function () {
   const plugin = {
     register: (server, o, done) => {
       let name
-      const log2Buckets = client.exponentialBuckets(2, 2, 14)
+      const log2Buckets = client.exponentialBuckets(2, 2, 15)
 
       name = 'http_request_duration_milliseconds'
       register.removeSingleMetric(name)
