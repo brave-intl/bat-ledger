@@ -37,12 +37,15 @@ exports.ipaddr = (request) => {
 
   const forwardedFor = request.headers['x-forwarded-for']
   if (forwardedFor) {
+    const shift = forwardedIPShift()
     const forwardedIps = forwardedFor.split(',')
-    return forwardedIps[forwardedIps.length - 1].trim() || request.info.remoteAddress
+    return forwardedIps[forwardedIps.length - shift].trim() || request.info.remoteAddress
   } else {
     return request.info.remoteAddress
   }
 }
+
+exports.forwardedIPShift = forwardedIPShift
 
 exports.authenticate = (request, reply) => {
   const ipaddr = exports.ipaddr(request)
@@ -69,4 +72,13 @@ exports.register = (server, options, next) => {
 
 exports.register.attributes = {
   pkg: require(path.join(__dirname, '..', 'package.json'))
+}
+
+function forwardedIPShift () {
+  const shiftEnv = process.env.FORWARDED_IP_SHIFT
+  const shift = shiftEnv ? (+shiftEnv) : 1
+  if (underscore.isNaN(shift)) {
+    throw new Error(`${JSON.stringify(shiftEnv)} is not a valid number`)
+  }
+  return shift >= 0 ? shift : 1
 }
