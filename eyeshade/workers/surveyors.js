@@ -60,7 +60,7 @@ exports.workers = {
         }
 
         if (shouldUpdateBalances) {
-          await updateBalances(runtime, client)
+          await updateBalances(runtime, client, true)
         }
 
         const query2 = `
