@@ -150,6 +150,43 @@ test('eyeshade: missing owners send back proper status', async (t) => {
   }, 'let client know a reauthorize is needed / that the token is bad')
 })
 
+test('a card can be created from endpoint', async (t) => {
+  t.plan(1)
+  const id = uuidV4()
+  const badOwner = `publishers#uuid:${id}`
+  const badEncoding = encodeURIComponent(badOwner)
+  const badURL = `/v1/owners/${badEncoding}/wallet`
+  const postURL = `/v3/owners/${badEncoding}/wallet/card`
+  const currency = 'BAT'
+  const label = uuidV4()
+  const payload = {
+    currency,
+    label
+  }
+  await eyeshadeAgent
+    .post(postURL)
+    .send(payload)
+    .expect(422)
+
+  const SCOPE = 'cards:read user:read'
+  const dataOwnerWalletParams = {
+    provider: 'uphold',
+    parameters: {
+      access_token: process.env.UPHOLD_ACCESS_TOKEN,
+      scope: SCOPE
+    }
+  }
+  await eyeshadeAgent.put(badURL)
+    .send(dataOwnerWalletParams)
+    .expect(200)
+
+  const { body } = await eyeshadeAgent
+    .post(postURL)
+    .send(payload)
+    .expect(200)
+  t.deepEqual({}, body, 'an empty object is sent back')
+})
+
 function createCard (owner, currency) {
   const encodedOwner = encodeURIComponent(owner)
   const createCardData = { currency }
