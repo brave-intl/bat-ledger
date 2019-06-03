@@ -64,53 +64,60 @@ Prometheus.prototype.allMetrics = function () {
   return client.AggregatorRegistry.aggregate(values)
 }
 
-Prometheus.prototype.plugin = function () {
+Prometheus.prototype.registerMetrics = function () {
   const { client, register } = this
+  let name
+  const log2Buckets = client.exponentialBuckets(2, 2, 15)
+
+  name = 'http_request_duration_milliseconds'
+  register.removeSingleMetric(name)
+  const httpRequestDurationMilliseconds = new client.Summary({
+    name,
+    help: 'request duration in milliseconds',
+    labelNames: ['method', 'path', 'cardinality', 'status']
+  })
+  register.registerMetric(httpRequestDurationMilliseconds)
+
+  name = 'http_request_buckets_milliseconds'
+  register.removeSingleMetric(name)
+  const httpRequestBucketsMilliseconds = new client.Histogram({
+    name,
+    help: 'request duration buckets in milliseconds',
+    labelNames: ['method', 'path', 'cardinality', 'status'],
+    buckets: log2Buckets
+  })
+  register.registerMetric(httpRequestBucketsMilliseconds)
+
+  const upholdApiRequestBucketsMilliseconds = new client.Histogram({
+    name: 'uphold_request_buckets_milliseconds',
+    help: 'uphold request duration buckets in milliseconds',
+    labelNames: ['method', 'path', 'cardinality', 'status'],
+    buckets: log2Buckets
+  })
+  register.registerMetric(upholdApiRequestBucketsMilliseconds)
+
+  const anonizeVerifyRequestBucketsMilliseconds = new client.Histogram({
+    name: 'anonizeVerify_request_buckets_milliseconds',
+    help: 'request duration buckets in milliseconds',
+    buckets: log2Buckets
+  })
+  register.registerMetric(anonizeVerifyRequestBucketsMilliseconds)
+
+  const anonizeRegisterRequestBucketsMilliseconds = new client.Histogram({
+    name: 'anonizeRegister_request_buckets_milliseconds',
+    help: 'request duration buckets in milliseconds',
+    buckets: log2Buckets
+  })
+  register.registerMetric(anonizeRegisterRequestBucketsMilliseconds)
+  // should only happen once, so skip next time its called
+  this.registerMetrics = () => {}
+}
+
+Prometheus.prototype.plugin = function () {
+  const { register } = this
   const plugin = {
     register: (server, o, done) => {
-      let name
-      const log2Buckets = client.exponentialBuckets(2, 2, 15)
-
-      name = 'http_request_duration_milliseconds'
-      register.removeSingleMetric(name)
-      const httpRequestDurationMilliseconds = new client.Summary({
-        name,
-        help: 'request duration in milliseconds',
-        labelNames: ['method', 'path', 'cardinality', 'status']
-      })
-      register.registerMetric(httpRequestDurationMilliseconds)
-
-      name = 'http_request_buckets_milliseconds'
-      register.removeSingleMetric(name)
-      const httpRequestBucketsMilliseconds = new client.Histogram({
-        name,
-        help: 'request duration buckets in milliseconds',
-        labelNames: ['method', 'path', 'cardinality', 'status'],
-        buckets: log2Buckets
-      })
-      register.registerMetric(httpRequestBucketsMilliseconds)
-
-      const upholdApiRequestBucketsMilliseconds = new client.Histogram({
-        name: 'uphold_request_buckets_milliseconds',
-        help: 'uphold request duration buckets in milliseconds',
-        labelNames: ['method', 'path', 'cardinality', 'status'],
-        buckets: log2Buckets
-      })
-      register.registerMetric(upholdApiRequestBucketsMilliseconds)
-
-      const anonizeVerifyRequestBucketsMilliseconds = new client.Histogram({
-        name: 'anonizeVerify_request_buckets_milliseconds',
-        help: 'request duration buckets in milliseconds',
-        buckets: log2Buckets
-      })
-      register.registerMetric(anonizeVerifyRequestBucketsMilliseconds)
-
-      const anonizeRegisterRequestBucketsMilliseconds = new client.Histogram({
-        name: 'anonizeRegister_request_buckets_milliseconds',
-        help: 'request duration buckets in milliseconds',
-        buckets: log2Buckets
-      })
-      register.registerMetric(anonizeRegisterRequestBucketsMilliseconds)
+      this.registerMetrics()
 
       server.route({
         method: 'GET',

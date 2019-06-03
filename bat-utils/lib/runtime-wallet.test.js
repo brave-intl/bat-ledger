@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import _ from 'underscore'
 import dotenv from 'dotenv'
 import tweetnacl from 'tweetnacl'
 import test from 'ava'
@@ -6,6 +7,7 @@ import uuidV4 from 'uuid/v4'
 import { sign } from 'http-request-signature'
 
 import Wallet from './runtime-wallet'
+import Runtime from '../boot-runtime'
 import utils from './extras-utils'
 
 dotenv.config()
@@ -14,9 +16,7 @@ test('validateTxSignature: works', async t => {
   t.plan(10)
 
   const settlementAddress = '0xcafe'
-  const wallet = new Wallet({wallet: {settlementAddress: {BAT: settlementAddress}}}, {
-    captureException: () => {}
-  })
+  const { wallet } = newRuntime(settlementAddress)
   const keypair = tweetnacl.sign.keyPair()
   const wrongKeypair = tweetnacl.sign.keyPair()
 
@@ -120,3 +120,40 @@ test('selectGrants: filters non active grants and sorts by expiry time', async t
   t.deepEqual(selected, [grant2, grant1])
   t.true(utils.extractJws(token1).expiryTime > utils.extractJws(token2).expiryTime)
 })
+
+test('createCard', async (t) => {
+  const runtime = newRuntime()
+  const info = {
+    parameters: {
+      access_token: process.env.UPHOLD_ACCESS_TOKEN,
+      scope: 'cards:read user:read'
+    }
+  }
+  runtime.prometheus.registerMetrics()
+  const label = uuidV4()
+  const currency = 'BAT'
+  const result = await runtime.wallet.createCard(info, {
+    currency,
+    label
+  })
+  t.true(_.isString(result.id), 'a new card is produced')
+  t.is(result.label, label, 'the label matches')
+  t.is(result.currency, currency, 'the currency matches')
+})
+
+function newRuntime (settlementAddress = '0xcafe') {
+  return new Runtime({
+    prometheus: {},
+    wallet: {
+      settlementAddress: {
+        BAT: settlementAddress
+      },
+      uphold: {
+        accessToken: process.env.UPHOLD_ACCESS_TOKEN || 'none',
+        clientId: process.env.UPHOLD_CLIENT_ID || 'none',
+        clientSecret: process.env.UPHOLD_CLIENT_SECRET || 'none',
+        environment: process.env.UPHOLD_ENVIRONMENT || 'sandbox'
+      }
+    }
+  })
+}

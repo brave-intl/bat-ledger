@@ -47,7 +47,7 @@ Wallet.prototype.createCard = async function () {
   if (this.config.uphold) {
     f = Wallet.providers.uphold.createCard
   }
-  if (!f) return {}
+  if (!f) throw new Error(`no method defined: createCard`)
   return f.apply(this, arguments)
 }
 
