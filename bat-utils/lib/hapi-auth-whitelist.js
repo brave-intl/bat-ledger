@@ -40,12 +40,16 @@ exports.ipaddr = (request) => {
   const forwardedFor = headers['x-forwarded-for']
   const token = headers['fastly-token']
   if (forwardedFor) {
-    const fastlyTokens = (process.env.FASTLY_TOKEN_LIST && process.env.FASTLY_TOKEN_LIST.split(',')) || []
-    if (!braveHapi.isSimpleTokenValid(fastlyTokens, token)) {
-      throw new Error('invalid fastly token supplied')
-    }
+    const { FASTLY_TOKEN_LIST } = process.env
+    const fastlyTokens = (FASTLY_TOKEN_LIST && FASTLY_TOKEN_LIST.split(',')) || []
     const forwardedIps = forwardedFor.split(',')
     const shift = forwardedIPShift()
+    if (shift !== 1 && !braveHapi.isSimpleTokenValid(fastlyTokens, token)) {
+      throw Object.assign(new Error(`invalid fastly token supplied`), {
+        shift,
+        token
+      })
+    }
     let target = forwardedIps[forwardedIps.length - shift]
     return target.trim() || request.info.remoteAddress
   } else {
