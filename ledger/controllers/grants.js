@@ -169,7 +169,7 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
 
 // from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
 const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/
-const getGrant = (protocolVersion, isDesktop) => (runtime) => {
+const getGrant = (protocolVersion) => (runtime) => {
   return async (request, reply) => {
     // Only support requests from Chrome versions > 70
     if (protocolVersion === 2) {
@@ -241,13 +241,13 @@ const getGrant = (protocolVersion, isDesktop) => (runtime) => {
         continue
       } else if (type === 'ugp' && protocolVersion === 3) { // hack - skip desktop ugp grants for v3 endpoint
         continue
-      } else if (adsAvailable && isDesktop) {
+      } else if (adsAvailable && type === 'ugp') {
         continue
       }
       const counted = await grants.count(query)
       if (counted !== 0) {
         const promotion = { promotionId, type }
-        if (adsAvailable && type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
+        if (type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
           return reply(promotion)
         }
         filteredPromotions.push(promotion)
@@ -293,7 +293,7 @@ v3.read = {
 }
 
 v5.read = {
-  handler: safetynetPassthrough(getGrant(3, false)),
+  handler: safetynetPassthrough(getGrant(3)),
   description: 'See if a v5 promotion is available',
   tags: [ 'api' ],
 
@@ -320,7 +320,7 @@ v5.read = {
 */
 
 v4.read = {
-  handler: getGrant(4, true),
+  handler: getGrant(4),
   description: 'See if a v4 promotion is available',
   tags: [ 'api' ],
 
