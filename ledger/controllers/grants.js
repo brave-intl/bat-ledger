@@ -149,17 +149,22 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
       headers,
       payload: body
     })
-
-    await handler(runtime)(request, reply)
-  } catch (ex) {
+  } catch (e) {
     try {
-      const errPayload = JSON.parse(ex.data.payload.toString())
-      return reply(boom.notFound(errPayload.message))
+      const errPayload = JSON.parse(e.data.payload.toString())
+      return reply(boom.badData(errPayload.message))
     } catch (ex) {
-      runtime.captureException(ex, { req: request })
+      runtime.captureException(ex, {
+        req: request,
+        extra: {
+          data: e.data,
+          message: e.message
+        }
+      })
     }
-    return reply(boom.notFound())
+    return reply(boom.badData())
   }
+  await handler(runtime)(request, reply)
 }
 
 /*
