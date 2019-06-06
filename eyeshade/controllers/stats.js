@@ -1,7 +1,9 @@
 const Joi = require('@hapi/joi')
+const _ = require('underscore')
 const braveJoi = require('bat-utils/lib/extras-joi')
 const braveHapi = require('bat-utils/lib/extras-hapi')
-const transactionsLib = require('../lib/transactions')
+const boom = require('boom')
+const transactionsLib = require('../lib/transaction')
 const grantsLib = require('../lib/grants')
 
 const grantTypeValidator = Joi.string().allow(['ads'])
@@ -18,10 +20,16 @@ v1.grantsStats = {
     const { params } = request
     const { type } = params
     const client = await runtime.postgres.connect()
-    const stats = await grantsLib.stats(runtime, client, {
-      type
-    })
-    reply(stats)
+    try {
+      const stats = await grantsLib.stats(runtime, client, {
+        type
+      })
+      reply(sanitize(stats))
+    } catch (e) {
+      reply(boom.boomify(e))
+    } finally {
+      await client.release()
+    }
   },
   auth: {
     strategy: 'simple',
@@ -51,10 +59,16 @@ v1.settlementsStats = {
     const { params } = request
     const { type } = params
     const client = await runtime.postgres.connect()
-    const stats = await transactionsLib.stats(runtime, client, {
-      type
-    })
-    reply(stats)
+    try {
+      const stats = await transactionsLib.stats(runtime, client, {
+        type: `${type}_settlement`
+      })
+      reply(sanitize(stats))
+    } catch (e) {
+      reply(boom.boomify(e))
+    } finally {
+      await client.release()
+    }
   },
   auth: {
     strategy: 'simple',
@@ -78,3 +92,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/stats/grants/{type}').whitelist().config(v1.grantsStats),
   braveHapi.routes.async().path('/v1/stats/settlements/{type}').whitelist().config(v1.settlementsStats)
 ]
+
+function sanitize (data) {
+  return _.mapObject(data, (value) => value || '0')
+}
