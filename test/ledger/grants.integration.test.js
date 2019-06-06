@@ -172,6 +172,11 @@ test('claim grants with attestations', async (t) => {
 
   await ledgerAgent
     .get('/v3/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN + 'bad')
+    .expect(422)
+
+  await ledgerAgent
+    .get('/v3/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(404)
 

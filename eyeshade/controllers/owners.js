@@ -141,12 +141,16 @@ v3.createCard = {
     if (!ownerVerified(info)) {
       return reply(boom.badData('owner not verified'))
     }
-    await wallet.createCard(info, {
-      currency,
-      label
-    })
-    debug('card data create successful')
-    reply({})
+    try {
+      await wallet.createCard(info, {
+        currency,
+        label
+      })
+      debug('card data create successful')
+      reply({})
+    } catch (e) {
+      reply(e)
+    }
   },
   description: 'Create a card for uphold',
   tags: [ 'api' ],
@@ -166,6 +170,9 @@ v3.createCard = {
 }
 
 function ownerVerified (info) {
+  if (!info) {
+    return false
+  }
   const {
     provider,
     parameters

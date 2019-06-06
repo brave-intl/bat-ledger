@@ -47,7 +47,7 @@ Wallet.prototype.createCard = async function () {
   if (this.config.uphold) {
     f = Wallet.providers.uphold.createCard
   }
-  if (!f) return {}
+  if (!f) throw new Error(`no method defined: createCard`)
   return f.apply(this, arguments)
 }
 
@@ -302,6 +302,17 @@ Wallet.prototype.createUpholdSDK = function (token) {
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
+  createCard: async function (info, {
+    currency,
+    label,
+    options
+  }) {
+    const accessToken = info.parameters.access_token
+    const uphold = this.createUpholdSDK(accessToken)
+    return uphold.createCard(currency, label, Object.assign({
+      authenticate: true
+    }, options))
+  },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
