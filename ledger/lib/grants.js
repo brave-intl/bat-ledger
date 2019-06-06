@@ -5,6 +5,7 @@ const {
 
 module.exports = {
   adsGrantsAvailable,
+  getCohort,
   defaultCooldownHrs,
   cooldownOffset
 }
@@ -22,4 +23,11 @@ function adsGrantsAvailable (code) {
   const { ADS_AVAILABLE_LIST } = process.env
   const adsAvailableList = ADS_AVAILABLE_LIST ? ADS_AVAILABLE_LIST.split(',') : []
   return adsAvailableList.includes(code)
+}
+
+function getCohort (grants, ids) {
+  const targetGrant = _.find(grants, ({ grantId }) => ids.includes(grantId))
+  const defaultCohortType = 'grant'
+  const { type: targetGrantType } = targetGrant
+  return targetGrantType === 'ugp' ? defaultCohortType : (targetGrantType || defaultCohortType)
 }
