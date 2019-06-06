@@ -431,9 +431,6 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const code = request.headers['fastly-geoip-country-code']
     const adsAvailable = adsGrantsAvailable(code)
     if (protocolVersion === 3) {
-      if (!adsAvailable) {
-        return reply(boom.badRequest('claim from this area is not allowed'))
-      }
       underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android'] } })
     } else if (protocolVersion === 4) {
       if (adsAvailable) {
