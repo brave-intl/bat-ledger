@@ -43,6 +43,7 @@ AND NOT votes.transacted
 AND NOT votes.excluded
 GROUP BY channel;
 `
+
 /*
    GET /v1/accounts/{account}/transactions
 */
