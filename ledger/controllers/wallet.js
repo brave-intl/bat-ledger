@@ -7,12 +7,17 @@ const timestamp = require('monotonic-timestamp')
 const underscore = require('underscore')
 
 const surveyorsLib = require('../lib/surveyor')
+const {
+  createComposite,
+  compositeBonusAmounts
+} = require('../lib/wallet')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
 
+const v1 = {}
 const v2 = {}
 
 const walletStatsList = Joi.array().items(
@@ -667,7 +672,35 @@ function getStats (getQuery = defaultQuery) {
   }
 }
 
+const grantsTypeEnumValidator = Joi.string().allow(['ugp', 'ads']).description('grant types')
+const paymentIdValidator = Joi.string().guid().required().description('identity of the wallet')
+const amountBatValidator = braveJoi.string().numeric().description('an amount, in bat')
+v1.walletGrantsInfo = {
+  handler: walletGrantsInfoHandler,
+  description: 'Returns information about the wallet\'s grants',
+  tags: [ 'api' ],
+
+  validate: {
+    params: {
+      paymentId: paymentIdValidator,
+      type: grantsTypeEnumValidator
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      type: grantsTypeEnumValidator,
+      amount: amountBatValidator,
+      bonus: amountBatValidator,
+      lastClaim: Joi.date().iso().allow(null).description('the last claimed grant')
+    })
+  }
+}
+
+module.exports.compositeGrants = compositeGrants
+
 module.exports.routes = [
+  braveHapi.routes.async().path('/v2/wallet/{paymentId}/grants/{type}').config(v1.walletGrantsInfo),
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
@@ -729,4 +762,60 @@ module.exports.initialize = async (debug, runtime) => {
 
   await runtime.queue.create('contribution-report')
   await runtime.queue.create('wallet-report')
+}
+
+function walletGrantsInfoHandler (runtime) {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const {
+      type,
+      paymentId
+    } = request.params
+    try {
+      const composite = await compositeGrants(debug, runtime, {
+        type,
+        paymentId
+      })
+      const status = composite.lastClaim ? 200 : 204
+      reply(composite).code(status)
+    } catch (e) {
+      reply(e)
+    }
+  }
+}
+
+async function compositeGrants (debug, runtime, {
+  paymentId,
+  type: requiredType
+}) {
+  const wallets = runtime.database.get('wallets', debug)
+  const wallet = await wallets.findOne({ paymentId }, { grants: 1 })
+  if (!wallet) {
+    throw boom.notFound('unable to find wallet')
+  }
+  const { grants = [] } = wallet
+  let amount = new BigNumber(0)
+  let lastClaim = null
+  for (let i = grants.length - 1; i >= 0; i--) {
+    const grant = grants[i]
+    const { claimTimestamp, token, type } = grant
+    if (requiredType === 'ugp') {
+      if (type && type !== requiredType) {
+        continue
+      }
+    } else if (type !== requiredType) {
+      continue
+    }
+    const content = braveUtils.extractJws(token)
+    const { probi } = content
+    const localBonus = compositeBonusAmounts(grant.promotionId)
+    amount = amount.plus(probi).minus(localBonus)
+    const claimedAt = new Date(claimTimestamp)
+    lastClaim = lastClaim > claimedAt ? lastClaim : claimedAt
+  }
+  return createComposite({
+    type: requiredType,
+    amount: amount.dividedBy(braveUtils.PROBI_FACTOR),
+    lastClaim
+  })
 }
