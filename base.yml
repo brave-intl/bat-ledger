@@ -17,6 +17,7 @@ services:
       - "BAT_REDIS_URL=redis://redis:6379"
       - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "ENABLE_ADS_PAYOUT=1"
+      - "FASTLY_TOKEN_LIST=foobarfoobar"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
       - "LEDGER_URL=${LEDGER_URL-http://ledger-web:3001}"
@@ -24,6 +25,7 @@ services:
       - "NODE_ENV=${NODE_ENV-development}"
       - "REDEEMER_URL=${REDEEMER_URL-http://grant-web:3333}"
       - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
+      - "ADS_AVAILABLE_LIST=ZZ"
       - ALLOWED_ADS_TOKENS
       - ALLOWED_PUBLISHERS_TOKENS
       - BALANCE_CACHE_TTL_S

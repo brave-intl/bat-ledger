@@ -1,5 +1,5 @@
 'use strict'
-
+import _ from 'underscore'
 import {
   forwardedIPShift,
   ipaddr
@@ -11,36 +11,58 @@ import {
 import dotenv from 'dotenv'
 dotenv.config()
 
-test('ipaddr', (t) => {
+const validFastlyToken = process.env.FASTLY_TOKEN_LIST
+
+test('ipaddr', async (t) => {
   t.is(ipaddr(req('123.123.123.123', '127.0.0.1,12.12.12.12')), '12.12.12.12')
   t.is(ipaddr(req('123.123.123.123', '127.0.0.1, 12.12.12.12')), '12.12.12.12')
   t.is(ipaddr(req('123.123.123.123')), '123.123.123.123')
   t.is(ipaddr(req('123.123.123.123', ' ')), '123.123.123.123')
+  await munge(['FASTLY_TOKEN_LIST', 'FORWARDED_IP_SHIFT'], (setEnvs) => {
+    const run = (token) => ipaddr(req('123.123.123.123', '1.1.1.1,2.2.2.2,3.3.3.3', token || validFastlyToken))
+
+    setEnvs([null, null])
+    t.is(run(), '3.3.3.3', 'should not throw in default state')
+    t.is(run('invalid'), '3.3.3.3', 'an invalid fastly token is ignored when no shift exists')
+
+    setEnvs([validFastlyToken, null])
+    t.is(run(), '3.3.3.3', 'should not throw when token is sent but no shift exists')
+    t.is(run('invalid'), '3.3.3.3', 'an invalid fastly token is ignored when no shift exists')
+
+    setEnvs([null, '2'])
+    t.throws(run, Error, 'should throw when no token is sent but shift exists')
+    t.throws(() => run('invalid'), Error, 'an invalid fastly token throws when shift exists')
+
+    setEnvs([validFastlyToken, '2'])
+    t.is(run(), '2.2.2.2', 'should not throw when shift exists and fastly token matches')
+    t.throws(() => run('invalid'), Error, 'an invalid fastly token throws when shift exists')
+  })
 })
 
 test('ipaddr can be shifted', async (t) => {
-  await munge('FORWARDED_IP_SHIFT', (set) => {
+  await munge(['FORWARDED_IP_SHIFT'], (setEnvs) => {
     t.is(ipaddr(req('', '0.0.0.0,8.8.8.8,9.0.0.0')), '9.0.0.0', 'by default the last ip is taken')
-    set('2')
+    setEnvs(['2'])
     t.is(ipaddr(req('', '0.0.0.0,8.8.8.8,9.0.0.0')), '8.8.8.8', 'by changing the env, you can choose which ip in the list of forwarded ips to take by default')
   })
 })
 
 test('shift amount can be retrieved', async (t) => {
-  await munge('FORWARDED_IP_SHIFT', (set) => {
+  await munge(['FORWARDED_IP_SHIFT'], (setEnvs) => {
     t.is(forwardedIPShift(), 1, 'by default it is one')
-    set('3')
+    setEnvs(['3'])
     t.is(forwardedIPShift(), 3, 'but can be overwritten')
-    set('what')
+    setEnvs(['what'])
     t.throws(forwardedIPShift, Error, 'non numeric values throw')
-    set('-2')
+    setEnvs(['-2'])
     t.is(forwardedIPShift(), 1, 'negative numbers are clamped to 1')
   })
 })
 
-function req (remoteAddress, XForwardedFor) {
+function req (remoteAddress, XForwardedFor, token = validFastlyToken) {
   return {
     headers: XForwardedFor ? {
+      'fastly-token': token,
       'x-forwarded-for': XForwardedFor
     } : {},
     info: {
@@ -49,16 +71,19 @@ function req (remoteAddress, XForwardedFor) {
   }
 }
 
-async function munge (key, handler) {
-  const cachedEnv = process.env[key]
-  await handler(set)
-  set(cachedEnv)
+async function munge (keys, handler) {
+  const cachedEnv = _.toArray(keys).map((key) => process.env[key])
+  await handler(setEnvs)
+  setEnvs(cachedEnv)
 
-  function set (value) {
-    if (value) {
-      process.env[key] = value
-    } else {
-      delete process.env[key]
-    }
+  function setEnvs (values = []) {
+    _.toArray(values).forEach((value, index) => {
+      const key = keys[index]
+      if (_.isString(value)) {
+        process.env[key] = value
+      } else {
+        delete process.env[key]
+      }
+    })
   }
 }
