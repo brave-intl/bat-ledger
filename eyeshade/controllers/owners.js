@@ -58,6 +58,8 @@ v1.getWallet = {
       }
       if (!result.wallet) {
         result.wallet = {
+          id: '',
+          provider: provider || '',
           defaultCurrency: entry.defaultCurrency
         }
         if (provider) {
@@ -87,8 +89,8 @@ v1.getWallet = {
     schema: Joi.object().keys({
       rates: Joi.object().optional().description('current exchange rates to various currencies'),
       wallet: Joi.object().keys({
-        id: Joi.string().required().description('the provider identifier'),
-        provider: Joi.string().required().description('wallet provider'),
+        id: Joi.string().allow('').required().description('the provider identifier'),
+        provider: Joi.string().allow('').required().description('wallet provider'),
         authorized: Joi.boolean().optional().description('publisher is authorized by provider'),
         defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
         availableCurrencies: Joi.array().items(braveJoi.string().anycurrencyCode()).description('currencies the publisher has cards for'),

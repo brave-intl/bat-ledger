@@ -25,7 +25,6 @@ test.beforeEach(async (t) => {
 })
 
 test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t => {
-  t.plan(14)
   const { owners } = t.context
   const OWNER = 'publishers#uuid:8f3ae7ad-2842-53fd-8b63-c843afe1a33b'
   const SCOPE = 'cards:read user:read'
@@ -88,10 +87,10 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
   const walletUrl = `/v1/owners/${encodedOwner}/wallet`
   const parameters = {
     access_token: process.env.UPHOLD_ACCESS_TOKEN,
-    show_verification_status: false,
-    defaultCurrency: 'DASH'
+    show_verification_status: false
   }
   const data = {
+    defaultCurrency: 'DASH',
     provider: 'uphold',
     parameters
   }
@@ -117,7 +116,6 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
 })
 
 test('eyeshade: missing owners send back proper status', async (t) => {
-  t.plan(1)
   const id = uuidV4()
   const badOwner = `publishers#uuid:${id}`
   const badEncoding = encodeURIComponent(badOwner)
@@ -131,6 +129,7 @@ test('eyeshade: missing owners send back proper status', async (t) => {
   const SCOPE = 'cards:read user:read'
   const dataOwnerWalletParams = {
     provider: 'uphold',
+    defaultCurrency: 'BAT',
     parameters: {
       access_token: process.env.UPHOLD_ACCESS_TOKEN + 'fake',
       scope: SCOPE
@@ -144,6 +143,11 @@ test('eyeshade: missing owners send back proper status', async (t) => {
     .get(badURL)
     .send()
     .expect(200)
+  t.deepEqual(body.wallet, {
+    id: '',
+    provider: 'uphold',
+    defaultCurrency: 'BAT'
+  }, 'let client know which default currency is set on owner')
   t.deepEqual(body.status, {
     provider: 'uphold',
     action: 're-authorize'
@@ -151,7 +155,6 @@ test('eyeshade: missing owners send back proper status', async (t) => {
 })
 
 test('a card can be created from endpoint', async (t) => {
-  t.plan(1)
   const id = uuidV4()
   const badOwner = `publishers#uuid:${id}`
   const badEncoding = encodeURIComponent(badOwner)
