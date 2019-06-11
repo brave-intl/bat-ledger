@@ -56,8 +56,13 @@ v1.getWallet = {
         debug('status', { reason: ex.toString(), stack: ex.stack })
         runtime.captureException(ex, { req: request, extra: { owner: owner } })
       }
-      if ((provider) && (!result.wallet)) {
-        result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
+      if (!result.wallet) {
+        result.wallet = {
+          defaultCurrency: entry.defaultCurrency
+        }
+        if (provider) {
+          result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
+        }
       }
 
       reply(result)
