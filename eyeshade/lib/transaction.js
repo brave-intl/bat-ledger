@@ -325,9 +325,17 @@ async function insertFromReferrals (runtime, client, referrals) {
 }
 
 async function updateBalances (runtime, client, concurrently) {
-  if (concurrently) {
-    await client.query('REFRESH MATERIALIZED VIEW CONCURRENTLY account_balances')
-  } else {
-    await client.query('REFRESH MATERIALIZED VIEW account_balances')
+  const { prometheus } = runtime
+  const end = prometheus.timedRequest('viewRefresh_request_buckets_milliseconds')
+  try {
+    if (concurrently) {
+      await client.query('REFRESH MATERIALIZED VIEW CONCURRENTLY account_balances')
+    } else {
+      await client.query('REFRESH MATERIALIZED VIEW account_balances')
+    }
+  } catch (e) {
+    end({ erred: true })
+    throw e
   }
+  end({ erred: false })
 }

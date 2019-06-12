@@ -11,18 +11,27 @@ import {
 import {
   timeout
 } from 'bat-utils/lib/extras-utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
+import { Runtime } from 'bat-utils'
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-
-test.afterEach.always(async t => {
-  await cleanPgDb(postgres)()
-  await cleanDbs()
+const {
+  BAT_REDIS_URL,
+  BAT_POSTGRES_URL
+} = process.env
+const runtime = new Runtime({
+  prometheus: {
+    label: 'eyeshade.worker.1',
+    redis: BAT_REDIS_URL
+  },
+  postgres: {
+    url: BAT_POSTGRES_URL
+  }
 })
+test.afterEach.always(cleanDbs)
+test.afterEach.always(cleanPgDb(runtime.postgres))
 
 test('referrals are inserted into mongo then eventually postgres', async t => {
   const eyeshadeMongo = await connectToDb('eyeshade')
-  const postgresClient = await postgres.connect()
+  const postgresClient = await runtime.postgres.connect()
 
   const txId = uuidV4().toLowerCase()
   const referral = {

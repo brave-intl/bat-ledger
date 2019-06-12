@@ -5,6 +5,7 @@ const redis = require('redis')
 const debug = new SDebug('prometheus')
 const listenerPrefix = `listeners:prometheus:`
 const listenerChannel = `${listenerPrefix}${process.env.SERVICE}`
+let registerMetricsPerProcess = registerMetrics
 
 function Prometheus (config, runtime) {
   if (!(this instanceof Prometheus)) {
@@ -26,6 +27,9 @@ function Prometheus (config, runtime) {
   this.timeout = timeout
   setInterval(() => this.maintenance(), timeout)
   process.on('exit', () => this.quit())
+  // scope it to the process
+  registerMetricsPerProcess(this)
+  registerMetricsPerProcess = _.noop
 }
 
 Prometheus.prototype.maintenance = function () {
@@ -64,8 +68,8 @@ Prometheus.prototype.allMetrics = function () {
   return client.AggregatorRegistry.aggregate(values)
 }
 
-Prometheus.prototype.registerMetrics = function () {
-  const { client, register } = this
+function registerMetrics (prometheus) {
+  const { client, register } = prometheus
   let name
   const log2Buckets = client.exponentialBuckets(2, 2, 15)
 
@@ -98,27 +102,33 @@ Prometheus.prototype.registerMetrics = function () {
 
   const anonizeVerifyRequestBucketsMilliseconds = new client.Histogram({
     name: 'anonizeVerify_request_buckets_milliseconds',
-    help: 'request duration buckets in milliseconds',
+    help: 'anonize verify duration buckets in milliseconds',
+    labelNames: ['method', 'path', 'cardinality', 'status', 'erred'],
     buckets: log2Buckets
   })
   register.registerMetric(anonizeVerifyRequestBucketsMilliseconds)
 
   const anonizeRegisterRequestBucketsMilliseconds = new client.Histogram({
     name: 'anonizeRegister_request_buckets_milliseconds',
-    help: 'request duration buckets in milliseconds',
+    help: 'anonize register buckets in milliseconds',
+    labelNames: ['method', 'path', 'cardinality', 'status', 'erred'],
     buckets: log2Buckets
   })
   register.registerMetric(anonizeRegisterRequestBucketsMilliseconds)
-  // should only happen once, so skip next time its called
-  this.registerMetrics = () => {}
+
+  const viewRefreshRequestBucketsMilliseconds = new client.Histogram({
+    name: 'viewRefresh_request_buckets_milliseconds',
+    help: 'postgres view refresh buckets in milliseconds',
+    labelNames: ['method', 'path', 'cardinality', 'status', 'erred'],
+    buckets: log2Buckets
+  })
+  register.registerMetric(viewRefreshRequestBucketsMilliseconds)
 }
 
 Prometheus.prototype.plugin = function () {
   const { register } = this
   const plugin = {
     register: (server, o, done) => {
-      this.registerMetrics()
-
       server.route({
         method: 'GET',
         path: '/metrics',

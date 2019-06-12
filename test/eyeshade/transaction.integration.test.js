@@ -3,8 +3,7 @@
 import { serial as test } from 'ava'
 import uuidV4 from 'uuid/v4'
 import { createdTimestamp } from 'bat-utils/lib/extras-utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import Currency from 'bat-utils/lib/runtime-currency'
+import { Runtime } from 'bat-utils'
 import {
   knownChains,
   insertTransaction,
@@ -20,26 +19,26 @@ import {
   cleanPgDb
 } from '../utils'
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-
-const runtime = {
-  config: {
-    wallet: {
-      settlementAddress: {
-        'BAT': '0xdeadbeef'
-      }
+const runtime = new Runtime({
+  wallet: {
+    settlementAddress: {
+      'BAT': '0xdeadbeef'
     }
   },
-  currency: new Currency({
-    currency: {
-      url: process.env.BAT_RATIOS_URL,
-      access_token: process.env.BAT_RATIOS_TOKEN
-    }
-  }),
-  postgres
-}
+  currency: {
+    url: process.env.BAT_RATIOS_URL,
+    access_token: process.env.BAT_RATIOS_TOKEN
+  },
+  postgres: {
+    url: process.env.BAT_POSTGRES_URL
+  },
+  prometheus: {
+    label: 'eyeshade.worker.1',
+    redis: process.env.BAT_REDIS_URL
+  }
+})
 
-test.afterEach.always(cleanPgDb(postgres))
+test.afterEach.always(cleanPgDb(runtime.postgres))
 
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
