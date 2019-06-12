@@ -1,7 +1,13 @@
 const _ = require('underscore')
 const {
+  ADS_URL,
+  ADS_AVAILABLE_LIST,
   WALLET_COOLDOWN_HRS
 } = process.env
+const {
+  wreck
+} = require('bat-utils/lib/extras-hapi')
+const adsAvailableList = getAdsAvailableList()
 
 module.exports = {
   adsGrantsAvailable,
@@ -18,8 +24,23 @@ function cooldownOffset (hours = defaultCooldownHrs()) {
   return hours * 60 * 60 * 1000
 }
 
-function adsGrantsAvailable (code) {
-  const { ADS_AVAILABLE_LIST } = process.env
-  const adsAvailableList = ADS_AVAILABLE_LIST ? ADS_AVAILABLE_LIST.split(',') : []
-  return adsAvailableList.includes(code)
+async function adsGrantsAvailable (code) {
+  const list = await adsAvailableList
+  return list.includes(code)
+}
+
+async function getAdsAvailableList () {
+  try {
+    const bytes = await wreck.get(`${ADS_URL}/v1/geoCode`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    const string = bytes.toString()
+    const json = JSON.parse(string)
+    return json.map(({ code }) => code)
+  } catch (e) {
+    const backup = ADS_AVAILABLE_LIST || 'US'
+    return backup.split(',')
+  }
 }

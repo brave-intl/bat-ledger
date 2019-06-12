@@ -584,15 +584,8 @@ test('cooldown offset', async (t) => {
 })
 
 test('adsGrantsAvailable does not allow ugp depending on the ip', async (t) => {
-  const cachedAdsAvailableList = process.env.ADS_AVAILABLE_LIST
-  process.env.ADS_AVAILABLE_LIST = 'UK,US,CA'
-  t.is(false, adsGrantsAvailable('JP'), 'this ip is not within the supported countries')
-  t.is(true, adsGrantsAvailable('US'), 'this ip is within the supported countries')
-
-  process.env.ADS_AVAILABLE_LIST = 'UK,JP,CA'
-  t.is(true, adsGrantsAvailable('JP'), 'this ip is within the supported countries')
-  t.is(false, adsGrantsAvailable('US'), 'this ip is not within the supported countries')
-  process.env.ADS_AVAILABLE_LIST = cachedAdsAvailableList
+  t.false(await adsGrantsAvailable('JP'), 'this ip is not within the supported countries')
+  t.true(await adsGrantsAvailable('US'), 'this ip is within the supported countries')
 })
 
 async function resolveCaptcha (wallets, {

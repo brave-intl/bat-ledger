@@ -232,7 +232,7 @@ const getGrant = (protocolVersion) => (runtime) => {
     entries = await promotions.find(query)
     if ((!entries) || (!entries[0])) return reply(boom.notFound('no promotions available'))
 
-    const adsAvailable = adsGrantsAvailable(request.headers['fastly-geoip-country-code'])
+    const adsAvailable = await adsGrantsAvailable(request.headers['fastly-geoip-country-code'])
 
     const filteredPromotions = []
     for (let { promotionId, type } of entries) {
@@ -434,7 +434,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
     const promotionQuery = { promotionId, protocolVersion }
     const code = request.headers['fastly-geoip-country-code']
-    const adsAvailable = adsGrantsAvailable(code)
+    const adsAvailable = await adsGrantsAvailable(code)
 
     if (protocolVersion === 3) {
       underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android'] } })
