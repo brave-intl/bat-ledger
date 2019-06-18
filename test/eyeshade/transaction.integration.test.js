@@ -437,7 +437,9 @@ test('transaction stats', async (t) => {
       settlementId: uuidV4()
     }))
     const contributionStats = await stats(runtime, client, {
-      type: 'contribution_settlement'
+      type: 'contribution_settlement',
+      start: today,
+      until: tomorrow
     })
     t.is(19, +contributionStats.amount, 'contributions are summed')
 
@@ -446,7 +448,9 @@ test('transaction stats', async (t) => {
       settlementId: uuidV4()
     }))
     const referralStats = await stats(runtime, client, {
-      type: 'referral_settlement'
+      type: 'referral_settlement',
+      start: today,
+      until: tomorrow
     })
     t.is(20, +referralStats.amount, 'referrals are summed')
   } finally {

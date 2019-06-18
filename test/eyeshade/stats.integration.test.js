@@ -24,6 +24,7 @@ const {
   TESTING_COHORTS
 } = process.env
 
+const today = new Date('2018-07-30')
 const runtime = new Runtime({
   testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
   queue: process.env.BAT_REDIS_URL,
@@ -92,8 +93,8 @@ test('stats for grants', async (t) => {
     probi: (new BigNumber(1)).times(1e18).toString(),
     votes: 2
   }
-
-  const votingStatsEmpty = await getStatsFor('grants', cohort)
+  const now = new Date()
+  const votingStatsEmpty = await getStatsFor('grants', cohort, now)
   t.deepEqual({ amount: '0', count: '0' }, votingStatsEmpty, 'an empty set of stats should return')
 
   const client = await runtime.postgres.connect()
@@ -112,7 +113,7 @@ test('stats for grants', async (t) => {
     let votingStats = {}
     while (!(+votingStats.amount)) {
       await timeout(2000)
-      votingStats = await getStatsFor('grants', cohort)
+      votingStats = await getStatsFor('grants', cohort, now)
     }
     const amount = (new BigNumber(0.95)).toPrecision(18).toString()
     t.deepEqual({ amount, count: '2' }, votingStats, 'vote amounts are summed')
@@ -147,8 +148,9 @@ test('stats for settlements', async (t) => {
   }
 })
 
-async function getStatsFor (prefix, type) {
-  const url = `/v1/stats/${prefix}/${type}`
+async function getStatsFor (prefix, type, begin = today) {
+  const start = begin.toISOString()
+  const url = `/v1/stats/${prefix}/${type}/${start.split('T')[0]}`
   const { body } = await eyeshadeAgent
     .get(url)
     .expect(ok)

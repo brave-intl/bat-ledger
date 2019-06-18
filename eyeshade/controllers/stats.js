@@ -9,6 +9,10 @@ const grantsLib = require('../lib/grants')
 const grantTypeValidator = Joi.string().allow(['ads'])
 const settlementTypeValidator = Joi.string().allow(['contribution', 'referrals'])
 const numeric = braveJoi.string().numeric()
+const dateRangeParams = Joi.object().keys({
+  start: Joi.date().iso().required().description('the date to start the query'),
+  until: Joi.date().iso().optional().description('the date to query until')
+})
 const v1 = {}
 
 /*
@@ -20,10 +24,11 @@ v1.grantsStats = {
     const { params } = request
     const { type } = params
     const client = await runtime.postgres.connect()
+    const options = Object.assign({
+      type
+    }, backfillDateRange(params))
     try {
-      const stats = await grantsLib.stats(runtime, client, {
-        type
-      })
+      const stats = await grantsLib.stats(runtime, client, options)
       reply(sanitize(stats))
     } catch (e) {
       reply(boom.boomify(e))
@@ -38,7 +43,7 @@ v1.grantsStats = {
   description: 'Retrieves information about grants',
   tags: [ 'api' ],
   validate: {
-    params: Joi.object().keys({
+    params: dateRangeParams.keys({
       type: grantTypeValidator.description('grant type to query for')
     })
   },
@@ -59,10 +64,11 @@ v1.settlementsStats = {
     const { params } = request
     const { type } = params
     const client = await runtime.postgres.connect()
+    const options = Object.assign({
+      type: `${type}_settlement`
+    }, backfillDateRange(params))
     try {
-      const stats = await transactionsLib.stats(runtime, client, {
-        type: `${type}_settlement`
-      })
+      const stats = await transactionsLib.stats(runtime, client, options)
       reply(sanitize(stats))
     } catch (e) {
       reply(boom.boomify(e))
@@ -77,7 +83,7 @@ v1.settlementsStats = {
   description: 'Retrieves information about bat paid out in referrals',
   tags: [ 'api' ],
   validate: {
-    params: Joi.object().keys({
+    params: dateRangeParams.keys({
       type: settlementTypeValidator.description('settlement type to query for')
     })
   },
@@ -89,10 +95,32 @@ v1.settlementsStats = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/stats/grants/{type}').whitelist().config(v1.grantsStats),
-  braveHapi.routes.async().path('/v1/stats/settlements/{type}').whitelist().config(v1.settlementsStats)
+  braveHapi.routes.async().path('/v1/stats/grants/{type}/{start}/{until?}').whitelist().config(v1.grantsStats),
+  braveHapi.routes.async().path('/v1/stats/settlements/{type}/{start}/{until?}').whitelist().config(v1.settlementsStats)
 ]
 
 function sanitize (data) {
   return _.mapObject(data, (value) => value || '0')
+}
+
+function backfillDateRange ({
+  start,
+  until
+}) {
+  if (until) {
+    return {
+      start: new Date(start),
+      until: new Date(until)
+    }
+  }
+  let end = start
+  const DAY = 1000 * 60 * 60 * 24
+  const month = end.getMonth()
+  while (month === end.getMonth()) {
+    end = new Date(+end + DAY)
+  }
+  return {
+    start,
+    until: end
+  }
 }
