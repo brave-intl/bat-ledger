@@ -170,8 +170,8 @@ test('compositing wallet grant information', async (t) => {
   } = await ledgerAgent.get(`/v2/wallet/${paymentId}/grants/ads`).expect(ok)
   const expectedAds = createComposite({
     type: 'ads',
-    amount: (new BigNumber(2.3)),
-    lastClaim: +lastAdsTimestamp + 1
+    amount: (new BigNumber(2)),
+    lastClaim: lastAdsTimestamp
   })
   t.deepEqual(expectedAds, compositedAds, 'a composite is created correctly')
   t.deepEqual(expectedAds, bodyAds, 'a composite is responded with')
