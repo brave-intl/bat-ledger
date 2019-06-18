@@ -1,19 +1,15 @@
 const BigNumber = require('bignumber.js')
-const utils = require('bat-utils/lib/extras-utils')
-const compositePromotionIdExclusions = {
-  // promotionIDs that should not be added to total
-  '74bc56a0-f4f9-4ac5-84a7-65e9babc41ff': 10,
-  'f66eac41-22b1-4c11-94ce-9c504d0539d8': 5,
-  'c7a12742-2c7c-4ffc-9732-0e601e844099': 60
+const promotionIdExclusions = {
+  'cba1e5c0-8081-49cb-b4b8-05e109c96fd4': true,
+  'f8913681-eab9-48c2-890e-c40d4a3efb95': true,
+  '1a9f55c7-6d54-41c6-97cd-7b8c4a290641': true,
+  'c7a12742-2c7c-4ffc-9732-0e601e844099': true,
+  'f66eac41-22b1-4c11-94ce-9c504d0539d8': true,
+  '74bc56a0-f4f9-4ac5-84a7-65e9babc41ff': true
 }
 module.exports = {
-  compositePromotionIdExclusions,
-  compositeBonusAmounts,
+  promotionIdExclusions,
   createComposite
-}
-
-function compositeBonusAmounts (promotionId) {
-  return new BigNumber(compositePromotionIdExclusions[promotionId] || 0).times(utils.PROBI_FACTOR)
 }
 
 function createComposite ({

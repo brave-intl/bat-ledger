@@ -9,7 +9,7 @@ const underscore = require('underscore')
 const surveyorsLib = require('../lib/surveyor')
 const {
   createComposite,
-  compositeBonusAmounts
+  promotionIdExclusions
 } = require('../lib/wallet')
 
 const utils = require('bat-utils')
@@ -808,8 +808,10 @@ async function compositeGrants (debug, runtime, {
     }
     const content = braveUtils.extractJws(token)
     const { probi } = content
-    const localBonus = compositeBonusAmounts(grant.promotionId)
-    amount = amount.plus(probi).minus(localBonus)
+    if (promotionIdExclusions[grant.promotionId]) {
+      continue
+    }
+    amount = amount.plus(probi)
     const claimedAt = new Date(claimTimestamp)
     lastClaim = lastClaim > claimedAt ? lastClaim : claimedAt
   }
