@@ -436,7 +436,17 @@ v1.adTransactions = {
   response: { schema: Joi.object().length(0) }
 }
 
+/*
+  GET /v1/accounts/collect-fess
+*/
+v1.collectFees = {
+  handler: collectFeesHandler,
+  description: 'Used to collect fees from uphold for accounting purposes',
+  tags: ['api']
+}
+
 module.exports.routes = [
+  braveHapi.routes.async().path('/v1/accounts/collect-fees').whitelist().config(v1.collectFees),
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
   braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').whitelist().config(v1.getTopBalances),
@@ -446,3 +456,16 @@ module.exports.routes = [
 ]
 
 module.exports.v1 = v1
+
+function collectFeesHandler (runtime) {
+  return async (request, reply) => {
+    // get last inserted fee tx
+    const debug = braveHapi.debug(module, request)
+    await runtime.queue.send(debug, 'fees-report')
+    // get timestamp
+    // get fee wallet txs from uphold
+    // iterate over them from oldest to newest
+    // insert into db
+    reply({}).code(204)
+  }
+}

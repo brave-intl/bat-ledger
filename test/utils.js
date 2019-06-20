@@ -157,6 +157,7 @@ const cleanRedisDb = async () => {
 }
 
 module.exports = {
+  wipeDbs,
   makeSettlement,
   createSurveyor,
   getSurveyor,
@@ -258,4 +259,11 @@ function makeSettlement (type, balance, overwrites = {}) {
     address: uuidV4(),
     hash: uuidV4()
   }, overwrites)
+}
+
+function wipeDbs (pg) {
+  return async () => {
+    await cleanPgDb(pg)()
+    await cleanDbs()
+  }
 }

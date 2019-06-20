@@ -78,7 +78,7 @@ Queue.prototype.drop = async function (name) {
   })
 }
 
-Queue.prototype.send = async function (debug, name, payload) {
+Queue.prototype.send = async function (debug, name, payload = {}) {
   const self = this
 
   return new Promise((resolve, reject) => {

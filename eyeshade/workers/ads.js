@@ -35,7 +35,7 @@ const monthly = async (debug, runtime) => {
     client.release()
   }
 }
-
+exports.name = 'ads'
 exports.initialize = async (debug, runtime) => {
   const interval = cron.parseExpression('0 0 1 * *', {})
   const next = interval.next().getTime()

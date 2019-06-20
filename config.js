@@ -60,6 +60,9 @@ const services = {
     portno: 3003,
 
     f: () => {
+      module.exports.eyeshade = {
+        url: process.env.EYESHADE_URL || 'http://127.0.0.1:3003'
+      }
       module.exports.ledger = {
         url : process.env.LEDGER_URL  || 'http://127.0.0.1:3001'
       }

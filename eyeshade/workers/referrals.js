@@ -3,7 +3,7 @@ const { insertFromReferrals, updateBalances } = require('../lib/transaction.js')
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('referral-report')
 }
-
+exports.name = 'referrals'
 exports.workers = {
 /* sent by POST /v1/referrals/{transactionId}
 

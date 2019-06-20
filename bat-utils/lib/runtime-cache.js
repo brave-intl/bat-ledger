@@ -38,6 +38,14 @@ Cache.prototype = {
     this.connectedPromise = connectedPromise
     return connectedPromise
   },
+  getset: async function (key, value, options, prefix) {
+    const accessor = this.accessor(key, prefix)
+    let args = [accessor, value]
+    for (let key in options) {
+      args = args.concat([key, options[key]])
+    }
+    return this.cache.getsetAsync(args)
+  },
   get: async function (key, prefix) {
     const accessor = this.accessor(key, prefix)
     return this.cache.getAsync(accessor)

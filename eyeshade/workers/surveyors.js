@@ -4,7 +4,7 @@ const { mixer } = require('../workers/reports.js')
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('surveyor-frozen-report')
 }
-
+exports.name = 'surveyors'
 exports.workers = {
 /* sent by freezeOldSurveyors
 

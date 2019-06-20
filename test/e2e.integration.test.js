@@ -22,6 +22,7 @@ import {
   makeSettlement,
   cleanDbs,
   cleanPgDb,
+  balanceAgent,
   eyeshadeAgent,
   ledgerAgent,
   ok,
@@ -37,6 +38,10 @@ import {
 } from '../eyeshade/workers/reports'
 
 dotenv.config()
+
+const {
+  BAT_FEE_ACCOUNT
+} = process.env
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 const queue = new Queue({ queue: { rsmq: process.env.BAT_REDIS_URL } })
@@ -62,6 +67,26 @@ const grantsURL = '/v4/grants'
 test.afterEach.always(async t => {
   await cleanDbs()
   await cleanPgDb(postgres)()
+})
+
+test('fee collection occurs when balance is triggered', async (t) => {
+  t.plan(0)
+  const payload = {
+    payload: {
+      id: BAT_FEE_ACCOUNT
+    }
+  }
+  await balanceAgent
+    .post(`/v2/card`)
+    .send(payload)
+    .expect(ok)
+
+  let rows = []
+  const query = `select * from transactions where from_account = $1 or to_account = $1;`
+  while (!rows.length) {
+    await timeout(1000)
+    ;({ rows } = await postgres.query(query, [BAT_FEE_ACCOUNT]))
+  }
 })
 
 test('check endpoint is up with no authorization', async (t) => {

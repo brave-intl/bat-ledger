@@ -1,8 +1,13 @@
 const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const underscore = require('underscore')
-
-const { votesId } = require('../lib/queries.js')
+const uuidV5 = require('uuid/v5')
+const errors = require('../lib/errors')
+const { votesId } = require('../lib/queries')
+const { insertTransaction } = require('../lib/transaction')
+const {
+  BAT_FEE_ACCOUNT
+} = process.env
 
 exports.name = 'wallet'
 exports.initialize = async (debug, runtime) => {
@@ -79,7 +84,47 @@ exports.initialize = async (debug, runtime) => {
 }
 
 exports.workers = {
-/* sent by ledger POST /v1/registrar/persona/{personaId}
+/* sent by eyeshade GET /v1/accounts/collect-fees
+
+  { queue: 'fees-report'
+  , message:
+    { itemLimit: 100
+    }
+  }
+  */
+  'fees-report':
+    async (debug, runtime, payload) => {
+      const client = await runtime.postgres.connect()
+      const {
+        itemLimit = -1
+      } = payload
+      try {
+        const latestFeeTransaction = await getLatestFeeTx(client)
+        const list = await runtime.wallet.getFees(async (transaction, end, results) => {
+          if ((itemLimit !== -1 && results.length === itemLimit) ||
+              (new Date(transaction.createdAt) < latestFeeTransaction.createdAt)) {
+            return end()
+          }
+          try {
+            await insertUpholdTx(client, transaction)
+          } catch (e) {
+            if (!errors.isConflict(e)) {
+              throw e
+            }
+          }
+          return transaction
+        })
+        return list
+      } catch (e) {
+        debug(e)
+        runtime.captureException(e)
+        throw e
+      } finally {
+        client.release()
+      }
+    },
+
+  /* sent by ledger POST /v1/registrar/persona/{personaId}
 
     { queue               : 'persona-report'
     , message             :
@@ -287,4 +332,56 @@ exports.workers = {
       }
       await grants.update({ grantId: { $in: grantIds } }, state, { upsert: true })
     }
+}
+
+async function getLatestFeeTx (client) {
+  const { rows } = await client.query(`
+SELECT
+  max(created_at) as "createdAt"
+FROM transactions
+WHERE
+    from_account = $1
+OR  to_account = $1;
+`, [BAT_FEE_ACCOUNT])
+  return rows[0]
+}
+
+function insertFee (client, options) {
+  return insertTransaction(client, Object.assign({
+    description: 'settlement fees',
+    transactionType: 'fees',
+    toAccount: 'fees-account',
+    toAccountType: 'internal'
+  }, options))
+}
+
+function insertUpholdTx (client, transaction) {
+  const {
+    id,
+    destination,
+    origin,
+    createdAt
+  } = transaction
+  const {
+    CardId: originCardId
+  } = origin
+  const {
+    CardId: destinationCardId
+  } = destination
+  const fromAccountType = originCardId === BAT_FEE_ACCOUNT ? 'uphold' : 'internal'
+  const toAccountType = destinationCardId === BAT_FEE_ACCOUNT ? 'uphold' : 'internal'
+  const { amount } = origin
+  const documentId = uuidV5(id, BAT_FEE_ACCOUNT)
+  return insertFee(client, {
+    id,
+    amount,
+    documentId,
+    settlementCurrency: 'BAT',
+    settlementAmount: amount,
+    createdAt: (+(new Date(createdAt))) / 1000,
+    toAccount: destinationCardId,
+    toAccountType,
+    fromAccountType,
+    fromAccount: originCardId
+  })
 }

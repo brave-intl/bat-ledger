@@ -20,6 +20,10 @@ const upholdBaseUrls = {
   sandbox: 'https://api-sandbox.uphold.com'
 }
 
+const {
+  BAT_FEE_ACCOUNT
+} = process.env
+
 const cardInfoSchema = Joi.object().keys({
   balance: braveJoi.string().numeric().required(),
   available: braveJoi.string().numeric().required()
@@ -40,6 +44,15 @@ const Wallet = function (config, runtime) {
   if (config.currency) {
     this.currency = new Currency(config, runtime)
   }
+}
+
+Wallet.prototype.getFees = async function (txHandler, options) {
+  let f = Wallet.providers.mock.getFees
+  if (this.config.uphold) {
+    f = Wallet.providers.uphold.getFees
+  }
+  if (!f) throw new Error(`no method defined: getFees`)
+  return f.bind(this)(txHandler, options)
 }
 
 Wallet.prototype.createCard = async function () {
@@ -312,6 +325,57 @@ Wallet.providers.uphold = {
     return uphold.createCard(currency, label, Object.assign({
       authenticate: true
     }, options))
+  },
+  getFees: async function (txHandler, options = {}) {
+    const {
+      runtime,
+      uphold
+    } = this
+    const {
+      cache
+    } = runtime
+    const {
+      itemsPerPage = 100
+    } = options
+    const cacheKey = 'env:fees'
+    const collectingKey = 'active'
+    let end = false
+    let page = null
+    const memo = []
+    let collecting
+    try {
+      collecting = await cache.getset(collectingKey, '1', null, cacheKey)
+      if (collecting) {
+        return // someone else is already paginating, skip
+      }
+
+      const paginator = await uphold.getCardTransactions(BAT_FEE_ACCOUNT, 1, itemsPerPage)
+      page = await paginator.getPage(1)
+      do {
+        const { items, itemsPerPage } = page
+        const limit = Math.min(itemsPerPage, items.length)
+        for (var i = 0; i < limit && !end; i += 1) {
+          const result = await txHandler(items[i], shouldEnd, memo)
+          if (!end) {
+            memo.push(result)
+          }
+        }
+      } while (!end && page.hasNextPage() && (page = await page.getNextPage()))
+      return memo
+    } catch (e) {
+      debug(e)
+      const extra = Object.assign({}, options, underscore.omit(page, ['items']))
+      runtime.captureException(e, { extra })
+      throw e
+    } finally {
+      if (!collecting) {
+        await cache.del(collectingKey, cacheKey)
+      }
+    }
+
+    function shouldEnd () {
+      end = true
+    }
   },
   create: async function (requestType, request) {
     if (requestType === 'httpSignature') {

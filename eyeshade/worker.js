@@ -37,7 +37,6 @@ const options = {
   module: module
 }
 
-config.cache = false
 config.postgres.schemaVersion = require('./migrations/current')
 
 extras.worker(options, new Runtime(config))

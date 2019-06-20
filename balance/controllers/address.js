@@ -17,7 +17,10 @@ const plugins = {
   }
 }
 
-const expireIn = process.env.BALANCE_CACHE_TTL_S || 60 // 1 minute default
+const {
+  BAT_FEE_ACCOUNT,
+  BALANCE_CACHE_TTL_S: expireIn = 60 // 1 minute default
+} = process.env
 const expireSettings = {
   EX: expireIn
 }
@@ -156,6 +159,9 @@ v2.invalidateCardBalance =
       debug(`removing paymentId: ${paymentId}`)
       await cache.del(paymentId, wallet)
     }
+    if (cardId === BAT_FEE_ACCOUNT) {
+      await feesCollect(runtime)
+    }
 
     reply({})
   }
@@ -173,6 +179,18 @@ validate: {
 },
 
 response: { schema: Joi.object().length(0) }
+}
+
+async function feesCollect (runtime) {
+  const { config } = runtime
+  const url = `${config.eyeshade.url}/v1/accounts/collect-fees`
+  try {
+    await braveHapi.wreck.get(url, {
+      useProxyP: true
+    })
+  } catch (e) {
+    runtime.captureException(e)
+  }
 }
 
 module.exports.routes = [
