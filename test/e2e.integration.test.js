@@ -25,6 +25,7 @@ import {
   eyeshadeAgent,
   ledgerAgent,
   ok,
+  status,
   braveYoutubeOwner,
   braveYoutubePublisher,
   createSurveyor,
@@ -95,7 +96,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   let [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t)
 
   // Fund user Uphold wallet
-  let amountFunded = await fundUserWallet(t, personaCredential, paymentId, userCardId)
+  let amountFunded = await fundUserWalletAndTestStats(t, personaCredential, paymentId, userCardId)
 
   // Purchase votes
   await sendUserTransaction(t, paymentId, amountFunded, userCardId, donorCardId, keypair, surveyorId, viewingId)
@@ -448,7 +449,7 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
   let [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t)
 
   // Fund user uphold wallet
-  let amountFunded = await fundUserWallet(t, personaCredential, paymentId, userCardId)
+  let amountFunded = await fundUserWalletAndTestStats(t, personaCredential, paymentId, userCardId)
 
   // Claim grant
   const ledgerDB = await connectToDb('ledger')
@@ -501,6 +502,70 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
 
   // TODO submit votes and test settlement flow
 })
+
+test('wallets can be claimed by verified members', async (t) => {
+  await createSurveyor({ rate: 1, votes: 1 })
+
+  const anonCardInfo1 = await generateAndFundWallet()
+  const anonCardInfo2 = await generateAndFundWallet()
+  const anonCardInfo3 = await generateAndFundWallet()
+  const anonCardInfo4 = await generateAndFundWallet()
+  const body = {
+    destination: process.env.BAT_SETTLEMENT_ADDRESS,
+    denomination: {
+      currency: 'BAT',
+      // amount should be same for this example
+      amount: anonCardInfo1.amount
+    }
+  }
+
+  await claimCard(anonCardInfo1)
+  await claimCard(anonCardInfo2)
+  await claimCard(anonCardInfo3)
+  await claimCard(anonCardInfo4, 409)
+
+  async function claimCard (anonCard, code = 200) {
+    const signedTx = signTxn(anonCard.keypair, body)
+    await ledgerAgent
+      .post(`/v2/wallet/${anonCard.paymentId}/claim`)
+      .send({ signedTx })
+      .expect(status(code))
+  }
+
+  async function generateAndFundWallet () {
+    // Create user wallet
+    const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t) // eslint-disable-line
+    // Fund user uphold wallet
+    let amountFunded = await fundUserWallet(t, personaCredential, paymentId, userCardId)
+    return {
+      keypair,
+      amount: amountFunded,
+      providerId: userCardId,
+      paymentId
+    }
+  }
+})
+
+function signTxn (keypair, body, octets) {
+  if (!octets) {
+    octets = JSON.stringify(body)
+  }
+  const headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers['signature'] = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, {
+    algorithm: 'ed25519'
+  })
+  return {
+    headers,
+    octets
+  }
+}
 
 async function createUserWallet (t) {
   const personaId = uuidV4().toLowerCase()
@@ -560,8 +625,8 @@ async function createUserWallet (t) {
   return [viewingId, keypair, personaCredential, paymentId, userCardId]
 }
 
-async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
-  let response, err
+async function getSurveyorContributionAmount (t, personaCredential) {
+  let response
   response = await ledgerAgent
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
@@ -572,18 +637,11 @@ async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
   t.true(response.body.payload.adFree.hasOwnProperty('probi'))
 
   const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
+  return donateAmt
+}
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
-  t.deepEqual(response.body, [{
-    activeGrant: 0,
-    anyFunds: 0,
-    created: justDate(new Date()),
-    walletProviderBalance: '0',
-    walletProviderFunded: 1,
-    contributed: 0,
-    wallets: 1
-  }])
-
+async function waitForContributionAmount (t, paymentId, donateAmt) {
+  let response, err
   do { // This depends on currency conversion rates being available, retry until they are available
     response = await ledgerAgent
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
@@ -596,7 +654,32 @@ async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
   t.true(_.isString(response.body.httpSigningPubKey))
   t.is(response.body.balance, '0.0000')
 
-  const desiredTxAmt = donateAmt.toFixed(4).toString()
+  return donateAmt.toFixed(4).toString()
+}
+
+async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
+  const donateAmt = await getSurveyorContributionAmount(t, personaCredential)
+  const desiredTxAmt = await waitForContributionAmount(t, paymentId, donateAmt)
+  await createCardTransaction(desiredTxAmt, userCardId)
+  return desiredTxAmt
+}
+
+async function fundUserWalletAndTestStats (t, personaCredential, paymentId, userCardId) {
+  let response
+  const donateAmt = await getSurveyorContributionAmount(t, personaCredential)
+
+  response = await ledgerAgent.get(statsURL).expect(ok)
+  t.deepEqual(response.body, [{
+    activeGrant: 0,
+    anyFunds: 0,
+    created: justDate(new Date()),
+    walletProviderBalance: '0',
+    walletProviderFunded: 1,
+    contributed: 0,
+    wallets: 1
+  }])
+
+  const desiredTxAmt = await waitForContributionAmount(t, paymentId, donateAmt)
 
   response = await ledgerAgent.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
@@ -609,6 +692,12 @@ async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
     wallets: 1
   }])
 
+  await createCardTransaction(desiredTxAmt, userCardId)
+
+  return desiredTxAmt
+}
+
+async function createCardTransaction (desiredTxAmt, userCardId) {
   // have to do some hacky shit to use a personal access token
   uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
 
@@ -616,8 +705,6 @@ async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
     { 'amount': desiredTxAmt, 'currency': 'BAT', 'destination': userCardId },
     true // commit tx in one swoop
   )
-
-  return desiredTxAmt
 }
 
 async function requestGrant (t, paymentId, promotionId, ledgerDB) {

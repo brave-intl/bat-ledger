@@ -318,7 +318,7 @@ const write = function (runtime, apiVersion) {
     }
 
     if (!result) {
-      result = await runtime.wallet.submitTx(wallet, txn, signedTx)
+      result = await runtime.wallet.submitTx(wallet, txn, signedTx, true)
     }
     totalFee = result.fee
 
@@ -700,11 +700,30 @@ v1.walletGrantsInfo = {
   }
 }
 
+/*
+  POST /v2/wallet/{paymentId}/claim
+*/
+
+v2.claimWallet = {
+  handler: claimWalletHandler,
+  description: 'Claim anonymous wallets',
+  tags: ['api'],
+  validate: {
+    payload: Joi.object().keys({
+      signedTx: Joi.required().description('signed transaction')
+    })
+  },
+  response: {
+    schema: Joi.object().length(0)
+  }
+}
+
 module.exports.compositeGrants = compositeGrants
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/grants/{type}').config(v1.walletGrantsInfo),
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
+  braveHapi.routes.async().post().path('/v2/wallet/{paymentId}/claim').config(v2.claimWallet),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
@@ -741,6 +760,17 @@ module.exports.initialize = async (debug, runtime) => {
       ]
     },
     {
+      category: runtime.database.get('members', debug),
+      name: 'members',
+      property: 'memberId',
+      empty: {
+        memberId: '',
+        paymentIds: []
+      },
+      unique: [ { memberId: 1 } ],
+      others: [ { paymentIds: 1 } ]
+    },
+    {
       category: runtime.database.get('viewings', debug),
       name: 'viewings',
       property: 'viewingId',
@@ -765,6 +795,74 @@ module.exports.initialize = async (debug, runtime) => {
 
   await runtime.queue.create('contribution-report')
   await runtime.queue.create('wallet-report')
+}
+
+function claimWalletHandler (runtime) {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const { params, payload } = request
+    const { signedTx } = payload
+    const { paymentId } = params
+    const wallets = runtime.database.get('wallets', debug)
+    const members = runtime.database.get('members', debug)
+
+    const wallet = await wallets.findOne({ paymentId })
+    if (!wallet) {
+      return reply(boom.notFound())
+    }
+
+    const txn = runtime.wallet.validateTxSignature(wallet, signedTx, {
+      minimum: 0.001
+    })
+    const submitted = await runtime.wallet.submitTx(wallet, txn, signedTx, false)
+    const { postedTx } = submitted
+    const {
+      type,
+      isMember,
+      node = { user: { id: '' } }
+    } = postedTx.destination
+    const memberId = node.user.id
+
+    // check that where the transfer is going to is a card, that belongs to a member
+    if (type !== 'card' || !isMember || !memberId) {
+      return reply(boom.forbidden())
+    }
+    // if wallet has already been claimed, don't tie wallet to member id
+    if (wallet.memberId) {
+      // Check if the member matches the associated member
+      if (memberId !== wallet.memberId) {
+        return reply(boom.forbidden())
+      }
+    } else {
+      await members.update({ memberId }, {
+        $set: {
+          memberId
+        }
+      }, { upsert: true })
+      // Attempt to associate the paymentId with the member, enforcing max associations no more than 3
+      const member = await members.findOneAndUpdate({
+        memberId,
+        $expr: {
+          $lt: [{
+            $size: {
+              $ifNull: ['$paymentIds', []]
+            }
+          }, 3]
+        }
+      }, {
+        $push: {
+          paymentIds: paymentId
+        }
+      })
+      // If association worked, perform reverse association, memberId with wallet
+      if (!member) {
+        return reply(boom.conflict())
+      }
+      await wallets.update({ paymentId }, { $set: { memberId } })
+      await runtime.wallet.submitTx(wallet, txn, signedTx, true)
+    }
+    return reply({})
+  }
 }
 
 function walletGrantsInfoHandler (runtime) {

@@ -15,7 +15,7 @@ dotenv.config()
 test('validateTxSignature: works', async t => {
   t.plan(10)
 
-  const settlementAddress = '0xcafe'
+  const settlementAddress = uuidV4()
   const { wallet } = newRuntime(settlementAddress)
   const keypair = tweetnacl.sign.keyPair()
   const wrongKeypair = tweetnacl.sign.keyPair()
@@ -53,7 +53,7 @@ test('validateTxSignature: works', async t => {
   t.throws(() => { wallet.validateTxSignature(info, signTxn(wrongKeypair, body)) })
 
   // Invalid destination
-  body = { destination: uuidV4(), denomination: { currency: 'BAT', amount: '20' } }
+  body = { destination: 'invalid', denomination: { currency: 'BAT', amount: '20' } }
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
 
   // Invalid currency
