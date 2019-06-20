@@ -19,7 +19,7 @@ exports.initialize = async (debug, runtime) => {
         keychains: {},
         paymentStamp: 0,
 
-     // v2 and later
+        // v2 and later
         altcurrency: '',
 
         timestamp: bson.Timestamp.ZERO
@@ -37,10 +37,10 @@ exports.initialize = async (debug, runtime) => {
         address: '',
         paymentStamp: 0,
         surveyorId: '',
-     // v1 only
-     // satoshis: 0,
+        // v1 only
+        // satoshis: 0,
 
-     // v2 and later
+        // v2 and later
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
         mature: false,
@@ -52,8 +52,8 @@ exports.initialize = async (debug, runtime) => {
       },
       unique: [ { viewingId: 1 } ],
       others: [ { paymentId: 1 }, { address: 1 }, { paymentStamp: 1 }, { surveyorId: 1 }, { altcurrency: 1 }, { probi: 1 },
-                { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 },
-                { mature: 1 } ]
+        { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 },
+        { mature: 1 } ]
     },
     {
       category: runtime.database.get('grants', debug),
@@ -72,8 +72,8 @@ exports.initialize = async (debug, runtime) => {
       },
       unique: [ { grantId: 1 } ],
       others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
-                { paymentId: '' },
-                { timestamp: 1 } ]
+        { paymentId: '' },
+        { timestamp: 1 } ]
     }
   ])
 }
@@ -110,7 +110,7 @@ exports.workers = {
       await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     },
 
-/* sent by ledger POST /v1/surveyor/contribution
+  /* sent by ledger POST /v1/surveyor/contribution
            ledger PATCH /v1/surveyor/contribution/{surveyorId}
            daily()
 
@@ -136,7 +136,7 @@ exports.workers = {
       await postgres.query('insert into surveyor_groups (id, price) values ($1, $2)', [ surveyorId, price.toString() ])
     },
 
-/* sent by PUT /v1/wallet/{paymentId}
+  /* sent by PUT /v1/wallet/{paymentId}
 
     { queue              : 'contribution-report'
     , message            :
@@ -179,7 +179,7 @@ exports.workers = {
       await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     },
 
-/* sent by PUT /v1/surveyor/viewing/{surveyorId}
+  /* sent by PUT /v1/surveyor/viewing/{surveyorId}
 
 { queue           : 'voting-report'
 , message         :
@@ -215,7 +215,7 @@ exports.workers = {
       }
     },
 
-/* sent when the wallet balance updates
+  /* sent when the wallet balance updates
 
     { queue            : 'wallet-report'
     , message          :
@@ -240,7 +240,7 @@ exports.workers = {
       await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     },
 
-/* sent by PUT /v1/grants/{paymentId}
+  /* sent by PUT /v1/grants/{paymentId}
 
 { queue           : 'grant-report'
 , message         :
@@ -266,7 +266,7 @@ exports.workers = {
       await grants.update({ grantId: grantId }, state, { upsert: true })
     },
 
-/* sent by PUT /v1/wallet/{paymentId} (if one or more grants are redeemed)
+  /* sent by PUT /v1/wallet/{paymentId} (if one or more grants are redeemed)
 
 { queue           : 'redeem-report'
 , message         :

@@ -110,25 +110,25 @@ v2.read =
   }
 },
 
-  description: 'Returns information about a surveyor',
-  tags: [ 'api' ],
+description: 'Returns information about a surveyor',
+tags: [ 'api' ],
 
-  validate: {
-    params: {
-      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      apiV: Joi.string().required().description('the api version')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      surveyorId: Joi.string().required().description('identifier for the surveyor'),
-      surveyVK: Joi.string().required().description('public key for the surveyor'),
-      registrarVK: Joi.string().required().description('public key for the associated registrar'),
-      payload: Joi.object().required().description('additional information')
-    })
+validate: {
+  params: {
+    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+    surveyorId: Joi.string().required().description('the identity of the surveyor'),
+    apiV: Joi.string().required().description('the api version')
   }
+},
+
+response: {
+  schema: Joi.object().keys({
+    surveyorId: Joi.string().required().description('identifier for the surveyor'),
+    surveyVK: Joi.string().required().description('public key for the surveyor'),
+    registrarVK: Joi.string().required().description('public key for the associated registrar'),
+    payload: Joi.object().required().description('additional information')
+  })
+}
 }
 
 /*
@@ -157,31 +157,31 @@ v2.create =
   }
 },
 
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
-    mode: 'required'
+auth: {
+  strategy: 'session',
+  scope: [ 'ledger' ],
+  mode: 'required'
+},
+
+description: 'Creates a new surveyor',
+tags: [ 'api' ],
+
+validate: {
+  params: {
+    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+    apiV: Joi.string().required().description('the api version')
   },
+  payload: Joi.object().optional().description('additional information')
+},
 
-  description: 'Creates a new surveyor',
-  tags: [ 'api' ],
-
-  validate: {
-    params: {
-      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      apiV: Joi.string().required().description('the api version')
-    },
+response: {
+  schema: Joi.object().keys({
+    surveyorId: Joi.string().required().description('identifier for the surveyor'),
+    surveyVK: Joi.string().required().description('public key for the surveyor'),
+    registrarVK: Joi.string().required().description('public key for the associated registrar'),
     payload: Joi.object().optional().description('additional information')
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      surveyorId: Joi.string().required().description('identifier for the surveyor'),
-      surveyVK: Joi.string().required().description('public key for the surveyor'),
-      registrarVK: Joi.string().required().description('public key for the associated registrar'),
-      payload: Joi.object().optional().description('additional information')
-    })
-  }
+  })
+}
 }
 
 /*
@@ -213,8 +213,8 @@ v2.update =
 
     if (surveyorType === 'contribution') {
       await runtime.queue.send(debug, 'surveyor-report',
-                               underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
-                                                 underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
+        underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
+          underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
     }
 
     surveyor.payload = payload
@@ -224,35 +224,35 @@ v2.update =
   }
 },
 
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
-    mode: 'required'
+auth: {
+  strategy: 'session',
+  scope: [ 'ledger' ],
+  mode: 'required'
+},
+
+description: 'Updates a surveyor',
+tags: [ 'api' ],
+
+validate: {
+  query: {
+    bump: Joi.number().integer().min(1).max(100).optional().description('number of additional requested surveyors')
   },
+  params: {
+    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+    surveyorId: Joi.string().required().description('the identity of the surveyor'),
+    apiV: Joi.string().required().description('the api version')
+  },
+  payload: Joi.object().optional().description('additional information')
+},
 
-  description: 'Updates a surveyor',
-  tags: [ 'api' ],
-
-  validate: {
-    query: {
-      bump: Joi.number().integer().min(1).max(100).optional().description('number of additional requested surveyors')
-    },
-    params: {
-      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      apiV: Joi.string().required().description('the api version')
-    },
+response: {
+  schema: Joi.object().keys({
+    surveyorId: Joi.string().required().description('identifier for the surveyor'),
+    surveyVK: Joi.string().required().description('public key for the surveyor'),
+    registrarVK: Joi.string().required().description('public key for the associated registrar'),
     payload: Joi.object().optional().description('additional information')
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      surveyorId: Joi.string().required().description('identifier for the surveyor'),
-      surveyVK: Joi.string().required().description('public key for the surveyor'),
-      registrarVK: Joi.string().required().description('public key for the associated registrar'),
-      payload: Joi.object().optional().description('additional information')
-    })
-  }
+  })
+}
 }
 
 /*
@@ -312,27 +312,27 @@ v2.phase1 =
   }
 },
 
-  description: 'Generates an initialization response for a surveyor',
-  tags: [ 'api' ],
+description: 'Generates an initialization response for a surveyor',
+tags: [ 'api' ],
 
-  validate: {
-    params: {
-      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
-      apiV: Joi.string().required().description('the api version')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      surveyorId: Joi.string().required().description('identifier for the surveyor'),
-      surveyVK: Joi.string().required().description('public key for the surveyor'),
-      registrarVK: Joi.string().required().description('public key for the associated registrar'),
-      signature: Joi.string().required().description('initialization response for the surveyor'),
-      payload: Joi.object().optional().description('additional information')
-    })
+validate: {
+  params: {
+    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+    surveyorId: Joi.string().required().description('the identity of the surveyor'),
+    uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
+    apiV: Joi.string().required().description('the api version')
   }
+},
+
+response: {
+  schema: Joi.object().keys({
+    surveyorId: Joi.string().required().description('identifier for the surveyor'),
+    surveyVK: Joi.string().required().description('public key for the surveyor'),
+    registrarVK: Joi.string().required().description('public key for the associated registrar'),
+    signature: Joi.string().required().description('initialization response for the surveyor'),
+    payload: Joi.object().optional().description('additional information')
+  })
+}
 }
 
 /*
@@ -369,7 +369,7 @@ v2.phase2 =
 
     entry = await submissions.findOne({ submissionId: submissionId })
     if (entry) {
-// NB: in case of a network error on the response (or a premature Heroku 503, etc.)
+      // NB: in case of a network error on the response (or a premature Heroku 503, etc.)
       return reply(entry.response)
     }
 
@@ -402,20 +402,20 @@ v2.phase2 =
   }
 },
 
-  description: 'Submits a completed report',
-  tags: [ 'api' ],
+description: 'Submits a completed report',
+tags: [ 'api' ],
 
-  validate: {
-    params: {
-      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      apiV: Joi.string().required().description('the api version')
-    },
-
-    payload: { proof: Joi.string().required().description('report information and proof') }
+validate: {
+  params: {
+    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+    surveyorId: Joi.string().required().description('the identity of the surveyor'),
+    apiV: Joi.string().required().description('the api version')
   },
 
-  response:
+  payload: { proof: Joi.string().required().description('report information and proof') }
+},
+
+response:
     { schema: Joi.object().keys({ submissionId: Joi.string().required().description('verification submissionId') }) }
 }
 
@@ -482,8 +482,8 @@ const create = async (debug, runtime, surveyorType, payload, parentId) => {
   await surveyors.update({ surveyorId: surveyor.surveyorId }, state, { upsert: false })
 
   await runtime.queue.send(debug, 'surveyor-report',
-                           underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
-                                             underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
+    underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
+      underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
 
   return surveyor
 }
@@ -566,39 +566,39 @@ v2.batchVote =
   }
 },
 
-  description: 'Submits a completed report',
-  tags: [ 'api' ],
+description: 'Submits a completed report',
+tags: [ 'api' ],
 
-  validate: {
-    params: { apiV: Joi.string().valid('v2').required().description('the api version') },
+validate: {
+  params: { apiV: Joi.string().valid('v2').required().description('the api version') },
 
-    payload: Joi.array().min(1).items(
-      Joi.object().keys({
-        surveyorId: Joi.string().required().description('the identity of the surveyor'),
-        proof: Joi.string().required().description('report information and proof')
-      })
-    )
-  },
+  payload: Joi.array().min(1).items(
+    Joi.object().keys({
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      proof: Joi.string().required().description('report information and proof')
+    })
+  )
+},
 
-  response: {
-    schema: Joi.array().min(1).items(
-      Joi.object().keys({
-        surveyorId: Joi.string().required().description('the identity of the surveyor'),
+response: {
+  schema: Joi.array().min(1).items(
+    Joi.object().keys({
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
 
-        response: Joi.alternatives().try(
-          Joi.object().keys({
-            submissionId: Joi.string().required().description('verification submissionId')
-          }),
+      response: Joi.alternatives().try(
+        Joi.object().keys({
+          submissionId: Joi.string().required().description('verification submissionId')
+        }),
 
-          Joi.object().keys({
-            statusCode: Joi.number().min(400).max(599).required(),
-            error: Joi.string().optional(),
-            message: Joi.string().optional()
-          }).description('boom result')
-        )
-      })
-    )
-  }
+        Joi.object().keys({
+          statusCode: Joi.number().min(400).max(599).required(),
+          error: Joi.string().optional(),
+          message: Joi.string().optional()
+        }).description('boom result')
+      )
+    })
+  )
+}
 }
 
 /*
@@ -654,34 +654,34 @@ v2.batchSurveyor =
   }
 },
 
-  description: 'Batch for initialization response for a surveyors',
-  tags: [ 'api' ],
+description: 'Batch for initialization response for a surveyors',
+tags: [ 'api' ],
 
-  validate: {
-    params: {
-      apiV: Joi.string().required().description('the api version'),
-      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
-    }
-  },
-
-  response: {
-    schema: Joi.alternatives().try(
-      Joi.array().items(
-        Joi.object().keys({
-          surveyorId: Joi.string().required().description('identifier for the surveyor'),
-          surveyVK: Joi.string().required().description('public key for the surveyor'),
-          registrarVK: Joi.string().required().description('public key for the associated registrar'),
-          signature: Joi.string().required().description('initialization response for the surveyor'),
-          payload: Joi.object().optional().description('additional information')
-        })
-      ),
-      Joi.object().keys({
-        statusCode: Joi.number().min(400).max(599).required(),
-        error: Joi.string().optional(),
-        message: Joi.string().optional()
-      }).description('boom result')
-    )
+validate: {
+  params: {
+    apiV: Joi.string().required().description('the api version'),
+    uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
   }
+},
+
+response: {
+  schema: Joi.alternatives().try(
+    Joi.array().items(
+      Joi.object().keys({
+        surveyorId: Joi.string().required().description('identifier for the surveyor'),
+        surveyVK: Joi.string().required().description('public key for the surveyor'),
+        registrarVK: Joi.string().required().description('public key for the associated registrar'),
+        signature: Joi.string().required().description('initialization response for the surveyor'),
+        payload: Joi.object().optional().description('additional information')
+      })
+    ),
+    Joi.object().keys({
+      statusCode: Joi.number().min(400).max(599).required(),
+      error: Joi.string().optional(),
+      message: Joi.string().optional()
+    }).description('boom result')
+  )
+}
 }
 
 module.exports.routes = [

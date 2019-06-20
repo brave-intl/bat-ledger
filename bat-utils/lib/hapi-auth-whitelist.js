@@ -70,7 +70,7 @@ exports.authenticate = (request, reply) => {
   try {
     result = reply.continue({ credentials: { ipaddr: ipaddr } })
   } catch (ex) {
-/* something odd with reply.continue not allowing any arguments... */
+    /* something odd with reply.continue not allowing any arguments... */
     result = reply.continue()
   }
   return result

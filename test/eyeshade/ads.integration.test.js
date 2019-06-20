@@ -33,8 +33,8 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
   // Create the wallet that will receive payment
   const paymentId = uuidV4()
   const providerId = uuidV4()
-  await wallets.insert({paymentId, providerId})
-  const insertedWallet = await wallets.findOne({paymentId: paymentId})
+  await wallets.insert({ paymentId, providerId })
+  const insertedWallet = await wallets.findOne({ paymentId: paymentId })
   console.log('inserted wallet is')
   console.log(insertedWallet)
 

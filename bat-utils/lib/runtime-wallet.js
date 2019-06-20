@@ -125,7 +125,7 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
     const expectedDigest = 'SHA-256=' + crypto.createHash('sha256').update(signature.octets, 'utf8').digest('base64')
     if (expectedDigest !== signature.headers.digest) throw new Error('the digest specified is not valid for the unsigned transaction provided')
 
-    const result = verify({headers: signature.headers, publicKey: info.httpSigningPubKey}, { algorithm: 'ed25519' })
+    const result = verify({ headers: signature.headers, publicKey: info.httpSigningPubKey }, { algorithm: 'ed25519' })
     if (!result.verified) throw new Error('the http-signature is not valid')
   } else {
     throw new Error('wallet validateTxSignature for requestType ' + info.requestType + ' not supported for altcurrency ' + info.altcurrency)
@@ -340,10 +340,10 @@ Wallet.providers.uphold = {
           'ETH': ethAddr.id,
           'LTC': ltcAddr.id
         },
-          'provider': 'uphold',
-          'providerId': wallet.id,
-          'httpSigningPubKey': request.body.publicKey,
-          'altcurrency': 'BAT' } }
+        'provider': 'uphold',
+        'providerId': wallet.id,
+        'httpSigningPubKey': request.body.publicKey,
+        'altcurrency': 'BAT' } }
       } else {
         throw new Error('wallet uphold create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
       }
@@ -423,13 +423,13 @@ Wallet.providers.uphold = {
 
       try {
         postedTx = await this.uphold.createCardTransaction(info.providerId,
-                                                           // this will be replaced below, we're just placating
-                                                           underscore.pick(underscore.extend(txn.denomination,
-                                                                                             { destination: txn.destination }),
-                                                                           ['amount', 'currency', 'destination']),
-                                                           true,        // commit tx in one swoop
-                                                           null,        // no otp code
-                                                           { headers: signature.headers, body: signature.octets })
+          // this will be replaced below, we're just placating
+          underscore.pick(underscore.extend(txn.denomination,
+            { destination: txn.destination }),
+          ['amount', 'currency', 'destination']),
+          true, // commit tx in one swoop
+          null, // no otp code
+          { headers: signature.headers, body: signature.octets })
       } catch (ex) {
         debug('submitTx', { provider: 'uphold', reason: ex.toString(), operation: 'createCardTransaction' })
         throw ex
@@ -474,7 +474,7 @@ Wallet.providers.uphold = {
       throw ex
     }
 
-    availableCurrencies = underscore.keys(user.balances.currencies) || []  // TODO remove available currencies when https://github.com/brave-intl/publishers/issues/1725 is complete
+    availableCurrencies = underscore.keys(user.balances.currencies) || [] // TODO remove available currencies when https://github.com/brave-intl/publishers/issues/1725 is complete
     possibleCurrencies = user.currencies
 
     result = {
@@ -504,9 +504,9 @@ Wallet.providers.mock = {
         return { 'wallet': { 'addresses': {
           'BAT': this.config.settlementAddress['BAT']
         },
-          'provider': 'mockHttpSignature',
-          'httpSigningPubKey': request.body.publicKey,
-          'altcurrency': 'BAT' } }
+        'provider': 'mockHttpSignature',
+        'httpSigningPubKey': request.body.publicKey,
+        'altcurrency': 'BAT' } }
       } else {
         throw new Error('wallet mock create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
       }

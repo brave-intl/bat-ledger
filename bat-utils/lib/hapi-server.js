@@ -107,7 +107,7 @@ const Server = async (options, runtime) => {
         register: rateLimiter,
         options: {
           defaultRate: (request) => {
-/*  access type            requests/minute per IP address
+            /*  access type            requests/minute per IP address
     -------------------    ------------------------------
     anonymous (browser)       60
     administrator (github)  3000

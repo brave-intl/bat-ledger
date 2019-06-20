@@ -24,7 +24,7 @@ async function consume (pg, votings) {
       const fees = voting.probi && new BigNumber(voting.fees.toString())
 
       await pg.pool.query('insert into votes (id, created_at, updated_at, cohort, amount, fees, tally, excluded, transacted, channel, surveyor_id) values ($1, to_timestamp($2), to_timestamp($3), $4, $5, $6, $7, $8, $9, $10, $11)', [
-            // channel, cohort and surveyor group id should be unique per
+        // channel, cohort and surveyor group id should be unique per
         uuidv5(normalizedChannel + voting.cohort + voting.surveyorId, 'f0ca8ff9-8399-493a-b2c2-6d4a49e5223a'),
         created / 1000,
         voting.timestamp.high_,
@@ -69,7 +69,7 @@ async function main () {
     ])
 
     console.log('fetching surveyor: ' + surveyorId)
-    const votings = await votingC.find({surveyorId})
+    const votings = await votingC.find({ surveyorId })
     await consume(pg, votings)
   }
 

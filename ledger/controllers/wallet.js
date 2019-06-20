@@ -459,20 +459,20 @@ v2.lookup = { handler: (runtime) => {
     reply({ paymentId: wallet.paymentId })
   }
 },
-  description: 'Lookup a wallet',
-  tags: [ 'api' ],
+description: 'Lookup a wallet',
+tags: [ 'api' ],
 
-  validate: {
-    query: {
-      publicKey: Joi.string().hex().optional().description('the publickey of the wallet to lookup')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      paymentId: Joi.string().guid().required().description('identity of the requested wallet')
-    })
+validate: {
+  query: {
+    publicKey: Joi.string().hex().optional().description('the publickey of the wallet to lookup')
   }
+},
+
+response: {
+  schema: Joi.object().keys({
+    paymentId: Joi.string().guid().required().description('identity of the requested wallet')
+  })
+}
 }
 
 /*
@@ -723,7 +723,7 @@ module.exports.initialize = async (debug, runtime) => {
         // keychains: {},
         paymentStamp: 0,
 
-     // v2 and later
+        // v2 and later
         altcurrency: '',
         addresses: {},
         httpSigningPubKey: '',
@@ -744,10 +744,10 @@ module.exports.initialize = async (debug, runtime) => {
       empty: {
         viewingId: '',
         uId: '',
-     // v1 only
-     // satoshis: 0,
+        // v1 only
+        // satoshis: 0,
 
-     // v2 and later
+        // v2 and later
         altcurrency: '',
         probi: '0',
 

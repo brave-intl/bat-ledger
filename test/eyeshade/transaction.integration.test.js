@@ -225,7 +225,7 @@ test('voting transaction', async t => {
     const txns = await client.query('select * from transactions order by created_at;')
 
     t.true(txns.rows.length === 1)
-  // payout to uphold occurs
+    // payout to uphold occurs
     t.true(txns.rows[0].transaction_type === 'contribution')
 
     await updateBalances(runtime, client)
