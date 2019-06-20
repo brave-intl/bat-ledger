@@ -478,7 +478,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
     // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
     wallet = await wallets.findOneAndUpdate({ 'paymentId': paymentId, 'grants.promotionId': { '$ne': promotionId } },
-                            { $push: { grants: grantInfo } }
+      { $push: { grants: grantInfo } }
     )
     if (!wallet) {
       // reinsert grant, another request already added a grant for this promotion to the wallet
@@ -637,8 +637,8 @@ v4.create =
       validate: {
         payload: {
           file: Joi.any()
-                      .meta({ swaggerType: 'file' })
-                      .description('json file')
+            .meta({ swaggerType: 'file' })
+            .description('json file')
         }
       }
     }
@@ -682,31 +682,31 @@ v2.cohorts = { handler: (runtime) => {
     return reply({})
   }
 },
-  description: 'Set cohort associated with grants on a wallet for testing',
-  tags: [ 'api' ],
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
-    mode: 'required'
-  },
+description: 'Set cohort associated with grants on a wallet for testing',
+tags: [ 'api' ],
+auth: {
+  strategy: 'session',
+  scope: [ 'ledger' ],
+  mode: 'required'
+},
 
-  plugins: {
-    'hapi-swagger': {
-      payloadType: 'form',
-      validate: {
-        payload: {
-          file: Joi.any()
-                      .meta({ swaggerType: 'file' })
-                      .description('json file')
-        }
+plugins: {
+  'hapi-swagger': {
+    payloadType: 'form',
+    validate: {
+      payload: {
+        file: Joi.any()
+          .meta({ swaggerType: 'file' })
+          .description('json file')
       }
     }
-  },
+  }
+},
 
-  validate: { headers: Joi.object({ authorization: Joi.string().optional() }).unknown() },
-  payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
+validate: { headers: Joi.object({ authorization: Joi.string().optional() }).unknown() },
+payload: { output: 'data', maxBytes: 1024 * 1024 * 20 },
 
-  response: { schema: Joi.object().length(0) }
+response: { schema: Joi.object().length(0) }
 }
 
 /*
@@ -873,8 +873,8 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { grantId: 1 } ],
       others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
-                { status: 1 },
-                { batchId: 1 }, { timestamp: 1 } ]
+        { status: 1 },
+        { batchId: 1 }, { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('promotions', debug),
@@ -894,8 +894,8 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { promotionId: 1 } ],
       others: [ { active: 1 }, { count: 1 },
-                { batchId: 1 }, { timestamp: 1 },
-                { protocolVersion: 2 } ]
+        { batchId: 1 }, { timestamp: 1 },
+        { protocolVersion: 2 } ]
     }
   ])
 

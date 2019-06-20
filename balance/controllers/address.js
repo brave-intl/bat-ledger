@@ -77,31 +77,31 @@ v2.walletBalance =
   }
 },
 
-  description: 'Get the balance of a ledger wallet',
-  tags: [ 'api' ],
+description: 'Get the balance of a ledger wallet',
+tags: [ 'api' ],
 
-  validate: {
-    params: {
-      paymentId: Joi.string().guid().required().description('identity of the wallet')
-    }
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      altcurrency: Joi.string().required().description('the wallet currency'),
-      balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
-      unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
-      rates: Joi.object().optional().description('current exchange rates to various currencies'),
-      probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
-      parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters'),
-      grants: Joi.array().optional().items(Joi.object().keys({
-        type: Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use'),
-        probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
-        altcurrency: Joi.string().optional().description('the grant currency'),
-        expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
-      }))
-    })
+validate: {
+  params: {
+    paymentId: Joi.string().guid().required().description('identity of the wallet')
   }
+},
+
+response: {
+  schema: Joi.object().keys({
+    altcurrency: Joi.string().required().description('the wallet currency'),
+    balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
+    unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
+    rates: Joi.object().optional().description('current exchange rates to various currencies'),
+    probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
+    parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters'),
+    grants: Joi.array().optional().items(Joi.object().keys({
+      type: Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use'),
+      probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
+      altcurrency: Joi.string().optional().description('the grant currency'),
+      expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
+    }))
+  })
+}
 }
 
 /*
@@ -118,21 +118,21 @@ v2.invalidateWalletBalance =
     reply({})
   }
 },
-  auth: {
-    strategy: 'simple',
-    mode: 'required'
-  },
+auth: {
+  strategy: 'simple',
+  mode: 'required'
+},
 
-  description: 'Invalidate the cached balance of a ledger wallet',
-  tags: [ 'api' ],
+description: 'Invalidate the cached balance of a ledger wallet',
+tags: [ 'api' ],
 
-  validate: {
-    params: {
-      paymentId: Joi.string().guid().required().description('identity of the wallet')
-    }
-  },
+validate: {
+  params: {
+    paymentId: Joi.string().guid().required().description('identity of the wallet')
+  }
+},
 
-  response: { schema: Joi.object().length(0) }
+response: { schema: Joi.object().length(0) }
 }
 
 /*
@@ -160,19 +160,19 @@ v2.invalidateCardBalance =
     reply({})
   }
 },
-  plugins,
-  description: 'Invalidate the cached balance of a ledger wallet',
-  tags: [ 'api' ],
+plugins,
+description: 'Invalidate the cached balance of a ledger wallet',
+tags: [ 'api' ],
 
-  validate: {
-    payload: Joi.object({
-      payload: Joi.object().keys({
-        id: Joi.string().guid().required().description('identity of the card')
-      }).unknown(true)
+validate: {
+  payload: Joi.object({
+    payload: Joi.object().keys({
+      id: Joi.string().guid().required().description('identity of the card')
     }).unknown(true)
-  },
+  }).unknown(true)
+},
 
-  response: { schema: Joi.object().length(0) }
+response: { schema: Joi.object().length(0) }
 }
 
 module.exports.routes = [

@@ -11,7 +11,7 @@ test('hapi throws', async (t) => {
   const message = 'failed in throwing test'
 
   const runtime = {
-    config: {server: {}},
+    config: { server: {} },
     notify: () => {},
     captureException: (err, extra) => {
       t.is(err.message, message)

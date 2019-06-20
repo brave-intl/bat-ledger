@@ -300,7 +300,7 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'owners',
       property: 'owner',
       empty: {
-        owner: '',              // 'oauth#' + provider + ':' + (profile.id || profile._id)
+        owner: '', // 'oauth#' + provider + ':' + (profile.id || profile._id)
 
         providerName: '',
         providerSuffix: '',
@@ -320,9 +320,9 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { owner: 1 } ],
       others: [ { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 }, { visible: 1 },
-                { authorized: 1 }, { authority: 1 },
-                { provider: 1 }, { altcurrency: 1 }, { parameters: 1 }, { defaultCurrency: 1 },
-                { timestamp: 1 } ]
+        { authorized: 1 }, { authority: 1 },
+        { provider: 1 }, { altcurrency: 1 }, { parameters: 1 }, { defaultCurrency: 1 },
+        { timestamp: 1 } ]
     }
   ])
 }

@@ -74,7 +74,7 @@ test('can post a manual settlement from publisher app using token auth', async t
   await eyeshadeAgent.post(url).send([manualSettlement]).expect(200)
 
   // ensure the manual settlement doc was created with the document id
-  const settlementDoc = await settlements.findOne({settlementId: manualSettlement.transactionId})
+  const settlementDoc = await settlements.findOne({ settlementId: manualSettlement.transactionId })
   t.true(settlementDoc.type === 'manual')
   t.true(settlementDoc.documentId === manualSettlement.documentId)
 

@@ -23,7 +23,7 @@ const monthly = async (debug, runtime) => {
     const walletBalances = (await client.query(selectWalletBalancesQuery, [])).rows
     // Now insert the balance snapshots as potential ads payments
     for (let walletBalance of walletBalances) {
-      const wallet = await walletsCollection.findOne({paymentId: walletBalance.account_id})
+      const wallet = await walletsCollection.findOne({ paymentId: walletBalance.account_id })
       const providerId = wallet.providerId
       client.query(createPotentialPaymentsQuery, [payoutReportId, walletBalance.account_id, providerId, walletBalance.balance])
     }

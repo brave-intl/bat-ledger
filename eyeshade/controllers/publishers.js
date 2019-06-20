@@ -137,18 +137,18 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'publishers',
       property: 'publisher',
       empty: {
-        publisher: '',    // domain OR 'oauth#' + provider + ':' + (profile.id || profile._id)
+        publisher: '', // domain OR 'oauth#' + provider + ':' + (profile.id || profile._id)
         authority: '',
 
-     // v1 only
-     // authorized: false,
-     // address: '',
-     // legalFormURL: '',
+        // v1 only
+        // authorized: false,
+        // address: '',
+        // legalFormURL: '',
 
         verified: false,
         visible: false,
 
-     // v2 and later
+        // v2 and later
         owner: '',
 
         providerName: '',
@@ -165,11 +165,11 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { publisher: 1 } ],
       others: [ { authority: 1 },
-                { owner: 1 },
-                { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
-                { authorizerEmail: 1 }, { authorizerName: 1 },
-                { altcurrency: 1 },
-                { timestamp: 1 } ]
+        { owner: 1 },
+        { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
+        { authorizerEmail: 1 }, { authorizerName: 1 },
+        { altcurrency: 1 },
+        { timestamp: 1 } ]
     },
     {
       category: runtime.database.get('settlements', debug),
@@ -181,26 +181,26 @@ module.exports.initialize = async (debug, runtime) => {
         hash: '',
         address: '',
 
-     // v1 only
-     // satoshis: 1
+        // v1 only
+        // satoshis: 1
 
-     // v2 and later
+        // v2 and later
         owner: '',
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
-        fees: bson.Decimal128.POSITIVE_ZERO,          // processing fees
+        fees: bson.Decimal128.POSITIVE_ZERO, // processing fees
         currency: '',
         amount: bson.Decimal128.POSITIVE_ZERO,
-        commission: bson.Decimal128.POSITIVE_ZERO,    // conversion fee (i.e., for settlement)
-        fee: bson.Decimal128.POSITIVE_ZERO,           // network fee (i.e., for settlement)
+        commission: bson.Decimal128.POSITIVE_ZERO, // conversion fee (i.e., for settlement)
+        fee: bson.Decimal128.POSITIVE_ZERO, // network fee (i.e., for settlement)
         type: '',
-        executedAt: new Date(0),              // When the settlement was executed
+        executedAt: new Date(0), // When the settlement was executed
         timestamp: bson.Timestamp.ZERO
       },
       unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
       others: [ { address: 1 },
-                { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { fees: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-                { fee: 1 }, { type: 1 }, { timestamp: 1 }, { executedAt: 1 } ]
+        { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { fees: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
+        { fee: 1 }, { type: 1 }, { timestamp: 1 }, { executedAt: 1 } ]
     },
     {
       category: runtime.database.get('publishersV2', debug),

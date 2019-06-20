@@ -98,7 +98,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   let numControlSurveryors = 0
   let numGrantSurveyors = 0
   for (let surveyorId of surveyorIds) {
-    let cohort = (await surveyors.findOne({surveyorId: surveyorId})).payload.cohort
+    let cohort = (await surveyors.findOne({ surveyorId: surveyorId })).payload.cohort
     if (cohort === 'control') {
       numControlSurveryors += 1
     } else if (cohort === 'grant') {
@@ -133,7 +133,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     const surveyor = new anonize.Surveyor(response.body)
     response = await ledgerAgent
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
-      .send({'proof': viewingCredential.submit(surveyor, { publisher: channels[i % channels.length] })})
+      .send({ 'proof': viewingCredential.submit(surveyor, { publisher: channels[i % channels.length] }) })
       .expect(ok)
   }
 
@@ -299,7 +299,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
   const grants = {
     'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
-    'promotions': [{'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp'}]
+    'promotions': [{ 'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp' }]
   }
   await ledgerAgent.post(grantsURL).send(grants).expect(ok)
 
@@ -342,7 +342,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   let numControlSurveryors = 0
   let numGrantSurveyors = 0
   for (let surveyorId of surveyorIds) {
-    let cohort = (await surveyors.findOne({surveyorId: surveyorId})).payload.cohort
+    let cohort = (await surveyors.findOne({ surveyorId: surveyorId })).payload.cohort
     if (cohort === 'control') {
       numControlSurveryors += 1
     } else if (cohort === 'grant') {
@@ -391,8 +391,8 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
       await timeout(response.headers['retry-after'] * 1000)
     }
     response = await ledgerAgent
-       .put('/v2/wallet/' + paymentId)
-       .send(payload)
+      .put('/v2/wallet/' + paymentId)
+      .send(payload)
   } while (response.status === 503)
 
   t.is(response.status, 410)
@@ -418,7 +418,7 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
   const promotionId = '902e7e4d-c2de-4d5d-aaa3-ee8fee69f7f3'
   const grants = { // 30 BAT
     'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
-    'promotions': [{'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp'}]
+    'promotions': [{ 'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp' }]
   }
   await ledgerAgent.post(grantsURL).send(grants).expect(ok)
 
@@ -465,7 +465,7 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
   let numControlSurveryors = 0
   let numGrantSurveyors = 0
   for (let surveyorId of surveyorIds) {
-    let cohort = (await surveyors.findOne({surveyorId: surveyorId})).payload.cohort
+    let cohort = (await surveyors.findOne({ surveyorId: surveyorId })).payload.cohort
     if (cohort === 'control') {
       numControlSurveryors += 1
     } else if (cohort === 'grant') {
@@ -591,7 +591,7 @@ async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
   uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
 
   await uphold.createCardTransaction(donorCardId,
-    {'amount': desiredTxAmt, 'currency': 'BAT', 'destination': userCardId},
+    { 'amount': desiredTxAmt, 'currency': 'BAT', 'destination': userCardId },
     true // commit tx in one swoop
   )
 
@@ -620,15 +620,15 @@ async function requestGrant (t, paymentId, promotionId, ledgerDB) {
   } = await wallets.findOne({ paymentId })
 
   response = await ledgerAgent
-      .put(`/v2/grants/${paymentId}`)
-      .send({
-        promotionId,
-        captchaResponse: {
-          x: captcha.x,
-          y: captcha.y
-        }
-      })
-      .expect(ok)
+    .put(`/v2/grants/${paymentId}`)
+    .send({
+      promotionId,
+      captchaResponse: {
+        x: captcha.x,
+        y: captcha.y
+      }
+    })
+    .expect(ok)
   t.true(response.body.hasOwnProperty('probi'))
 
   const donateAmt = new BigNumber(response.body.probi).dividedBy('1e18').toNumber()
@@ -660,7 +660,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
   await t.throwsAsync(uphold.createCardTransaction(userCardId,
-    {'amount': txAmount, 'currency': 'BAT', 'destination': donorCardId},
+    { 'amount': txAmount, 'currency': 'BAT', 'destination': donorCardId },
     true // commit tx in one swoop
   ))
 

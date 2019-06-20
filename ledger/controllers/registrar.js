@@ -39,21 +39,21 @@ v2.read =
   }
 },
 
-  description: 'Returns information about the registrar',
-  tags: ['api'],
+description: 'Returns information about the registrar',
+tags: ['api'],
 
-  validate:
+validate:
   { params: {
     registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
     apiV: Joi.string().required().description('the api version')
   } },
 
-  response: {
-    schema: Joi.object().keys({
-      registrarVK: Joi.string().required().description('public key'),
-      payload: Joi.object().required().description('additional information')
-    })
-  }
+response: {
+  schema: Joi.object().keys({
+    registrarVK: Joi.string().required().description('public key'),
+    payload: Joi.object().required().description('additional information')
+  })
+}
 }
 
 /*
@@ -93,29 +93,29 @@ v2.update =
   }
 },
 
-  auth: {
-    strategy: 'session',
-    scope: [ 'ledger' ],
-    mode: 'required'
+auth: {
+  strategy: 'session',
+  scope: [ 'ledger' ],
+  mode: 'required'
+},
+
+description: 'Updates a registrar',
+tags: [ 'api' ],
+
+validate: {
+  params: {
+    registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
+    apiV: Joi.string().required().description('the api version')
   },
+  payload: Joi.object().optional().description('additional information')
+},
 
-  description: 'Updates a registrar',
-  tags: [ 'api' ],
-
-  validate: {
-    params: {
-      registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-      apiV: Joi.string().required().description('the api version')
-    },
-    payload: Joi.object().optional().description('additional information')
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      registrarVK: Joi.string().required().description('public key'),
-      payload: Joi.object().required().description('additional information')
-    })
-  }
+response: {
+  schema: Joi.object().keys({
+    registrarVK: Joi.string().required().description('public key'),
+    payload: Joi.object().required().description('additional information')
+  })
+}
 }
 
 /*

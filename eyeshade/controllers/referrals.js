@@ -37,7 +37,7 @@ v1.findReferrals = {
       results = []
       entries.forEach((entry) => {
         results.push(underscore.extend({ channelId: entry.publisher },
-                                       underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
+          underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
       })
       reply(results)
     }
@@ -87,7 +87,7 @@ v1.createReferrals = {
       }
 
       // Check if any already are confirmed
-      entries = await referrals.find({'downloadId': {$in: downloadIdsToBeConfirmed}})
+      entries = await referrals.find({ 'downloadId': { $in: downloadIdsToBeConfirmed } })
 
       // Find which downloadIds are already accounted for
       existingDownloadIds = []
@@ -168,7 +168,7 @@ module.exports.initialize = async (debug, runtime) => {
         altcurrency: '',
         probi: bson.Decimal128.POSITIVE_ZERO,
 
-     // added by administrator
+        // added by administrator
         exclude: false,
         hash: '',
 
@@ -176,11 +176,11 @@ module.exports.initialize = async (debug, runtime) => {
       },
       unique: [ { downloadId: 1 } ],
       others: [ { transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
-                { altcurrency: 1 }, { probi: 1 }, { exclude: 1 }, { hash: 1 }, { timestamp: 1 },
-                { altcurrency: 1, probi: 1 },
-                { altcurrency: 1, exclude: 1, probi: 1 },
-                { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-                { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+        { altcurrency: 1 }, { probi: 1 }, { exclude: 1 }, { hash: 1 }, { timestamp: 1 },
+        { altcurrency: 1, probi: 1 },
+        { altcurrency: 1, exclude: 1, probi: 1 },
+        { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
+        { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
     }
   ])
 }

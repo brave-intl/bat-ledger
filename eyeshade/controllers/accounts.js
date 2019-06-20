@@ -79,40 +79,40 @@ ORDER BY created_at
   }
 },
 
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['publishers'],
-    mode: 'required'
-  },
+auth: {
+  strategy: 'simple-scoped-token',
+  scope: ['publishers'],
+  mode: 'required'
+},
 
-  description: 'Used by publishers for retrieving a list of transactions for use in statement generation, graphical dashboarding and filtering, etc.',
-  tags: [ 'api', 'publishers' ],
+description: 'Used by publishers for retrieving a list of transactions for use in statement generation, graphical dashboarding and filtering, etc.',
+tags: [ 'api', 'publishers' ],
 
-  validate: {
-    params: {
-      account: Joi.alternatives().try(
-        braveJoi.string().owner(),
-        Joi.string().guid()
-      ).required().description('the owner identity')
-    }
-  },
-
-  response: {
-    schema: Joi.array().items(Joi.object().keys({
-      created_at: Joi.date().iso().required().description('when the transaction was created'),
-      description: Joi.string().required().description('description of the transaction'),
-      channel: Joi.alternatives().try(
-        braveJoi.string().publisher().required().description('channel transaction is for'),
-        Joi.string().default('').allow(['']).description('empty string returned')
-      ),
-      amount: braveJoi.string().numeric().required().description('amount in BAT'),
-      settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
-      settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
-      settlement_destination_type: Joi.string().optional().valid(settlementDestinationTypes).description('type of address settlement was paid to'),
-      settlement_destination: Joi.string().optional().description('destination address of the settlement'),
-      transaction_type: Joi.string().valid(transactionTypes).required().description('type of the transaction')
-    }))
+validate: {
+  params: {
+    account: Joi.alternatives().try(
+      braveJoi.string().owner(),
+      Joi.string().guid()
+    ).required().description('the owner identity')
   }
+},
+
+response: {
+  schema: Joi.array().items(Joi.object().keys({
+    created_at: Joi.date().iso().required().description('when the transaction was created'),
+    description: Joi.string().required().description('description of the transaction'),
+    channel: Joi.alternatives().try(
+      braveJoi.string().publisher().required().description('channel transaction is for'),
+      Joi.string().default('').allow(['']).description('empty string returned')
+    ),
+    amount: braveJoi.string().numeric().required().description('amount in BAT'),
+    settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
+    settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
+    settlement_destination_type: Joi.string().optional().valid(settlementDestinationTypes).description('type of address settlement was paid to'),
+    settlement_destination: Joi.string().optional().description('destination address of the settlement'),
+    transaction_type: Joi.string().valid(transactionTypes).required().description('type of the transaction')
+  }))
+}
 }
 
 /*
@@ -136,34 +136,34 @@ v1.getTopBalances =
   }
 },
 
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['publishers'],
-    mode: 'required'
-  },
+auth: {
+  strategy: 'simple-scoped-token',
+  scope: ['publishers'],
+  mode: 'required'
+},
 
-  description: 'Used by publishers for retrieving a list of balances e.g. for an owner and their channels',
+description: 'Used by publishers for retrieving a list of balances e.g. for an owner and their channels',
 
-  tags: [ 'api', 'publishers' ],
+tags: [ 'api', 'publishers' ],
 
-  validate: {
-    params: Joi.object().keys({
-      type: accountTypeValidation.required().description('balance types to retrieve')
-    }),
-    query: {
-      limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
-    }
-  },
-
-  response: {
-    schema: Joi.array().items(
-      Joi.object().keys({
-        account_id: Joi.string(),
-        account_type: accountTypeValidation,
-        balance: joiBAT.description('balance in BAT')
-      })
-    )
+validate: {
+  params: Joi.object().keys({
+    type: accountTypeValidation.required().description('balance types to retrieve')
+  }),
+  query: {
+    limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
   }
+},
+
+response: {
+  schema: Joi.array().items(
+    Joi.object().keys({
+      account_id: Joi.string(),
+      account_type: accountTypeValidation,
+      balance: joiBAT.description('balance in BAT')
+    })
+  )
+}
 }
 
 /*
@@ -229,12 +229,12 @@ v1.getBalances = {
 
   response: {
     schema: Joi.array().items(
-       Joi.object().keys({
-         account_id: Joi.string(),
-         account_type: Joi.string().valid(accountTypes),
-         balance: joiBAT.description('balance in BAT')
-       })
-     )
+      Joi.object().keys({
+        account_id: Joi.string(),
+        account_type: Joi.string().valid(accountTypes),
+        balance: joiBAT.description('balance in BAT')
+      })
+    )
   }
 }
 
@@ -292,35 +292,35 @@ v1.getEarningsTotals =
   }
 },
 
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['publishers'],
-    mode: 'required'
+auth: {
+  strategy: 'simple-scoped-token',
+  scope: ['publishers'],
+  mode: 'required'
+},
+
+description: 'Used by publishers for retrieving a list of top channel earnings',
+
+tags: [ 'api', 'publishers' ],
+
+validate: {
+  params: {
+    type: Joi.string().valid('contributions', 'referrals').required().description('type of earnings')
   },
-
-  description: 'Used by publishers for retrieving a list of top channel earnings',
-
-  tags: [ 'api', 'publishers' ],
-
-  validate: {
-    params: {
-      type: Joi.string().valid('contributions', 'referrals').required().description('type of earnings')
-    },
-    query: {
-      limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
-      order: orderParam
-    }
-  },
-
-  response: {
-    schema: Joi.array().items(
-       Joi.object().keys({
-         channel: Joi.string(),
-         earnings: joiBAT.description('earnings in BAT'),
-         account_id: Joi.string()
-       })
-     )
+  query: {
+    limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
+    order: orderParam
   }
+},
+
+response: {
+  schema: Joi.array().items(
+    Joi.object().keys({
+      channel: Joi.string(),
+      earnings: joiBAT.description('earnings in BAT'),
+      account_id: Joi.string()
+    })
+  )
+}
 }
 
 /*
@@ -353,35 +353,35 @@ v1.getPaidTotals =
   }
 },
 
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['publishers'],
-    mode: 'required'
+auth: {
+  strategy: 'simple-scoped-token',
+  scope: ['publishers'],
+  mode: 'required'
+},
+
+description: 'Used by publishers for retrieving a list of top channels paid out',
+
+tags: [ 'api', 'publishers' ],
+
+validate: {
+  params: {
+    type: Joi.string().valid('contributions', 'referrals').required().description('type of payout')
   },
-
-  description: 'Used by publishers for retrieving a list of top channels paid out',
-
-  tags: [ 'api', 'publishers' ],
-
-  validate: {
-    params: {
-      type: Joi.string().valid('contributions', 'referrals').required().description('type of payout')
-    },
-    query: {
-      limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
-      order: orderParam
-    }
-  },
-
-  response: {
-    schema: Joi.array().items(
-       Joi.object().keys({
-         channel: joiChannel.required(),
-         paid: joiBAT.required().description('amount paid out in BAT'),
-         account_id: Joi.string()
-       })
-     )
+  query: {
+    limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
+    order: orderParam
   }
+},
+
+response: {
+  schema: Joi.array().items(
+    Joi.object().keys({
+      channel: joiChannel.required(),
+      paid: joiBAT.required().description('amount paid out in BAT'),
+      account_id: Joi.string()
+    })
+  )
+}
 }
 
 /*

@@ -53,7 +53,7 @@ exports.initialize = async (debug, runtime) => {
   await require('../controllers/registrar.js').initialize(debug, runtime)
   await utilities.initialize(debug, runtime)
 
-/* from https://github.com/harrisiirak/cron-parser
+  /* from https://github.com/harrisiirak/cron-parser
 
 *    *    *    *    *    *
 ┬    ┬    ┬    ┬    ┬    ┬
