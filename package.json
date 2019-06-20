@@ -126,7 +126,7 @@
     "babel-eslint": "^8.2.3",
     "coveralls": "^3.0.3",
     "nyc": "^14.0.0",
-    "standard": "^10.0.3",
+    "standard": "^12.0.1",
     "supertest": "github:brave-intl/supertest"
   },
   "standard": {
