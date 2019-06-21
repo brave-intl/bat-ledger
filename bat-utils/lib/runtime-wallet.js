@@ -84,7 +84,8 @@ Wallet.prototype.getTxProbi = function (info, txn) {
 
 Wallet.prototype.validateTxSignature = function (info, signature, options = {}) {
   const {
-    minimum = 1
+    minimum = 1,
+    destinationValidator = Joi.string().valid(this.config.settlementAddress['BAT'])
   } = options
   const bigMinimum = new BigNumber(minimum)
   if (bigMinimum.lessThanOrEqualTo(0)) {
@@ -96,7 +97,7 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
       amount: braveJoi.string().numeric().required(),
       currency: Joi.string().valid('BAT').required()
     }),
-    destination: braveJoi.string().guid().required()
+    destination: destinationValidator.required()
   })
 
   if (info.altcurrency === 'BAT' && (info.provider === 'uphold' || info.provider === 'mockHttpSignature')) {

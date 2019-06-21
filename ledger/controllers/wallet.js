@@ -812,6 +812,7 @@ function claimWalletHandler (runtime) {
     }
 
     const txn = runtime.wallet.validateTxSignature(wallet, signedTx, {
+      destinationValidator: braveJoi.string().guid(),
       minimum: 0.001
     })
     const submitted = await runtime.wallet.submitTx(wallet, txn, signedTx, false)

@@ -9,12 +9,11 @@ import { sign } from 'http-request-signature'
 import Wallet from './runtime-wallet'
 import Runtime from '../boot-runtime'
 import utils from './extras-utils'
+import braveJoi from './extras-joi'
 
 dotenv.config()
 
 test('validateTxSignature: works', async t => {
-  t.plan(10)
-
   const settlementAddress = uuidV4()
   const { wallet } = newRuntime(settlementAddress)
   const keypair = tweetnacl.sign.keyPair()
@@ -46,7 +45,7 @@ test('validateTxSignature: works', async t => {
   wallet.validateTxSignature(info, signTxn(keypair, body))
 
   body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '5.5' } }
-  wallet.validateTxSignature(info, signTxn(keypair, body))
+  t.deepEqual(body, wallet.validateTxSignature(info, signTxn(keypair, body)), 'the transaction body is returned')
 
   // Wrong keypair
   body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '20' } }
@@ -76,8 +75,15 @@ test('validateTxSignature: works', async t => {
     minimum: 0.1
   })
   body = { destination: settlementAddress, denomination: { currency: 'BAT', amount: '0.0999999999999' } }
-  const signed = signTxn(keypair, body)
-  t.throws(() => wallet.validateTxSignature(info, signed, { minimum: 0.1 }), Error)
+  t.throws(() => wallet.validateTxSignature(info, signTxn(keypair, body), { minimum: 0.1 }), Error)
+
+  // settlement address must be passed as destination by default
+  body = { destination: uuidV4(), denomination: { currency: 'BAT', amount: '5' } }
+  t.throws(() => wallet.validateTxSignature(info, signTxn(keypair, body)), Error)
+  // unless a destination validator is passed
+  wallet.validateTxSignature(info, signTxn(keypair, body), {
+    destinationValidator: braveJoi.string().guid()
+  })
 
   // Missing field
   body = { destination: settlementAddress, denomination: { amount: '20' } }
