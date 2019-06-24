@@ -16,7 +16,7 @@ const v1 = {}
 
 const settlementDestinationTypes = ['uphold']
 const accountTypes = ['channel', 'owner'].concat(settlementDestinationTypes)
-const transactionTypes = ['contribution', 'referral', 'contribution_settlement', 'referral_settlement', 'fees', 'scaleup', 'manual', 'user_deposit', 'manual_payout']
+const transactionTypes = ['contribution', 'referral', 'contribution_settlement', 'referral_settlement', 'fees', 'scaleup', 'manual', 'user_deposit', 'manual_payout', 'manual_settlement']
 
 const accountTypeValidation = Joi.string().valid(accountTypes)
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
