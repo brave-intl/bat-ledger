@@ -419,18 +419,40 @@ Wallet.providers.uphold = {
       throw new Error('wallet uphold unsignedTx for ' + info.altcurrency + ' not supported')
     }
   },
-  submitTx: async function (info, txn, signature, commit = false) {
-    if (info.altcurrency === 'BAT') {
+  submitTx: async function (info, txn, signature, opts = {}) {
+    const {
+      commit = false,
+      token = process.env.UPHOLD_ACCESS_TOKEN
+    } = opts
+    const uphold = this.createUpholdSDK(token)
+    const {
+      denomination,
+      destination
+    } = txn
+    const {
+      amount,
+      currency
+    } = denomination
+    const txOpts = {
+      destination,
+      amount,
+      currency
+    }
+    const signatureMetadata = {
+      headers: signature.headers,
+      body: signature.octets
+    }
+    const {
+      altcurrency,
+      providerId
+    } = info
+    if (altcurrency === 'BAT') {
       let postedTx
       try {
-        postedTx = await this.uphold.createCardTransaction(info.providerId,
-          // this will be replaced below, we're just placating
-          underscore.pick(underscore.extend(txn.denomination,
-            { destination: txn.destination }),
-          ['amount', 'currency', 'destination']),
-          commit, // commit tx in one swoop
-          null, // no otp code
-          { headers: signature.headers, body: signature.octets })
+        // this will be replaced below, we're just placating
+        // commit tx in one swoop
+        // no otp code
+        postedTx = await uphold.createCardTransaction(providerId, txOpts, commit, null, signatureMetadata)
       } catch (ex) {
         debug('submitTx', { provider: 'uphold', reason: ex.toString(), operation: 'createCardTransaction' })
         throw ex
@@ -441,7 +463,7 @@ Wallet.providers.uphold = {
       }
 
       return {
-        probi: new BigNumber(postedTx.destination.amount).times(this.currency.alt2scale(info.altcurrency)).toString(),
+        probi: new BigNumber(postedTx.destination.amount).times(this.currency.alt2scale(altcurrency)).toString(),
         altcurrency: info.altcurrency,
         address: txn.destination,
         fee: 0,
@@ -449,7 +471,7 @@ Wallet.providers.uphold = {
         postedTx
       }
     } else {
-      throw new Error('wallet uphold submitTx for ' + info.altcurrency + ' not supported')
+      throw new Error('wallet uphold submitTx for ' + altcurrency + ' not supported')
     }
   },
   ping: async function (provider) {

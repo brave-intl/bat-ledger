@@ -815,8 +815,7 @@ function claimWalletHandler (runtime) {
       destinationValidator: braveJoi.string().guid(),
       minimum: 0.001
     })
-    const submitted = await runtime.wallet.submitTx(wallet, txn, signedTx, false)
-    const { postedTx } = submitted
+    const { postedTx } = await runtime.wallet.submitTx(wallet, txn, signedTx, false)
     const {
       type,
       isMember,

@@ -524,6 +524,11 @@ test('wallets can be claimed by verified members', async (t) => {
   await claimCard(anonCardInfo3)
   await claimCard(anonCardInfo4, 409)
 
+  // redundant calls are fine
+  await claimCard(anonCardInfo1)
+  // // claiming someone elses claimed card results in error
+  // await claimCard(anonCardInfo1, 409)
+
   async function claimCard (anonCard, code = 200) {
     const signedTx = signTxn(anonCard.keypair, body)
     await ledgerAgent
