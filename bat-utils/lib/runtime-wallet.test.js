@@ -52,7 +52,7 @@ test('validateTxSignature: works', async t => {
   t.throws(() => { wallet.validateTxSignature(info, signTxn(wrongKeypair, body)) })
 
   // Invalid destination
-  body = { destination: 'invalid', denomination: { currency: 'BAT', amount: '20' } }
+  body = { destination: uuidV4(), denomination: { currency: 'BAT', amount: '20' } }
   t.throws(() => { wallet.validateTxSignature(info, signTxn(keypair, body)) })
 
   // Invalid currency
