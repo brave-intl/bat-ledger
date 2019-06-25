@@ -506,10 +506,10 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
 test('wallets can be claimed by verified members', async (t) => {
   await createSurveyor({ rate: 1, votes: 1 })
 
-  const anonCardInfo1 = await generateAndFundWallet()
-  const anonCardInfo2 = await generateAndFundWallet()
-  const anonCardInfo3 = await generateAndFundWallet()
-  const anonCardInfo4 = await generateAndFundWallet()
+  const anonCardInfo1 = await createAndFundUserWallet()
+  const anonCardInfo2 = await createAndFundUserWallet()
+  const anonCardInfo3 = await createAndFundUserWallet()
+  const anonCardInfo4 = await createAndFundUserWallet()
   const body = {
     destination: process.env.BAT_SETTLEMENT_ADDRESS,
     denomination: {
@@ -537,7 +537,7 @@ test('wallets can be claimed by verified members', async (t) => {
       .expect(status(code))
   }
 
-  async function generateAndFundWallet () {
+  async function createAndFundUserWallet () {
     // Create user wallet
     const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t) // eslint-disable-line
     // Fund user uphold wallet
