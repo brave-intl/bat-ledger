@@ -93,11 +93,6 @@ const Server = async (options, runtime) => {
       }
     })
   }
-  server.route({
-    method: 'GET',
-    path: '/isup',
-    handler: (request, reply) => reply('ack.')
-  })
 
   await new Promise((resolve, reject) => {
     server.register([

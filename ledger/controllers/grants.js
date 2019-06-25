@@ -208,6 +208,12 @@ const getGrant = (protocolVersion) => (runtime) => {
     let entries, promotionIds, wallet
     let walletTooYoung = false
 
+    try {
+      whitelist.validateHops(request)
+    } catch (e) {
+      return reply(e)
+    }
+
     if (qaOnlyP(request)) return reply(boom.notFound())
 
     if (paymentId) {
@@ -722,6 +728,13 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     const wallets = runtime.database.get('wallets', debug)
 
     if (!runtime.config.captcha) return reply(boom.notFound())
+
+    try {
+      whitelist.validateHops(request)
+    } catch (e) {
+      return reply(e)
+    }
+
     if (qaOnlyP(request)) return reply(boom.notFound())
 
     const wallet = await wallets.findOne({ 'paymentId': paymentId })

@@ -64,7 +64,7 @@ test.afterEach.always(async t => {
   await cleanPgDb(postgres)()
 })
 
-test('check is up endpoint with no authorization', async (t) => {
+test('check endpoint is up with no authorization', async (t) => {
   const {
     BAT_BALANCE_SERVER,
     BAT_EYESHADE_SERVER,
@@ -79,7 +79,7 @@ test('check is up endpoint with no authorization', async (t) => {
     const {
       text
     } = await agent(origin)
-      .get('/isup')
+      .get('/')
       .expect(ok)
     t.is('ack.', text, 'a fixed string is sent back')
   }
