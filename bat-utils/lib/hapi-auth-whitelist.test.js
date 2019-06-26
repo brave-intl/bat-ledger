@@ -1,6 +1,7 @@
 'use strict'
 import _ from 'underscore'
 import {
+  validateHops,
   forwardedIPShift,
   ipaddr
 } from './hapi-auth-whitelist.js'
@@ -18,8 +19,18 @@ test('ipaddr', async (t) => {
   t.is(ipaddr(req('123.123.123.123', '127.0.0.1, 12.12.12.12')), '12.12.12.12')
   t.is(ipaddr(req('123.123.123.123')), '123.123.123.123')
   t.is(ipaddr(req('123.123.123.123', ' ')), '123.123.123.123')
+})
+
+test('validateHops', async (t) => {
   await munge(['FASTLY_TOKEN_LIST', 'FORWARDED_IP_SHIFT'], (setEnvs) => {
-    const run = (token) => ipaddr(req('123.123.123.123', '1.1.1.1,2.2.2.2,3.3.3.3', token || validFastlyToken))
+    const run = (token) => {
+      const remoteAddress = '123.123.123.123'
+      const xForwardedFor = '1.1.1.1,2.2.2.2,3.3.3.3'
+      const tkn = token || validFastlyToken
+      const request = req(remoteAddress, xForwardedFor, tkn)
+      validateHops(request)
+      return ipaddr(request)
+    }
 
     setEnvs([null, null])
     t.is(run(), '3.3.3.3', 'should not throw in default state')

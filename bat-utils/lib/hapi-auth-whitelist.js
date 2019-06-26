@@ -38,25 +38,18 @@ exports.ipaddr = (request) => {
 
   const { headers } = request
   const forwardedFor = headers['x-forwarded-for']
-  const token = headers['fastly-token']
   if (forwardedFor) {
-    const { FASTLY_TOKEN_LIST } = process.env
-    const fastlyTokens = (FASTLY_TOKEN_LIST && FASTLY_TOKEN_LIST.split(',')) || []
     const forwardedIps = forwardedFor.split(',')
     const shift = forwardedIPShift()
-    if (shift !== 1 && !braveHapi.isSimpleTokenValid(fastlyTokens, token)) {
-      throw Object.assign(new Error(`invalid fastly token supplied`), {
-        shift,
-        token
-      })
-    }
-    let target = forwardedIps[forwardedIps.length - shift]
+    const target = forwardedIps[forwardedIps.length - shift]
     return target.trim() || request.info.remoteAddress
   } else {
     return request.info.remoteAddress
   }
 }
 
+exports.validateHops = validateHops
+exports.invalidHops = invalidHops
 exports.forwardedIPShift = forwardedIPShift
 
 exports.authenticate = (request, reply) => {
@@ -66,6 +59,12 @@ exports.authenticate = (request, reply) => {
   if ((authorizedAddrs) &&
         (authorizedAddrs.indexOf(ipaddr) === -1) &&
         (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) return reply(boom.notAcceptable())
+
+  try {
+    validateHops(request)
+  } catch (e) {
+    return reply(e)
+  }
 
   try {
     result = reply.continue({ credentials: { ipaddr: ipaddr } })
@@ -84,6 +83,29 @@ exports.register = (server, options, next) => {
 
 exports.register.attributes = {
   pkg: require(path.join(__dirname, '..', 'package.json'))
+}
+
+function invalidHops (err) {
+  // can take an err
+  return boom.boomify(err, {
+    statusCode: 403,
+    message: 'invalid fastly token supplied',
+    decorate: Object.keys(err).map((key) => err[key])
+  })
+}
+
+function validateHops (request) {
+  const { headers } = request
+  const token = headers['fastly-token']
+  const { FASTLY_TOKEN_LIST } = process.env
+  const fastlyTokens = (FASTLY_TOKEN_LIST && FASTLY_TOKEN_LIST.split(',')) || []
+  const shift = forwardedIPShift()
+  if (shift !== 1 && !braveHapi.isSimpleTokenValid(fastlyTokens, token)) {
+    throw invalidHops({
+      shift,
+      token
+    })
+  }
 }
 
 function forwardedIPShift () {
