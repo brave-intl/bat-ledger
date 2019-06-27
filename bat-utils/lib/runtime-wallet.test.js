@@ -129,7 +129,6 @@ test('createCard', async (t) => {
       scope: 'cards:read user:read'
     }
   }
-  runtime.prometheus.registerMetrics()
   const label = uuidV4()
   const currency = 'BAT'
   const result = await runtime.wallet.createCard(info, {

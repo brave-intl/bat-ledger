@@ -1,8 +1,9 @@
 import {
   serial as test
 } from 'ava'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import Queue from 'bat-utils/lib/runtime-queue'
+// import Postgres from 'bat-utils/lib/runtime-postgres'
+// import Queue from 'bat-utils/lib/runtime-queue'
+import { Runtime } from 'bat-utils'
 import SDebug from 'sdebug'
 import {
   workers
@@ -19,22 +20,26 @@ import {
   timeout
 } from 'bat-utils/lib/extras-utils'
 
-process.env.SERVICE = 'ledger'
-const config = require('../../config')
-
 const votingReportWorker = workers['voting-report']
-
 const debug = new SDebug('surveyor-test')
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-
-const runtime = {
-  config,
-  postgres,
-  queue: new Queue({ queue: process.env.BAT_REDIS_URL })
-}
-
-test.afterEach.always(cleanPgDb(postgres))
+const {
+  BAT_REDIS_URL,
+  BAT_POSTGRES_URL,
+  TESTING_COHORTS
+} = process.env
+const runtime = new Runtime({
+  testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
+  prometheus: {
+    label: 'eyeshade.workers.1',
+    redis: BAT_REDIS_URL
+  },
+  postgres: {
+    url: BAT_POSTGRES_URL
+  },
+  queue: BAT_REDIS_URL
+})
+test.afterEach.always(cleanPgDb(runtime.postgres))
 
 test('verify frozen occurs when daily is run', async t => {
   t.plan(12)
@@ -67,11 +72,11 @@ async function tryFreeze (t, dayShift, expect, surveyorId) {
 }
 
 function querySurveyor (surveyorId) {
-  return postgres.query('select * from surveyor_groups where id = $1 limit 1;', [surveyorId])
+  return runtime.postgres.query('select * from surveyor_groups where id = $1 limit 1;', [surveyorId])
 }
 
 function queryVotes (surveyorId) {
-  return postgres.query('select * from votes where surveyor_id = $1 limit 1;', [surveyorId])
+  return runtime.postgres.query('select * from votes where surveyor_id = $1 limit 1;', [surveyorId])
 }
 
 async function waitUntilPropagated (fn, surveyorId) {
