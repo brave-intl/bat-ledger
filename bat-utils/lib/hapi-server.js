@@ -113,27 +113,31 @@ const Server = async (options, runtime) => {
     administrator (github)  3000
     server (bearer token)  60000
  */
-            const ipaddr = whitelist.ipaddr(request)
             let authorization, parts, token, tokenlist
             let limit = 60
-            if (ipaddr === '127.0.0.1') return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
 
-            if ((graylist.authorizedAddrs) &&
-                ((graylist.authorizedAddrs.indexOf(ipaddr) !== -1) ||
-                 (underscore.find(graylist.authorizedBlocks, (block) => { return block.contains(ipaddr) })))) {
-              return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
-            }
+            try {
+              const ipaddr = whitelist.ipaddr(request)
+              if (ipaddr === '127.0.0.1') return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
 
-            if (whitelist.authorizedP(ipaddr)) {
-              authorization = request.raw.req.headers.authorization
-              if (authorization) {
-                parts = authorization.split(/\s+/)
-                token = (parts[0].toLowerCase() === 'bearer') && parts[1]
-              } else {
-                token = request.query.access_token
+              if ((graylist.authorizedAddrs) &&
+                  ((graylist.authorizedAddrs.indexOf(ipaddr) !== -1) ||
+                   (underscore.find(graylist.authorizedBlocks, (block) => { return block.contains(ipaddr) })))) {
+                return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
               }
-              tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-              limit = (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)) ? 60000 : 3000
+
+              if (whitelist.authorizedP(ipaddr)) {
+                authorization = request.raw.req.headers.authorization
+                if (authorization) {
+                  parts = authorization.split(/\s+/)
+                  token = (parts[0].toLowerCase() === 'bearer') && parts[1]
+                } else {
+                  token = request.query.access_token
+                }
+                tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
+                limit = (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)) ? 60000 : 3000
+              }
+            } catch (e) {
             }
 
             return { limit: limit, window: 60 }
@@ -141,7 +145,13 @@ const Server = async (options, runtime) => {
           enabled: true,
           methods: [ 'get', 'post', 'delete', 'put', 'patch' ],
           overLimitError: (rate) => boom.tooManyRequests(`try again in ${rate.window} seconds`),
-          rateLimitKey: (request) => whitelist.ipaddr(request) + ':' + runtime.config.server.host,
+          rateLimitKey: (request) => {
+            try {
+              return whitelist.ipaddr(request) + ':' + runtime.config.server.host
+            } catch (e) {
+              return 'default'
+            }
+          },
           redisClient: (runtime.cache && runtime.cache.cache) || runtime.queue.config.client
         }
       },
