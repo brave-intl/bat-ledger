@@ -64,9 +64,11 @@ test('shift amount can be retrieved', async (t) => {
     setEnvs(['3'])
     t.is(forwardedIPShift(), 3, 'but can be overwritten')
     setEnvs(['what'])
-    t.throws(forwardedIPShift, Error, 'non numeric values throw')
+    t.throws(() => forwardedIPShift(), Error, 'non numeric values throw')
     setEnvs(['-2'])
     t.is(forwardedIPShift(), 1, 'negative numbers are clamped to 1')
+    setEnvs(['2'])
+    t.is(forwardedIPShift(1), 1, 'a maximum value can be passed')
   })
 })
 

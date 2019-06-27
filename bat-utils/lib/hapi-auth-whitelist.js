@@ -40,8 +40,9 @@ exports.ipaddr = (request) => {
   const forwardedFor = headers['x-forwarded-for']
   if (forwardedFor) {
     const forwardedIps = forwardedFor.split(',')
-    const shift = forwardedIPShift()
-    const target = forwardedIps[forwardedIps.length - shift]
+    const length = forwardedIps.length
+    const shift = forwardedIPShift(length)
+    const target = forwardedIps[length - shift]
     return target.trim() || request.info.remoteAddress
   } else {
     return request.info.remoteAddress
@@ -108,11 +109,11 @@ function validateHops (request) {
   }
 }
 
-function forwardedIPShift () {
+function forwardedIPShift (max) {
   const shiftEnv = process.env.FORWARDED_IP_SHIFT
   const shift = shiftEnv ? (+shiftEnv) : 1
   if (underscore.isNaN(shift)) {
     throw new Error(`${JSON.stringify(shiftEnv)} is not a valid number`)
   }
-  return shift >= 0 ? shift : 1
+  return shift >= 0 ? (!max || max >= shift ? shift : max) : 1
 }
