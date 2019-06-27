@@ -45,11 +45,10 @@ exports.workers = {
           runtime.captureException(e, { extra: { report: 'settlement-report', settlementId } })
           throw e
         }
-
+        await client.query('COMMIT')
         if (shouldUpdateBalances) {
           await updateBalances(runtime, client, true)
         }
-        await client.query('COMMIT')
       } finally {
         client.release()
       }

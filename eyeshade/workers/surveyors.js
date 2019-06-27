@@ -59,10 +59,6 @@ exports.workers = {
           throw e
         }
 
-        if (shouldUpdateBalances) {
-          await updateBalances(runtime, client, true)
-        }
-
         const query2 = `
         update votes
           set transacted = true
@@ -77,6 +73,10 @@ exports.workers = {
         await client.query(query2, [surveyorId])
 
         await client.query('COMMIT')
+
+        if (shouldUpdateBalances) {
+          await updateBalances(runtime, client, true)
+        }
       } finally {
         client.release()
       }
