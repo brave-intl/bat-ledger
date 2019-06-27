@@ -1,5 +1,5 @@
 const path = require('path')
-
+const _ = require('underscore')
 const boom = require('boom')
 const Netmask = require('netmask').Netmask
 const underscore = require('underscore')
@@ -91,7 +91,7 @@ function invalidHops (err) {
   return boom.boomify(err, {
     statusCode: 403,
     message: 'invalid fastly token supplied',
-    decorate: Object.keys(err).map((key) => err[key])
+    decorate: _.mapObject(err, (val) => val)
   })
 }
 
