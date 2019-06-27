@@ -1,7 +1,9 @@
 'use strict'
+import _ from 'underscore'
 import { serial as test } from 'ava'
 import uuidV4 from 'uuid/v4'
 import {
+  ok,
   cleanDbs,
   cleanPgDb,
   eyeshadeAgent,
@@ -55,8 +57,9 @@ test('can post a manual settlement from publisher app using token auth', async t
   const settlements = eyeshadeMongo.collection('settlements')
   const client = await postgres.connect()
 
+  const owner = 'publishers#uuid:' + uuidV4().toLowerCase()
   const manualSettlement = {
-    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    owner,
     publisher: '',
     address: uuidV4().toLowerCase(),
     altcurrency: 'BAT',
@@ -120,6 +123,31 @@ test('can post a manual settlement from publisher app using token auth', async t
   t.true(manualSettlementTx.settlement_amount === '5.000000000000000000')
 
   t.true(manualTx.to_account === manualSettlementTx.from_account)
+
+  const {
+    body
+  } = await eyeshadeAgent
+    .get(`/v1/accounts/${encodeURIComponent(owner)}/transactions`)
+    .expect(ok)
+
+  const subset = _.map(body, (item) => _.omit(item, ['created_at']))
+  const manualResponse = _.findWhere(subset, { transaction_type: 'manual' })
+  const manualSettlementResponse = _.findWhere(subset, { transaction_type: 'manual_settlement' })
+
+  t.deepEqual({
+    channel: '',
+    description: 'payout for manual',
+    amount: '-5.000000000000000000',
+    settlement_currency: 'BAT',
+    settlement_amount: '5.000000000000000000',
+    transaction_type: 'manual_settlement'
+  }, manualSettlementResponse, 'a manual settlement is sent back with the appropriate data')
+  t.deepEqual({
+    channel: '',
+    description: 'handshake agreement with business developement',
+    amount: '5.000000000000000000',
+    transaction_type: 'manual'
+  }, manualResponse, 'a manual transaction is sent back with the appropriate data')
 })
 
 test('only can post settlement files under to 20mbs', async t => {
