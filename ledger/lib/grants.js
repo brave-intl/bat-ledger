@@ -11,6 +11,7 @@ const adsAvailableList = getAdsAvailableList()
 
 module.exports = {
   adsGrantsAvailable,
+  getCohort,
   defaultCooldownHrs,
   cooldownOffset
 }
@@ -43,4 +44,11 @@ async function getAdsAvailableList () {
     const backup = ADS_AVAILABLE_LIST || 'US'
     return backup.split(',')
   }
+}
+
+function getCohort (grants, ids) {
+  const targetGrant = _.find(grants, ({ grantId }) => ids.includes(grantId))
+  const defaultCohortType = 'grant'
+  const { type: targetGrantType } = targetGrant
+  return targetGrantType === 'ugp' ? defaultCohortType : (targetGrantType || defaultCohortType)
 }

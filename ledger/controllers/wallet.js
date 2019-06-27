@@ -11,6 +11,9 @@ const {
   createComposite,
   promotionIdExclusions
 } = require('../lib/wallet')
+const {
+  getCohort
+} = require('../lib/grants')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -326,7 +329,7 @@ const write = function (runtime, apiVersion) {
 
     if (grantIds) { // some grants were redeemed
       await markGrantsAsRedeemed(grantIds)
-      grantCohort = wallet.cohort || 'grant'
+      grantCohort = getCohort(wallet.grants, grantIds)
       let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
 
       if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
