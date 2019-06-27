@@ -94,6 +94,12 @@ const Server = async (options, runtime) => {
     })
   }
 
+  server.route({
+    method: 'GET',
+    path: '/',
+    handler: (request, reply) => reply('ack.')
+  })
+
   await new Promise((resolve, reject) => {
     server.register([
       bell,
