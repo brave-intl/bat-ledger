@@ -95,7 +95,7 @@ function registerMetrics (prometheus) {
   const upholdApiRequestBucketsMilliseconds = new client.Histogram({
     name: 'uphold_request_buckets_milliseconds',
     help: 'uphold request duration buckets in milliseconds',
-    labelNames: ['method', 'path', 'cardinality', 'status'],
+    labelNames: ['method', 'path', 'cardinality', 'status', 'q'],
     buckets: log2Buckets
   })
   register.registerMetric(upholdApiRequestBucketsMilliseconds)
@@ -219,10 +219,19 @@ Prometheus.prototype.timedRequest = function (name, knownObs = {}) {
   const start = process.hrtime()
   return (moreObs = {}) => {
     const duration = this.duration(start)
-    const hash = Object.assign({}, knownObs, moreObs)
-    const labels = _.map(metric.labelNames, (key) => hash[key])
+    const { labelNames } = metric
+    const defaults = defaultMetrics(labelNames)
+    const hash = Object.assign(defaults, knownObs, moreObs)
+    const labels = _.map(labelNames, (key) => hash[key])
     metric.labels.apply(metric, labels).observe(duration)
   }
+}
+
+function defaultMetrics (labels) {
+  return _.reduce(labels, (memo, label) => {
+    memo[label] = ''
+    return memo
+  }, {})
 }
 
 Prometheus.prototype.subscriber = function () {

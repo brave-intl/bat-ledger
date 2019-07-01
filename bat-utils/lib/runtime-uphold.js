@@ -2,6 +2,7 @@ const {
   default: SDK,
   RequestClient: Client
 } = require('@uphold/uphold-sdk-javascript')
+const querystring = require('querystring')
 const url = require('url')
 const {
   isUUID
@@ -24,9 +25,18 @@ class AlternativeClient extends Client {
       } else {
         return step
       }
-    })
+    }).join('/')
+    const {
+      query,
+      pathname
+    } = url.parse(path)
+    const partitions = querystring.parse(query)
+    if (Object.keys(partitions).length) {
+      cardinality = 'many'
+    }
     return {
-      path: path.join('/'),
+      path: pathname,
+      partitions,
       cardinality
     }
   }
@@ -34,14 +44,16 @@ class AlternativeClient extends Client {
     const { prometheus } = this
     const {
       path,
+      partitions,
       cardinality
     } = this.path(url)
     const name = 'uphold_request_buckets_milliseconds'
-    const end = prometheus.timedRequest(name, {
+    const options = Object.assign({}, partitions, {
       cardinality,
       method,
       path
     })
+    const end = prometheus.timedRequest(name, options)
     let err = null
     let result = {}
     try {
