@@ -100,10 +100,11 @@ exports.workers = {
       } = payload
       try {
         const latestFeeTransaction = await getLatestFeeTx(client)
-        const list = await runtime.wallet.getFees(async (transaction, end, results) => {
-          if ((itemLimit !== -1 && results.length === itemLimit) ||
+        const list = await runtime.wallet.getFees(async (memo, transaction, end) => {
+          if ((itemLimit !== -1 && memo.length === itemLimit) ||
               (new Date(transaction.createdAt) < latestFeeTransaction.createdAt)) {
-            return end()
+            end()
+            return memo
           }
           try {
             await insertUpholdTx(client, transaction)
@@ -111,9 +112,12 @@ exports.workers = {
             if (!errors.isConflict(e)) {
               throw e
             }
+            return memo
           }
-          return transaction
+          memo.push(transaction)
+          return memo
         })
+        debug('fees inserted', list.length)
         return list
       } catch (e) {
         debug(e)
@@ -348,6 +352,7 @@ OR  to_account = $1;
 
 function insertFee (client, options) {
   return insertTransaction(client, Object.assign({
+    settlementCurrency: 'BAT',
     description: 'settlement fees',
     transactionType: 'fees',
     toAccount: 'fees-account',
@@ -360,6 +365,7 @@ function insertUpholdTx (client, transaction) {
     id,
     destination,
     origin,
+    message,
     createdAt
   } = transaction
   const {
@@ -375,8 +381,8 @@ function insertUpholdTx (client, transaction) {
   return insertFee(client, {
     id,
     amount,
+    channel: message,
     documentId,
-    settlementCurrency: 'BAT',
     settlementAmount: amount,
     createdAt: (+(new Date(createdAt))) / 1000,
     toAccount: destinationCardId,

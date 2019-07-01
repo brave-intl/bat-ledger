@@ -77,17 +77,19 @@ test('can iterate over multiple pages', async (t) => {
 })
 
 function basicHandler (t, endAt) {
-  return (tx, end, results) => {
-    if (results.length === endAt) {
-      return end()
+  return (memo, tx, end) => {
+    if (memo.length === endAt) {
+      end()
+      return memo
     }
     const { origin, destination } = tx
     const hash = {
       [BAT_FEE_ACCOUNT]: true
     }
     const associated = hash[origin.CardId] || hash[destination.CardId]
-    t.true(associated, 'these transactions have to do with the io of the fees card')
-    return tx
+    t.true(associated, 'transactions have to do with the io of the fees card')
+    memo.push(tx)
+    return memo
   }
 }
 
@@ -95,14 +97,14 @@ test('fees-report', async (t) => {
   await feesReport(debug, runtime, {
     itemLimit: 10
   })
-  await verifyAmount()
+  await verifyCount()
   const reChecked = await feesReport(debug, runtime, {
     itemLimit: 10
   })
-  t.is(1, reChecked.length, 'one was checked again and was found to be in conflict')
-  await verifyAmount()
+  t.is(0, reChecked.length, 'one was checked again and was found to be in conflict')
+  await verifyCount()
 
-  async function verifyAmount () {
+  async function verifyCount (expected) {
     const query = `
     SELECT *
     FROM transactions

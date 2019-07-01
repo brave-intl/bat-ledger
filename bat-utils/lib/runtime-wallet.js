@@ -341,7 +341,6 @@ Wallet.providers.uphold = {
     const collectingKey = 'active'
     let end = false
     let page = null
-    const memo = []
     let collecting
     try {
       collecting = await cache.getset(collectingKey, '1', null, cacheKey)
@@ -351,14 +350,12 @@ Wallet.providers.uphold = {
 
       const paginator = await uphold.getCardTransactions(BAT_FEE_ACCOUNT, 1, itemsPerPage)
       page = await paginator.getPage(1)
+      let memo = []
       do {
         const { items, itemsPerPage } = page
         const limit = Math.min(itemsPerPage, items.length)
         for (var i = 0; i < limit && !end; i += 1) {
-          const result = await txHandler(items[i], shouldEnd, memo)
-          if (!end) {
-            memo.push(result)
-          }
+          memo = await txHandler(memo, items[i], shouldEnd)
         }
       } while (!end && page.hasNextPage() && (page = await page.getNextPage()))
       return memo
