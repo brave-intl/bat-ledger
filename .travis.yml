@@ -9,6 +9,7 @@ env:
     - "BAT_ADS_PAYOUT_ADDRESS=fb599883-c30c-4428-91be-ba901e69a0b2"
     - "BAT_BALANCE_SERVER=http://localhost:3003"
     - "BAT_EYESHADE_SERVER=http://localhost:3002"
+    - "BAT_FEE_ACCOUNT=7ab330ae-b7a6-4845-8f07-baab68848e4e"
     - "BAT_GRANT_REDIS_URL=redis://localhost:3013"
     - "BAT_GRANT_SERVER=http://localhost:3333"
     - "BAT_LEDGER_SERVER=http://localhost:3001"
