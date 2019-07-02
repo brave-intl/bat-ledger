@@ -1,4 +1,4 @@
-const { insertFromVoting, updateBalances } = require('../lib/transaction.js')
+const { insertFromVoting } = require('../lib/transaction.js')
 const { mixer } = require('../workers/reports.js')
 
 exports.initialize = async (debug, runtime) => {
@@ -12,7 +12,6 @@ exports.workers = {
     , message          :
       { surveyorId  : '...'
       , mix         : false
-      , shouldUpdateBalances: false
       }
     }
 */
@@ -20,7 +19,7 @@ exports.workers = {
     async (debug, runtime, payload) => {
       // FIXME should rework this
       const { postgres } = runtime
-      const { mix, surveyorId, shouldUpdateBalances } = payload
+      const { mix, surveyorId } = payload
 
       const surveyorQ = await postgres.query('select created_at from surveyor_groups where id = $1 limit 1;', [surveyorId])
       if (surveyorQ.rowCount !== 1) {
@@ -73,10 +72,6 @@ exports.workers = {
         await client.query(query2, [surveyorId])
 
         await client.query('COMMIT')
-
-        if (shouldUpdateBalances) {
-          await updateBalances(runtime, client, true)
-        }
       } finally {
         client.release()
       }

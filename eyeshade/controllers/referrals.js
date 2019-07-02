@@ -117,7 +117,7 @@ v1.createReferrals = {
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
       }
 
-      await runtime.queue.send(debug, 'referral-report', { transactionId, shouldUpdateBalances: true })
+      await runtime.queue.send(debug, 'referral-report', { transactionId })
 
       reply({})
     }

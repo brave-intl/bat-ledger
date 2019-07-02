@@ -1,6 +1,8 @@
 'use strict'
 import test from 'ava'
 import getYoutubeChannelId from './youtube'
+import dotenv from 'dotenv'
+dotenv.config()
 
 test.skip('retrieves the youtube channel id for a youtube username', async t => {
   const youtubeUsername = 'SaturdayNightLive'

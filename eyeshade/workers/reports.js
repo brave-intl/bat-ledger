@@ -1,4 +1,7 @@
 const moment = require('moment')
+const {
+  updateBalances
+} = require('../lib/transaction')
 
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
@@ -49,7 +52,7 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
 
   await Promise.all(rows.map(async (row) => {
     const surveyorId = row.id
-    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true, shouldUpdateBalances: true })
+    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
   }))
 }
 
@@ -74,5 +77,11 @@ exports.initialize = async (debug, runtime) => {
 
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
+    updateBalancesContinuously(runtime)
   }
+}
+
+async function updateBalancesContinuously (runtime) {
+  await updateBalances(runtime)
+  setTimeout(() => updateBalancesContinuously(runtime))
 }
