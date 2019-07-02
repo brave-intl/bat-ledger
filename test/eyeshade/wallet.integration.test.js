@@ -22,7 +22,6 @@ const {
   REDIS_URL,
   SENTRY_DSN,
   HEROKU_SLUG_COMMIT,
-  HEROKU_APP_NAME,
   UPHOLD_ACCESS_TOKEN,
   UPHOLD_CLIENT_ID,
   UPHOLD_CLIENT_SECRET,
@@ -43,7 +42,7 @@ const runtime = new Runtime({
   sentry: {
     dsn: SENTRY_DSN || false,
     slug: HEROKU_SLUG_COMMIT || 'test',
-    project: HEROKU_APP_NAME || SERVICE
+    project: 'project'
   },
   wallet: {
     uphold: {
