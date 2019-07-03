@@ -431,6 +431,8 @@ test('common insertion fn', async (t) => {
 
 test('transaction stats', async (t) => {
   const client = await runtime.postgres.connect()
+  const today = new Date('2018-07-30')
+  const tomorrow = new Date('2018-07-31')
   try {
     await insertFromSettlement(runtime, client, contributionSettlement)
     await insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
