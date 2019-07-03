@@ -16,6 +16,5 @@ module.exports = {
 async function stats (runtime, client, options = {}) {
   const { type, start, until } = options
   const { rows } = await client.query(grantStatsQuery, [type, start / 1000, until / 1000])
-  console.log((await client.query(`select * from votes where cohort = $1;`, [type])).rows)
   return rows[0]
 }
