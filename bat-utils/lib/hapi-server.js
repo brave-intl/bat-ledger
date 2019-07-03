@@ -76,12 +76,6 @@ const Server = async (options, runtime) => {
     })
   }
 
-  server.route({
-    method: 'GET',
-    path: '/isup',
-    handler: (request, reply) => reply('ack.')
-  })
-
   if (runtime.prometheus) {
     await new Promise((resolve, reject) => {
       try {
