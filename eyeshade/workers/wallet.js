@@ -83,50 +83,59 @@ exports.initialize = async (debug, runtime) => {
   ])
 }
 
+function executeTransaction (fn) {
+  return async (debug, runtime, payload) => {
+    const client = await runtime.postgres.connect()
+    try {
+      await client.query('BEGIN')
+      const res = await fn(debug, runtime, client, payload)
+      await client.query('COMMIT')
+      return res
+    } catch (e) {
+      runtime.captureException(e)
+      await client.query('ROLLBACK')
+      throw e
+    } finally {
+      client.release()
+    }
+  }
+}
+
 exports.workers = {
 /* sent by eyeshade GET /v1/accounts/collect-fees
 
   { queue: 'fees-report'
   , message:
-    { itemLimit: 100
+    { itemLimit: -1
     }
   }
   */
   'fees-report':
-    async (debug, runtime, payload) => {
-      const client = await runtime.postgres.connect()
+    executeTransaction(async (debug, runtime, client, payload) => {
       const {
         itemLimit = -1
       } = payload
-      try {
-        const latestFeeTransaction = await getLatestFeeTx(client)
-        const list = await runtime.wallet.getFees(async (memo, transaction, end) => {
-          if ((itemLimit !== -1 && memo.length === itemLimit) ||
-              (new Date(transaction.createdAt) < latestFeeTransaction.createdAt)) {
-            end()
-            return memo
-          }
-          try {
-            await insertUpholdTx(client, transaction)
-          } catch (e) {
-            if (!errors.isConflict(e)) {
-              throw e
-            }
-            return memo
-          }
-          memo.push(transaction)
+      const latestFeeTransaction = await getLatestFeeTx(client)
+      const list = await runtime.wallet.getFees(async (memo, transaction, end) => {
+        if ((itemLimit !== -1 && memo.length === itemLimit) ||
+            (new Date(transaction.createdAt) < latestFeeTransaction.createdAt)) {
+          end()
           return memo
-        })
-        debug('fees inserted', list.length)
-        return list
-      } catch (e) {
-        debug(e)
-        runtime.captureException(e)
-        throw e
-      } finally {
-        client.release()
-      }
-    },
+        }
+        try {
+          await insertUpholdTx(client, transaction)
+        } catch (e) {
+          if (!errors.isConflict(e)) {
+            throw e
+          }
+          return memo
+        }
+        memo.push(transaction)
+        return memo
+      })
+      debug('fees inserted', list.length)
+      return list
+    }),
 
   /* sent by ledger POST /v1/registrar/persona/{personaId}
 
