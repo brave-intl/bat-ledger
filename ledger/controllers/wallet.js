@@ -1,4 +1,5 @@
 const BigNumber = require('bignumber.js')
+const uuidV5 = require('uuid/v5')
 const Joi = require('@hapi/joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
@@ -752,10 +753,12 @@ module.exports.initialize = async (debug, runtime) => {
         providerId: '',
 
         timestamp: bson.Timestamp.ZERO,
+        userCardId: '',
         grants: []
       },
       unique: [ { paymentId: 1 } ],
       others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 },
+        { userCardId: 1 },
         { providerId: 1, 'grants.promotionId': 1 }
       ]
     },
@@ -818,10 +821,11 @@ function claimWalletHandler (runtime) {
     const { postedTx } = await runtime.wallet.submitTx(wallet, txn, signedTx, false)
     const {
       type,
+      CardId: userCardId,
       isMember,
       node = { user: { id: '' } }
     } = postedTx.destination
-    const memberId = node.user.id
+    const memberId = uuidV5(node.user.id, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
 
     // check that where the transfer is going to is a card, that belongs to a member
     if (type !== 'card' || !isMember || !memberId) {
@@ -858,7 +862,14 @@ function claimWalletHandler (runtime) {
       if (!member) {
         return reply(boom.conflict())
       }
-      await wallets.update({ paymentId }, { $set: { memberId } })
+      await wallets.update({
+        paymentId
+      }, {
+        $set: {
+          userCardId,
+          memberId
+        }
+      })
       await runtime.wallet.submitTx(wallet, txn, signedTx, true)
     }
     return reply({})
