@@ -319,7 +319,9 @@ const write = function (runtime, apiVersion) {
     }
 
     if (!result) {
-      result = await runtime.wallet.submitTx(wallet, txn, signedTx, true)
+      result = await runtime.wallet.submitTx(wallet, txn, signedTx, {
+        commit: true
+      })
     }
     totalFee = result.fee
 
@@ -818,7 +820,9 @@ function claimWalletHandler (runtime) {
       destinationValidator: braveJoi.string().guid(),
       minimum: 0.001
     })
-    const { postedTx } = await runtime.wallet.submitTx(wallet, txn, signedTx, false)
+    const { postedTx } = await runtime.wallet.submitTx(wallet, txn, signedTx, {
+      commit: false
+    })
     const {
       type,
       CardId: userCardId,
@@ -870,7 +874,9 @@ function claimWalletHandler (runtime) {
           memberId
         }
       })
-      await runtime.wallet.submitTx(wallet, txn, signedTx, true)
+      await runtime.wallet.submitTx(wallet, txn, signedTx, {
+        commit: true
+      })
     }
     return reply({})
   }
