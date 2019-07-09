@@ -27,8 +27,6 @@ function cooldownOffset (hours = defaultCooldownHrs()) {
 
 async function adsGrantsAvailable (code) {
   const list = await adsAvailableList
-  console.log("ads list: " + list)
-  console.log("geo header: " + code)
   return list.includes(code)
 }
 
