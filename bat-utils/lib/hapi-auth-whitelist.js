@@ -40,7 +40,9 @@ exports.ipaddr = (request) => {
   const forwardedFor = headers['x-forwarded-for']
   if (forwardedFor) {
     const forwardedIps = forwardedFor.split(',')
+    console.log(forwardedIps)
     const shift = forwardedIPShift()
+    console.log(shift)
     const target = forwardedIps[forwardedIps.length - shift]
     return target.trim() || request.info.remoteAddress
   } else {
