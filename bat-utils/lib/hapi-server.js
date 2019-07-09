@@ -202,11 +202,8 @@ const Server = async (options, runtime) => {
             isSecure: runtime.login.github.isSecure,
             forceHttps: runtime.login.github.isSecure,
             scope: ['user:email', 'read:org'],
-            location: runtime.server
+            location: 'https://' + process.env.HOST
           })
-
-          console.log('HOST: ' + process.env.HOST)
-          console.log('location: ' + runtime.server)
 
           debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
 
