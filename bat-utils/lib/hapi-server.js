@@ -205,6 +205,9 @@ const Server = async (options, runtime) => {
             location: runtime.server
           })
 
+          console.log('HOST: ' + process.env.HOST)
+          console.log('location: ' + runtime.server)
+
           debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
 
           server.auth.strategy('session', 'cookie', {
