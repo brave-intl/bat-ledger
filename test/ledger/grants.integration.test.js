@@ -215,11 +215,11 @@ test('claim grants with attestations', async (t) => {
     }
   })
 
-  // claim grant should fail
+  // claim grant should fail (wrong providerId)
   await ledgerAgent
     .put(`/v3/grants/${wrongPaymentId}`)
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .set('Fastly-GeoIP-CountryCode', 'ZZ')
+    .set('Fastly-GeoIP-CountryCode', 'US')
     .send({ promotionId: adPromotionId })
     .expect(410)
 
@@ -245,15 +245,15 @@ test('claim grants with attestations', async (t) => {
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .set('Fastly-GeoIP-CountryCode', 'AA')
+    .set('Fastly-GeoIP-CountryCode', 'JA')
     .expect(ok)
 
-  // get available grant - check for ad precidence
+  // get available grant - check available in ads region (US)
   ;({ body } = await ledgerAgent
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .set('Fastly-GeoIP-CountryCode', 'ZZ')
+    .set('Fastly-GeoIP-CountryCode', 'US')
     .expect(ok))
 
   t.deepEqual(outsideBoundsBody, body, 'ads are available outside of countries')
@@ -278,11 +278,11 @@ test('claim grants with attestations', async (t) => {
     }
   })
 
-  // claim ad grant
+  // claim ad grant - works in ads region
   response = await ledgerAgent
     .put(`/v3/grants/${paymentId}`)
     .set({
-      'Fastly-GeoIP-CountryCode': 'ZZ',
+      'Fastly-GeoIP-CountryCode': 'US',
       'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN
     })
     .send({ promotionId: adPromotionId })
@@ -318,12 +318,40 @@ test('claim grants with attestations', async (t) => {
     }
   })
 
-  // claim ugp grant
+  // get available grant - android ugp grant not available in ads region (US)
+  await ledgerAgent
+    .get('/v5/grants')
+    .query({ paymentId, bypassCooldown })
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-CountryCode', 'US')
+    .expect(404)
+
+  // get available grant - android ugp grant is available in non-ads region (JA)
+  ;({ body } = await ledgerAgent
+    .get('/v5/grants')
+    .query({ paymentId, bypassCooldown })
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-CountryCode', 'JA')
+    .expect(ok))
+
+  t.is(body.type, 'android')
+
+  // claim ugp grant - fails in ads region
+  await ledgerAgent
+    .put(`/v3/grants/${paymentId}`)
+    .set({
+      'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN,
+      'Fastly-GeoIP-CountryCode': 'US'
+    })
+    .send({ promotionId })
+    .expect(400)
+
+  // claim ugp grant - succeeds in non-ads region
   response = await ledgerAgent
     .put(`/v3/grants/${paymentId}`)
     .set({
       'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN,
-      'Fastly-GeoIP-CountryCode': 'ZZ'
+      'Fastly-GeoIP-CountryCode': 'JA'
     })
     .send({ promotionId })
     .expect(ok)
