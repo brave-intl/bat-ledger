@@ -219,7 +219,7 @@ test('claim grants with attestations', async (t) => {
   await ledgerAgent
     .put(`/v3/grants/${wrongPaymentId}`)
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .set('Fastly-GeoIP-Country-Code', 'ZZ')
+    .set('Fastly-GeoIP-CountryCode', 'ZZ')
     .send({ promotionId: adPromotionId })
     .expect(410)
 
@@ -245,7 +245,7 @@ test('claim grants with attestations', async (t) => {
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .set('Fastly-GeoIP-Country-Code', 'AA')
+    .set('Fastly-GeoIP-CountryCode', 'AA')
     .expect(ok)
 
   // get available grant - check for ad precidence
@@ -253,7 +253,7 @@ test('claim grants with attestations', async (t) => {
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
-    .set('Fastly-GeoIP-Country-Code', 'ZZ')
+    .set('Fastly-GeoIP-CountryCode', 'ZZ')
     .expect(ok))
 
   t.deepEqual(outsideBoundsBody, body, 'ads are available outside of countries')
@@ -282,7 +282,7 @@ test('claim grants with attestations', async (t) => {
   response = await ledgerAgent
     .put(`/v3/grants/${paymentId}`)
     .set({
-      'Fastly-GeoIP-Country-Code': 'ZZ',
+      'Fastly-GeoIP-CountryCode': 'ZZ',
       'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN
     })
     .send({ promotionId: adPromotionId })
@@ -323,7 +323,7 @@ test('claim grants with attestations', async (t) => {
     .put(`/v3/grants/${paymentId}`)
     .set({
       'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN,
-      'Fastly-GeoIP-Country-Code': 'ZZ'
+      'Fastly-GeoIP-CountryCode': 'ZZ'
     })
     .send({ promotionId })
     .expect(ok)
