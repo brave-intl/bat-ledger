@@ -252,7 +252,7 @@ const getGrant = (protocolVersion) => (runtime) => {
         continue
       } else if (type === 'ugp' && protocolVersion === 3) { // hack - skip desktop ugp grants for v3 endpoint
         continue
-      } else if (type === 'ugp' && adsAvailable) {
+      } else if ((type === 'ugp' || type === 'android') && adsAvailable) { // only make ugp / android grants available in non-ads regions
         continue
       }
       const counted = await grants.count(query)
@@ -452,7 +452,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
     if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
 
-    if (adsAvailable && (!promotion.type || promotion.type === 'ugp')) {
+    if (adsAvailable && (!promotion.type || promotion.type === 'ugp' || promotion.type === 'android')) {
       return reply(boom.badRequest('claim from this area is not allowed'))
     }
 

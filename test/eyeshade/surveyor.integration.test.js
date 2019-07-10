@@ -45,6 +45,7 @@ test('verify frozen occurs when daily is run', async t => {
   t.plan(12)
   let body
 
+  // FIXME sometimes hangs
   await createSurveyor()
   // just made value
   ;({ body } = await getSurveyor())
