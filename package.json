@@ -65,7 +65,7 @@
     "@hapi/joi": "^15.0.3",
     "@octokit/rest": "^15.5.1",
     "@sentry/node": "^4.6.6",
-    "@uphold/uphold-sdk-javascript": "^2.2.1",
+    "@uphold/uphold-sdk-javascript": "github:brave-intl/uphold-sdk-javascript#bump-lodash-merge",
     "accept-language-parser": "1.4.1",
     "bat-publisher": "^2.0.24",
     "bat-utils": "file:./bat-utils",
