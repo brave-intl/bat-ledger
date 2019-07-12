@@ -46,9 +46,21 @@ async function getAdsAvailableList () {
   }
 }
 
-function getCohort (grants, ids) {
+function getCohort (grants, ids, availableCohorts) {
   const targetGrant = _.find(grants, ({ grantId }) => ids.includes(grantId))
-  const defaultCohortType = 'grant'
-  const { type: targetGrantType } = targetGrant
-  return targetGrantType === 'ugp' ? defaultCohortType : (targetGrantType || defaultCohortType)
+  let { type: targetGrantType } = targetGrant
+
+  let cohort = 'grant'
+  if (targetGrantType) {
+    if (targetGrantType === 'android') {
+      targetGrantType = 'safetynet'
+    }
+    // we've already executed the transfer so we must succeed at this point
+    // using the grant cohort is better than erroring
+    if (availableCohorts.includes(targetGrantType)) {
+      cohort = targetGrantType
+    }
+  }
+
+  return cohort
 }

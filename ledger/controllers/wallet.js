@@ -329,7 +329,7 @@ const write = function (runtime, apiVersion) {
 
     if (grantIds) { // some grants were redeemed
       await markGrantsAsRedeemed(grantIds)
-      grantCohort = getCohort(wallet.grants, grantIds)
+      grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
       let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
 
       if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
