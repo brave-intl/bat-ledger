@@ -33,7 +33,7 @@
     "lint-fix": "npm run lint -- --fix",
     "security": "npm run lint && npm audit",
     "test-integration": "ava -v -s test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
-    "test-unit": "ava -v bat-utils/**/*.test.js",
+    "test-unit": "ava -v bat-utils/**/*.test.js ledger/**/*.test.js",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockerservices",
@@ -42,7 +42,7 @@
     "docker-migrate-up": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -w /usr/src/app/eyeshade eyeshade-worker ./bin/migrate-up.sh",
     "docker-migrate-down": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -w /usr/src/app/eyeshade eyeshade-worker ./bin/migrate-down.sh",
     "docker-migrate-down-all": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -w /usr/src/app/eyeshade eyeshade-worker bash ./bin/migrate-down-all.sh",
-    "docker-log-detached": "declare -a array=(\"$npm_package_config_dockerservices\"); { for item in $array; do echo ${item} && docker logs ${item}; done }",
+    "docker-log-detached": "docker-compose logs",
     "postinstall": "test -e .git && { for file in `ls .git-hooks`; do ln -sf ../../.git-hooks/${file} .git/hooks/${file}; done } || true"
   },
   "config": {
