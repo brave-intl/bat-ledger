@@ -26,7 +26,13 @@ function Prometheus (config, runtime) {
   const timeout = 10000
   this.timeout = timeout
   setInterval(() => this.maintenance(), timeout)
-  process.on('exit', () => this.quit())
+  process.on('exit', () => {
+    try {
+      this.quit()
+    } catch (e) {
+      this.runtime.captureException(e)
+    }
+  })
   // scope it to the process
   registerMetricsPerProcess(this)
   registerMetricsPerProcess = _.noop
@@ -51,13 +57,12 @@ Prometheus.prototype.quit = function () {
   const { publisher, subscriber } = caches
   clearInterval(interval)
   if (publisher) {
-    publisher.cache.quit()
+    publisher.quit()
   }
   if (subscriber) {
-    const { cache } = subscriber
-    cache.del(this.listenerId)
-    cache.unsubscribe()
-    cache.quit()
+    subscriber.del(this.listenerId)
+    subscriber.unsubscribe()
+    subscriber.quit()
   }
 }
 
