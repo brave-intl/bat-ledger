@@ -35,7 +35,6 @@ SELECT
 FROM votes, (
   SELECT id, price
   FROM surveyor_groups
-  WHERE NOT surveyor_groups.frozen
 ) surveyor
 WHERE
     votes.surveyor_id = surveyor.id
