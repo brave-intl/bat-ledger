@@ -141,11 +141,11 @@ Wallet.prototype.unsignedTx = async function (info, amount, currency, balance) {
   return f.bind(this)(info, amount, currency, balance)
 }
 
-Wallet.prototype.submitTx = async function (info, txn, signature, confirm) {
+Wallet.prototype.submitTx = async function (info, txn, signature, options) {
   const f = Wallet.providers[info.provider].submitTx
 
   if (!f) throw new Error('provider ' + info.provider + ' submitTx not supported')
-  return f.bind(this)(info, txn, signature, confirm)
+  return f.bind(this)(info, txn, signature, options)
 }
 
 Wallet.prototype.ping = async function (provider) {
