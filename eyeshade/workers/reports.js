@@ -82,6 +82,11 @@ exports.initialize = async (debug, runtime) => {
 }
 
 async function updateBalancesContinuously (runtime) {
+  const startTime = new Date()
   await updateBalances(runtime)
-  setTimeout(() => updateBalancesContinuously(runtime))
+  const endTime = new Date()
+  const MIN = 60 * 1000
+  const delta = endTime - startTime
+  const nextUpdate = Math.max(MIN, delta)
+  setTimeout(() => updateBalancesContinuously(runtime), nextUpdate)
 }
