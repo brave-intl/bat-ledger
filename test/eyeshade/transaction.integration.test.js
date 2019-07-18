@@ -5,6 +5,7 @@ import uuidV4 from 'uuid/v4'
 import { createdTimestamp } from 'bat-utils/lib/extras-utils'
 import { Runtime } from 'bat-utils'
 import {
+  stats,
   knownChains,
   insertTransaction,
   insertUserDepositFromChain,
@@ -426,4 +427,35 @@ test('common insertion fn', async (t) => {
   }]
   t.deepEqual(expectedResults, txs, `transactions are inserted`)
   await client.release()
+})
+
+test('transaction stats', async (t) => {
+  const client = await runtime.postgres.connect()
+  const today = new Date('2018-07-30')
+  const tomorrow = new Date('2018-07-31')
+  try {
+    await insertFromSettlement(runtime, client, contributionSettlement)
+    await insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
+      settlementId: uuidV4()
+    }))
+    const contributionStats = await stats(runtime, client, {
+      type: 'contribution_settlement',
+      start: today,
+      until: tomorrow
+    })
+    t.is(19, +contributionStats.amount, 'contributions are summed')
+
+    await insertFromSettlement(runtime, client, referralSettlement)
+    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+      settlementId: uuidV4()
+    }))
+    const referralStats = await stats(runtime, client, {
+      type: 'referral_settlement',
+      start: today,
+      until: tomorrow
+    })
+    t.is(20, +referralStats.amount, 'referrals are summed')
+  } finally {
+    client.release()
+  }
 })
