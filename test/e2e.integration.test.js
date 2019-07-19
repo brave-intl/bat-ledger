@@ -88,7 +88,6 @@ test('check endpoint is up with no authorization', async (t) => {
 
 test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   // Create surveyors
-  const probi12 = (new BigNumber(12)).times(1e18).toString()
   const surveyorId = (await createSurveyor({ rate: 1, votes: 12 })).body.surveyorId
 
   // Create user wallet
@@ -106,8 +105,8 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     anyFunds: 1,
     contributed: 1,
     created: justDate(new Date()),
-    walletProviderBalance: '12000000000000000000',
-    walletProviderFunded: 1,
+    walletProviderBalance: '0',
+    walletProviderFunded: 0,
     wallets: 1
   }])
 
@@ -166,8 +165,8 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     anyFunds: 1,
     contributed: 1,
     created: justDate(new Date()),
-    walletProviderBalance: probi12,
-    walletProviderFunded: 1,
+    walletProviderBalance: '0',
+    walletProviderFunded: 0,
     wallets: 1
   }], 'ensure the created contributions are reflected in stats endpoint')
 
@@ -475,8 +474,8 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
     anyFunds: 1,
     contributed: 1,
     created: justDate(new Date()),
-    walletProviderBalance: '12000000000000000000',
-    walletProviderFunded: 1,
+    walletProviderBalance: '0',
+    walletProviderFunded: 0,
     wallets: 1
   }])
 
@@ -510,26 +509,25 @@ test('wallets can be claimed by verified members', async (t) => {
   const anonCardInfo2 = await createAndFundUserWallet()
   const anonCardInfo3 = await createAndFundUserWallet()
   const anonCardInfo4 = await createAndFundUserWallet()
-  const body = {
-    destination: process.env.BAT_SETTLEMENT_ADDRESS,
-    denomination: {
-      currency: 'BAT',
-      // amount should be same for this example
-      amount: anonCardInfo1.amount
-    }
-  }
+  const settlement = process.env.BAT_SETTLEMENT_ADDRESS
 
-  await claimCard(anonCardInfo1)
-  await claimCard(anonCardInfo2)
-  await claimCard(anonCardInfo3)
-  await claimCard(anonCardInfo4, 409)
+  await claimCard(anonCardInfo1, settlement)
+  await claimCard(anonCardInfo2, anonCardInfo1.providerId)
+  await claimCard(anonCardInfo3, anonCardInfo2.providerId)
+  await claimCard(anonCardInfo4, anonCardInfo3.providerId, 409)
 
   // redundant calls are fine
-  await claimCard(anonCardInfo1)
-  // // claiming someone elses claimed card results in error
-  // await claimCard(anonCardInfo1, 409)
+  await claimCard(anonCardInfo1, settlement)
 
-  async function claimCard (anonCard, code = 200) {
+  async function claimCard (anonCard, destination, code = 200) {
+    const body = {
+      destination,
+      denomination: {
+        currency: 'BAT',
+        // amount should be same for this example
+        amount: anonCardInfo1.amount
+      }
+    }
     const signedTx = signTxn(anonCard.keypair, body)
     await ledgerAgent
       .post(`/v2/wallet/${anonCard.paymentId}/claim`)
@@ -762,6 +760,8 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   err = ok(response)
   if (err) throw err
 
+  const balanceBefore = new BigNumber(await getLedgerBalance(paymentId))
+
   t.is(Number(response.body.unsignedTx.denomination.amount), Number(txAmount))
   const { rates } = response.body
   t.true(_.isObject(rates))
@@ -785,7 +785,8 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   })
   const { unsignedTx } = response.body
   const { denomination, destination } = unsignedTx
-  const { currency } = denomination
+  const { currency, amount } = denomination
+
   const tooLowPayload = createPayload({
     destination,
     denomination: {
@@ -798,7 +799,19 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
     .send(tooLowPayload)
     .expect(416)
 
-  const justRightPayload = createPayload(response.body.unsignedTx)
+  const notSettlementAddressPayload = createPayload({
+    destination: uuidV4(),
+    denomination: {
+      amount,
+      currency
+    }
+  })
+  await ledgerAgent
+    .put('/v2/wallet/' + paymentId)
+    .send(notSettlementAddressPayload)
+    .expect(422)
+
+  const justRightPayload = createPayload(unsignedTx)
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
     if (response.status === 503) {
@@ -811,11 +824,25 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   err = ok(response)
   if (err) throw err
 
+  const balanceAfter = new BigNumber(await getLedgerBalance(paymentId))
+  t.true(balanceBefore.greaterThan(balanceAfter))
+  t.is(0, +balanceAfter.toString())
+
   t.false(response.body.hasOwnProperty('satoshis'))
   t.true(response.body.hasOwnProperty('altcurrency'))
   t.true(response.body.hasOwnProperty('probi'))
 
   return justRightPayload
+}
+
+async function getLedgerBalance (paymentId) {
+  const { body } = await ledgerAgent
+    .get(`/v2/wallet/${paymentId}`)
+    .query({
+      refresh: true
+    })
+    .expect(ok)
+  return body.probi
 }
 
 function setupCreatePayload ({

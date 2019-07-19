@@ -88,7 +88,7 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
     destinationValidator = Joi.string().valid(this.config.settlementAddress['BAT'])
   } = options
   const bigMinimum = new BigNumber(minimum)
-  if (bigMinimum.lessThanOrEqualTo(0)) {
+  if (bigMinimum.lessThan(0)) {
     throw new Error('minimum must be greater than 0')
   }
 

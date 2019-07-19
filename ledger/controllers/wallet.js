@@ -755,24 +755,22 @@ module.exports.initialize = async (debug, runtime) => {
         providerId: '',
 
         timestamp: bson.Timestamp.ZERO,
-        userCardId: '',
         grants: []
       },
       unique: [ { paymentId: 1 } ],
       others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 },
-        { userCardId: 1 },
         { providerId: 1, 'grants.promotionId': 1 }
       ]
     },
     {
       category: runtime.database.get('members', debug),
       name: 'members',
-      property: 'memberId',
+      property: 'providerLinkingId',
       empty: {
-        memberId: '',
+        providerLinkingId: '',
         paymentIds: []
       },
-      unique: [ { memberId: 1 } ],
+      unique: [ { providerLinkingId: 1 } ],
       others: [ { paymentIds: 1 } ]
     },
     {
@@ -818,38 +816,38 @@ function claimWalletHandler (runtime) {
 
     const txn = runtime.wallet.validateTxSignature(wallet, signedTx, {
       destinationValidator: braveJoi.string().guid(),
-      minimum: 0.001
+      minimum: 0
     })
     const { postedTx } = await runtime.wallet.submitTx(wallet, txn, signedTx, {
       commit: false
     })
     const {
       type,
-      CardId: userCardId,
       isMember,
       node = { user: { id: '' } }
     } = postedTx.destination
-    const memberId = uuidV5(node.user.id, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
+    const userId = node.user.id
 
     // check that where the transfer is going to is a card, that belongs to a member
-    if (type !== 'card' || !isMember || !memberId) {
+    if (type !== 'card' || !isMember || !userId) {
       return reply(boom.forbidden())
     }
+    const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
     // if wallet has already been claimed, don't tie wallet to member id
-    if (wallet.memberId) {
+    if (wallet.providerLinkingId) {
       // Check if the member matches the associated member
-      if (memberId !== wallet.memberId) {
+      if (providerLinkingId !== wallet.providerLinkingId) {
         return reply(boom.forbidden())
       }
     } else {
-      await members.update({ memberId }, {
+      await members.update({ providerLinkingId }, {
         $set: {
-          memberId
+          providerLinkingId
         }
       }, { upsert: true })
       // Attempt to associate the paymentId with the member, enforcing max associations no more than 3
       const member = await members.findOneAndUpdate({
-        memberId,
+        providerLinkingId,
         $expr: {
           $lt: [{
             $size: {
@@ -862,7 +860,7 @@ function claimWalletHandler (runtime) {
           paymentIds: paymentId
         }
       })
-      // If association worked, perform reverse association, memberId with wallet
+      // If association worked, perform reverse association, providerLinkingId with wallet
       if (!member) {
         return reply(boom.conflict())
       }
@@ -870,8 +868,7 @@ function claimWalletHandler (runtime) {
         paymentId
       }, {
         $set: {
-          userCardId,
-          memberId
+          providerLinkingId
         }
       })
       await runtime.wallet.submitTx(wallet, txn, signedTx, {
