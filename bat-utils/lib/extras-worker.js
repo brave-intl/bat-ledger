@@ -32,9 +32,10 @@ const Worker = async (options, runtime) => {
 
   const router = async (module) => {
     let {
-      workers,
+      workers: originals,
       name
     } = module
+    let workers = underscore.mapObject(originals, instrumentWorker(runtime))
 
     const register = async (queue) => {
       if (entries[queue]) return debug('duplicate worker ' + queue)
@@ -101,3 +102,36 @@ const Worker = async (options, runtime) => {
 }
 
 module.exports = Worker
+
+function instrumentWorker (runtime) {
+  return (handler, key) => {
+    const { prometheus } = runtime
+    const { client, register } = prometheus
+    const name = `${key}_worker_buckets_milliseconds`
+    const help = `${key} worker duration buckets in milliseconds`
+    const labelNames = ['erred']
+    const buckets = prometheus.exponentialBuckets()
+    const workerBucketsMilliseconds = new client.Histogram({
+      name,
+      help,
+      labelNames,
+      buckets
+    })
+    register.registerMetric(workerBucketsMilliseconds)
+
+    return async (debug, runtime, payload) => {
+      let erred = false
+      const end = prometheus.timedRequest(name)
+      try {
+        await handler(debug, runtime, payload)
+      } catch (e) {
+        erred = true
+        throw e
+      } finally {
+        end({
+          erred
+        })
+      }
+    }
+  }
+}
