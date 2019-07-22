@@ -1,4 +1,5 @@
 const BigNumber = require('bignumber.js')
+const uuidV5 = require('uuid/v5')
 const Joi = require('@hapi/joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
@@ -318,7 +319,9 @@ const write = function (runtime, apiVersion) {
     }
 
     if (!result) {
-      result = await runtime.wallet.submitTx(wallet, txn, signedTx)
+      result = await runtime.wallet.submitTx(wallet, txn, signedTx, {
+        commit: true
+      })
     }
     totalFee = result.fee
 
@@ -700,11 +703,30 @@ v1.walletGrantsInfo = {
   }
 }
 
+/*
+  POST /v2/wallet/{paymentId}/claim
+*/
+
+v2.claimWallet = {
+  handler: claimWalletHandler,
+  description: 'Claim anonymous wallets',
+  tags: ['api'],
+  validate: {
+    payload: Joi.object().keys({
+      signedTx: Joi.required().description('signed transaction')
+    })
+  },
+  response: {
+    schema: Joi.object().length(0)
+  }
+}
+
 module.exports.compositeGrants = compositeGrants
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/grants/{type}').config(v1.walletGrantsInfo),
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
+  braveHapi.routes.async().post().path('/v2/wallet/{paymentId}/claim').config(v2.claimWallet),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
@@ -741,6 +763,17 @@ module.exports.initialize = async (debug, runtime) => {
       ]
     },
     {
+      category: runtime.database.get('members', debug),
+      name: 'members',
+      property: 'providerLinkingId',
+      empty: {
+        providerLinkingId: '',
+        paymentIds: []
+      },
+      unique: [ { providerLinkingId: 1 } ],
+      others: [ { paymentIds: 1 } ]
+    },
+    {
       category: runtime.database.get('viewings', debug),
       name: 'viewings',
       property: 'viewingId',
@@ -765,6 +798,85 @@ module.exports.initialize = async (debug, runtime) => {
 
   await runtime.queue.create('contribution-report')
   await runtime.queue.create('wallet-report')
+}
+
+function claimWalletHandler (runtime) {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const { params, payload } = request
+    const { signedTx } = payload
+    const { paymentId } = params
+    const wallets = runtime.database.get('wallets', debug)
+    const members = runtime.database.get('members', debug)
+
+    const wallet = await wallets.findOne({ paymentId })
+    if (!wallet) {
+      return reply(boom.notFound())
+    }
+
+    const txn = runtime.wallet.validateTxSignature(wallet, signedTx, {
+      destinationValidator: braveJoi.string().guid(),
+      minimum: 0
+    })
+    const { postedTx } = await runtime.wallet.submitTx(wallet, txn, signedTx, {
+      commit: false
+    })
+    const {
+      type,
+      isMember,
+      node = { user: { id: '' } }
+    } = postedTx.destination
+    const userId = node.user.id
+
+    // check that where the transfer is going to is a card, that belongs to a member
+    if (type !== 'card' || !isMember || !userId) {
+      return reply(boom.forbidden())
+    }
+    const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
+    // if wallet has already been claimed, don't tie wallet to member id
+    if (wallet.providerLinkingId) {
+      // Check if the member matches the associated member
+      if (providerLinkingId !== wallet.providerLinkingId) {
+        return reply(boom.forbidden())
+      }
+    } else {
+      await members.update({ providerLinkingId }, {
+        $set: {
+          providerLinkingId
+        }
+      }, { upsert: true })
+      // Attempt to associate the paymentId with the member, enforcing max associations no more than 3
+      const member = await members.findOneAndUpdate({
+        providerLinkingId,
+        $expr: {
+          $lt: [{
+            $size: {
+              $ifNull: ['$paymentIds', []]
+            }
+          }, 3]
+        }
+      }, {
+        $push: {
+          paymentIds: paymentId
+        }
+      })
+      // If association worked, perform reverse association, providerLinkingId with wallet
+      if (!member) {
+        return reply(boom.conflict())
+      }
+      await wallets.update({
+        paymentId
+      }, {
+        $set: {
+          providerLinkingId
+        }
+      })
+      await runtime.wallet.submitTx(wallet, txn, signedTx, {
+        commit: true
+      })
+    }
+    return reply({})
+  }
 }
 
 function walletGrantsInfoHandler (runtime) {
