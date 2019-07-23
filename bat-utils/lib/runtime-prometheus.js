@@ -23,6 +23,9 @@ function Prometheus (config, runtime) {
   this.shared = {}
   this.listenerId = `${listenerPrefix}${this.config.label}`
 
+  const defaultLabels = { dyno: this.config.label }
+  this.register.setDefaultLabels(defaultLabels)
+
   const timeout = 10000
   this.timeout = timeout
   setInterval(() => this.maintenance(), timeout)

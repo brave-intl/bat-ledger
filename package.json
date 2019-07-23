@@ -103,7 +103,7 @@
     "node-anonize2-relic": "0.1.6",
     "node-slack": "0.0.7",
     "pg": "^7.9.0",
-    "prom-client": "10.2.2",
+    "prom-client": "11.5.3",
     "proxy-agent": "^2.3.1",
     "redis": "^2.8.0",
     "rsmq": "^0.8.2",
