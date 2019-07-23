@@ -512,20 +512,22 @@ test('wallets can be claimed by verified members', async (t) => {
   const settlement = process.env.BAT_SETTLEMENT_ADDRESS
 
   await claimCard(anonCardInfo1, settlement)
+  await claimCard(anonCardInfo2, anonCardInfo1.providerId, 200, '0')
   await claimCard(anonCardInfo2, anonCardInfo1.providerId)
   await claimCard(anonCardInfo3, anonCardInfo2.providerId)
   await claimCard(anonCardInfo4, anonCardInfo3.providerId, 409)
 
   // redundant calls are fine
+  await claimCard(anonCardInfo1, settlement, 200, '0')
   await claimCard(anonCardInfo1, settlement)
 
-  async function claimCard (anonCard, destination, code = 200) {
+  async function claimCard (anonCard, destination, code = 200, amount = anonCardInfo1.amount) {
     const body = {
       destination,
       denomination: {
         currency: 'BAT',
         // amount should be same for this example
-        amount: anonCardInfo1.amount
+        amount
       }
     }
     const signedTx = signTxn(anonCard.keypair, body)
