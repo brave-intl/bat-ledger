@@ -65,11 +65,26 @@ test('verify frozen occurs when daily is run', async t => {
 })
 
 async function tryFreeze (t, dayShift, expect, surveyorId) {
+  const { rows: beforeFrozenSurveyors } = await querySurveyor(surveyorId)
+  const beforeSurveyor = beforeFrozenSurveyors[0]
+  const {
+    created_at: beforeCreatedAt,
+    updated_at: beforeUpdatedAt
+  } = beforeSurveyor
+  t.is(beforeCreatedAt.toISOString(), beforeUpdatedAt.toISOString(), 'before freeze timestamps should be the same')
   await freezeOldSurveyors(debug, runtime, dayShift)
-  // beware of cursor
-  const surveyor = await querySurveyor(surveyorId)
-  t.is(surveyor.rowCount, 1)
-  t.is(surveyor.rows[0].frozen, expect)
+  const { rows: afterFrozenSurveyors } = await querySurveyor(surveyorId)
+  const afterSurveyor = afterFrozenSurveyors[0]
+  const {
+    frozen,
+    created_at: afterCreatedAt,
+    updated_at: afterUpdatedAt
+  } = afterSurveyor
+  t.is(afterFrozenSurveyors.length, 1, 'only one surveyor should be returned')
+  t.is(frozen, expect, 'surveyors should be frozen')
+  if (expect) {
+    t.not(afterCreatedAt.toISOString(), afterUpdatedAt.toISOString(), 'updated at should be different after freeze')
+  }
 }
 
 function querySurveyor (surveyorId) {
