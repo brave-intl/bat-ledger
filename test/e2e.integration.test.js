@@ -517,9 +517,9 @@ test('wallets can be claimed by verified members', async (t) => {
   await claimCard(anonCardInfo3, anonCardInfo2.providerId)
   await claimCard(anonCardInfo4, anonCardInfo3.providerId, 409)
 
-  // redundant calls are fine
-  await claimCard(anonCardInfo1, settlement, 200, '0')
-  await claimCard(anonCardInfo1, settlement)
+  // redundant calls are fine if they do not try to transfer an amount
+  await claimCard(anonCardInfo3, settlement, 200, '0')
+  await claimCard(anonCardInfo3, settlement, 500)
 
   async function claimCard (anonCard, destination, code = 200, amount = anonCardInfo1.amount) {
     const body = {
