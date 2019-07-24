@@ -99,7 +99,7 @@ const read = function (runtime, apiVersion) {
 
       underscore.extend(result, {
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
-        cardBalance: balances.cardBalance.toString(),
+        cardBalance: new BigNumber(balances.cardBalance).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toString(),
         probi: balances.confirmed.toString(),
         unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
       })
