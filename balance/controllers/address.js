@@ -65,7 +65,7 @@ v2.walletBalance =
       fresh = true
     }
 
-    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants'])
+    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'cardBalance', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants'])
 
     reply(balances)
 
