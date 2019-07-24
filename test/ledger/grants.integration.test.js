@@ -362,7 +362,7 @@ test('claim grants with attestations', async (t) => {
     probi: '30000000000000000000'
   }])
 
-  async function checkWalletState (body, expected, expectedGrants) {
+  async function checkWalletState (body, expectedTotalBalance, expectedGrants, expectedCardBalance = '0') {
     const donateAmt = new BigNumber(body.probi).dividedBy('1e18').toNumber()
     const desired = donateAmt.toString()
     let response
@@ -373,7 +373,8 @@ test('claim grants with attestations', async (t) => {
     } while (response.status === 503)
     var err = ok(response)
     if (err) throw err
-    t.is(response.body.balance, expected)
+    t.is(response.body.balance, expectedTotalBalance)
+    t.is(response.body.cardBalance, expectedCardBalance)
     t.deepEqual(response.body.grants, expectedGrants, 'relevant grant information is sent back')
     t.deepEqual(response.body.grants, await balanceGrants(paymentId), 'balance has the same info')
   }
