@@ -88,6 +88,8 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
+      balances.cardBalance = balances.confirmed
+
       let { grants } = wallet
       if (grants) {
         let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
@@ -96,8 +98,9 @@ const read = function (runtime, apiVersion) {
       }
 
       underscore.extend(result, {
-        probi: balances.confirmed.toString(),
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
+        cardBalance: balances.cardBalance.toString(),
+        probi: balances.confirmed.toString(),
         unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
       })
     }
@@ -200,6 +203,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
 
   response: {
     schema: Joi.object().keys({
+      cardBalance: braveJoi.string().numeric().optional().description('the wallet balance less grants'),
       balance: Joi.number().min(0).optional().description('the (confirmed) wallet balance'),
       unconfirmed: Joi.number().min(0).optional().description('the unconfirmed wallet balance'),
       paymentStamp: Joi.number().min(0).required().description('timestamp of the last successful payment'),
