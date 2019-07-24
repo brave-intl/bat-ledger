@@ -90,6 +90,7 @@ response: {
   schema: Joi.object().keys({
     altcurrency: Joi.string().required().description('the wallet currency'),
     balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
+    cardBalance: braveJoi.string().numeric().required().description('the wallet balance in probi'),
     unconfirmed: Joi.number().min(0).required().description('the unconfirmed wallet balance'),
     rates: Joi.object().optional().description('current exchange rates to various currencies'),
     probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
