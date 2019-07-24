@@ -42,7 +42,7 @@ const runtime = new Runtime({
 test.afterEach.always(cleanPgDb(runtime.postgres))
 
 test('verify frozen occurs when daily is run', async t => {
-  t.plan(12)
+  t.plan(15)
   let body
 
   // FIXME sometimes hangs
