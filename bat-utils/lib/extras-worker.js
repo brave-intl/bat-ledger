@@ -1,6 +1,6 @@
 const dns = require('dns')
 const os = require('os')
-
+const _ = require('lodash')
 const SDebug = require('sdebug')
 const underscore = require('underscore')
 
@@ -107,7 +107,7 @@ function instrumentWorker (runtime) {
   return (handler, key) => {
     const { prometheus } = runtime
     const { client, register } = prometheus
-    const name = `${key}_worker_buckets_milliseconds`
+    const name = `${_.camelCase(key)}_worker_buckets_milliseconds`
     const help = `${key} worker duration buckets in milliseconds`
     const labelNames = ['erred']
     const buckets = prometheus.exponentialBuckets()
