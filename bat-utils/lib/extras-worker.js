@@ -32,10 +32,9 @@ const Worker = async (options, runtime) => {
 
   const router = async (module) => {
     let {
-      workers: originals,
+      workers,
       name
     } = module
-    let workers = underscore.mapObject(originals, instrumentWorker(runtime))
 
     const register = async (queue) => {
       if (entries[queue]) return debug('duplicate worker ' + queue)
@@ -65,7 +64,11 @@ const Worker = async (options, runtime) => {
       listeners[name].push(queue)
     }
 
-    if (typeof module.initialize === 'function') workers = (await module.initialize(debug, runtime)) || workers
+    if (typeof module.initialize === 'function') {
+      workers = (await module.initialize(debug, runtime)) || workers
+    }
+    workers = underscore.mapObject(workers, instrumentWorker(runtime))
+
     listeners[name] = []
 
     const keys = underscore.keys(workers)
