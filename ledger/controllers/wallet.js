@@ -875,10 +875,14 @@ function claimWalletHandler (runtime) {
           providerLinkingId
         }
       })
+    }
+
+    if (+txn.denomination.amount !== 0) {
       await runtime.wallet.submitTx(wallet, txn, signedTx, {
         commit: true
       })
     }
+
     return reply({})
   }
 }
