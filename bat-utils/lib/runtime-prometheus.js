@@ -149,6 +149,12 @@ function registerMetrics (prometheus) {
     help: 'a count up of the number of bat removed from the settlement wallet'
   })
   register.registerMetric(settlementCounter)
+  const voteCounter = new client.Counter({
+    name: 'votes_issued_counter',
+    help: 'ballots that were issued to the browser',
+    labelNames: ['surveyorId', 'surveyorType']
+  })
+  register.registerMetric(voteCounter)
 }
 
 Prometheus.prototype.plugin = function () {
@@ -211,30 +217,6 @@ Prometheus.prototype.plugin = function () {
   }
 
   return plugin
-}
-
-Prometheus.prototype.setCounter = async function (name, help, value) {
-  const { metrics, client } = this
-  if (!metrics[name]) metrics[name] = new client.Counter({ name, help })
-
-  metrics[name].reset()
-  metrics[name].inc(value)
-}
-
-Prometheus.prototype.incrCounter = async function (name, help, delta) {
-  const { metrics, client } = this
-  if (!metrics[name]) metrics[name] = new client.Counter({ name, help })
-
-  metrics[name].inc(delta)
-}
-
-Prometheus.prototype.setGauge = async function (name, help, value) {
-  const { metrics, client } = this
-  if (!metrics[name]) {
-    metrics[name] = new client.Gauge({ name, help })
-  }
-
-  metrics[name].set(value)
 }
 
 Prometheus.prototype.getMetric = function (name) {

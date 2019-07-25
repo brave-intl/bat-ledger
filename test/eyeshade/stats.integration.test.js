@@ -18,6 +18,7 @@ import {
 } from '../utils'
 
 const {
+  BAT_REDIS_URL,
   BAT_POSTGRES_URL,
   BAT_RATIOS_URL,
   BAT_RATIOS_TOKEN,
@@ -27,7 +28,11 @@ const {
 const today = new Date('2018-07-30')
 const runtime = new Runtime({
   testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
-  queue: process.env.BAT_REDIS_URL,
+  queue: BAT_REDIS_URL,
+  prometheus: {
+    label: 'eyeshade.worker.1',
+    redis: BAT_REDIS_URL
+  },
   wallet: {
     settlementAddress: {
       'BAT': '0xdeadbeef'

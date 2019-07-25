@@ -305,6 +305,7 @@ v2.phase1 =
       surveyorType: surveyor.surveyorType,
       duration: underscore.now() - now
     })
+    countVote(runtime, surveyor)
 
     const payload = surveyor.payload
 
@@ -648,6 +649,7 @@ v2.batchSurveyor =
         duration: underscore.now() - now
       })
       payload.push(underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo()))
+      countVote(runtime, surveyor)
     })
 
     reply(payload)
@@ -682,6 +684,17 @@ response: {
     }).description('boom result')
   )
 }
+}
+
+function countVote (runtime, surveyor) {
+  const {
+    surveyorId,
+    surveyorType
+  } = surveyor
+  runtime.prometheus.getMetric('votes_issued_counter').inc({
+    surveyorId,
+    surveyorType
+  })
 }
 
 module.exports.routes = [

@@ -148,7 +148,10 @@ test('createCard', async (t) => {
 
 function newRuntime (settlementAddress = '0xcafe') {
   return new Runtime({
-    prometheus: {},
+    prometheus: {
+      redis: process.env.BAT_REDIS_URL,
+      label: 'eyeshade.worker.1'
+    },
     wallet: {
       settlementAddress: {
         BAT: settlementAddress
