@@ -12,6 +12,8 @@ const selectWalletBalancesQuery = `
     from account_transactions
     where account_type = 'payment_id'
     and created_at < date_trunc('month', current_date)
+    group by account_id
+    order by balance desc
   )
   select
     account_id,
