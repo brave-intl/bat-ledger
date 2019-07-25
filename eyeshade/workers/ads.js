@@ -8,7 +8,7 @@ const selectWalletBalancesQuery = `
   with ads_balances as (
     select
       account_id,
-      sum(amount) as balance,
+      sum(amount) as balance
     from account_transactions
     where account_type = 'payment_id'
     and created_at < date_trunc('month', current_date)
