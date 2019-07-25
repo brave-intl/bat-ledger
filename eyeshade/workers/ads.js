@@ -11,7 +11,7 @@ const selectWalletBalancesQuery = `
       sum(amount) as balance,
     from account_transactions
     where account_type = 'payment_id'
-    and created_at < date_trunct('month', current_date)
+    and created_at < date_trunc('month', current_date)
   )
   select
     account_id,
