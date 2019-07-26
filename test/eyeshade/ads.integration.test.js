@@ -34,12 +34,11 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
   const paymentId = uuidV4()
   const providerId = uuidV4()
   await wallets.insert({ paymentId, providerId })
-  const insertedWallet = await wallets.findOne({ paymentId: paymentId })
 
   // Create an ad transaction so there is a payment_id with a balance
   const txId = uuidV4()
   const createdAt = new Date()
-  createdAt.setMonth(createdAt.getMonth() - 2 )
+  createdAt.setMonth(createdAt.getMonth() - 2)
   const description = 'funding tx for viewing ads'
   const transactionType = 'ad'
   const fromAccountType = 'uphold'
