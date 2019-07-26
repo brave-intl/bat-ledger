@@ -80,7 +80,8 @@ v2.settlement = {
         for (let settlementId of settlementIds) {
           await runtime.queue.send(debug, 'settlement-report', {
             type,
-            settlementId
+            settlementId,
+            shouldUpdateBalances: true
           })
         }
       }

@@ -77,16 +77,14 @@ exports.initialize = async (debug, runtime) => {
 
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
-    updateBalancesContinuously(runtime)
+    updateBalancesOnInterval(runtime)
   }
 }
 
-async function updateBalancesContinuously (runtime) {
-  const startTime = new Date()
+async function updateBalancesOnInterval (runtime) {
   await updateBalances(runtime)
-  const endTime = new Date()
-  const MIN = 60 * 1000
-  const delta = endTime - startTime
-  const nextUpdate = Math.max(MIN, delta)
-  setTimeout(() => updateBalancesContinuously(runtime), nextUpdate)
+  const now = +(new Date())
+  const hours6 = 1000 * 60 * 60 * 6
+  const msUntilNext = now % hours6
+  setTimeout(() => updateBalancesOnInterval(runtime), msUntilNext)
 }
