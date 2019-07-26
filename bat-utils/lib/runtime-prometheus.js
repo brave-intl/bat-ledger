@@ -1,4 +1,5 @@
 const client = require('prom-client')
+const BigNumber = require('bignumber.js')
 const SDebug = require('sdebug')
 const _ = require('underscore')
 const redis = require('redis')
@@ -6,6 +7,11 @@ const debug = new SDebug('prometheus')
 const listenerPrefix = `listeners:prometheus:`
 const listenerChannel = `${listenerPrefix}${process.env.SERVICE}`
 let registerMetricsPerProcess = registerMetrics
+
+const settlementBalanceKey = 'settlement:balance'
+const settlementBalanceCounterKey = `${settlementBalanceKey}:counter`
+
+module.exports = Prometheus
 
 function Prometheus (config, runtime) {
   if (!(this instanceof Prometheus)) {
@@ -41,13 +47,13 @@ function Prometheus (config, runtime) {
   registerMetricsPerProcess = _.noop
 }
 
-Prometheus.prototype.maintenance = function () {
+Prometheus.prototype.maintenance = async function () {
   const { interval, client, timeout, register } = this
   this.interval = interval || client.collectDefaultMetrics({
     timeout,
     register
   })
-  this.merge()
+  await this.merge()
 }
 
 Prometheus.prototype.duration = function (start) {
@@ -131,6 +137,12 @@ function registerMetrics (prometheus) {
     buckets: log2Buckets
   })
   register.registerMetric(viewRefreshRequestBucketsMilliseconds)
+
+  const settlementCounter = new client.Counter({
+    name: 'settlement_balance_counter',
+    help: 'a count up of the number of bat removed from the settlement wallet'
+  })
+  register.registerMetric(settlementCounter)
 }
 
 Prometheus.prototype.plugin = function () {
@@ -140,7 +152,8 @@ Prometheus.prototype.plugin = function () {
       server.route({
         method: 'GET',
         path: '/metrics',
-        handler: (req, reply) => {
+        handler: async (req, reply) => {
+          await pullMetrics(this.runtime)
           const registry = this.allMetrics()
           const metrics = registry.metrics()
           reply(metrics).type('text/plain')
@@ -294,7 +307,7 @@ Prometheus.prototype.publish = function (data) {
   publisher.publish([listenerChannel, json])
 }
 
-Prometheus.prototype.merge = function () {
+Prometheus.prototype.merge = async function () {
   const { register, config } = this
   const { label } = config
 
@@ -306,6 +319,68 @@ Prometheus.prototype.merge = function () {
   }
   this.subscriber()
   this.stayinAlive()
+
+  if (label === 'ledger.web.1') {
+    // only write from one dyno
+    await autoUpdateMetrics(this.runtime)
+  }
 }
 
-module.exports = Prometheus
+async function autoUpdateMetrics (runtime) {
+  await updateSettlementWalletMetrics(runtime)
+}
+
+async function pullMetrics (runtime) {
+  await pullSettlementWalletMetrics(runtime)
+}
+
+async function pullSettlementWalletMetrics (runtime) {
+  const { prometheus, cache } = runtime
+  const metric = prometheus.getMetric('settlement_balance_counter')
+  let counter = cache.get(settlementBalanceCounterKey)
+  if (counter === null) {
+    return // hasn't been set yet
+  }
+  metric.reset().inc({}, +counter)
+}
+
+async function updateSettlementWalletMetrics (runtime) {
+  if (!runtime.wallet) {
+    return // can't do anything without wallet
+  }
+  await updateSettlementWalletBalanceMetrics(runtime)
+}
+
+async function updateSettlementWalletBalanceMetrics (runtime) {
+  const { cache } = runtime
+  let current = null
+  let last = await cache.getAsync(settlementBalanceKey)
+  if (!last) {
+    // on start, restart, or cache expiration
+    last = await getSettlementBalance(runtime)
+    await setSettlementBalance(settlementBalanceKey, last.toString())
+  } else {
+    current = await getSettlementBalance(runtime)
+    last = new BigNumber(last)
+  }
+  // if the settlement wallet is refilled,
+  // current is not set (start or restart)
+  // or the value expires in redis
+  // then we reset this metric and set the value in redis again
+  if (!current || current.greaterThan(last)) {
+    current = last
+  }
+  const value = last.minus(current)
+  await setSettlementBalance(settlementBalanceCounterKey, value.toString())
+}
+
+async function setSettlementBalance (runtime, key, value) {
+  const { cache } = runtime
+  await cache.setAsync(key, value, 'EX', 60 * 60)
+}
+
+async function getSettlementBalance (runtime) {
+  const { wallet } = runtime
+  const settlement = await wallet.getSettlementWallet()
+  return new BigNumber(settlement.balance)
+}

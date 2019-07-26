@@ -25,7 +25,9 @@ const cardInfoSchema = Joi.object().keys({
   available: braveJoi.string().numeric().required()
 }).unknown(true).description('a pared down version of card info from uphold')
 
-const Wallet = function (config, runtime) {
+Wallet.prototype.getSettlementWallet = callBound('getSettlementWallet')
+
+function Wallet (config, runtime) {
   if (!(this instanceof Wallet)) return new Wallet(config, runtime)
 
   if (!config.wallet) return
@@ -39,6 +41,23 @@ const Wallet = function (config, runtime) {
 
   if (config.currency) {
     this.currency = new Currency(config, runtime)
+  }
+}
+
+function callBound (key) {
+  return async function () {
+    const { config, runtime } = this
+    const { mock, uphold } = Wallet.providers
+    let f = mock[key]
+    if (config.uphold) {
+      f = uphold[key]
+    }
+    if (!f) {
+      const err = new Error(`no method defined: ${key}`)
+      runtime.captureException(err)
+      throw err
+    }
+    return f.apply(this, arguments)
   }
 }
 
@@ -304,6 +323,17 @@ Wallet.prototype.createUpholdSDK = function (token) {
 Wallet.providers = {}
 
 Wallet.providers.uphold = {
+  getSettlementWallet: async function () {
+    const { uphold, runtime } = this
+    const { BAT_SETTLEMENT_ADDRESS } = process.env
+    try {
+      const settlementWallet = await uphold.getCard(BAT_SETTLEMENT_ADDRESS)
+      return settlementWallet
+    } catch (e) {
+      runtime.captureException(e)
+      throw e
+    }
+  },
   createCard: async function (info, {
     currency,
     label,
