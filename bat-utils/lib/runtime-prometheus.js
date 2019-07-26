@@ -153,7 +153,7 @@ Prometheus.prototype.plugin = function () {
         method: 'GET',
         path: '/metrics',
         handler: async (req, reply) => {
-          await pullMetrics(this.runtime)
+          await setMetrics(this.runtime)
           const registry = this.allMetrics()
           const metrics = registry.metrics()
           reply(metrics).type('text/plain')
@@ -330,14 +330,14 @@ async function autoUpdateMetrics (runtime) {
   await updateSettlementWalletMetrics(runtime)
 }
 
-async function pullMetrics (runtime) {
-  await pullSettlementWalletMetrics(runtime)
+async function setMetrics (runtime) {
+  await setSettlementWalletMetrics(runtime)
 }
 
-async function pullSettlementWalletMetrics (runtime) {
+async function setSettlementWalletMetrics (runtime) {
   const { prometheus, cache } = runtime
   const metric = prometheus.getMetric('settlement_balance_counter')
-  let counter = cache.get(settlementBalanceCounterKey)
+  let counter = await cache.getAsync(settlementBalanceCounterKey)
   if (counter === null) {
     return // hasn't been set yet
   }
@@ -348,10 +348,10 @@ async function updateSettlementWalletMetrics (runtime) {
   if (!runtime.wallet) {
     return // can't do anything without wallet
   }
-  await updateSettlementWalletBalanceMetrics(runtime)
+  await pullSettlementWalletBalanceMetrics(runtime)
 }
 
-async function updateSettlementWalletBalanceMetrics (runtime) {
+async function pullSettlementWalletBalanceMetrics (runtime) {
   const { cache } = runtime
   let current = null
   let last = await cache.getAsync(settlementBalanceKey)
