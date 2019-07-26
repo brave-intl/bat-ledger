@@ -990,7 +990,7 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
       }
       promotionCounts[promotionId]++
     }
-
+    
     await grants.insert(grantsToInsert)
 
     for (let entry of payload.promotions) {
@@ -1007,6 +1007,14 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
         promotionId
       }, state, { upsert: true })
     }
+
+    // TODO
+    // initiate an ads-settlement-report
+    // with the uploaded grants
+    // with the payload
+    // 
+    // check if the type of the grants are ads
+    // await runtime.queue.send(debug, 'settlement-report-ads', { payload })
 
     reply({})
   }

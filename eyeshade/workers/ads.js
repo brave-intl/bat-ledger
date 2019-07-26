@@ -43,3 +43,17 @@ exports.initialize = async (debug, runtime) => {
 }
 
 exports.monthly = monthly
+
+exports.workers = {
+/* sent by ledger POST /v4/grants
+ */
+  'settlement-report-ads':
+    async (debug, runtime, payload) => {
+      const { postgres } = runtime
+
+      // TODO
+      // for each of the providerId, amount pairs
+      // that we made grants available
+      // insert the transactions into the eyeshade postgres
+    }
+}

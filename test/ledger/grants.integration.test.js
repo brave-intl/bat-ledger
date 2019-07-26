@@ -123,6 +123,7 @@ test('claim grants with attestations', async (t) => {
       minimumReconcileTimestamp: 1526941400000
     }]
   }
+
   await ledgerAgent.post(url).send(adGrants).expect(ok)
   await ledgerAgent.post(url).send(grants).expect(ok)
 
