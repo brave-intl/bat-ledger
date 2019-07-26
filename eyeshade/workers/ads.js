@@ -27,8 +27,6 @@ const createPotentialPaymentsQuery = `insert into potential_payments_ads (payout
 // Takes a snapshot of ad account balances
 // and inserts them into potential_payments
 const monthly = async (debug, runtime) => {
-  // Limit the dynos that can run this worker to 1
-  if ((typeof process.env.DYNO !== 'undefined') && (process.env.DYNO !== 'worker.1')) return
   const client = await runtime.postgres.connect()
   const walletsCollection = runtime.database.get('wallets', debug)
   const payoutReportId = uuidV4()
@@ -55,6 +53,9 @@ const monthly = async (debug, runtime) => {
 }
 
 exports.initialize = async (debug, runtime) => {
+  // Limit the dynos that can run this worker to 1
+  if ((typeof process.env.DYNO !== 'undefined') && (process.env.DYNO !== 'worker.1')) return
+
   const interval = cron.parseExpression('0 0 1 * *', {})
   const next = interval.next().getTime()
   setTimeout(() => { monthly(debug, runtime) }, next - underscore.now())
