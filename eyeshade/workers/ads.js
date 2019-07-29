@@ -4,7 +4,23 @@ const underscore = require('underscore')
 
 const createPayoutReportQuery = `insert into payout_reports_ads (id) values ($1)`
 
-const selectWalletBalancesQuery = `select account_id, balance from account_balances where account_type = 'payment_id'`
+const selectWalletBalancesQuery = `
+  with ads_balances as (
+    select
+      account_id,
+      sum(amount) as balance
+    from account_transactions
+    where account_type = 'payment_id'
+    and created_at < date_trunc('month', current_date)
+    group by account_id
+    order by balance desc
+  )
+  select
+    account_id,
+    balance
+  from ads_balances
+  where balance > 0
+`
 
 const createPotentialPaymentsQuery = `insert into potential_payments_ads (payout_report_id, payment_id, provider_id, amount) values ($1, $2, $3, $4)`
 
@@ -37,6 +53,9 @@ const monthly = async (debug, runtime) => {
 }
 
 exports.initialize = async (debug, runtime) => {
+  // Limit the dynos that can run this worker to 1
+  if ((typeof process.env.DYNO !== 'undefined') && (process.env.DYNO !== 'worker.1')) return
+
   const interval = cron.parseExpression('0 0 1 * *', {})
   const next = interval.next().getTime()
   setTimeout(() => { monthly(debug, runtime) }, next - underscore.now())
