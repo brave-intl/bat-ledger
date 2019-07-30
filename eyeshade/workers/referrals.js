@@ -1,4 +1,4 @@
-const { insertFromReferrals, updateBalances } = require('../lib/transaction.js')
+const { insertFromReferrals } = require('../lib/transaction.js')
 
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('referral-report')
@@ -9,14 +9,14 @@ exports.workers = {
 
     { queue            : 'referral-report'
     , message          :
-      { transactionId  : '...', shouldUpdateBalances: false }
+      { transactionId  : '...' }
     }
 */
   'referral-report':
     async (debug, runtime, payload) => {
       const referrals = runtime.database.get('referrals', debug)
       const publishers = runtime.database.get('publishers', debug)
-      const { transactionId, shouldUpdateBalances } = payload
+      const { transactionId } = payload
       const docs = await referrals.aggregate([
         {
           $match: { transactionId }
@@ -53,9 +53,6 @@ exports.workers = {
           throw e
         }
         await client.query('COMMIT')
-        if (shouldUpdateBalances) {
-          await updateBalances(runtime, client, true)
-        }
       } finally {
         client.release()
       }

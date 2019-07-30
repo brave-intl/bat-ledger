@@ -10,9 +10,9 @@ exports.workers = {
 
     { queue            : 'surveyor-frozen-report'
     , message          :
-      { surveyorId  : '...'
-      , mix         : false
-      , shouldUpdateBalances: false
+      { surveyorId           : '...'
+      , shouldUpdateBalances : false
+      , mix                  : false
       }
     }
 */
@@ -75,7 +75,7 @@ exports.workers = {
         await client.query('COMMIT')
 
         if (shouldUpdateBalances) {
-          await updateBalances(runtime, client, true)
+          await updateBalances(runtime)
         }
       } finally {
         client.release()

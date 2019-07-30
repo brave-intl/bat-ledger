@@ -1,4 +1,7 @@
-const { insertFromSettlement, updateBalances } = require('../lib/transaction.js')
+const {
+  insertFromSettlement,
+  updateBalances
+} = require('../lib/transaction.js')
 
 exports.name = 'publishers'
 exports.initialize = async (debug, runtime) => {
@@ -47,7 +50,7 @@ exports.workers = {
         }
         await client.query('COMMIT')
         if (shouldUpdateBalances) {
-          await updateBalances(runtime, client, true)
+          await updateBalances(runtime)
         }
       } finally {
         client.release()
