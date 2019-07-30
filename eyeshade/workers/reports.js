@@ -52,7 +52,7 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
 
   await Promise.all(rows.map(async (row) => {
     const surveyorId = row.id
-    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
+    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true, shouldUpdateBalances: true })
   }))
 }
 
@@ -83,8 +83,8 @@ exports.initialize = async (debug, runtime) => {
 
 async function updateBalancesOnInterval (runtime) {
   await updateBalances(runtime)
-  const now = +(new Date())
+  const now = (new Date()).getTime()
   const hours6 = 1000 * 60 * 60 * 6
-  const msUntilNext = now % hours6
+  const msUntilNext = hours6 - (now % hours6)
   setTimeout(() => updateBalancesOnInterval(runtime), msUntilNext)
 }
