@@ -256,7 +256,7 @@ const getGrant = (protocolVersion) => (runtime) => {
         continue
       }
       const foundGrant = await grants.findOne(query)
-      if (!!foundGrant) {
+      if (foundGrant) {
         const promotion = { promotionId, type }
         if (type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
           return reply(promotion)
