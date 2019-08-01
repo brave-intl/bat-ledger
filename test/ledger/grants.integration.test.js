@@ -356,7 +356,7 @@ test('claim grants with attestations', async (t) => {
     expiryTime: 2160925928,
     probi: '1000000000000000000'
   }, {
-    type: 'ugp',
+    type: 'android',
     altcurrency: 'BAT',
     expiryTime: 1830389353,
     probi: '30000000000000000000'
