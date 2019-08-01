@@ -255,8 +255,8 @@ const getGrant = (protocolVersion) => (runtime) => {
       } else if ((type === 'ugp' || type === 'android') && adsAvailable) { // only make ugp / android grants available in non-ads regions
         continue
       }
-      const counted = await grants.count(query)
-      if (counted !== 0) {
+      const foundGrant = await grants.findOne(query)
+      if (!!foundGrant) {
         const promotion = { promotionId, type }
         if (type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
           return reply(promotion)
