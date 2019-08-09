@@ -4,9 +4,7 @@ const boom = require('boom')
 const utils = require('bat-utils')
 const BigNumber = require('bignumber.js')
 const _ = require('underscore')
-const {
-  normalizeChannel
-} = require('bat-utils/lib/extras-utils')
+const extrasUtils = require('bat-utils/lib/extras-utils')
 const queries = require('../lib/queries')
 const transactions = require('../lib/transaction')
 const braveHapi = utils.extras.hapi
@@ -182,7 +180,7 @@ v1.getBalances = {
     if (!Array.isArray(accounts)) {
       accounts = [accounts]
     }
-    accounts = accounts.map((account) => normalizeChannel(account))
+    accounts = accounts.map((account) => extrasUtils.normalizeChannel(account))
     const args = [accounts]
     const checkVotes = includePending && (accounts
       .find((account) => {
@@ -329,26 +327,39 @@ response: {
 v1.getPaidTotals =
 { handler: (runtime) => {
   return async (request, reply) => {
-    let { type } = request.params
+    const { params, query } = request
+    const { postgres } = runtime
+    let { type } = params
     let {
+      start,
+      until,
       order,
       limit
-    } = request.query
+    } = query
 
     if (type === 'contributions') {
       type = 'contribution_settlement'
     } else if (type === 'referrals') {
       type = 'referral_settlement'
-    } else {
-      return reply(boom.badData('type must be contributions or referrals'))
     }
-
-    const query1 = queries.settlements({
+    let rows = []
+    const options = {
       asc: order === 'asc'
-    })
-
-    const amounts = await runtime.postgres.query(query1, [type, limit])
-    reply(amounts.rows)
+    }
+    if (start) {
+      const dates = extrasUtils.backfillDateRange({
+        start,
+        until
+      })
+      const startDate = dates.start.toISOString()
+      const untilDate = dates.until.toISOString()
+      const query = queries.timeConstraintSettlements(options)
+      ;({ rows } = await postgres.query(query, [type, limit, startDate, untilDate]))
+    } else {
+      const query = queries.allSettlements(options)
+      ;({ rows } = await postgres.query(query, [type, limit]))
+    }
+    reply(rows)
   }
 },
 
@@ -367,6 +378,8 @@ validate: {
     type: Joi.string().valid('contributions', 'referrals').required().description('type of payout')
   },
   query: {
+    start: Joi.date().iso().optional().default('').description('query for the top payout in a single month beginning at this time'),
+    until: Joi.date().iso().optional().default('').description('query for the top payout in a single month ending at this time'),
     limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
     order: orderParam
   }

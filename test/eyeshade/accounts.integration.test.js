@@ -11,7 +11,10 @@ import {
   insertFromReferrals
 } from '../../eyeshade/lib/transaction'
 
-import { Runtime } from 'bat-utils'
+import {
+  Runtime,
+  extras
+} from 'bat-utils'
 import {
   eyeshadeAgent,
   cleanPgDb,
@@ -21,6 +24,7 @@ import {
   agent
 } from 'supertest'
 
+const { utils: braveUtils } = extras
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
 }
@@ -76,7 +80,7 @@ const referralsBar = {
   }
 }
 
-test.afterEach(cleanPgDb(runtime.postgres))
+test.afterEach.always(cleanPgDb(runtime.postgres))
 
 const auth = (agent) => agent.set('Authorization', 'Bearer foobarfoobar')
 
@@ -94,8 +98,6 @@ test('check auth scope', async (t) => {
 })
 
 test('check settlement totals', async t => {
-  t.plan(2)
-
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
@@ -121,8 +123,28 @@ test('check settlement totals', async t => {
       account_id: referralSettlement.owner
     }])
 
+    const referralMonth = new Date('2018-07-01')
+    const referralMonthISO = referralMonth.toISOString()
+    const encodedMonth = encodeURIComponent(referralMonthISO)
+    const referralMonthChangedISO = braveUtils.changeMonth(referralMonth).toISOString()
+    const encodedMonthChanged = encodeURIComponent(referralMonthChangedISO)
+
+    const { body: referralMonthChangedData } = await eyeshadeAgent
+      .get(`/v1/accounts/settlements/${type}/total?start=${encodedMonthChanged}&order=asc`)
+      .use(auth)
+      .send()
+      .expect(ok)
+    t.deepEqual([], referralMonthChangedData)
+
+    const { body: referralMonthData } = await eyeshadeAgent
+      .get(`/v1/accounts/settlements/${type}/total?start=${encodedMonth}&order=asc`)
+      .use(auth)
+      .send()
+      .expect(ok)
+
     type = 'referrals'
     ;({ body } = await eyeshadeAgent.get(`/v1/accounts/settlements/${type}/total?order=asc`).use(auth).send().expect(ok))
+    t.deepEqual(referralMonthData, body)
     t.deepEqual(body, [{
       channel: 'foo.com',
       paid: '10.000000000000000000',
