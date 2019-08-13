@@ -243,6 +243,7 @@ const getGrant = (protocolVersion) => (runtime) => {
     const filteredPromotions = []
     for (let { promotionId, type } of entries) {
       const query = { promotionId }
+      debug('promotion check log', promotionId, type, protocolVersion)
       if (type === 'ads') {
         if (!wallet) {
           continue
