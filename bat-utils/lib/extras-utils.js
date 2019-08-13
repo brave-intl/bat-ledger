@@ -12,6 +12,8 @@ const PROBI_FACTOR = 1e18
 
 module.exports = {
   PROBI_FACTOR,
+  backfillDateRange,
+  changeMonth,
   isUUID,
   surveyorChoices,
   timeout,
@@ -30,6 +32,38 @@ const DAY_MS = 60 * 60 * 24 * 1000
 // courtesy of https://stackoverflow.com/questions/33289726/combination-of-async-function-await-settimeout#33292942
 function timeout (msec) {
   return new Promise((resolve) => setTimeout(resolve, msec))
+}
+
+function backfillDateRange ({
+  start,
+  until
+}) {
+  if (until) {
+    return {
+      start: new Date(start),
+      until: new Date(until)
+    }
+  }
+  return {
+    start,
+    until: changeMonth(start)
+  }
+}
+
+function changeMonth (date, months = 1) {
+  const DAY = 1000 * 60 * 60 * 24
+  let d = new Date(date)
+  const currentMonth = getCurrentMonth(d)
+  const delta = months > 0 ? 1 : -1
+  const targetMonth = currentMonth + delta
+  while (getCurrentMonth(d) !== targetMonth) {
+    d = new Date(+d + (delta * DAY))
+  }
+  return d
+
+  function getCurrentMonth (d) {
+    return (12 * d.getYear()) + d.getMonth()
+  }
 }
 
 function extractJws (jws) {

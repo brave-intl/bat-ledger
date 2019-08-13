@@ -3,6 +3,7 @@ const _ = require('underscore')
 const braveJoi = require('bat-utils/lib/extras-joi')
 const braveHapi = require('bat-utils/lib/extras-hapi')
 const boom = require('boom')
+const extrasUtils = require('bat-utils/lib/extras-utils')
 const transactionsLib = require('../lib/transaction')
 const grantsLib = require('../lib/grants')
 
@@ -26,7 +27,7 @@ v1.grantsStats = {
     const client = await runtime.postgres.connect()
     const options = Object.assign({
       type
-    }, backfillDateRange(params))
+    }, extrasUtils.backfillDateRange(params))
     try {
       const stats = await grantsLib.stats(runtime, client, options)
       reply(sanitize(stats))
@@ -66,7 +67,7 @@ v1.settlementsStats = {
     const client = await runtime.postgres.connect()
     const options = Object.assign({
       type: `${type}_settlement`
-    }, backfillDateRange(params))
+    }, extrasUtils.backfillDateRange(params))
     try {
       const stats = await transactionsLib.stats(runtime, client, options)
       reply(sanitize(stats))
@@ -101,26 +102,4 @@ module.exports.routes = [
 
 function sanitize (data) {
   return _.mapObject(data, (value) => value || '0')
-}
-
-function backfillDateRange ({
-  start,
-  until
-}) {
-  if (until) {
-    return {
-      start: new Date(start),
-      until: new Date(until)
-    }
-  }
-  let end = start
-  const DAY = 1000 * 60 * 60 * 24
-  const month = end.getMonth()
-  while (month === end.getMonth()) {
-    end = new Date(+end + DAY)
-  }
-  return {
-    start,
-    until: end
-  }
 }
