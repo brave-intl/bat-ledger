@@ -18,16 +18,9 @@ PUBLISHERS_URL=http://docker.for.mac.localhost:3000
 ```
 
 ```
-# Build the base image:
-docker-compose build
 
-# (Optional) Build the bat-go image according to instructions @ https://github.com/brave-intl/bat-go
-
-# 1. If you built bat-go you can then bring up all services (ledger, eyeshade, balance and grant)
-docker-compose up
-
-# 2. If you did not build bat-go, limit the services being brought up to exclude the grant service
-docker-compose up ledger-web ledger-worker eyeshade-web eyeshade-worker balance-web
+# To bring up all the services : 
+    docker-compose up
 
 # Logs from all services presented interleaved, you can press ctrl-c to stop.
 # Ledger listens on port 3001, eyeshade on 3002, and balance on 3003
