@@ -2,6 +2,7 @@
 BAT back-end servers (ledger, eyeshade, and balance)
 
 ## Running locally with docker-compose
+**It is important to configure your `.env` file before attemptiing to bring up the services . See `Prepare .env file` below** 
 
 First, [install docker and docker compose](https://docs.docker.com/compose/install/).
 
@@ -16,6 +17,7 @@ e.g. you might have the following in `.env`:
 PUBLISHERS_TOKEN=foo
 PUBLISHERS_URL=http://docker.for.mac.localhost:3000
 ```
+
 
 ```
 
