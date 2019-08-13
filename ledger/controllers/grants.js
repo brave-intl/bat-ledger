@@ -243,7 +243,7 @@ const getGrant = (protocolVersion) => (runtime) => {
     const filteredPromotions = []
     for (let { promotionId, type } of entries) {
       const query = { promotionId }
-      debug('promotion check log', promotionId, type, protocolVersion)
+      debug('promotion check log', promotionId, type, protocolVersion, adsAvailable, request.headers['fastly-geoip-countrycode'])
       if (type === 'ads') {
         if (!wallet) {
           continue
