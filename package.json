@@ -64,7 +64,7 @@
     "@babel/node": "^7.2.2",
     "@hapi/joi": "^15.0.3",
     "@octokit/rest": "^15.5.1",
-    "@sentry/node": "^4.6.6",
+    "@sentry/node": "^5.5.0",
     "@uphold/uphold-sdk-javascript": "github:brave-intl/uphold-sdk-javascript#bump-lodash-merge",
     "accept-language-parser": "1.4.1",
     "bat-publisher": "^2.0.24",
