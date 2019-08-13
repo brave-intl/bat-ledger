@@ -111,7 +111,7 @@ function registerMetrics (prometheus) {
   const anonizeVerifyRequestBucketsMilliseconds = new client.Histogram({
     name: 'anonizeVerify_request_buckets_milliseconds',
     help: 'anonize verify duration buckets in milliseconds',
-    labelNames: ['method', 'path', 'cardinality', 'status', 'erred'],
+    labelNames: ['erred'],
     buckets: log2Buckets
   })
   register.registerMetric(anonizeVerifyRequestBucketsMilliseconds)
@@ -119,7 +119,7 @@ function registerMetrics (prometheus) {
   const anonizeRegisterRequestBucketsMilliseconds = new client.Histogram({
     name: 'anonizeRegister_request_buckets_milliseconds',
     help: 'anonize register buckets in milliseconds',
-    labelNames: ['method', 'path', 'cardinality', 'status', 'erred'],
+    labelNames: ['erred'],
     buckets: log2Buckets
   })
   register.registerMetric(anonizeRegisterRequestBucketsMilliseconds)
