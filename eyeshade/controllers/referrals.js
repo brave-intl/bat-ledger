@@ -95,6 +95,7 @@ v1.createReferrals = {
         entries.forEach((referral) => { existingDownloadIds.push(referral.downloadId) })
       }
 
+      let insertedReferrals = 0
       for (let referral of payload) {
         let state
 
@@ -115,9 +116,11 @@ v1.createReferrals = {
           }, underscore.pick(referral, [ 'platform', 'altcurrency', 'probi' ]))
         }
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
+        insertedReferrals += 1
       }
-
       await runtime.queue.send(debug, 'referral-report', { transactionId })
+      console.log('received referral')
+      runtime.prometheus.getMetric('referral_received_counter').inc(insertedReferrals)
 
       reply({})
     }
