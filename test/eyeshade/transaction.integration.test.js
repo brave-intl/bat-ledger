@@ -1,11 +1,16 @@
 'use strict'
 
+import BigNumber from 'bignumber.js'
 import { serial as test } from 'ava'
 import uuidV4 from 'uuid/v4'
-import { createdTimestamp } from 'bat-utils/lib/extras-utils'
+import {
+  PROBI_FACTOR,
+  createdTimestamp
+} from 'bat-utils/lib/extras-utils'
 import { Runtime } from 'bat-utils'
 import {
-  stats,
+  allSettlementStats,
+  settlementStatsByCurrency,
   knownChains,
   insertTransaction,
   insertUserDepositFromChain,
@@ -438,7 +443,7 @@ test('transaction stats', async (t) => {
     await insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
       settlementId: uuidV4()
     }))
-    const contributionStats = await stats(runtime, client, {
+    const contributionStats = await settlementStatsByCurrency(runtime, client, {
       type: 'contribution_settlement',
       settlementCurrency: 'BAT',
       start: today,
@@ -446,17 +451,42 @@ test('transaction stats', async (t) => {
     })
     t.is(19, +contributionStats.amount, 'contributions are summed')
 
+    const referralAmount = (new BigNumber(referralSettlement.probi)).dividedBy(PROBI_FACTOR)
     await insertFromSettlement(runtime, client, referralSettlement)
     await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
       settlementId: uuidV4()
     }))
-    const referralStats = await stats(runtime, client, {
+    let referralStats = null
+    referralStats = await settlementStatsByCurrency(runtime, client, {
       type: 'referral_settlement',
       settlementCurrency: 'BAT',
       start: today,
       until: tomorrow
     })
-    t.is(20, +referralStats.amount, 'referrals are summed')
+    const twoReferrals = referralAmount.times(2).toNumber() // 20
+    t.is(twoReferrals, +referralStats.amount, 'referrals are summed')
+
+    // await insertFromSettlement(runtime, client, referralSettlement)
+    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+      settlementId: uuidV4(),
+      currency: 'BTC',
+      amount: '0.000125'
+    }))
+    referralStats = await allSettlementStats(runtime, client, {
+      type: 'referral_settlement',
+      start: today,
+      until: tomorrow
+    })
+    const threeReferrals = referralAmount.times(3).toNumber() // 30
+    t.is(threeReferrals, +referralStats.amount, 'referrals are summed')
+
+    referralStats = await settlementStatsByCurrency(runtime, client, {
+      type: 'referral_settlement',
+      settlementCurrency: 'BTC',
+      start: today,
+      until: tomorrow
+    })
+    t.is(referralAmount.toNumber(), +referralStats.amount, 'referrals are summed')
   } finally {
     client.release()
   }

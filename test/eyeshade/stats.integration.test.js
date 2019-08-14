@@ -148,16 +148,28 @@ test('stats for settlements', async (t) => {
 
     // bad type (referrals)
     await getStatsFor('settlements', 'referrals', {
-      start: today,
       expect: 400
     })
     const referralStats = await getStatsFor('settlements', 'referral')
     t.is(20, +referralStats.amount, 'referrals are summed')
-    const emptyBody = await getStatsFor('settlements', 'referral', {
-      start: today,
+
+    const goldEmpty = await getStatsFor('settlements', 'referral', {
       settlementCurrency: 'XAG'
     })
-    t.deepEqual({ amount: '0' }, emptyBody)
+    t.deepEqual({ amount: '0' }, goldEmpty, 'should only show the results paid out in XAU')
+
+    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+      settlementId: uuidV4(),
+      currency: 'XAG',
+      amount: '0.000125'
+    }))
+    const goldReferral = await getStatsFor('settlements', 'referral', {
+      settlementCurrency: 'XAG'
+    })
+    t.deepEqual(10, +goldReferral.amount, 'should only show the results paid out in XAU')
+
+    const allBody = await getStatsFor('settlements', 'referral')
+    t.deepEqual(30, +allBody.amount, 'all referrals can be summed')
   } finally {
     await client.release()
   }

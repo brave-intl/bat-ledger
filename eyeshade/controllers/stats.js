@@ -17,7 +17,7 @@ const dateRangeParams = Joi.object().keys({
 const v1 = {}
 
 /*
-  GET /v1/stats/grants/{type}
+  GET /v1/stats/grants/{type}/{start}/{until?}
 */
 
 v1.grantsStats = {
@@ -57,7 +57,7 @@ v1.grantsStats = {
 }
 
 /*
-  GET /v1/stats/settlements/{type}
+  GET /v1/stats/settlements/{type}/{start}/{until?}
 */
 
 v1.settlementsStats = {
@@ -71,7 +71,12 @@ v1.settlementsStats = {
       type: `${type}_settlement`
     }, extrasUtils.backfillDateRange(params))
     try {
-      const stats = await transactionsLib.stats(runtime, client, options)
+      let stats = {}
+      if (settlementCurrency) {
+        stats = await transactionsLib.settlementStatsByCurrency(runtime, client, options)
+      } else {
+        stats = await transactionsLib.allSettlementStats(runtime, client, options)
+      }
       reply(sanitize(stats))
     } catch (e) {
       reply(boom.boomify(e))
@@ -87,7 +92,7 @@ v1.settlementsStats = {
   tags: [ 'api' ],
   validate: {
     query: Joi.object().keys({
-      settlement_currency: braveJoi.string().anycurrencyCode().optional().default('BAT').description('the settlement currency to query for')
+      settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the settlement currency to query for')
     }),
     params: dateRangeParams.keys({
       type: settlementTypeValidator.description('settlement type to query for')
