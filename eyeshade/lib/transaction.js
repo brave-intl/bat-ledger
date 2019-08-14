@@ -340,7 +340,7 @@ async function updateBalances (runtime) {
 async function stats (runtime, client, options) {
   const {
     type,
-    currency,
+    settlementCurrency,
     start,
     until
   } = options
@@ -354,7 +354,7 @@ AND settlement_currency = $2
 AND created_at >= to_timestamp($3)
 AND created_at < to_timestamp($4);
 `
-  const args = [type, currency, start / 1000, until / 1000]
+  const args = [type, settlementCurrency, start / 1000, until / 1000]
   const { rows } = await client.query(statsQuery, args)
   return rows[0]
 }

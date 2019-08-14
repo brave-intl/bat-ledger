@@ -155,7 +155,7 @@ test('stats for settlements', async (t) => {
     t.is(20, +referralStats.amount, 'referrals are summed')
     const emptyBody = await getStatsFor('settlements', 'referral', {
       start: today,
-      currency: 'XAG'
+      settlementCurrency: 'XAG'
     })
     t.deepEqual({ amount: '0' }, emptyBody)
   } finally {
@@ -166,11 +166,11 @@ test('stats for settlements', async (t) => {
 async function getStatsFor (prefix, type, options = {}) {
   const {
     start = today,
-    currency,
+    settlementCurrency,
     expect = ok
   } = options
   const begin = start.toISOString()
-  const qs = currency ? `?currency=${currency}` : ''
+  const qs = settlementCurrency ? `?settlement_currency=${settlementCurrency}` : ''
   const date = begin.split('T')[0]
   const url = `/v1/stats/${prefix}/${type}/${date}${qs}`
   const { body } = await eyeshadeAgent

@@ -440,6 +440,7 @@ test('transaction stats', async (t) => {
     }))
     const contributionStats = await stats(runtime, client, {
       type: 'contribution_settlement',
+      settlementCurrency: 'BAT',
       start: today,
       until: tomorrow
     })
@@ -451,6 +452,7 @@ test('transaction stats', async (t) => {
     }))
     const referralStats = await stats(runtime, client, {
       type: 'referral_settlement',
+      settlementCurrency: 'BAT',
       start: today,
       until: tomorrow
     })

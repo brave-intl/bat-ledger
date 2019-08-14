@@ -63,11 +63,11 @@ v1.grantsStats = {
 v1.settlementsStats = {
   handler: (runtime) => async (request, reply) => {
     const { params, query } = request
-    const { currency } = query
+    const { settlement_currency: settlementCurrency } = query
     const { type } = params
     const client = await runtime.postgres.connect()
     const options = Object.assign({
-      currency,
+      settlementCurrency,
       type: `${type}_settlement`
     }, extrasUtils.backfillDateRange(params))
     try {
@@ -87,7 +87,7 @@ v1.settlementsStats = {
   tags: [ 'api' ],
   validate: {
     query: Joi.object().keys({
-      currency: braveJoi.string().anycurrencyCode().optional().default('BAT').description('the settlement currency to query for')
+      settlement_currency: braveJoi.string().anycurrencyCode().optional().default('BAT').description('the settlement currency to query for')
     }),
     params: dateRangeParams.keys({
       type: settlementTypeValidator.description('settlement type to query for')
