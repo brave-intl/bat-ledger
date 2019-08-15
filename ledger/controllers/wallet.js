@@ -398,9 +398,13 @@ const write = function (runtime, apiVersion) {
         votes: grantVotes,
         cohort: grantCohort
       }, result))
+      countVote(runtime, nonGrantVotes, {
+        cohort: grantCohort
+      })
     }
 
     if (nonGrantVotes > 0) {
+      const cohort = 'control'
       await runtime.queue.send(debug, 'contribution-report', underscore.extend({
         paymentId: paymentId,
         address: wallet.addresses[result.altcurrency],
@@ -408,8 +412,11 @@ const write = function (runtime, apiVersion) {
         viewingId: viewingId,
         fee: nonGrantFee,
         votes: nonGrantVotes,
-        cohort: 'control'
+        cohort
       }, result))
+      countVote(runtime, nonGrantVotes, {
+        cohort
+      })
     }
 
     async function markGrantsAsRedeemed (grantIds) {
@@ -429,6 +436,10 @@ const write = function (runtime, apiVersion) {
       })
     }
   }
+}
+
+function countVote (runtime, votes, labels) {
+  runtime.prometheus.getMetric('votes_issued_counter').inc(labels, votes)
 }
 
 v2.write = { handler: (runtime) => { return write(runtime, 2) },

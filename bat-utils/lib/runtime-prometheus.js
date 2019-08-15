@@ -152,7 +152,7 @@ function registerMetrics (prometheus) {
   const voteCounter = new client.Counter({
     name: 'votes_issued_counter',
     help: 'ballots that were issued to the browser',
-    labelNames: ['surveyorId', 'surveyorType']
+    labelNames: ['cohort']
   })
   register.registerMetric(voteCounter)
 }
