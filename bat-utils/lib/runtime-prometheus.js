@@ -47,6 +47,12 @@ function Prometheus (config, runtime) {
   registerMetricsPerProcess = _.noop
 }
 
+Prometheus.prototype.cache = function () {
+  const { runtime } = this
+  const { cache, queue } = runtime
+  return cache ? cache.cache : queue.config.client
+}
+
 Prometheus.prototype.maintenance = async function () {
   const { interval, client, timeout, register } = this
   this.interval = interval || client.collectDefaultMetrics({
@@ -335,9 +341,9 @@ async function setMetrics (runtime) {
 }
 
 async function setSettlementWalletMetrics (runtime) {
-  const { prometheus, cache } = runtime
+  const { prometheus } = runtime
   const metric = prometheus.getMetric('settlement_balance_counter')
-  let counter = await cache.getAsync(settlementBalanceCounterKey)
+  let counter = await prometheus.cache().getAsync(settlementBalanceCounterKey)
   if (counter === null) {
     return // hasn't been set yet
   }
@@ -352,9 +358,9 @@ async function updateSettlementWalletMetrics (runtime) {
 }
 
 async function pullSettlementWalletBalanceMetrics (runtime) {
-  const { cache } = runtime
+  const { prometheus } = runtime
   let current = null
-  let last = await cache.getAsync(settlementBalanceKey)
+  let last = await prometheus.cache().getAsync(settlementBalanceKey)
   if (!last) {
     // on start, restart, or cache expiration
     last = await getSettlementBalance(runtime)
@@ -375,8 +381,7 @@ async function pullSettlementWalletBalanceMetrics (runtime) {
 }
 
 async function setSettlementBalance (runtime, key, value) {
-  const { cache } = runtime
-  await cache.setAsync(key, value, 'EX', 60 * 60)
+  await runtime.prometheus.cache().setAsync([key, value, 'EX', 60 * 60])
 }
 
 async function getSettlementBalance (runtime) {

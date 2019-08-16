@@ -9,7 +9,6 @@ import {
   getCohort,
   defaultCooldownHrs,
   cooldownOffset
-
 } from './grants'
 
 test('default cooldown hrs', async (t) => {
@@ -27,7 +26,7 @@ test('cooldown offset', async (t) => {
 })
 
 test('adsGrantsAvailable does not allow ugp depending on the ip', async (t) => {
-  t.false(await adsGrantsAvailable('JP'), 'this ip is not within the supported countries')
+  t.false(await adsGrantsAvailable('ZZ'), 'this ip is not within the supported countries')
   t.true(await adsGrantsAvailable('US'), 'this ip is within the supported countries')
 })
 
