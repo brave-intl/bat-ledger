@@ -1,5 +1,5 @@
 'use strict'
-
+import parsePrometheusText from 'parse-prometheus-text-format'
 import BigNumber from 'bignumber.js'
 import UpholdSDK from '@uphold/uphold-sdk-javascript'
 import anonize from 'node-anonize2-relic'
@@ -92,6 +92,27 @@ test('check endpoint is up with no authorization', async (t) => {
       .get('/')
       .expect(ok)
     t.is('ack.', text, 'a fixed string is sent back')
+  }
+})
+
+test('check /metrics is up with no authorization', async (t) => {
+  const {
+    BAT_BALANCE_SERVER,
+    BAT_EYESHADE_SERVER,
+    BAT_LEDGER_SERVER
+  } = process.env
+
+  await checkMetrics(BAT_EYESHADE_SERVER)
+  await checkMetrics(BAT_BALANCE_SERVER)
+  await checkMetrics(BAT_LEDGER_SERVER)
+
+  async function checkMetrics (origin) {
+    const {
+      text
+    } = await agent(origin)
+      .get('/metrics')
+      .expect(ok)
+    t.true(_.isArray(parsePrometheusText(text)), 'a set of metrics is sent back')
   }
 })
 
