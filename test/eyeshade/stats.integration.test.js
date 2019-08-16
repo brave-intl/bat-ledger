@@ -94,7 +94,9 @@ test('stats for grants', async (t) => {
     votes: 2
   }
   const now = new Date()
-  const votingStatsEmpty = await getStatsFor('grants', cohort, now)
+  const votingStatsEmpty = await getStatsFor('grants', cohort, {
+    start: now
+  })
   t.deepEqual({ amount: '0', count: '0' }, votingStatsEmpty, 'an empty set of stats should return')
 
   const client = await runtime.postgres.connect()
@@ -113,7 +115,9 @@ test('stats for grants', async (t) => {
     let votingStats = {}
     while (!(+votingStats.amount)) {
       await timeout(2000)
-      votingStats = await getStatsFor('grants', cohort, now)
+      votingStats = await getStatsFor('grants', cohort, {
+        start: now
+      })
     }
     const amount = (new BigNumber(0.95)).toPrecision(18).toString()
     t.deepEqual({ amount, count: '2' }, votingStats, 'vote amounts are summed')
@@ -141,18 +145,48 @@ test('stats for settlements', async (t) => {
     await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
       settlementId: uuidV4()
     }))
+
+    // bad type (referrals)
+    await getStatsFor('settlements', 'referrals', {
+      expect: 400
+    })
     const referralStats = await getStatsFor('settlements', 'referral')
     t.is(20, +referralStats.amount, 'referrals are summed')
+
+    const goldEmpty = await getStatsFor('settlements', 'referral', {
+      settlementCurrency: 'XAG'
+    })
+    t.deepEqual({ amount: '0' }, goldEmpty, 'should only show the results paid out in XAU')
+
+    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+      settlementId: uuidV4(),
+      currency: 'XAG',
+      amount: '0.000125'
+    }))
+    const goldReferral = await getStatsFor('settlements', 'referral', {
+      settlementCurrency: 'XAG'
+    })
+    t.deepEqual(10, +goldReferral.amount, 'should only show the results paid out in XAU')
+
+    const allBody = await getStatsFor('settlements', 'referral')
+    t.deepEqual(30, +allBody.amount, 'all referrals can be summed')
   } finally {
     await client.release()
   }
 })
 
-async function getStatsFor (prefix, type, begin = today) {
-  const start = begin.toISOString()
-  const url = `/v1/stats/${prefix}/${type}/${start.split('T')[0]}`
+async function getStatsFor (prefix, type, options = {}) {
+  const {
+    start = today,
+    settlementCurrency,
+    expect = ok
+  } = options
+  const begin = start.toISOString()
+  const qs = settlementCurrency ? `?settlement_currency=${settlementCurrency}` : ''
+  const date = begin.split('T')[0]
+  const url = `/v1/stats/${prefix}/${type}/${date}${qs}`
   const { body } = await eyeshadeAgent
     .get(url)
-    .expect(ok)
+    .expect(expect)
   return body
 }

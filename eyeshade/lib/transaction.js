@@ -17,7 +17,8 @@ const SETTLEMENT_NAMESPACE = {
   'manual': 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
 module.exports = {
-  stats,
+  allSettlementStats,
+  settlementStatsByCurrency,
   knownChains: Object.assign({}, knownChains),
   insertTransaction,
   insertUserDepositFromChain,
@@ -337,8 +338,12 @@ async function updateBalances (runtime) {
   end({ erred: false })
 }
 
-async function stats (runtime, client, options) {
-  const { type, start, until } = options
+async function allSettlementStats (runtime, client, options) {
+  const {
+    type,
+    start,
+    until
+  } = options
   const statsQuery = `
 SELECT
     sum(amount) as amount
@@ -348,6 +353,29 @@ WHERE
 AND created_at >= to_timestamp($2)
 AND created_at < to_timestamp($3);
 `
-  const { rows } = await client.query(statsQuery, [type, start / 1000, until / 1000])
+  const args = [type, start / 1000, until / 1000]
+  const { rows } = await client.query(statsQuery, args)
+  return rows[0]
+}
+
+async function settlementStatsByCurrency (runtime, client, options) {
+  const {
+    type,
+    settlementCurrency,
+    start,
+    until
+  } = options
+  const statsQuery = `
+SELECT
+    sum(amount) as amount
+FROM transactions
+WHERE
+    transaction_type = $1
+AND settlement_currency = $2
+AND created_at >= to_timestamp($3)
+AND created_at < to_timestamp($4);
+`
+  const args = [type, settlementCurrency, start / 1000, until / 1000]
+  const { rows } = await client.query(statsQuery, args)
   return rows[0]
 }
