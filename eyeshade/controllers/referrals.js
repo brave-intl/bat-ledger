@@ -119,7 +119,6 @@ v1.createReferrals = {
         insertedReferrals += 1
       }
       await runtime.queue.send(debug, 'referral-report', { transactionId })
-      console.log('received referral')
       runtime.prometheus.getMetric('referral_received_counter').inc(insertedReferrals)
 
       reply({})
