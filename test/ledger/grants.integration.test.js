@@ -85,7 +85,26 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
   t.is(resolved.currentBalance, '0.0000')
 })
 
-test('attestation returns a random value for the same paymentId', async (t) => {
+test('android attestation returns a random value for the same paymentId', async (t) => {
+  const paymentId = 'e5d074c7-199f-4a5e-9a81-3460aef128d0'
+  const url = `/v1/attestations/${paymentId}`
+
+  const { body } = await ledgerAgent
+    .get(url)
+    .expect(ok)
+
+  t.true(_.isString(body.nonce))
+
+  const {
+    body: second
+  } = await ledgerAgent
+    .get(url)
+    .expect(ok)
+
+  t.not(body.nonce, second.nonce)
+})
+
+test('ios attestation returns a random value for the same paymentId', async (t) => {
   const paymentId = 'e5d074c7-199f-4a5e-9a81-3460aef128d0'
   const url = `/v1/attestations/${paymentId}`
 

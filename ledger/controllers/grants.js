@@ -126,6 +126,7 @@ const v2 = {}
 const v3 = {}
 const v4 = {}
 const v5 = {}
+const v6 = {}
 
 const safetynetPassthrough = (handler) => (runtime) => async (request, reply) => {
   const endpoint = '/v1/attestations/safetynet'
@@ -165,6 +166,10 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
     }
     return reply(boom.badData())
   }
+  await handler(runtime)(request, reply)
+}
+
+const iosPassthrough = (handler) => (runtime) => async (request, reply) => {
   await handler(runtime)(request, reply)
 }
 
@@ -327,6 +332,33 @@ v5.read = {
 }
 
 /*
+  GET /v6/grants
+*/
+
+v6.read = {
+  handler: iosPassthrough(getGrant(3)),
+  description: 'See if an ios promotion is available',
+  tags: [ 'api' ],
+
+  validate: {
+    headers: Joi.object().keys({
+      'ios-token': Joi.string().required().description('the safetynet token created by the ios device')
+    }).unknown(true),
+    query: {
+      bypassCooldown: Joi.string().guid().optional().description('a token to bypass the wallet cooldown time'),
+      lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
+      paymentId: Joi.string().guid().optional().description('identity of the wallet')
+    }
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).unknown(true).description('promotion properties')
+  }
+}
+
+/*
   GET /v4/grants
 */
 
@@ -366,6 +398,39 @@ const checkBounds = (v1, v2, tol) => {
 
 v3.claimGrant = {
   handler: claimGrant(3, safetynetCheck, v4CreateGrantQuery),
+  description: 'Request a grant for a wallet',
+  tags: [ 'api' ],
+
+  plugins: {
+    rateLimit: {
+      enabled: rateLimitEnabled,
+      rate: (request) => claimRate
+    }
+  },
+
+  validate: {
+    params: {
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    },
+    headers: Joi.object().keys({
+      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
+    }).unknown(true),
+    payload: Joi.object().keys({
+      promotionId: Joi.string().required().description('the promotion-identifier')
+    }).required().description('promotion details')
+  },
+
+  response: {
+    schema: publicGrantTypedValidator
+  }
+}
+
+/*
+   PUT /v6/grants/{paymentId}
+ */
+
+v6.iosClaimGrant = {
+  handler: claimGrant(3, iosCheck, v4CreateGrantQuery),
   description: 'Request a grant for a wallet',
   tags: [ 'api' ],
 
@@ -544,6 +609,25 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
     return reply(result)
   }
+}
+
+async function iosCheck (debug, runtime, request, promotion, wallet) {
+  const {
+    database
+  } = runtime
+  const {
+    paymentId
+  } = wallet
+  const wallets = database.get('wallets', debug)
+
+  await wallets.findOneAndUpdate({
+    paymentId
+  }, {
+    $unset: { nonce: {} },
+    $set: {
+      cohort: 'ios'
+    }
+  })
 }
 
 async function safetynetCheck (debug, runtime, request, promotion, wallet) {
@@ -852,14 +936,59 @@ v3.attestations = {
   }
 }
 
+/*
+  GET /v6/attestations/{paymentId}
+*/
+
+v6.attestations = {
+  description: 'Retrieve nonce for ios attestation',
+  tags: [ 'api' ],
+  response: {
+    schema: Joi.object().keys({
+      nonce: Joi.string().required().description('Nonce for wallet')
+    }).required().description('Response payload')
+  },
+  validate: {
+    params: Joi.object().keys({
+      paymentId: Joi.string().guid().required().description('Wallet payment id')
+    }).required().description('Request parameters')
+  },
+  handler: (runtime) => async (request, reply) => {
+    const { paymentId } = request.params
+    const { database } = runtime
+
+    const debug = braveHapi.debug(module, request)
+    const wallets = database.get('wallets', debug)
+
+    const nonce = uuidV4()
+
+    const $set = {
+      nonce: Buffer.from(nonce).toString('base64')
+    }
+
+    await wallets.update({
+      paymentId
+    }, {
+      $set
+    })
+
+    reply({
+      nonce
+    })
+  }
+}
+
 module.exports.routes = [
   braveHapi.routes.async().path('/v3/grants').config(v3.read),
   braveHapi.routes.async().path('/v4/grants').config(v4.read),
   braveHapi.routes.async().path('/v5/grants').config(v5.read),
+  braveHapi.routes.async().path('/v6/grants').config(v6.read),
   braveHapi.routes.async().put().path('/v2/grants/{paymentId}').config(v2.claimGrant),
   braveHapi.routes.async().put().path('/v3/grants/{paymentId}').config(v3.claimGrant),
+  braveHapi.routes.async().put().path('/v6/grants/{paymentId}').config(v6.iosClaimGrant),
   braveHapi.routes.async().post().path('/v4/grants').config(v4.create),
   braveHapi.routes.async().path('/v1/attestations/{paymentId}').config(v3.attestations),
+  braveHapi.routes.async().path('/v6/attestations/{paymentId}').config(v6.attestations),
   braveHapi.routes.async().put().path('/v2/grants/cohorts').config(v2.cohorts),
   braveHapi.routes.async().path('/v2/captchas/{paymentId}').config(v2.getCaptcha),
   braveHapi.routes.async().path('/v4/captchas/{paymentId}').config(v4.getCaptcha)
