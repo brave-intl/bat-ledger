@@ -535,6 +535,9 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
 })
 
 test('wallets can be claimed by verified members', async (t) => {
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+
   await createSurveyor({ rate: 1, votes: 1 })
 
   const anonCardInfo1 = await createAndFundUserWallet()
@@ -543,17 +546,34 @@ test('wallets can be claimed by verified members', async (t) => {
   const anonCardInfo4 = await createAndFundUserWallet()
   const settlement = process.env.BAT_SETTLEMENT_ADDRESS
 
+  const anonCard1AnonAddr = await createAnonymousAddress(anonCardInfo1.providerId)
+  const anonCard2AnonAddr = await createAnonymousAddress(anonCardInfo2.providerId)
+
   await claimCard(anonCardInfo1, settlement)
-  await claimCard(anonCardInfo2, anonCardInfo1.providerId, 200, '0')
+
+  await claimCard(anonCardInfo2, anonCardInfo1.providerId, 200, '0', anonCard1AnonAddr.id)
   await claimCard(anonCardInfo2, anonCardInfo1.providerId)
+  let wallet = await wallets.findOne({ paymentId: anonCardInfo2.paymentId })
+  t.deepEqual(wallet.anonymousAddress, anonCard1AnonAddr.id)
+
   await claimCard(anonCardInfo3, anonCardInfo2.providerId)
+  wallet = await wallets.findOne({ paymentId: anonCardInfo3.paymentId })
+  t.false(!!wallet.anonymousAddress)
+
   await claimCard(anonCardInfo4, anonCardInfo3.providerId, 409)
 
   // redundant calls are fine provided the amount we are attempting to transfer is less than the balance
-  await claimCard(anonCardInfo3, settlement, 200, '0')
+  // furthermore if the anonymous address has not previously been set it can be now
+  await claimCard(anonCardInfo3, anonCardInfo2.providerId, 200, '0', anonCard2AnonAddr.id)
+  wallet = await wallets.findOne({ paymentId: anonCardInfo3.paymentId })
+  t.deepEqual(wallet.anonymousAddress, anonCard2AnonAddr.id)
 
-  async function claimCard (anonCard, destination, code = 200, amount = anonCardInfo1.amount) {
-    const body = {
+  async function createAnonymousAddress (providerId) {
+    return uphold.createCardAddress(providerId, 'anonymous')
+  }
+
+  async function claimCard (anonCard, destination, code = 200, amount = anonCardInfo1.amount, anonymousAddress) {
+    const txn = {
       destination,
       denomination: {
         currency: 'BAT',
@@ -561,10 +581,13 @@ test('wallets can be claimed by verified members', async (t) => {
         amount
       }
     }
-    const signedTx = signTxn(anonCard.keypair, body)
+    let body = { signedTx: signTxn(anonCard.keypair, txn) }
+    if (anonymousAddress) {
+      _.extend(body, { anonymousAddress })
+    }
     await ledgerAgent
       .post(`/v2/wallet/${anonCard.paymentId}/claim`)
-      .send({ signedTx })
+      .send(body)
       .expect(status(code))
   }
 
