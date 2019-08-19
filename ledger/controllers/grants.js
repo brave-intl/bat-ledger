@@ -5,6 +5,7 @@ const boom = require('boom')
 const bson = require('bson')
 const underscore = require('underscore')
 const uuidV4 = require('uuid/v4')
+const uuidV5 = require('uuid/v5')
 const wreck = require('wreck')
 const {
   adsGrantsAvailable,
@@ -616,18 +617,33 @@ async function iosCheck (debug, runtime, request, promotion, wallet) {
     database
   } = runtime
   const {
+    headers
+  } = request
+  const {
     paymentId
   } = wallet
   const wallets = database.get('wallets', debug)
 
-  await wallets.findOneAndUpdate({
-    paymentId
-  }, {
-    $unset: { nonce: {} },
-    $set: {
+  const token = headers['ios-token'] // 03dd3ae8-cd50-4aeb-a38e-f13c9be5ef46 passes
+  const nonce = uuidV5(token, '679f5f5a-deb2-4412-84e7-9daf39fc210c')
+  const validNonce = nonce === '908cf8b4-8bd0-5b75-b31e-6baa32b80a85'
+
+  const updates = {
+    $unset: { nonce: {} }
+  }
+  if (validNonce) {
+    updates.$set = {
       cohort: 'ios'
     }
-  })
+  }
+
+  await wallets.findOneAndUpdate({
+    paymentId
+  }, updates)
+
+  if (!validNonce) {
+    return boom.forbidden('ios nonce does not match')
+  }
 }
 
 async function safetynetCheck (debug, runtime, request, promotion, wallet) {
