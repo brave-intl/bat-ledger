@@ -57,6 +57,7 @@ test('verify frozen occurs when daily is run', async t => {
   await voteAndCheckTally(t, publisher, surveyorId, 1)
   await voteAndCheckTally(t, publisher, surveyorId, 2)
   await tryFreeze(t, 0, false, surveyorId)
+
   // freezes if midnight is after creation date
   await voteAndCheckTally(t, publisher, surveyorId, 3)
   await tryFreeze(t, -1, true, surveyorId)
@@ -64,7 +65,7 @@ test('verify frozen occurs when daily is run', async t => {
   await voteAndCheckTally(t, publisher, surveyorId, 3)
 })
 
-async function tryFreeze (t, dayShift, expect, surveyorId) {
+async function tryFreeze (t, dayShift, expectFrozen, surveyorId) {
   const { rows: beforeFrozenSurveyors } = await querySurveyor(surveyorId)
   const beforeSurveyor = beforeFrozenSurveyors[0]
   const {
@@ -81,8 +82,8 @@ async function tryFreeze (t, dayShift, expect, surveyorId) {
     updated_at: afterUpdatedAt
   } = afterSurveyor
   t.is(afterFrozenSurveyors.length, 1, 'only one surveyor should be returned')
-  t.is(frozen, expect, 'surveyors should be frozen')
-  if (expect) {
+  t.is(frozen, expectFrozen, 'surveyors should ' + (expectFrozen ? 'be' : 'not be') + ' frozen')
+  if (expectFrozen) {
     t.not(afterCreatedAt.toISOString(), afterUpdatedAt.toISOString(), 'updated at should be different after freeze')
   }
 }

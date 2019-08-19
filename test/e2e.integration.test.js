@@ -699,11 +699,11 @@ async function getSurveyorContributionAmount (t, personaCredential) {
   return donateAmt
 }
 
-async function waitForContributionAmount (t, paymentId, donateAmt) {
+async function waitForContributionAmount (t, paymentId) {
   let response, err
   do { // This depends on currency conversion rates being available, retry until they are available
     response = await ledgerAgent
-      .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
+      .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&altcurrency=BAT')
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
   err = ok(response)
@@ -712,15 +712,12 @@ async function waitForContributionAmount (t, paymentId, donateAmt) {
   t.true(response.body.hasOwnProperty('balance'))
   t.true(_.isString(response.body.httpSigningPubKey))
   t.is(response.body.balance, '0.0000')
-
-  return donateAmt.toFixed(4).toString()
 }
 
 async function fundUserWallet (t, personaCredential, paymentId, userCardId) {
   const donateAmt = await getSurveyorContributionAmount(t, personaCredential)
-  const desiredTxAmt = await waitForContributionAmount(t, paymentId, donateAmt)
-  await createCardTransaction(desiredTxAmt, userCardId)
-  return desiredTxAmt
+  await createCardTransaction(donateAmt, userCardId)
+  return donateAmt
 }
 
 async function fundUserWalletAndTestStats (t, personaCredential, paymentId, userCardId) {
@@ -738,7 +735,7 @@ async function fundUserWalletAndTestStats (t, personaCredential, paymentId, user
     wallets: 1
   }])
 
-  const desiredTxAmt = await waitForContributionAmount(t, paymentId, donateAmt)
+  await waitForContributionAmount(t, paymentId)
 
   response = await ledgerAgent.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
@@ -751,9 +748,9 @@ async function fundUserWalletAndTestStats (t, personaCredential, paymentId, user
     wallets: 1
   }])
 
-  await createCardTransaction(desiredTxAmt, userCardId)
+  await createCardTransaction(donateAmt, userCardId)
 
-  return desiredTxAmt
+  return donateAmt
 }
 
 async function createCardTransaction (desiredTxAmt, userCardId) {
@@ -830,7 +827,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
   await t.throwsAsync(uphold.createCardTransaction(userCardId,
-    { 'amount': txAmount, 'currency': 'BAT', 'destination': donorCardId },
+    { 'amount': txAmount.toString(), 'currency': 'BAT', 'destination': donorCardId },
     true // commit tx in one swoop
   ))
 

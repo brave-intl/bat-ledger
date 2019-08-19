@@ -8,6 +8,8 @@ services:
       - "3334:3334"
     environment:
       - TOKEN_LIST
+      - "ALLOW_DEBUG_APK=1"
+      - "IGNORE_APK_DIGEST=1"
     networks:
       - ledger
   ledger-web:

@@ -50,7 +50,6 @@ const read = function (runtime, apiVersion) {
     const wallets = runtime.database.get('wallets', debug)
     const altcurrency = request.query.altcurrency
 
-    let currency = request.query.currency
     let balances, info, result, state, wallet, wallet2
 
     wallet = await wallets.findOne({ paymentId: paymentId })
@@ -60,13 +59,18 @@ const read = function (runtime, apiVersion) {
       return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
     }
 
-    const subset = currency ? [currency.toUpperCase()] : null
-    const rates = await runtime.currency.rates(wallet.altcurrency, subset)
+    let rates = {}
+    try {
+      rates = await runtime.currency.rates(wallet.altcurrency)
+      rates = underscore.mapObject(rates, (value) => +value)
+    } catch (ex) {
+      runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
+    }
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
       httpSigningPubKey: wallet.httpSigningPubKey,
-      rates: underscore.mapObject(rates, (value) => +value)
+      rates
     }
 
     result = underscore.extend(result, { addresses: wallet.addresses })
@@ -107,25 +111,10 @@ const read = function (runtime, apiVersion) {
 
     if (amount) {
       if (refreshP) {
-        if (currency) {
-          try {
-            await runtime.currency.ratio('USD', currency)
-          } catch (e) {
-            return reply(boom.notFound('no such currency: ' + currency))
-          }
-          const rates = await runtime.currency.rates(wallet.altcurrency)
-          if (!rates || !rates[currency.toUpperCase()]) {
-            const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
-            const resp = boom.serverUnavailable(errMsg)
-            resp.output.headers['retry-after'] = '5'
-            return reply(resp)
-          }
-        } else if (altcurrency) {
-          currency = altcurrency
-        } else {
-          return reply(boom.badData('must pass at least one of currency or altcurrency'))
+        if (!altcurrency) {
+          return reply(boom.badData('must pass altcurrency'))
         }
-        result = underscore.extend(result, await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed))
+        result = underscore.extend(result, await runtime.wallet.unsignedTx(wallet, amount, altcurrency, balances.confirmed))
 
         if (result.unsignedTx) {
           if (result.requestType === 'bitcoinMultisig') {
@@ -142,7 +131,7 @@ const read = function (runtime, apiVersion) {
         }
       }
 
-      info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
+      info = await runtime.wallet.purchaseBAT(wallet, amount, altcurrency, request.headers['accept-language'])
       wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
       if ((wallet2) && (!underscore.isEqual(wallet, wallet2))) {
         if (!state) {
@@ -195,7 +184,6 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
       // FIXME since this amount is not in native probi - need some kind of sig fig limit
       amount: Joi.number().positive().optional().description('the payment amount in fiat currency if provied, otherwise the altcurrency'),
       balance: Joi.boolean().optional().default(false).description('return balance information'),
-      currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
       altcurrency: braveJoi.string().altcurrencyCode().optional().description('the altcurrency of the requested transaction'),
       refresh: Joi.boolean().optional().default(false).description('return balance and transaction information')
     }
