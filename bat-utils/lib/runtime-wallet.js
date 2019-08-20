@@ -128,7 +128,7 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
     }
 
     const tmp = Joi.validate(txn, upholdTxnSchema).error
-    if (tmp !== null) throw new Error('the signed transaction ' + JSON.stri(txn) + 'failed to validate' + tmp)
+    if (tmp !== null) throw new Error('the signed transaction ' + JSON.stringify(txn) + 'failed to validate' + tmp)
 
     const { amount } = txn.denomination
     if (bigMinimum.greaterThan(amount)) {
