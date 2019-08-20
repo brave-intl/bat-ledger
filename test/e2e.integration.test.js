@@ -827,7 +827,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
   await t.throwsAsync(uphold.createCardTransaction(userCardId,
-    { 'amount': txAmount.toString(), 'currency': 'BAT', 'destination': donorCardId },
+    { 'amount': txAmount, 'currency': 'BAT', 'destination': donorCardId },
     true // commit tx in one swoop
   ))
 
@@ -843,7 +843,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   const tooLowPayload = createPayload({
     destination,
     denomination: {
-      amount: 0.1,
+      amount: '0.1',
       currency
     }
   })
@@ -855,7 +855,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   const notSettlementAddressPayload = createPayload({
     destination: uuidV4(),
     denomination: {
-      amount,
+      amount: amount.toString(),
       currency
     }
   })
@@ -906,6 +906,7 @@ function setupCreatePayload ({
   return (unsignedTx) => {
     const { destination, denomination } = unsignedTx
     const { amount, currency } = denomination
+    console.log(unsignedTx)
     const octets = JSON.stringify({
       destination,
       denomination: {
@@ -913,6 +914,7 @@ function setupCreatePayload ({
         currency
       }
     })
+    console.log(octets)
 
     const headers = {
       digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
