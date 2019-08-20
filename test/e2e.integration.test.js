@@ -904,7 +904,16 @@ function setupCreatePayload ({
   keypair
 }) {
   return (unsignedTx) => {
-    const octets = JSON.stringify(unsignedTx)
+    const { destination, denomination } = unsignedTx
+    const { amount, currency } = denomination
+    const octets = JSON.stringify({
+      destination,
+      denomination: {
+        amount: amount.toString(),
+        currency
+      }
+    })
+
     const headers = {
       digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
     }
