@@ -106,7 +106,7 @@ test('android attestation returns a random value for the same paymentId', async 
 
 test('ios attestation returns a random value for the same paymentId', async (t) => {
   const paymentId = 'e5d074c7-199f-4a5e-9a81-3460aef128d0'
-  const url = `/v1/attestations/${paymentId}`
+  const url = `/v6/attestations/${paymentId}`
 
   const { body } = await ledgerAgent
     .get(url)
@@ -610,6 +610,98 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
     type: 'ads'
   }], 'relevant grant information is sent back')
   t.deepEqual(resolved.grants, resolved.balanceGrants, 'balance has the same info')
+})
+
+test('v6 requires ios token', async (t) => {
+  let body
+  let response
+  let octets
+  let headers
+  let balance = 0
+
+  const url = '/v4/grants'
+  const promotionId = 'cf0075c8-3902-46c0-be77-b8d8f7d83755'
+  const adPromotionId = 'bad49132-de38-47e7-8003-986af88eeb1c'
+  const personaId = uuidV4().toLowerCase()
+
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+
+  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
+
+  const keypair = tweetnacl.sign.keyPair()
+  body = {
+    label: uuidV4().toLowerCase(),
+    currency: 'BAT',
+    publicKey: uint8tohex(keypair.publicKey)
+  }
+  octets = JSON.stringify(body)
+  headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers.signature = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, { algorithm: 'ed25519' })
+
+  var payload = { requestType: 'httpSignature',
+    request: {
+      body: body,
+      headers: headers,
+      octets: octets
+    },
+    proof: personaCredential.request()
+  }
+  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+    .send(payload).expect(ok)
+  let paymentId = response.body.wallet.paymentId
+
+  const grants = { 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJiNDBkYjA4YS0yZmExLTQwOWUtOWVmYy1mYzJkOTU1NTQ2YTUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImNmMDA3NWM4LTM5MDItNDZjMC1iZTc3LWI4ZDhmN2Q4Mzc1NSIsIm1hdHVyaXR5VGltZSI6MTU0NjMwMDgwMCwiZXhwaXJ5VGltZSI6MTY3MjM1ODQwMCwidHlwZSI6InVncCJ9.0CsPvRtWhhxI3GG95ClkY3aontogb4vwpdp5D39iH9DDJkRoh7FADMEBAWJ44SwXX-XZhb2qgWD-cAP3Ua5gBg'], 'promotions': [{ promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1546300800000, 'protocolVersion': 4, 'type': 'ugp' }] }
+
+  const adGrants = { 'promotions': [{ 'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4, 'type': 'ads' }], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1YTdlOTZhOC0wOWE5LTQ1OGUtODNjYS1jMjYzYTFjNTBiZjUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1NjEyMjMyOCwiZXhwaXJ5VGltZSI6MjE2MDkyNTkyOCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.kcBlRGoOFylPOP3cnCaEhNuePvvOQ6z5a1fNogA6rELoHo_i28elzNLZ8X2VoHcD8LMkcgijgviCOypu3_0AAg'] }
+
+  await ledgerAgent.post(url).send(grants).expect(ok)
+  await ledgerAgent.post(url).send(adGrants).expect(ok)
+
+  // get available grant
+  await ledgerAgent
+    .get('/v4/grants')
+    .query({ paymentId })
+    .expect(404)
+
+  const {
+    body: {
+      grants: promotions
+    }
+  } = await ledgerAgent
+    .get(`/v4/grants`)
+    .query({ paymentId, bypassCooldown })
+    .expect(ok)
+  t.is(promotions.length, 1, 'only one promotion should be sent back')
+
+  const resolved = await resolveCaptcha(wallets, {
+    paymentId,
+    promotionId,
+    balance
+  })
+  t.is(resolved.balance.toString(), '1')
+  t.deepEqual(resolved.grants, [{
+    type: 'ugp',
+    altcurrency: 'BAT',
+    expiryTime: 1672358400,
+    probi: '1000000000000000000'
+  }], 'relevant grant information is sent back')
+  t.deepEqual(resolved.grants, resolved.balanceGrants, 'balance has the same info')
+  await t.throwsAsync(async () => {
+    await resolveCaptcha(wallets, {
+      paymentId,
+      promotionId: adPromotionId,
+      balance: 1
+    })
+  })
 })
 
 async function resolveCaptcha (wallets, {

@@ -447,7 +447,7 @@ v6.iosClaimGrant = {
       paymentId: Joi.string().guid().required().description('identity of the wallet')
     },
     headers: Joi.object().keys({
-      'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
+      'ios-token': Joi.string().required().description('the ios token created by the apple device')
     }).unknown(true),
     payload: Joi.object().keys({
       promotionId: Joi.string().required().description('the promotion-identifier')
@@ -509,7 +509,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const adsAvailable = await adsGrantsAvailable(code)
 
     if (protocolVersion === 3) {
-      underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android'] } })
+      underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android', 'ios'] } })
     } else if (protocolVersion === 4) {
       underscore.extend(promotionQuery, { type: { $in: ['ugp', 'ads'] } })
     }
@@ -518,7 +518,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
     if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
 
-    if (adsAvailable && (!promotion.type || promotion.type === 'ugp' || promotion.type === 'android')) {
+    if (adsAvailable && (!promotion.type || promotion.type === 'ugp' || promotion.type === 'android' || promotion.type === 'ios')) {
       return reply(boom.badRequest('claim from this area is not allowed'))
     }
 
@@ -627,6 +627,7 @@ async function iosCheck (debug, runtime, request, promotion, wallet) {
   const token = headers['ios-token'] // 03dd3ae8-cd50-4aeb-a38e-f13c9be5ef46 passes
   const nonce = uuidV5(token, '679f5f5a-deb2-4412-84e7-9daf39fc210c')
   const validNonce = nonce === '908cf8b4-8bd0-5b75-b31e-6baa32b80a85'
+  console.log(token, nonce)
 
   const updates = {
     $unset: { nonce: {} }
