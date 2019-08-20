@@ -215,11 +215,6 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     }))
   t.deepEqual(body, [], 'endpoint defaults pending to false')
 
-  // Create a publisher owner and settle balances to that owner
-  await agents.eyeshade.global.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
-    .send({ 'provider': 'uphold', 'parameters': {} })
-    .expect(ok)
-
   let amount, entry
   const account = [braveYoutubePublisher]
   const query = { account }
