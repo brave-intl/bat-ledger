@@ -578,7 +578,7 @@ test('wallets can be claimed by verified members', async (t) => {
       denomination: {
         currency: 'BAT',
         // amount should be same for this example
-        amount
+        amount: amount.toString()
       }
     }
     let body = { signedTx: signTxn(anonCard.keypair, txn) }
