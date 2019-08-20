@@ -364,7 +364,7 @@ async function pullSettlementWalletBalanceMetrics (runtime) {
   if (!last) {
     // on start, restart, or cache expiration
     last = await getSettlementBalance(runtime)
-    await setSettlementBalance(settlementBalanceKey, last.toString())
+    await setSettlementBalance(runtime, settlementBalanceKey, last.toString())
   } else {
     current = await getSettlementBalance(runtime)
     last = new BigNumber(last)
@@ -377,7 +377,7 @@ async function pullSettlementWalletBalanceMetrics (runtime) {
     current = last
   }
   const value = last.minus(current)
-  await setSettlementBalance(settlementBalanceCounterKey, value.toString())
+  await setSettlementBalance(runtime, settlementBalanceCounterKey, value.toString())
 }
 
 async function setSettlementBalance (runtime, key, value) {
