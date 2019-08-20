@@ -716,9 +716,15 @@ v2.claimWallet = {
   description: 'Claim anonymous wallets',
   tags: ['api'],
   validate: {
-    payload: Joi.object().keys({
-      signedTx: Joi.required().description('signed transaction')
-    })
+    payload: Joi.alternatives().try(
+      Joi.object().keys({
+        signedTx: Joi.required().description('signed transaction')
+      }),
+      Joi.object().keys({
+        signedTx: Joi.required().description('signed transaction'),
+        anonymousAddress: Joi.string().guid().description('anonymous address for payouts')
+      })
+    )
   },
   response: {
     schema: Joi.object().length(0)
@@ -757,6 +763,8 @@ module.exports.initialize = async (debug, runtime) => {
         addresses: {},
         httpSigningPubKey: '',
         providerId: '',
+        providerLinkingId: '',
+        anonymousAddress: '',
 
         timestamp: bson.Timestamp.ZERO,
         grants: []
@@ -808,7 +816,7 @@ function claimWalletHandler (runtime) {
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
     const { params, payload } = request
-    const { signedTx } = payload
+    const { signedTx, anonymousAddress } = payload
     const { paymentId } = params
     const wallets = runtime.database.get('wallets', debug)
     const members = runtime.database.get('members', debug)
@@ -843,6 +851,15 @@ function claimWalletHandler (runtime) {
       if (providerLinkingId !== wallet.providerLinkingId) {
         return reply(boom.forbidden())
       }
+
+      if (anonymousAddress && (!wallet.anonymousAddress || anonymousAddress !== wallet.anonymousAddress)) {
+        // allow for updating / setting the anonymous address even if already claimed
+        await wallets.update({
+          paymentId
+        }, {
+          $set: { anonymousAddress }
+        })
+      }
     } else {
       await members.update({ providerLinkingId }, {
         $set: {
@@ -868,12 +885,15 @@ function claimWalletHandler (runtime) {
       if (!member) {
         return reply(boom.conflict())
       }
+      let toSet = { providerLinkingId }
+
+      if (anonymousAddress) {
+        underscore.extend(toSet, { anonymousAddress })
+      }
       await wallets.update({
         paymentId
       }, {
-        $set: {
-          providerLinkingId
-        }
+        $set: toSet
       })
     }
 
