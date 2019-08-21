@@ -159,7 +159,7 @@ Prometheus.prototype.plugin = function () {
         method: 'GET',
         path: '/metrics',
         handler: async (req, reply) => {
-          await setMetrics(this.runtime)
+          await setMetrics(this)
           const registry = this.allMetrics()
           const metrics = registry.metrics()
           reply(metrics).type('text/plain')
@@ -326,9 +326,13 @@ Prometheus.prototype.merge = async function () {
   this.subscriber()
   this.stayinAlive()
 
-  if (label === 'ledger.web.1') {
+  await this.ifFirstWebRun(() => autoUpdateMetrics(this.runtime))
+}
+
+Prometheus.prototype.ifFirstWebRun = async function (fn) {
+  if (this.config.label === 'ledger.web.1') {
     // only write from one dyno
-    await autoUpdateMetrics(this.runtime)
+    await fn()
   }
 }
 
@@ -336,8 +340,8 @@ async function autoUpdateMetrics (runtime) {
   await updateSettlementWalletMetrics(runtime)
 }
 
-async function setMetrics (runtime) {
-  await setSettlementWalletMetrics(runtime)
+async function setMetrics (context) {
+  await context.ifFirstWebRun(() => setSettlementWalletMetrics(context.runtime))
 }
 
 async function setSettlementWalletMetrics (runtime) {
@@ -347,7 +351,8 @@ async function setSettlementWalletMetrics (runtime) {
   if (counter === null) {
     return // hasn't been set yet
   }
-  metric.reset().inc({}, +counter)
+  metric.reset()
+  metric.inc(+counter)
 }
 
 async function updateSettlementWalletMetrics (runtime) {
