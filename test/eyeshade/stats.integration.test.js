@@ -29,10 +29,7 @@ const today = new Date('2018-07-30')
 const runtime = new Runtime({
   testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
   queue: BAT_REDIS_URL,
-  prometheus: {
-    label: 'eyeshade.worker.1',
-    redis: BAT_REDIS_URL
-  },
+  prometheus: {},
   wallet: {
     settlementAddress: {
       'BAT': '0xdeadbeef'
