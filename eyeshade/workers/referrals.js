@@ -53,6 +53,7 @@ exports.workers = {
           throw e
         }
         await client.query('COMMIT')
+        runtime.prometheus.getMetric('referral_inserted_counter').inc(docs.length)
       } finally {
         client.release()
       }

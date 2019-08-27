@@ -149,12 +149,25 @@ function registerMetrics (prometheus) {
     help: 'a count up of the number of bat removed from the settlement wallet'
   })
   register.registerMetric(settlementCounter)
+
   const voteCounter = new client.Counter({
     name: 'votes_issued_counter',
     help: 'ballots that were issued to the browser',
     labelNames: ['cohort']
   })
   register.registerMetric(voteCounter)
+
+  const referralReceivedCounter = new client.Counter({
+    name: 'referral_received_counter',
+    help: 'the number of referrals received from promotion server'
+  })
+  register.registerMetric(referralReceivedCounter)
+
+  const referralInsertedCounter = new client.Counter({
+    name: 'referral_inserted_counter',
+    help: 'the number of referrals inserted to the transactions table'
+  })
+  register.registerMetric(referralInsertedCounter)
 }
 
 Prometheus.prototype.plugin = function () {
