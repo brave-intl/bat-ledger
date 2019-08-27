@@ -1,11 +1,14 @@
 const boom = require('boom')
 const bson = require('bson')
+const BigNumber = require('bignumber.js')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+
+const queries = require('../lib/queries')
 
 const v1 = {}
 
@@ -74,15 +77,12 @@ v1.createReferrals = {
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
       const referrals = runtime.database.get('referrals', debug)
+      const postgresClient = await runtime.postgres.connect()
       const downloadIdsToBeConfirmed = []
       let entries, existingDownloadIds, probi
 
-      probi = await runtime.currency.fiat2alt(runtime.config.referrals.currency, runtime.config.referrals.amount, altcurrency)
-      probi = bson.Decimal128.fromString(probi.toString())
-
       // Get all download ids promo wants to finalize
       for (let referral of payload) {
-        underscore.extend(referral, { altcurrency: altcurrency, probi: probi })
         downloadIdsToBeConfirmed.push(referral.downloadId)
       }
 
@@ -98,22 +98,40 @@ v1.createReferrals = {
       let insertedReferrals = 0
       for (let referral of payload) {
         let state
+        let referralAmount
+        let referralCurrency
 
         // Don't insert referrals already accounted for
         if (existingDownloadIds.includes(referral.downloadId)) {
           continue
         }
 
-        underscore.extend(referral, { altcurrency: altcurrency, probi: probi })
+        const result = await postgresClient.query(queries.referralAmountByCountryCode(), [referral.countryCode])
+        const referralConfig = result && result.rows && result.rows[0]
+        if (referralConfig) {
+          referralAmount = new BigNumber(referralConfig.amount)
+          referralCurrency = referralConfig.currency
+        } else {
+          referralAmount = runtime.config.referrals.amount
+          referralCurrency = runtime.config.referrals.currency
+        }
+
+        probi = await runtime.currency.fiat2alt(referralCurrency, referralAmount, altcurrency)
+        probi = bson.Decimal128.fromString(probi.toString())
+
         state = {
           $currentDate: { timestamp: { $type: 'timestamp' } },
-          $set: underscore.extend({
+          $set: {
             finalized: new Date(referral.finalized),
             owner: referral.ownerId,
             publisher: referral.channelId,
             transactionId: transactionId,
+            altcurrency: altcurrency,
+            probi: probi,
+            referralAmount: referralAmount.toString(),
+            referralCurrency: referralCurrency,
             exclude: false
-          }, underscore.pick(referral, [ 'platform', 'altcurrency', 'probi' ]))
+          },
         }
         await referrals.update({ downloadId: referral.downloadId }, state, { upsert: true })
         insertedReferrals += 1

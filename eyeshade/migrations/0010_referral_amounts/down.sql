@@ -1,0 +1,6 @@
+select execute($$
+
+drop table geo_referral_amounts;
+delete from migrations where id = '0010';
+
+$$) where exists (select * from migrations where id = '0010');

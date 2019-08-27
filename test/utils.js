@@ -197,7 +197,8 @@ function cleanPgDb (client) {
       client.query('DELETE from potential_payments_ads;'),
       client.query('DELETE from transactions;'),
       client.query('DELETE from surveyor_groups;'),
-      client.query('DELETE from votes;')
+      client.query('DELETE from votes;'),
+      client.query('DELETE from geo_referral_amounts;')
     ]).then(() => client.query('REFRESH MATERIALIZED VIEW account_balances;'))
   }
 }

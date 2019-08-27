@@ -115,3 +115,41 @@ test('if promo sends mix of duplicate and valid referrals with same tx id, only 
   const referralDocs = await referralCollection.find({ transactionId: txId }).toArray()
   t.true(referralDocs.length === 2)
 })
+
+test('referrals use the correct geo-specific amount', async t => {
+  const eyeshadeMongo = await connectToDb('eyeshade')
+  const postgresClient = await runtime.postgres.connect()
+
+  await postgresClient.query(`
+insert into geo_referral_amounts (country_code, currency, amount)
+  values (\'DE\', \'EUR\', 2.50)
+`, [])
+
+  const txId = uuidV4().toLowerCase()
+  const referral = {
+    downloadId: uuidV4().toLowerCase(),
+    channelId: braveYoutubePublisher,
+    platform: 'ios',
+    countryCode: 'DE',
+    finalized: new Date(),
+    ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
+  }
+  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
+
+  // ensure referral docs are created in mongo
+  const referralCollection = await eyeshadeMongo.collection('referrals')
+  const referralDocs = await referralCollection.find({ downloadId: referral.downloadId }).toArray()
+  t.true(referralDocs.length === 1)
+
+  t.true(referralDocs[0].referralCurrency === 'EUR')
+  t.true(referralDocs[0].referralAmount.toString() === '2.5')
+
+  // ensure referral records are created in postgres
+  let rows
+  do { // wait until referral-report is processed and transactions are entered into postgres
+    await timeout(500).then(async () => {
+      rows = (await postgresClient.query(`select * from transactions where transaction_type = 'referral'`)).rows
+    })
+  } while (rows.length === 0)
+  t.true(rows.length === 1)
+})

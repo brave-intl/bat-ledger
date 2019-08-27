@@ -4,7 +4,8 @@ module.exports = {
   allSettlements,
   timeConstraintSettlements,
   earnings,
-  votesId
+  votesId,
+  referralAmountByCountryCode
 }
 
 function votesId (channel, cohort, surveyorId) {
@@ -64,4 +65,14 @@ function timeConstraintSettlements (options = {}) {
  group by (account_id, channel)
  order by paid ${order}
  limit $2;`
+}
+
+function referralAmountByCountryCode (options = {}) {
+  return referralQuery = `
+select amount, currency
+from geo_referral_amounts
+where
+  country_code = $1
+limit 1
+`
 }
