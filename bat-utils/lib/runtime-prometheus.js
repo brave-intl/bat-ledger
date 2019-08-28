@@ -145,7 +145,7 @@ function registerMetrics (prometheus) {
   register.registerMetric(viewRefreshRequestBucketsMilliseconds)
 
   const settlementCounter = new client.Counter({
-    name: 'settlement_balance_counter',
+    name: 'funds_received_count',
     help: 'a count up of the number of bat removed from the settlement wallet'
   })
   register.registerMetric(settlementCounter)
@@ -341,7 +341,7 @@ async function setMetrics (context) {
 
 async function setSettlementWalletMetrics (runtime) {
   const { prometheus } = runtime
-  const metric = prometheus.getMetric('settlement_balance_counter')
+  const metric = prometheus.getMetric('funds_received_count')
   let counter = await prometheus.cache().getAsync(settlementBalanceCounterKey)
   if (counter === null) {
     return // hasn't been set yet
