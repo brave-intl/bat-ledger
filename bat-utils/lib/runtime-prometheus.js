@@ -369,14 +369,14 @@ async function pullSettlementWalletBalanceMetrics (runtime) {
     current = await getSettlementBalance(runtime)
     last = new BigNumber(last)
   }
-  // if the settlement wallet is refilled,
-  // current is not set (start or restart)
+  // if the current value is not set (start or restart),
+  // settlement wallet is emptied,
   // or the value expires in redis
   // then we reset this metric and set the value in redis again
-  if (!current || current.greaterThan(last)) {
+  if (!current || current.lessThan(last)) {
     current = last
   }
-  const value = last.minus(current)
+  const value = current.minus(last)
   await setSettlementBalance(runtime, settlementBalanceCounterKey, value.toString())
 }
 
