@@ -28,9 +28,11 @@ const {
 const today = new Date('2018-07-30')
 const runtime = new Runtime({
   testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
-  queue: BAT_REDIS_URL,
+  queue: {
+    rsmq: BAT_REDIS_URL
+  },
   prometheus: {
-    label: 'eyeshade.worker.1'
+    redis: BAT_REDIS_URL
   },
   wallet: {
     settlementAddress: {
@@ -145,7 +147,7 @@ test('stats for grants', async (t) => {
     const amount = (new BigNumber(0.95)).toPrecision(18).toString()
     t.deepEqual({ amount, count: '2' }, votingStats, 'vote amounts are summed')
   } finally {
-    await client.release()
+    client.release()
   }
 })
 
@@ -194,7 +196,7 @@ test('stats for settlements', async (t) => {
     const allBody = await getStatsFor('settlements', 'referral')
     t.deepEqual(30, +allBody.amount, 'all referrals can be summed')
   } finally {
-    await client.release()
+    client.release()
   }
 })
 

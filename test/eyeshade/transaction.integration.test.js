@@ -384,7 +384,7 @@ test('can add transactions for different account types', async (t) => {
     const subResults = txs.map((row) => _.omit(row, ['id']))
     t.deepEqual(expectedResults, subResults, `chain ${chain} is a valid from_account type`)
   }
-  await client.release()
+  client.release()
 })
 
 test('common insertion fn', async (t) => {
@@ -435,7 +435,7 @@ test('common insertion fn', async (t) => {
     settlement_currency: null
   }]
   t.deepEqual(expectedResults, txs, `transactions are inserted`)
-  await client.release()
+  client.release()
 })
 
 test('transaction stats', async (t) => {

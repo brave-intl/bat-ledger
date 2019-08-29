@@ -1,0 +1,111 @@
+[{
+  "top": {
+    "owner": [
+      {
+        "balance": "0.000000000000000000",
+        "id": "publishers#uuid:a533d614-43e3-4338-8b04-b02ec4961f3c",
+        "type": "owner"
+      }
+    ],
+    "uphold": [
+      {
+        "balance": "0.950000000000000000",
+        "type": "uphold"
+      },
+      {
+        "balance": "-12.000000000000000000",
+        "type": "uphold"
+      }
+    ],
+    "channel": [
+      {
+        "balance": "2.000000000000000000",
+        "id": "wikipedia.org",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "duckduckgo.com",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "bit.tube",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "ycombinator.com",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "everipedia.org",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "facebook.com",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "google.com",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "youtube.com",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "gab.ai",
+        "type": "channel"
+      },
+      {
+        "balance": "1.000000000000000000",
+        "id": "reddit.com",
+        "type": "channel"
+      },
+      {
+        "balance": "0.000000000000000000",
+        "id": "youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg",
+        "type": "channel"
+      }
+    ],
+    "internal": [
+      {
+        "balance": "0.050000000000000000",
+        "id": "fees-account",
+        "type": "internal"
+      }
+    ]
+  },
+  "votes": [
+    {
+      "fees": "0.600000000000000000",
+      "amount": "11.400000000000000000",
+      "cohort": "control",
+      "channel": "11"
+    }
+  ],
+  "transactions": [
+    {
+      "type": "contribution",
+      "channel": "11"
+    },
+    {
+      "type": "contribution_settlement",
+      "channel": "1"
+    },
+    {
+      "type": "fees",
+      "channel": "1"
+    },
+    {
+      "type": "referral",
+      "channel": "1"
+    }
+  ]
+}]

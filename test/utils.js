@@ -13,10 +13,12 @@ const uuidV4 = require('uuid/v4')
 const BigNumber = require('bignumber.js')
 const pg = require('pg')
 const {
+  justDate,
   timeout,
   uint8tohex
 } = require('bat-utils/lib/extras-utils')
 const SDebug = require('sdebug')
+const today = new Date()
 const debug = new SDebug('test')
 const Pool = pg.Pool
 const Server = require('bat-utils/lib/hapi-server')
@@ -41,6 +43,10 @@ const {
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
+const defaultSnapshotStructure = { top: {}, votes: [], transactions: [] }
+const {
+  createSnapshot
+} = require('../eyeshade/workers/reports')
 
 const eyeshadeCollections = [
   'grants',
@@ -212,6 +218,7 @@ module.exports = {
   agentAutoAuth,
   AUTH_KEY,
   readJSONFile,
+  checkSnapshots,
   makeSettlement,
   insertReferralInfos,
   createSurveyor,
@@ -219,6 +226,7 @@ module.exports = {
   fetchReport,
   formURL,
   ok,
+  today,
   debug,
   status,
   agents: {
@@ -519,4 +527,33 @@ function signTxn (keypair, body, octets) {
     headers,
     octets
   }
+}
+
+async function checkSnapshots (t, debug, runtime, expected) {
+  const justDateToday = justDate(today)
+  const url = `/v1/stats/aggregate/${justDateToday}`
+
+  await runtime.postgres.query(`delete from snapshots;`)
+
+  await createSnapshot(debug, runtime, {
+    date: justDateToday
+  })
+
+  const { body: after } = await eyeshadeStatsAgent
+    .get(url)
+    .expect(ok)
+  const sanitizedAfter = sanitizeSnapshot(justDateToday, after)
+  const sanitizedExpected = sanitizeSnapshot(justDateToday, expected)
+  t.deepEqual(sanitizedAfter, sanitizedExpected, 'snapshot structure should be known')
+}
+
+function sanitizeSnapshot (date, snapshots) {
+  return snapshots.map((snapshot) => Object.assign({}, defaultSnapshotStructure, snapshot, {
+    createdAt: '',
+    targetDate: (new Date(date)).toISOString(),
+    top: _.mapObject(snapshot.top, (list) => {
+      return _.map(list, (item) => _.omit(item, 'id'))
+    }),
+    transactions: _.map(snapshot.transactions, (tx) => _.omit(tx, ['amount']))
+  }))
 }

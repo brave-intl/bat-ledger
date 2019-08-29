@@ -1,4 +1,6 @@
 'use strict'
+import * as path from 'path'
+import * as fs from 'fs'
 import parsePrometheusText from 'parse-prometheus-text-format'
 import BigNumber from 'bignumber.js'
 import UpholdSDK from '@uphold/uphold-sdk-javascript'
@@ -31,6 +33,7 @@ import {
   setupCreatePayload,
   debug,
   statsUrl,
+  checkSnapshots,
   connectToDb
 } from './utils'
 import {
@@ -58,7 +61,6 @@ const runtime = new Runtime({
     label: process.env.SERVICE + '.worker.1'
   }
 })
-
 const upholdBaseUrls = {
   'prod': 'https://api.uphold.com',
   'sandbox': 'https://api-sandbox.uphold.com'
@@ -315,6 +317,10 @@ WHERE
   t.true(amount.length > 1)
   t.true(amount > 0)
 
+  const file = readFile(['structures', 'json', 'user-contribution.json'])
+  await timeout(5000)
+  await checkSnapshots(t, debug, runtime, JSON.parse(file.toString()))
+
   async function getReferrals () {
     const {
       body: transactions
@@ -324,6 +330,10 @@ WHERE
     return transactions.filter(({ transaction_type: type }) => type === 'referral')
   }
 })
+
+function readFile (structure) {
+  return fs.readFileSync(path.join(__dirname, ...structure))
+}
 
 test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   // Create surveyors
