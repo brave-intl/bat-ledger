@@ -9,7 +9,6 @@ const listenerChannel = `${listenerPrefix}${process.env.SERVICE}`
 let registerMetricsPerProcess = registerMetrics
 
 const settlementBalanceKey = 'settlement:balance'
-const settlementBalanceCounterKey = `${settlementBalanceKey}:counter`
 
 module.exports = Prometheus
 
@@ -146,7 +145,7 @@ function registerMetrics (prometheus) {
 
   const settlementCounter = new client.Counter({
     name: 'funds_received_count',
-    help: 'a count up of the number of bat removed from the settlement wallet'
+    help: 'a count of the number of bat added to the settlement wallet'
   })
   register.registerMetric(settlementCounter)
 
@@ -178,7 +177,6 @@ Prometheus.prototype.plugin = function () {
         method: 'GET',
         path: '/metrics',
         handler: async (req, reply) => {
-          await setMetrics(this)
           const registry = this.allMetrics()
           const metrics = registry.metrics()
           reply(metrics).type('text/plain')
@@ -335,21 +333,6 @@ async function autoUpdateMetrics (runtime) {
   await updateSettlementWalletMetrics(runtime)
 }
 
-async function setMetrics (context) {
-  await context.ifFirstWebRun(() => setSettlementWalletMetrics(context.runtime))
-}
-
-async function setSettlementWalletMetrics (runtime) {
-  const { prometheus } = runtime
-  const metric = prometheus.getMetric('funds_received_count')
-  let counter = await prometheus.cache().getAsync(settlementBalanceCounterKey)
-  if (counter === null) {
-    return // hasn't been set yet
-  }
-  metric.reset()
-  metric.inc(+counter)
-}
-
 async function updateSettlementWalletMetrics (runtime) {
   if (!runtime.wallet) {
     return // can't do anything without wallet
@@ -359,29 +342,21 @@ async function updateSettlementWalletMetrics (runtime) {
 
 async function pullSettlementWalletBalanceMetrics (runtime) {
   const { prometheus } = runtime
-  let current = null
-  let last = await prometheus.cache().getAsync(settlementBalanceKey)
-  if (!last) {
-    // on start, restart, or cache expiration
-    last = await getSettlementBalance(runtime)
-    await setSettlementBalance(runtime, settlementBalanceKey, last.toString())
-  } else {
-    current = await getSettlementBalance(runtime)
-    last = new BigNumber(last)
+  const metric = prometheus.getMetric('funds_received_count')
+  const currentBalance = await getSettlementBalance(runtime)
+  const lastBalanceCached = await prometheus.cache().getAsync(settlementBalanceKey)
+  const lastBalance = new BigNumber(lastBalanceCached || currentBalance.toString())
+  let delta = currentBalance.minus(lastBalance)
+  if (delta.lessThan(0)) {
+    // settlement happened, or first cache
+    // either way, reset counter is fine
+    metric.reset()
+    delta = new BigNumber(0)
   }
-  // if the current value is not set (start or restart),
-  // settlement wallet is emptied,
-  // or the value expires in redis
-  // then we reset this metric and set the value in redis again
-  if (!current || current.lessThan(last)) {
-    current = last
-  }
-  const value = current.minus(last)
-  await setSettlementBalance(runtime, settlementBalanceCounterKey, value.toString())
-}
-
-async function setSettlementBalance (runtime, key, value) {
-  await runtime.prometheus.cache().setAsync([key, value, 'EX', 60 * 60])
+  // increment counter
+  metric.inc(+delta)
+  // cache currently known balance
+  await prometheus.cache().setAsync([settlementBalanceKey, currentBalance.toString(), 'EX', 60 * 60])
 }
 
 async function getSettlementBalance (runtime) {
