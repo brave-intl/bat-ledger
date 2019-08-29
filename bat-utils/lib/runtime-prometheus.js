@@ -350,7 +350,6 @@ async function pullSettlementWalletBalanceMetrics (runtime) {
   if (delta.lessThan(0)) {
     // settlement happened, or first cache
     // either way, reset counter is fine
-    metric.reset()
     delta = new BigNumber(0)
   }
   // increment counter
