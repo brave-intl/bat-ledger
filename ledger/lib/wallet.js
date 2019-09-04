@@ -8,8 +8,12 @@ const promotionIdExclusions = {
   '74bc56a0-f4f9-4ac5-84a7-65e9babc41ff': true,
   'bc4d2067-dfe6-4f9b-9bf7-5bd80ec99180': true
 }
+const promotionIdBonuses = {
+  '36eff0d4-19a8-4697-8ffe-53c63485ddd2': '10'
+}
 module.exports = {
   promotionIdExclusions,
+  promotionIdBonuses,
   createComposite
 }
 
