@@ -10,7 +10,8 @@ const underscore = require('underscore')
 const surveyorsLib = require('../lib/surveyor')
 const {
   createComposite,
-  promotionIdExclusions
+  promotionIdExclusions,
+  promotionIdBonuses
 } = require('../lib/wallet')
 const {
   getCohort
@@ -962,10 +963,17 @@ async function compositeGrants (debug, runtime, {
     }
     const content = braveUtils.extractJws(token)
     const { probi } = content
-    if (promotionIdExclusions[grant.promotionId]) {
+    const { promotionId } = grant
+    if (promotionIdExclusions[promotionId]) {
       continue
     }
     amount = amount.plus(probi)
+    // remove bonuses
+    const bonus = promotionIdBonuses[promotionId]
+    if (bonus) {
+      const bigBonus = (new BigNumber(bonus)).times(braveUtils.PROBI_FACTOR)
+      amount = amount.minus(bigBonus)
+    }
     const claimedAt = new Date(claimTimestamp)
     lastClaim = lastClaim > claimedAt ? lastClaim : claimedAt
   }
