@@ -100,7 +100,7 @@ test('compositing wallet grant information', async (t) => {
   const tokenID74bc56a0 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIxZDE4ZDhiOC05NWI4LTQ0NjItYTM4OC0zMjk3NmM2MTdjZDEiLCJwcm9iaSI6IjEwMTAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI3NGJjNTZhMC1mNGY5LTRhYzUtODRhNy02NWU5YmFiYzQxZmYiLCJtYXR1cml0eVRpbWUiOjE1NTk3NTQ3NDgsImV4cGlyeVRpbWUiOjIxNjQ1NTgzNDgsInR5cGUiOiJhZHMifQ.M7D4hEtlGwMQutdbArFr7dEjDJCwUnwWAZ_1bvMjgljh6BHV5aWB9wIlK-7VvP76rVhPAnkf9qnW072X_b80CQ' // 10.1 bat
   const tokenIDf66eac41 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhOTJhNzM3Ny02ODU1LTQxMzctYmViZS0zNDBmNTZjMTU1MjEiLCJwcm9iaSI6IjUxMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImY2NmVhYzQxLTIyYjEtNGMxMS05NGNlLTljNTA0ZDA1MzlkOCIsIm1hdHVyaXR5VGltZSI6MTU1OTc1MjA1OCwiZXhwaXJ5VGltZSI6MjE2NDU1NTY1OCwidHlwZSI6ImFkcyJ9.JrqzCdLppWqZ83bmSJiSJKmBvVIJChWwsYanpWX6NQKBOhFtBehr6T9tTeIiXjrC1B332ltPhS_BdKnrrdZuBA' // 5.1 bat
   const tokenIDc7a12742 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1OWViNDgwMS0wNGY2LTRmZWItYmM2ZS1hNzM4NGMyMjQ2MmYiLCJwcm9iaSI6IjYwMTAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJjN2ExMjc0Mi0yYzdjLTRmZmMtOTczMi0wZTYwMWU4NDQwOTkiLCJtYXR1cml0eVRpbWUiOjE1NTk3NTIxMTIsImV4cGlyeVRpbWUiOjIxNjQ1NTU3MTIsInR5cGUiOiJhZHMifQ.Jx6ox44D8RaJKsmytCwR5XqMW_xD-jXNjobt0UQE5O8PFpyZDOJggx1JSIAsMETBLiujSzQmmCV-mpjS-tKlBw' // 60.1 bat
-  const tokenID36eff0d4 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiIwMmQyYzk2Yy1jMDVkLTQyNmQtYjZiZS0wMWI2NWY3OWM1ZTUiLCJwcm9iaSI6IjI0MDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJiMDMwOTIyOC03NjgwLTQ1NTQtOTIyZS0zMTYyY2M0MWQ4ZDIiLCJtYXR1cml0eVRpbWUiOjE1Njc0Njg4MDAsImV4cGlyeVRpbWUiOjE2NzI0NDQ4MDAsInR5cGUiOiJhZHMifQ.p_GbybE4OxZ_Gf5qst8B8QksLuL-AJ5Ko1f594W9UxqH0WpB-KJT_cicEM6c7mf1mYq__kyD12VzDmId8abDDw' // 24 bat
+  const tokenID21870643 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI3ZDg2NzM2Ny0xNjNjLTQ5YWEtODQ0Yi1jY2MxNThiOTM5MzMiLCJwcm9iaSI6IjM4MDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJmYjMyOGJmMS00MmFhLTRlNzEtYjk1Mi01YzUyYjU5MmQ4OTgiLCJtYXR1cml0eVRpbWUiOjE1Njc0Njg4MDAsImV4cGlyeVRpbWUiOjE2NzI0NDQ4MDAsInR5cGUiOiJhZHMifQ.bZwbxBT4dQ1OtjTMXZF6OMta8kRRwawNtvdxCsubmaMLzd_n9dARl_7D34FzWjy3ULjHZsjPq1sDrHbJr-_YAw' // 38 bat
   const lastUgpTimestamp = new Date('2019-01-03')
   const lastAdsTimestamp = new Date('2019-01-02')
   const earliestTimestamp = new Date('2019-01-01')
@@ -137,8 +137,8 @@ test('compositing wallet grant information', async (t) => {
   }, {
     type: 'ads',
     claimTimestamp: earliestTimestamp,
-    token: tokenID36eff0d4, // minus 10 from bonus
-    promotionId: '36eff0d4-19a8-4697-8ffe-53c63485ddd2'
+    token: tokenID21870643, // minus 25 from bonus
+    promotionId: '21870643-7e03-4b0b-a0c4-b9e1eb9b046c'
   }]
   const paymentIdEmpty = uuidV4()
   const emptyURL = `/v2/wallet/${paymentIdEmpty}/grants/ads`
@@ -176,7 +176,7 @@ test('compositing wallet grant information', async (t) => {
   } = await ledgerAgent.get(`/v2/wallet/${paymentId}/grants/ads`).expect(ok)
   const expectedAds = createComposite({
     type: 'ads',
-    amount: (new BigNumber(2)).plus(14),
+    amount: (new BigNumber(2)).plus(13),
     lastClaim: lastAdsTimestamp
   })
   t.deepEqual(expectedAds, compositedAds, 'a composite is created correctly')
