@@ -356,7 +356,7 @@ async function pullSettlementWalletBalanceMetrics (runtime) {
   // increment counter
   metric.inc(+delta)
   // cache currently known balance
-  await prometheus.cache().setAsync([settlementBalanceKey, currentBalance.toString(), 'EX', 60 * 60])
+  await prometheus.cache().setAsync([settlementBalanceKey, currentBalance.toString(), 'EX', 60])
 }
 
 async function getSettlementBalance (runtime) {
