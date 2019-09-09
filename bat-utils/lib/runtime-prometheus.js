@@ -7,8 +7,8 @@ const debug = new SDebug('prometheus')
 const listenerPrefix = `listeners:prometheus:`
 const listenerChannel = `${listenerPrefix}${process.env.SERVICE}`
 let registerMetricsPerProcess = registerMetrics
-
 const settlementBalanceKey = 'settlement:balance'
+const resetMetricOnce = _.once((runtime) => runtime.prometheus.cache().delAsync(settlementBalanceKey))
 
 module.exports = Prometheus
 
@@ -342,6 +342,7 @@ async function updateSettlementWalletMetrics (runtime) {
 
 async function pullSettlementWalletBalanceMetrics (runtime) {
   const { prometheus } = runtime
+  await resetMetricOnce(runtime)
   const metric = prometheus.getMetric('funds_received_count')
   const currentBalance = await getSettlementBalance(runtime)
   const lastBalanceCached = await prometheus.cache().getAsync(settlementBalanceKey)
