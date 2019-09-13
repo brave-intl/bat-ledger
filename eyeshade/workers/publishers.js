@@ -2,6 +2,7 @@ const {
   insertFromSettlement,
   updateBalances
 } = require('../lib/transaction.js')
+const underscore = require('underscore')
 
 exports.name = 'publishers'
 exports.initialize = async (debug, runtime) => {
@@ -15,6 +16,7 @@ exports.workers = {
     , message :
       { shouldUpdateBalances : false,
         settlementId         : '',
+        publisher            : '',
         type                 : '',
       }
     }
@@ -25,16 +27,23 @@ exports.workers = {
       const {
         shouldUpdateBalances,
         settlementId,
+        publisher,
         type
       } = payload
 
-      const docs = await settlementsCollection.find({
+      const query = {
         type,
         settlementId,
         owner: {
           $exists: true
         }
-      })
+      }
+
+      if (publisher) {
+        underscore.extend(query, { publisher })
+      }
+
+      const docs = await settlementsCollection.find(query)
 
       const client = await runtime.postgres.connect()
       try {
