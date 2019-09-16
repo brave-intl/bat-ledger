@@ -33,7 +33,7 @@
     "lint-fix": "npm run lint -- --fix",
     "security": "npm run lint && npm audit",
     "test-integration": "ava -v -s test/*/*.integration.test.js && ava -v test/e2e.integration.test.js",
-    "test-unit": "ava -v bat-utils/**/*.test.js ledger/**/*.test.js",
+    "test-unit": "ava -v -s bat-utils/**/*.test.js ledger/**/*.test.js",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
     "docker-build": "docker-compose build",
     "docker-up": "docker-compose up $npm_package_config_dockerservices",
