@@ -198,6 +198,16 @@ test('compositing wallet grant information', async (t) => {
   t.deepEqual(expectedUgp, bodyUgp, 'a composite is responded with')
 })
 
+test('wallet endpoint returns default tip choices', async (t) => {
+  const paymentId = uuidV4()
+  await insertWallet({ paymentId, altcurrency: 'BAT' })
+
+  const {
+    body
+  } = await ledgerAgent.get(`/v2/wallet/${paymentId}`).expect(ok)
+  t.deepEqual(body.parameters.defaultTipChoices, [1, 5, 10])
+})
+
 function walletExpectation (day, wallets = 1) {
   return {
     activeGrant: 0,

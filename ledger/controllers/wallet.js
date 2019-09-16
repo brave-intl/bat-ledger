@@ -22,6 +22,8 @@ const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
 
+const defaultTipChoices = (process.env.DEFAULT_TIP_CHOICES && process.env.DEFAULT_TIP_CHOICES.split(',')) || [1, 5, 10]
+
 const v1 = {}
 const v2 = {}
 
@@ -72,7 +74,9 @@ const read = function (runtime, apiVersion) {
 
     result = underscore.extend(result, { addresses: wallet.addresses })
     if (runtime.registrars.persona) {
-      result = underscore.extend(result, { parameters: runtime.registrars.persona.payload || {} })
+      const { payload } = runtime.registrars.persona
+      underscore.extend(payload, { defaultTipChoices })
+      result = underscore.extend(result, { parameters: payload || {} })
     }
 
     if ((refreshP) || (balanceP && !wallet.balances)) {
