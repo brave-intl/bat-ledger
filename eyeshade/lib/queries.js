@@ -1,9 +1,11 @@
 const uuidv5 = require('uuid/v5')
+const _ = require('underscore')
 
 module.exports = {
   allSettlements,
   timeConstraintSettlements,
   earnings,
+  referralGroups,
   votesId
 }
 
@@ -64,4 +66,36 @@ function timeConstraintSettlements (options = {}) {
  group by (account_id, channel)
  order by paid ${order}
  limit $2;`
+}
+
+function referralGroups (options = {}) {
+  let { fields = [], active } = options
+  const fieldsMap = {
+    name: 'name',
+    amount: 'amount',
+    currency: 'currency',
+    codes: 'countries.codes AS codes'
+  }
+  fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : fields
+  return `
+SELECT
+  id,
+  min_referral_time as "minReferralTime"
+  ${fields.reduce((memo, key) => {
+    const query = fieldsMap[key]
+    if (query) {
+      memo.push(',\n  ', query)
+    }
+    return memo
+  }, []).join('')}
+FROM geo_referral_groups, (
+  SELECT
+    group_id,
+    array_agg(country_code) AS codes
+  FROM geo_referral_countries
+  GROUP BY group_id
+) AS countries
+WHERE
+    countries.group_id = geo_referral_groups.id${_.isBoolean(active) ? `
+AND active = ${active}` : ''};`
 }

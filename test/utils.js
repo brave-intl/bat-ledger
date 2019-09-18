@@ -1,5 +1,8 @@
+const fs = require('fs')
+const path = require('path')
 const dotenv = require('dotenv')
 dotenv.config()
+const copyFrom = require('pg-copy-streams').from
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
@@ -157,7 +160,10 @@ const cleanRedisDb = async () => {
 }
 
 module.exports = {
+  readJSONFile,
   makeSettlement,
+  insertReferralInfos,
+  insertCSVFileToDB,
   createSurveyor,
   getSurveyor,
   fetchReport,
@@ -190,15 +196,24 @@ function cleanDbs () {
   ])
 }
 
-function cleanPgDb (client) {
-  return () => {
-    return Promise.all([
-      client.query('DELETE from payout_reports_ads;'),
-      client.query('DELETE from potential_payments_ads;'),
-      client.query('DELETE from transactions;'),
-      client.query('DELETE from surveyor_groups;'),
-      client.query('DELETE from votes;')
-    ]).then(() => client.query('REFRESH MATERIALIZED VIEW account_balances;'))
+function cleanPgDb (postgres) {
+  return async () => {
+    const client = await postgres.connect()
+    try {
+      await Promise.all([
+        client.query('DELETE from payout_reports_ads;'),
+        client.query('DELETE from potential_payments_ads;'),
+        client.query('DELETE from transactions;'),
+        client.query('DELETE from surveyor_groups;'),
+        client.query('DELETE from geo_referral_countries;'),
+        client.query('DELETE from geo_referral_groups;'),
+        client.query('DELETE from votes;')
+      ])
+      await client.query('REFRESH MATERIALIZED VIEW account_balances;')
+      await insertReferralInfos(client)
+    } finally {
+      client.release()
+    }
   }
 }
 
@@ -258,4 +273,43 @@ function makeSettlement (type, balance, overwrites = {}) {
     address: uuidV4(),
     hash: uuidV4()
   }, overwrites)
+}
+
+async function insertReferralInfos (client) {
+  const ratesPaths = [{
+    path: filePath('0010_geo_referral', 'groups.csv'),
+    query: 'geo_referral_groups(id, name, min_referral_time, currency, amount)'
+  }, {
+    path: filePath('0010_geo_referral', 'country.csv'),
+    query: 'geo_referral_countries(group_id, name, country_code)'
+  }]
+  for (const subject of ratesPaths) {
+    await insertCSVFileToDB(client, subject)
+  }
+
+  function filePath (...paths) {
+    return path.join(__dirname, '..', 'eyeshade', 'migrations', ...paths)
+  }
+}
+
+function insertCSVFileToDB (client, {
+  path,
+  query
+}) {
+  return new Promise((resolve, reject) => {
+    const copyQuery = `
+  COPY ${query}
+  FROM STDIN
+  delimiter ',' csv header;`
+    const stream = client.query(copyFrom(copyQuery))
+    const fileStream = fs.createReadStream(path)
+    fileStream.on('error', reject)
+    stream.on('error', reject)
+    stream.on('end', resolve)
+    fileStream.pipe(stream)
+  })
+}
+
+function readJSONFile (...paths) {
+  return JSON.parse(fs.readFileSync(path.join(__dirname, ...paths)).toString())
 }

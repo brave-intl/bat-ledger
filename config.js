@@ -44,6 +44,7 @@ const services = {
     f: () => {
       module.exports.referrals =
         { currency              : process.env.REFERRALS_CURRENCY || 'USD'
+        , maxReferralTime       : new Date('2019-10-01')
         , amount                : process.env.REFERRALS_AMOUNT || 5
         }
       module.exports.postgres =
