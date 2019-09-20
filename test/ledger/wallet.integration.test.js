@@ -206,6 +206,7 @@ test('wallet endpoint returns default tip choices', async (t) => {
     body
   } = await ledgerAgent.get(`/v2/wallet/${paymentId}`).expect(ok)
   t.deepEqual(body.parameters.defaultTipChoices, [1, 5, 10])
+  t.deepEqual(body.parameters.defaultMonthlyChoices, [1, 5, 10])
 })
 
 function walletExpectation (day, wallets = 1) {

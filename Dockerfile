@@ -14,10 +14,10 @@ RUN apt-get update && apt-get install -y postgresql-client
 RUN mkdir -p /usr/src/app && mkdir /usr/src/app/bat-utils
 WORKDIR /usr/src/app
 
-RUN npm install -g npm@6.1
+RUN npm install -g npm@6.11.3
 
 COPY package.json package-lock.json /usr/src/app/
 COPY bat-utils/package.json /usr/src/app/bat-utils/
-RUN npm install
+RUN npm ci
 COPY . /usr/src/app
 RUN npm run build
