@@ -52,8 +52,8 @@ const groupedReferralValidator = Joi.object().keys({
   publisher: channelIdValidator,
   groupId: groupIdValidator.allow('').description('group id'),
   amount: amountValidator.description('the amount to be paid out in BAT'),
-  altcurrencyRate: amountValidator.description('the rate of BAT per USD'),
-  payoutRate: amountValidator.description('the rate the group currency per USD')
+  payoutRate: amountValidator.description('the rate of BAT per USD'),
+  groupRate: amountValidator.description('the rate the group currency per USD')
 })
 
 const dateRangeParams = Joi.object().keys({
@@ -175,19 +175,19 @@ v1.getReferralsByOwner = {
       publisher: 1,
       groupId: 1,
       probi: 1,
-      altcurrencyRate: 1,
-      payoutRate: 1
+      payoutRate: 1,
+      groupRate: 1
     })
     const mappedRefs = refs.map(({
       publisher,
       groupId,
-      altcurrencyRate,
+      groupRate,
       payoutRate,
       probi
     }) => ({
       publisher,
       groupId,
-      altcurrencyRate,
+      groupRate,
       payoutRate,
       amount: (new BigNumber(probi)).dividedBy(1e18).toString()
     }))
@@ -233,9 +233,11 @@ v1.createReferrals = {
       // get rates once at beginning (uses cache too)
       const rates = await currency.rates('USD')
       const factor = currency.alt2scale(altcurrency)
-      const altcurrencyRate = rates[altcurrency]
-      const batRatio = new BigNumber(altcurrencyRate)
-      const { rows: referralGroups } = await postgres.query(`select * from geo_referral_groups where active = true;`)
+      const payoutRate = rates[altcurrency]
+      const batRatio = new BigNumber(payoutRate)
+      const {
+        rows: referralGroups
+      } = await postgres.query(`select * from geo_referral_groups where active = true;`)
 
       for (let referral of payload) {
         const {
@@ -249,8 +251,8 @@ v1.createReferrals = {
         } = referral
         const {
           groupId,
-          amount,
-          currency: referralCurrency
+          amount: groupAmount,
+          currency: groupCurrency
         } = referralConfig(runtime, {
           referralGroups,
           transactionId,
@@ -258,9 +260,9 @@ v1.createReferrals = {
           downloadTimestamp,
           groupId: _groupId
         })
-        const payoutRate = rates[referralCurrency]
-        const referralAmount = (new BigNumber(amount)).dividedBy(payoutRate)
-        const batAmount = batRatio.times(referralAmount)
+        const groupRate = rates[groupCurrency]
+        const amount = (new BigNumber(groupAmount)).dividedBy(groupRate)
+        const batAmount = batRatio.times(amount)
         let probi = batAmount.times(factor)
         // remove this line when logic matches to stop hitting ratios so often
         probi = bson.Decimal128.fromString(probi.toString())
@@ -286,7 +288,7 @@ v1.createReferrals = {
                 publisher,
                 transactionId,
                 payoutRate,
-                altcurrencyRate,
+                groupRate,
                 probi,
                 platform,
                 exclude: false
@@ -367,7 +369,7 @@ module.exports.initialize = async (debug, runtime) => {
         hash: '',
         groupId: '',
         payoutRate: '',
-        altcurrencyRate: '',
+        groupRate: '',
 
         timestamp: bson.Timestamp.ZERO
       },

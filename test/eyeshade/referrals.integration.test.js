@@ -194,13 +194,21 @@ test('referrals use the correct geo-specific amount and checked values', async t
 
 async function checkReferralValue (t, startDate, expectedGroupId, expectedValue, { downloadId }) {
   const referral = await t.context.referrals.findOne({ downloadId })
-  t.is(expectedGroupId, referral.groupId, 'group id should persist on mongo collection but be ignored for referrals without group')
-  const probi = referral.probi.toString()
-  const bat = (new BigNumber(probi)).dividedBy(1e18)
-  const dollars = bat.dividedBy(referral.altcurrencyRate).round(6).toString()
+  const {
+    groupId,
+    probi,
+    payoutRate,
+    groupRate,
+    owner
+  } = referral
+  t.is(expectedGroupId, groupId, 'group id should persist on mongo collection but be ignored for referrals without group')
+  const bat = (new BigNumber(probi.toString())).dividedBy(1e18)
+  const dollars = bat.dividedBy(payoutRate).round(6).toString()
   t.is(expectedValue, dollars, 'a known number of dollars should exist')
+  // currently usd
+  t.is('1', groupRate, 'group rate is from the original group')
 
-  const escapedOwnerId = encodeURIComponent(referral.owner)
+  const escapedOwnerId = encodeURIComponent(owner)
   const start = startDate.toISOString()
   const {
     body
