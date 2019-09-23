@@ -195,6 +195,7 @@ test('referrals use the correct geo-specific amount and checked values', async t
   const bat = new BigNumber(30)
   const downloadId = uuidV4().toLowerCase()
   await t.context.referrals.insert({
+    _id: bson.ObjectID.createFromTime(+sept / 1000),
     downloadId,
     finalized: sept,
     owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
