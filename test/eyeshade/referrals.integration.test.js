@@ -1,5 +1,6 @@
 'use strict'
 import { serial as test } from 'ava'
+import bson from 'bson'
 import _ from 'underscore'
 import uuidV4 from 'uuid/v4'
 import BigNumber from 'bignumber.js'
@@ -190,16 +191,39 @@ test('referrals use the correct geo-specific amount and checked values', async t
   await checkReferralValue(t, minGroupDate, tier2GroupId, '6.5', referral2)
 
   await ensureReferrals(runtime, 3)
+
+  const bat = new BigNumber(30)
+  const downloadId = uuidV4().toLowerCase()
+  await t.context.referrals.insert({
+    downloadId,
+    finalized: sept,
+    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    publisher: braveYoutubePublisher,
+    transactionId: uuidV4().toLowerCase(),
+    exclude: false,
+    platform: 'ios',
+    altcurrency: 'BAT',
+    probi: bson.Decimal128.fromString(bat.times(1e18).toString())
+  })
+  await checkReferralValue(t, sept, undefined, '5', {
+    downloadId,
+    defaultPayoutRate: '6',
+    defaultGroupRate: '1'
+  })
 })
 
-async function checkReferralValue (t, startDate, expectedGroupId, expectedValue, { downloadId }) {
+async function checkReferralValue (t, startDate, expectedGroupId, expectedValue, {
+  downloadId,
+  defaultPayoutRate,
+  defaultGroupRate
+}) {
   const referral = await t.context.referrals.findOne({ downloadId })
   const {
     groupId,
     probi,
-    payoutRate,
-    groupRate,
-    owner
+    owner,
+    payoutRate = defaultPayoutRate,
+    groupRate = defaultGroupRate
   } = referral
   t.is(expectedGroupId, groupId, 'group id should persist on mongo collection but be ignored for referrals without group')
   const bat = (new BigNumber(probi.toString())).dividedBy(1e18)
@@ -213,7 +237,7 @@ async function checkReferralValue (t, startDate, expectedGroupId, expectedValue,
   const {
     body
   } = await eyeshadeAgent
-    .get(`/v1/referrals/owner/${escapedOwnerId}`)
+    .get(`/v1/referrals/statement/${escapedOwnerId}`)
     .query({ start })
     .expect(ok)
   t.is(body[0].amount, bat.toString(), 'bat matches that on collection')

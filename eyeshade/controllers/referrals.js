@@ -146,12 +146,12 @@ v1.getReferralGroups = {
 }
 
 /*
-  GET /v1/referrals/owner/{owner}
+  GET /v1/referrals/statement/{owner}
 */
 
-v1.getReferralsByOwner = {
+v1.getReferralsStatement = {
   handler: (runtime) => async (request, reply) => {
-    const { database } = runtime
+    const { database, currency } = runtime
     const { params, query } = request
     const { owner } = params
     const { start: qStart, until: qUntil } = query
@@ -178,19 +178,23 @@ v1.getReferralsByOwner = {
       payoutRate: 1,
       groupRate: 1
     })
+    const scale = currency.alt2scale('BAT')
     const mappedRefs = refs.map(({
       publisher,
       groupId,
       groupRate,
       payoutRate,
       probi
-    }) => ({
-      publisher,
-      groupId,
-      groupRate,
-      payoutRate,
-      amount: (new BigNumber(probi)).dividedBy(1e18).toString()
-    }))
+    }) => {
+      const bat = (new BigNumber(probi)).dividedBy(scale)
+      return {
+        publisher,
+        groupId: underscore.isUndefined(groupId) ? '' : groupId,
+        groupRate: groupRate || '1',
+        payoutRate: payoutRate || bat.dividedBy(5).toString(),
+        amount: bat.toString()
+      }
+    })
     reply(mappedRefs)
   },
 
@@ -341,7 +345,7 @@ module.exports.referralConfig = referralConfig
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
-  braveHapi.routes.async().path('/v1/referrals/owner/{owner}').whitelist().config(v1.getReferralsByOwner),
+  braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement),
   braveHapi.routes.async().path('/v1/referrals/{transactionId}').whitelist().config(v1.findReferrals),
   braveHapi.routes.async().put().path('/v1/referrals/{transactionId}').whitelist().config(v1.createReferrals)
 ]
