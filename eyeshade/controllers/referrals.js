@@ -85,21 +85,21 @@ const fieldValidator = Joi.string().description('whether the field should be inc
 
 v1.findReferrals = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const transactionId = request.params.transactionId
       const debug = braveHapi.debug(module, request)
       const transactions = runtime.database.get('referrals', debug)
-      let entries, results
+      let entries
 
       entries = await transactions.find({ transactionId: transactionId })
-      if (entries.length === 0) return reply(boom.notFound('no such transaction-identifier: ' + transactionId))
+      if (entries.length === 0) {
+        throw boom.notFound('no such transaction-identifier: ' + transactionId)
+      }
 
-      results = []
-      entries.forEach((entry) => {
-        results.push(underscore.extend({ channelId: entry.publisher },
-          underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
+      return entries.map((entry) => {
+        return underscore.extend({ channelId: entry.publisher },
+          underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ]))
       })
-      reply(results)
     }
   },
 
@@ -340,7 +340,7 @@ v1.createReferrals = {
       })
       prometheus.getMetric('referral_received_counter').inc(bulkResult.upsertedCount)
 
-      reply({})
+      return {}
     }
   },
 

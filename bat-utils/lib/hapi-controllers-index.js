@@ -3,12 +3,13 @@ const underscore = require('underscore')
 
 exports.routes = async (debug, runtime, options) => {
   const entries = {}
-  const routes = [
-    { method: 'GET',
-      path: '/',
-      config: { handler: (request, reply) => { reply('ack.') } }
+  const routes = [{
+    method: 'GET',
+    path: '/',
+    config: {
+      handler: (request, h) => 'ack.'
     }
-  ]
+  }]
   let errP, names
 
   const router = async (module) => {

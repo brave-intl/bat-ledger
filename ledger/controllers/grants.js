@@ -127,7 +127,7 @@ const v3 = {}
 const v4 = {}
 const v5 = {}
 
-const safetynetPassthrough = (handler) => (runtime) => async (request, reply) => {
+const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
   const endpoint = '/v1/attestations/safetynet'
   const {
     config
@@ -153,7 +153,7 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
   } catch (e) {
     try {
       const errPayload = JSON.parse(e.data.payload.toString())
-      return reply(boom.badData(errPayload.message))
+      throw boom.badData(errPayload.message)
     } catch (ex) {
       runtime.captureException(ex, {
         req: request,
@@ -163,9 +163,10 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
         }
       })
     }
-    return reply(boom.badData())
+    throw boom.badData()
   }
-  await handler(runtime)(request, reply)
+  const curried = handler(runtime)
+  return curried(request, h)
 }
 
 /*
@@ -175,7 +176,7 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
 // from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
 const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/
 const getGrant = (protocolVersion) => (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     // Only support requests from Chrome versions > 70
     if (protocolVersion === 2) {
       let userAgent = request.headers['user-agent']
@@ -183,7 +184,7 @@ const getGrant = (protocolVersion) => (runtime) => {
       if (userAgentIsChrome) {
         let chromeVersion = parseInt(userAgent.split('Chrome/')[1].substring(0, 2))
         if (chromeVersion < 70) {
-          return reply(boom.notFound('promotion not available for browser-laptop.'))
+          throw boom.notFound('promotion not available for browser-laptop.')
         }
       }
     }
@@ -208,18 +209,18 @@ const getGrant = (protocolVersion) => (runtime) => {
     let entries, promotionIds, wallet
     let walletTooYoung = false
 
-    try {
-      whitelist.validateHops(request)
-    } catch (e) {
-      return reply(e)
-    }
+    whitelist.validateHops(request)
 
-    if (qaOnlyP(request)) return reply(boom.notFound())
+    if (qaOnlyP(request)) {
+      throw boom.notFound()
+    }
 
     if (paymentId) {
       promotionIds = []
       wallet = await wallets.findOne({ paymentId: paymentId })
-      if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+      if (!wallet) {
+        throw boom.notFound(`no such wallet: ${paymentId}`)
+      }
       if (wallet.grants) {
         wallet.grants.forEach((grant) => { promotionIds.push(grant.promotionId) })
       }
@@ -228,7 +229,7 @@ const getGrant = (protocolVersion) => (runtime) => {
     }
 
     if (walletTooYoung) {
-      return reply(boom.notFound('promotion not available'))
+      throw boom.notFound('promotion not available')
     }
 
     if (protocolVersion === 4 && !paymentId) {
@@ -236,7 +237,9 @@ const getGrant = (protocolVersion) => (runtime) => {
     }
 
     entries = await promotions.find(query)
-    if ((!entries) || (!entries[0])) return reply(boom.notFound('no promotions available'))
+    if ((!entries) || (!entries[0])) {
+      throw boom.notFound('no promotions available')
+    }
 
     const adsAvailable = await adsGrantsAvailable(request.headers['fastly-geoip-countrycode'])
 
@@ -259,29 +262,31 @@ const getGrant = (protocolVersion) => (runtime) => {
       if (foundGrant) {
         const promotion = { promotionId, type }
         if (type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
-          return reply(promotion)
+          return promotion
         }
         filteredPromotions.push(promotion)
       }
     }
 
     if (filteredPromotions.length === 0) {
-      return reply(boom.notFound('promotion not available'))
+      throw boom.notFound('promotion not available')
     }
+
+    debug('grants', { languages })
 
     if (protocolVersion < 4) {
-      return reply(filteredPromotions[0])
+      return filteredPromotions[0]
     }
 
-    reply({ grants: filteredPromotions })
-
-    debug('grants', { languages: languages })
+    return {
+      grants: filteredPromotions
+    }
   }
 }
 
 v3.read = {
-  handler: safetynetPassthrough((runtime) => (request, reply) => {
-    reply(boom.notFound('promotion not available'))
+  handler: safetynetPassthrough((runtime) => (request, h) => {
+    throw boom.notFound('promotion not available')
   }),
   description: 'See if a v3 promotion is available',
   tags: [ 'api' ],
@@ -422,7 +427,7 @@ v2.claimGrant = {
 }
 
 function claimGrant (protocolVersion, validate, createGrantQuery) {
-  return (runtime) => async (request, reply) => {
+  return (runtime) => async (request, h) => {
     const {
       params,
       payload
@@ -436,7 +441,9 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const wallets = runtime.database.get('wallets', debug)
     let grant, result, state, wallet
 
-    if (!runtime.config.redeemer) return reply(boom.badGateway('not configured for promotions'))
+    if (!runtime.config.redeemer) {
+      throw boom.badGateway('not configured for promotions')
+    }
 
     const promotionQuery = { promotionId, protocolVersion }
     const code = request.headers['fastly-geoip-countrycode']
@@ -449,30 +456,38 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     }
 
     const promotion = await promotions.findOne(promotionQuery)
-    if (!promotion) return reply(boom.notFound('no such promotion: ' + promotionId))
-    if (!promotion.active) return reply(boom.notFound('promotion is not active: ' + promotionId))
+    if (!promotion) {
+      throw boom.notFound('no such promotion: ' + promotionId)
+    }
+    if (!promotion.active) {
+      throw boom.notFound('promotion is not active: ' + promotionId)
+    }
 
     if (adsAvailable && (!promotion.type || promotion.type === 'ugp' || promotion.type === 'android')) {
-      return reply(boom.badRequest('claim from this area is not allowed'))
+      throw boom.badRequest('claim from this area is not allowed')
     }
 
     wallet = await wallets.findOne({ paymentId: paymentId })
-    if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+    if (!wallet) {
+      throw boom.notFound('no such wallet: ' + paymentId)
+    }
 
     const validationError = await validate(debug, runtime, request, promotion, wallet)
     if (validationError) {
-      return reply(validationError)
+      throw validationError
     }
 
     if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
       // promotion already applied to wallet
-      return reply(boom.conflict())
+      throw boom.conflict()
     }
 
     // pop off one grant
     const grantQuery = createGrantQuery(promotion, wallet)
     grant = await grants.findOneAndDelete(grantQuery)
-    if (!grant) return reply(boom.resourceGone('promotion no longer available'))
+    if (!grant) {
+      throw boom.resourceGone('promotion no longer available')
+    }
 
     const grantProperties = ['token', 'grantId', 'promotionId', 'status', 'type', 'paymentId']
     const grantSubset = underscore.pick(grant, grantProperties)
@@ -490,7 +505,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       // reinsert grant, another request already added a grant for this promotion to the wallet
       await grants.insert(grant)
       // promotion already applied to wallet
-      return reply(boom.conflict())
+      throw boom.conflict()
     }
 
     // register the users claim to the grant with the redemption server
@@ -542,7 +557,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       promotionId: promotionId
     }, result))
 
-    return reply(result)
+    return result
   }
 }
 
@@ -667,7 +682,7 @@ const cohortsAssignmentSchema = Joi.array().min(0).items(Joi.object().keys({
  */
 
 v2.cohorts = { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const wallets = runtime.database.get('wallets', debug)
 
@@ -677,7 +692,7 @@ v2.cohorts = { handler: (runtime) => {
       payload = payload.file
       const validity = Joi.validate(payload, cohortsAssignmentSchema)
       if (validity.error) {
-        return reply(boom.badData(validity.error))
+        throw boom.badData(validity.error)
       }
     }
 
@@ -685,7 +700,7 @@ v2.cohorts = { handler: (runtime) => {
       await wallets.update({ 'paymentId': entry.paymentId }, { $set: { 'cohort': entry.cohort } })
     }
 
-    return reply({})
+    return {}
   }
 },
 description: 'Set cohort associated with grants on a wallet for testing',
@@ -721,28 +736,30 @@ response: { schema: Joi.object().length(0) }
  */
 
 const getCaptcha = (protocolVersion) => (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const type = request.headers['promotion-type'] || 'ugp'
     const paymentId = request.params.paymentId.toLowerCase()
     const debug = braveHapi.debug(module, request)
     const wallets = runtime.database.get('wallets', debug)
 
-    if (!runtime.config.captcha) return reply(boom.notFound())
-
-    try {
-      whitelist.validateHops(request)
-    } catch (e) {
-      return reply(e)
+    if (!runtime.config.captcha) {
+      throw boom.notFound()
     }
 
-    if (qaOnlyP(request)) return reply(boom.notFound())
+    whitelist.validateHops(request)
+
+    if (qaOnlyP(request)) {
+      throw boom.notFound()
+    }
 
     const wallet = await wallets.findOne({ 'paymentId': paymentId })
-    if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+    if (!wallet) {
+      throw boom.notFound('no such wallet: ' + paymentId)
+    }
 
     const braveProduct = request.headers['brave-product'] || 'browser-laptop'
     if (protocolVersion === 2 && braveProduct !== 'brave-core') {
-      return reply(boom.notFound('no captcha endpoints'))
+      throw boom.notFound('no captcha endpoints')
     }
 
     const captchaEndpoints = {
@@ -752,7 +769,7 @@ const getCaptcha = (protocolVersion) => (runtime) => {
 
     const endpoint = captchaEndpoints[protocolVersion]
     if (!endpoint) {
-      return reply(boom.notFound('no protocol version'))
+      throw boom.notFound('no protocol version')
     }
 
     const { res, payload } = await wreck.get(runtime.config.captcha.url + endpoint, {
@@ -772,7 +789,9 @@ const getCaptcha = (protocolVersion) => (runtime) => {
     })
     await wallets.findOneAndUpdate({ 'paymentId': paymentId }, { $set: { captcha } })
 
-    return reply(payload).header('Content-Type', headers['content-type']).header('Captcha-Hint', headers['captcha-hint'])
+    return h.response(payload)
+      .header('Content-Type', headers['content-type'])
+      .header('Captcha-Hint', headers['captcha-hint'])
   }
 }
 
@@ -827,7 +846,7 @@ v3.attestations = {
       paymentId: Joi.string().guid().required().description('Wallet payment id')
     }).required().description('Request parameters')
   },
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     const { paymentId } = request.params
     const { database } = runtime
 
@@ -846,9 +865,9 @@ v3.attestations = {
       $set
     })
 
-    reply({
+    return {
       nonce
-    })
+    }
   }
 }
 
@@ -934,7 +953,7 @@ function v4CreateGrantQuery ({
 }
 
 function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
-  return (runtime) => async (request, reply) => {
+  return (runtime) => async (request, h) => {
     const batchId = uuidV4().toLowerCase()
     const debug = braveHapi.debug(module, request)
     const grants = runtime.database.get('grants', debug)
@@ -947,7 +966,7 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
       value
     } = Joi.validate(payload, uploadSchema)
     if (error) {
-      return reply(boom.badData(error))
+      throw boom.badData(error)
     }
     payload = value
 
@@ -966,7 +985,7 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
         value
       } = Joi.validate(grantContent, contentSchema)
       if (error) {
-        return reply(boom.badData(error))
+        throw boom.badData(error)
       }
       const {
         grantId,
@@ -1008,7 +1027,7 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
       }, state, { upsert: true })
     }
 
-    reply({})
+    return {}
   }
 }
 

@@ -1,25 +1,30 @@
 const dns = require('dns')
 const os = require('os')
 const _ = require('underscore')
-const asyncHandler = require('hapi-async-handler')
 const authBearerToken = require('hapi-auth-bearer-token')
 const authCookie = require('hapi-auth-cookie')
 const cryptiles = require('cryptiles')
-const bell = require('bell')
-const boom = require('boom')
-const hapi = require('hapi')
-const inert = require('inert')
-const Netmask = require('netmask').Netmask
-const rateLimiter = require('hapi-rate-limiter')
+const bell = require('@hapi/bell')
+const hapi = require('@hapi/hapi')
+const inert = require('@hapi/inert')
+const rateLimiter = require('./hapi-rate-limiter')
 const SDebug = require('sdebug')
-const swagger = require('hapi-swagger')
+const swagger = require('./hapi-swagger')
 const underscore = require('underscore')
-const vision = require('vision')
+const vision = require('@hapi/vision')
 
 const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
 
 const npminfo = require('../npminfo')
+
+const env = require('../../env')
+const {
+  PORT,
+  TOKEN_LIST
+} = env
+
+module.exports = Server
 
 const pushScopedTokens = pushTokens({
   TOKEN_LIST: 'global',
@@ -32,22 +37,20 @@ function pushTokens (map) {
   const keys = _.keys(map)
   return (token, memo = []) => {
     return keys.reduce((memo, key) => {
-      const value = map[key]
-      const envTokens = process.env[key]
-      const TOKENS = envTokens ? envTokens.split(',') : []
-      const has = braveHapi.isSimpleTokenValid(TOKENS, token)
-      return memo.concat(has ? [value] : [])
+      const has = braveHapi.isSimpleTokenValid(env[key], token)
+      return memo.concat(has ? [map[key]] : [])
     }, memo)
   }
 }
 
-const Server = async (options, runtime) => {
+async function Server (options, runtime) {
   const debug = new SDebug('web')
 
-  const graylist = { addresses: process.env.IP_GRAYLIST && process.env.IP_GRAYLIST.split(',') }
-  const server = new hapi.Server()
-
-  server.connection({ port: process.env.PORT })
+  const serverOpts = {
+    port: PORT,
+    host: '0.0.0.0'
+  }
+  const server = new hapi.Server(serverOpts)
 
   if (!runtime) {
     runtime = options
@@ -57,6 +60,7 @@ const Server = async (options, runtime) => {
   if (!options.routes) options.routes = require('./controllers/index')
 
   debug.initialize({ web: { id: options.id } })
+  debug('server opts', serverOpts)
 
   if (process.env.NODE_ENV !== 'production') {
     process.on('warning', (warning) => {
@@ -66,194 +70,100 @@ const Server = async (options, runtime) => {
     })
   }
 
-  if (graylist.addresses) {
-    graylist.authorizedAddrs = []
-    graylist.authorizedBlocks = []
-
-    graylist.addresses.forEach((entry) => {
-      if ((entry.indexOf('/') === -1) && (entry.split('.').length === 4)) return graylist.authorizedAddrs.push(entry)
-
-      graylist.authorizedBlocks.push(new Netmask(entry))
-    })
-  }
-
-  if (runtime.prometheus) {
-    await new Promise((resolve, reject) => {
-      try {
-        server.register(runtime.prometheus.plugin(), (err) => {
-          if (err) {
-            reject(err)
-            throw err
-          } else {
-            resolve()
-          }
-        })
-      } catch (e) {
-        debug(e)
-        reject(e)
-      }
-    })
-  }
-
-  await new Promise((resolve, reject) => {
-    server.register([
+  const { prometheus } = runtime
+  const plugins = [].concat(
+    prometheus ? [
+      prometheus.plugin()
+    ] : [],
+    [
       bell,
-      asyncHandler,
       authBearerToken,
       authCookie,
       whitelist,
       inert,
       vision,
+      rateLimiter(runtime),
+      swagger()
+    ], process.env.NODE_ENV === 'production' ? [
       {
-        register: rateLimiter,
-        options: {
-          defaultRate: (request) => {
-            /*  access type            requests/minute per IP address
-    -------------------    ------------------------------
-    anonymous (browser)       60
-    administrator (github)  3000
-    server (bearer token)  60000
- */
-            let authorization, parts, token, tokenlist
-            let limit = 60
-
-            try {
-              const ipaddr = whitelist.ipaddr(request)
-              if (ipaddr === '127.0.0.1') return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
-
-              if ((graylist.authorizedAddrs) &&
-                  ((graylist.authorizedAddrs.indexOf(ipaddr) !== -1) ||
-                   (underscore.find(graylist.authorizedBlocks, (block) => { return block.contains(ipaddr) })))) {
-                return { limit: Number.MAX_SAFE_INTEGER, window: 1 }
-              }
-
-              if (whitelist.authorizedP(ipaddr)) {
-                authorization = request.raw.req.headers.authorization
-                if (authorization) {
-                  parts = authorization.split(/\s+/)
-                  token = (parts[0].toLowerCase() === 'bearer') && parts[1]
-                } else {
-                  token = request.query.access_token
-                }
-                tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-                limit = (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)) ? 60000 : 3000
-              }
-            } catch (e) {
-            }
-
-            return { limit: limit, window: 60 }
-          },
-          enabled: true,
-          methods: [ 'get', 'post', 'delete', 'put', 'patch' ],
-          overLimitError: (rate) => boom.tooManyRequests(`try again in ${rate.window} seconds`),
-          rateLimitKey: (request) => {
-            try {
-              return whitelist.ipaddr(request) + ':' + runtime.config.server.host
-            } catch (e) {
-              return 'default'
-            }
-          },
-          redisClient: (runtime.cache && runtime.cache.cache) || runtime.queue.config.client
-        }
-      },
-      {
-        register: swagger,
-        options: {
-          auth: {
-            strategy: 'whitelist',
-            mode: 'required'
-          },
-          info: {
-            title: npminfo.name,
-            version: npminfo.version,
-            description: npminfo.description
-          }
-        }
+        register: require('hapi-require-https'),
+        options: { proxy: true }
       }
-    ], async (err) => {
-      if (err) {
-        debug('unable to register extensions', err)
-        reject(err)
-        throw err
-      }
+    ] : []
+  )
+  await server.register(plugins)
 
+  debug('extensions registered')
+
+  if (runtime.login) {
+    if (runtime.login.github) {
+      server.auth.strategy('github', 'bell', {
+        provider: 'github',
+        password: cryptiles.randomString(64),
+        clientId: runtime.login.github.clientId,
+        clientSecret: runtime.login.github.clientSecret,
+        isSecure: runtime.login.github.isSecure,
+        forceHttps: runtime.login.github.isSecure,
+        scope: ['user:email', 'read:org'],
+        location: 'https://' + process.env.HOST
+      })
+
+      debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
+
+      server.auth.strategy('session', 'cookie', {
+        password: runtime.login.github.ironKey,
+        cookie: 'sid',
+        isSecure: runtime.login.github.isSecure
+      })
+      debug('session authentication strategy via cookie')
+    } else {
+      debug('github authentication disabled')
       if (process.env.NODE_ENV === 'production') {
-        await new Promise((resolve, reject) => {
-          server.register({ register: require('hapi-require-https'), options: { proxy: true } }, (err) => {
-            if (err) {
-              debug('unable to register hapi-require-https', err)
-              reject(err)
-              throw err
-            } else {
-              resolve()
-            }
-          })
-        })
+        throw new Error('github authentication was not enabled yet we are in production mode')
       }
 
-      debug('extensions registered')
-
-      if (runtime.login) {
-        if (runtime.login.github) {
-          server.auth.strategy('github', 'bell', {
-            provider: 'github',
-            password: cryptiles.randomString(64),
-            clientId: runtime.login.github.clientId,
-            clientSecret: runtime.login.github.clientSecret,
-            isSecure: runtime.login.github.isSecure,
-            forceHttps: runtime.login.github.isSecure,
-            scope: ['user:email', 'read:org'],
-            location: 'https://' + process.env.HOST
-          })
-
-          debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
-
-          server.auth.strategy('session', 'cookie', {
-            password: runtime.login.github.ironKey,
-            cookie: 'sid',
-            isSecure: runtime.login.github.isSecure
-          })
-          debug('session authentication strategy via cookie')
-        } else {
-          debug('github authentication disabled')
-          if (process.env.NODE_ENV === 'production') {
-            throw new Error('github authentication was not enabled yet we are in production mode')
-          }
-
-          const bearerAccessTokenConfig = {
-            allowQueryToken: true,
-            allowMultipleHeaders: false,
-            validateFunc: (token, callback) => {
-              const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-              callback(null, (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)), { token: token, scope: ['devops', 'ledger', 'QA'] }, null)
-            }
-          }
-
-          server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
-          server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
-
-          debug('session authentication strategy via bearer-access-token')
-          debug('github authentication strategy via bearer-access-token')
-        }
-      }
-
-      server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
+      const bearerAccessTokenConfig = {
         allowQueryToken: true,
         allowMultipleHeaders: false,
-        validateFunc: (token, callback) => {
-          const scope = pushScopedTokens(token)
-          const valid = !!scope.length
-          callback(null, valid, {
-            token,
-            scope
-          }, null)
+        validate: (request, token, h) => {
+          const scope = ['devops', 'ledger', 'QA']
+          const isValid = braveHapi.isSimpleTokenValid(TOKEN_LIST, token)
+          return {
+            isValid,
+            artifacts: null,
+            credentials: {
+              token,
+              scope
+            }
+          }
         }
-      })
-      resolve()
-    })
+      }
+
+      server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
+      server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
+
+      debug('session authentication strategy via bearer-access-token')
+      debug('github authentication strategy via bearer-access-token')
+    }
+  }
+
+  server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
+    allowQueryToken: true,
+    allowMultipleHeaders: false,
+    validate: (request, token, h) => {
+      const scope = pushScopedTokens(token)
+      return {
+        isValid: !!scope.length,
+        artifacts: null,
+        credentials: {
+          token,
+          scope
+        }
+      }
+    }
   })
 
-  server.ext('onRequest', (request, reply) => {
+  server.ext('onRequest', (request, h) => {
     const headers = options.headersP &&
           underscore.omit(request.headers, (value, key, object) => {
             if ([ 'authorization', 'cookie' ].indexOf(key) !== -1) return true
@@ -280,10 +190,10 @@ const Server = async (options, runtime) => {
       }
     })
 
-    return reply.continue()
+    return h.continue
   })
 
-  server.ext('onPreResponse', (request, reply) => {
+  server.ext('onPreResponse', (request, h) => {
     const response = request.response
 
     if (response.isBoom && response.output.statusCode >= 500) {
@@ -297,42 +207,55 @@ const Server = async (options, runtime) => {
         }
         error.output.payload.stack = error.stack
 
-        return reply(error)
+        throw error
       }
     }
 
     if ((!response.isBoom) || (response.output.statusCode !== 401)) {
       if (typeof response.header === 'function') response.header('Cache-Control', 'private')
-      return reply.continue()
+      return h.continue
     }
 
     if (request && request.auth && request.cookieAuth && request.cookieAuth.clear) {
       request.cookieAuth.clear()
-      reply.redirect('/v1/login')
+      return h.redirect('/v1/login')
     }
 
-    return reply.continue()
+    return h.continue
   })
 
-  server.on('log', (event, tags) => {
-    debug(event.data, { tags: tags })
+  server.events.on('log', (event, tags) => {
+    debug(event.data, {
+      tags
+    })
   }).on('request', (request, event, tags) => {
-    debug(event.data, { tags: tags }, { sdebug: { request: { id: event.request, internal: event.internal } } })
-  }).on('request-internal', (request, event, tags) => {
-    let params
+    debug(event.data, {
+      tags
+    }, {
+      sdebug: {
+        request: {
+          id: event.request,
+          internal: event.internal
+        }
+      }
+    })
 
-    if ((!tags) || (!tags.received)) return
+    if (!tags || !tags.received) {
+      return
+    }
 
-    params = {
+    const sdebug = {
+      tags,
       request: {
         id: request.id,
         method: request.method.toUpperCase(),
         pathname: request.url.pathname
-      },
-      tags: tags
+      }
     }
 
-    debug('begin', { sdebug: params })
+    debug('begin', {
+      sdebug
+    })
   }).on('response', (request) => {
     if (!request.response) request.response = {}
     const flattened = {}
@@ -375,7 +298,8 @@ const Server = async (options, runtime) => {
     debug('end', { sdebug: params })
   })
 
-  server.route(await options.routes.routes(debug, runtime, options))
+  const routes = await options.routes.routes(debug, runtime, options)
+  server.route(routes)
   server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './documentation/favicon.ico' } })
   server.route({ method: 'GET', path: '/favicon.png', handler: { file: './documentation/favicon.png' } })
   server.route({ method: 'GET', path: '/robots.txt', handler: { file: './documentation/robots.txt' } })
@@ -383,43 +307,39 @@ const Server = async (options, runtime) => {
     server.route({
       method: 'GET',
       path: '/.well-known/acme-challenge/' + process.env.ACME_CHALLENGE.split('.')[0],
-      handler: (request, reply) => { reply(process.env.ACME_CHALLENGE) }
+      handler: (request, h) => process.env.ACME_CHALLENGE
     })
   }
   // automated fishing expeditions shouldn't result in devops alerts...
   server.route({ method: 'GET', path: '/{path*}', handler: { file: './documentation/robots.txt' } })
 
-  server.started = new Promise((resolve, reject) => {
-    server.start((err) => {
-      if (err) {
-        debug('unable to start server', err)
-        reject(err)
-        throw err
-      }
+  try {
+    await server.start()
+  } catch (err) {
+    debug('unable to start server', err)
+    throw err
+  }
+  debug('started server')
 
-      let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
+  let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
 
-      dns.setServers(resolvers)
-      debug('webserver started',
-        underscore.extend(
-          { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
-          server.info,
-          {
-            env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
-            options: underscore.pick(options, [ 'headersP', 'remoteP' ])
-          }))
-      runtime.notify(debug, {
-        text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +
-          (process.env.DYNO || 'web') + '/' + options.id
-      })
-
-      resolve('started')
-      // Hook to notify start script.
-      if (process.send) { process.send('started') }
-    })
+  dns.setServers(resolvers)
+  const startedInfos = underscore.extend({
+    server: runtime.config.server.href,
+    version: server.version,
+    resolvers: resolvers
+  }, server.info, {
+    env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
+    options: underscore.pick(options, [ 'headersP', 'remoteP' ])
+  })
+  debug('webserver started', startedInfos)
+  runtime.notify(debug, {
+    text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +
+      (process.env.DYNO || 'web') + '/' + options.id
   })
 
+  if (process.send) { process.send('started') }
+
+  console.log('server started', serverOpts)
   return server
 }
-
-module.exports = Server

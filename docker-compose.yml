@@ -55,6 +55,7 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "PORT=3002"
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
@@ -88,6 +89,7 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "PORT=3001"
       - "SERVICE=ledger"
       - PUBLISHERS_TAKEOVER
       - "DYNO=web.1"
@@ -105,6 +107,7 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "PORT=3003"
       - "SERVICE=balance"
       - "DYNO=web.1"
     depends_on:
@@ -124,7 +127,7 @@ services:
     ports:
       - "3333:3333"
     environment:
-      - "REDIS_URL=${REDIS_URL-redis://grant-redis:6379}"
+      - "REDIS_URL=redis://grant-redis:6379"
       - BAT_SETTLEMENT_ADDRESS
       - GRANT_SIGNATOR_PUBLIC_KEY
       - GRANT_WALLET_CARD_ID

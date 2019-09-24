@@ -45,7 +45,7 @@ const walletStatsList = Joi.array().items(
  */
 
 const read = function (runtime, apiVersion) {
-  return async (request, reply) => {
+  return async (request, h) => {
     const amount = request.query.amount
     const balanceP = request.query.balance
     const debug = braveHapi.debug(module, request)
@@ -58,10 +58,12 @@ const read = function (runtime, apiVersion) {
     let balances, info, result, state, wallet, wallet2
 
     wallet = await wallets.findOne({ paymentId: paymentId })
-    if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+    if (!wallet) {
+      throw boom.notFound('no such wallet: ' + paymentId)
+    }
 
     if (altcurrency && altcurrency !== wallet.altcurrency) {
-      return reply(boom.badData('the altcurrency of the transaction must match that of the wallet'))
+      throw boom.badData('the altcurrency of the transaction must match that of the wallet')
     }
 
     const subset = currency ? [currency.toUpperCase()] : null
@@ -117,19 +119,19 @@ const read = function (runtime, apiVersion) {
           try {
             await runtime.currency.ratio('USD', currency)
           } catch (e) {
-            return reply(boom.notFound('no such currency: ' + currency))
+            throw boom.notFound('no such currency: ' + currency)
           }
           const rates = await runtime.currency.rates(wallet.altcurrency)
           if (!rates || !rates[currency.toUpperCase()]) {
             const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
             const resp = boom.serverUnavailable(errMsg)
             resp.output.headers['retry-after'] = '5'
-            return reply(resp)
+            throw resp
           }
         } else if (altcurrency) {
           currency = altcurrency
         } else {
-          return reply(boom.badData('must pass at least one of currency or altcurrency'))
+          throw boom.badData('must pass at least one of currency or altcurrency')
         }
         result = underscore.extend(result, await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed))
 
@@ -164,7 +166,7 @@ const read = function (runtime, apiVersion) {
       if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }
 
-    reply(result)
+    return result
   }
 }
 
@@ -240,7 +242,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
  */
 
 const write = function (runtime, apiVersion) {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const paymentId = request.params.paymentId.toLowerCase()
     const signedTx = request.payload.signedTx
@@ -256,20 +258,26 @@ const write = function (runtime, apiVersion) {
     let totalVotes, grantVotes, nonGrantVotes
 
     wallet = await wallets.findOne({ paymentId: paymentId })
-    if (!wallet) return reply(boom.notFound('no such wallet: ' + paymentId))
+    if (!wallet) {
+      throw boom.notFound('no such wallet: ' + paymentId)
+    }
 
     const txn = JSON.parse(signedTx.octets)
 
     surveyor = await surveyors.findOne({ surveyorId, surveyorType: 'contribution' })
-    if (!surveyor) return reply(boom.notFound('no such surveyor: ' + surveyorId))
-    if (!surveyor.active) return reply(boom.resourceGone('cannot perform a contribution with an inactive surveyor'))
+    if (!surveyor) {
+      throw boom.notFound('no such surveyor: ' + surveyorId)
+    }
+    if (!surveyor.active) {
+      throw boom.resourceGone('cannot perform a contribution with an inactive surveyor')
+    }
 
     params = surveyor.payload.adFree
     txnProbi = runtime.wallet.getTxProbi(wallet, txn)
     totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (totalVotes < 1) {
-      return reply(boom.rangeNotSatisfiable('Too low vote value for transaction. PaymentId: ' + paymentId))
+      throw boom.rangeNotSatisfiable('Too low vote value for transaction. PaymentId: ' + paymentId)
     }
 
     const minimum = surveyorsLib.voteValueFromSurveyor(runtime, surveyor, wallet.altcurrency)
@@ -281,12 +289,12 @@ const write = function (runtime, apiVersion) {
     } catch (ex) {
       debug('validateTxSignature', { reason: ex.toString(), stack: ex.stack })
       runtime.captureException(ex, { req: request, extra: { paymentId: paymentId } })
-      return reply(boom.badData(ex.toString()))
+      throw boom.badData(ex.toString())
     }
 
     if (!surveyor.cohorts) {
       if (surveyor.surveyors) { // legacy surveyor, no cohort support
-        return reply(boom.resourceGone('cannot perform a contribution using a legacy surveyor'))
+        throw boom.resourceGone('cannot perform a contribution using a legacy surveyor')
       } else {
         // new contribution surveyor not yet populated with voting surveyors
         const errMsg = 'surveyor ' + surveyor.surveyorId + ' has 0 surveyors, but needed ' + totalVotes
@@ -294,7 +302,7 @@ const write = function (runtime, apiVersion) {
 
         const resp = boom.serverUnavailable(errMsg)
         resp.output.headers['retry-after'] = '5'
-        return reply(resp)
+        throw resp
       }
     }
 
@@ -309,16 +317,17 @@ const write = function (runtime, apiVersion) {
 
         const resp = boom.serverUnavailable(errMsg)
         resp.output.headers['retry-after'] = '5'
-        return reply(resp)
+        throw resp
       }
     }
 
     try {
       result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
     } catch (err) {
-      let { data } = err
+      const { data } = err
       if (data) {
-        let payload = data.payload.toString()
+        let { payload } = data
+        payload = payload.toString()
         if (payload[0] === '{') {
           payload = JSON.parse(payload)
           let payloadData = payload.data
@@ -327,7 +336,7 @@ const write = function (runtime, apiVersion) {
           }
         }
       }
-      return reply(boom.boomify(err))
+      throw boom.boomify(err)
     }
 
     if (!result) {
@@ -337,7 +346,9 @@ const write = function (runtime, apiVersion) {
     }
     totalFee = result.fee
 
-    if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') return reply(boom.badData(result.status))
+    if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') {
+      throw boom.badData(result.status)
+    }
 
     const grantIds = result.grantIds
     const grantTotal = result.grantTotal
@@ -394,7 +405,7 @@ const write = function (runtime, apiVersion) {
     const picked = ['votes', 'probi', 'altcurrency']
     result = underscore.extend({ paymentStamp: now }, underscore.pick(result, picked))
 
-    reply(result)
+    const response = h.response(result)
 
     if (grantVotes > 0) {
       await runtime.queue.send(debug, 'contribution-report', underscore.extend({
@@ -426,6 +437,7 @@ const write = function (runtime, apiVersion) {
         cohort
       })
     }
+    return response
 
     async function markGrantsAsRedeemed (grantIds) {
       await Promise.all(grantIds.map((grantId) => {
@@ -479,13 +491,17 @@ v2.write = { handler: (runtime) => { return write(runtime, 2) },
    GET /v2/wallet
  */
 v2.lookup = { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const wallets = runtime.database.get('wallets', debug)
     const publicKey = request.query.publicKey
     const wallet = await wallets.findOne({ httpSigningPubKey: publicKey })
-    if (!wallet) return reply(boom.notFound('no such wallet with publicKey: ' + publicKey))
-    reply({ paymentId: wallet.paymentId })
+    if (!wallet) {
+      throw boom.notFound('no such wallet with publicKey: ' + publicKey)
+    }
+    return {
+      paymentId: wallet.paymentId
+    }
   }
 },
 description: 'Lookup a wallet',
@@ -563,7 +579,7 @@ function defaultQuery () {
 
 function getStats (getQuery = defaultQuery) {
   return (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const debug = braveHapi.debug(module, request)
       const wallets = runtime.database.get('wallets', debug)
 
@@ -673,7 +689,7 @@ function getStats (getQuery = defaultQuery) {
         }
       }])
 
-      values = values.map(({
+      return values.map(({
         created,
         wallets,
         contributed,
@@ -690,8 +706,6 @@ function getStats (getQuery = defaultQuery) {
         activeGrant,
         walletProviderFunded
       }))
-
-      reply(values)
 
       function add (numbers) {
         return numbers.reduce((memo, number) => {
@@ -833,7 +847,7 @@ module.exports.initialize = async (debug, runtime) => {
 }
 
 function claimWalletHandler (runtime) {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const { params, payload } = request
     const { signedTx, anonymousAddress } = payload
@@ -843,7 +857,7 @@ function claimWalletHandler (runtime) {
 
     const wallet = await wallets.findOne({ paymentId })
     if (!wallet) {
-      return reply(boom.notFound())
+      throw boom.notFound()
     }
 
     const txn = runtime.wallet.validateTxSignature(wallet, signedTx, {
@@ -862,14 +876,14 @@ function claimWalletHandler (runtime) {
 
     // check that where the transfer is going to is a card, that belongs to a member
     if (type !== 'card' || !isMember || !userId) {
-      return reply(boom.forbidden())
+      throw boom.forbidden()
     }
     const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
     // if wallet has already been claimed, don't tie wallet to member id
     if (wallet.providerLinkingId) {
       // Check if the member matches the associated member
       if (providerLinkingId !== wallet.providerLinkingId) {
-        return reply(boom.forbidden())
+        throw boom.forbidden()
       }
 
       if (anonymousAddress && (!wallet.anonymousAddress || anonymousAddress !== wallet.anonymousAddress)) {
@@ -903,7 +917,7 @@ function claimWalletHandler (runtime) {
       })
       // If association worked, perform reverse association, providerLinkingId with wallet
       if (!member) {
-        return reply(boom.conflict())
+        throw boom.conflict()
       }
       let toSet = { providerLinkingId }
 
@@ -923,12 +937,15 @@ function claimWalletHandler (runtime) {
       })
     }
 
-    return reply({})
+    return {}
   }
 }
 
+/*
+  GET /v2/wallet/{paymentId}/grants/{type}
+*/
 function walletGrantsInfoHandler (runtime) {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const {
       type,
@@ -940,9 +957,9 @@ function walletGrantsInfoHandler (runtime) {
         paymentId
       })
       const status = composite.lastClaim ? 200 : 204
-      reply(composite).code(status)
+      return h.response(composite).code(status)
     } catch (e) {
-      reply(e)
+      throw boom.boomify(e)
     }
   }
 }

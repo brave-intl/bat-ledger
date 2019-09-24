@@ -113,7 +113,7 @@ AsyncRoute.prototype.config = function (config) {
   if (typeof config.handler === 'undefined') { throw new Error('undefined handler for ' + JSON.stringify(this.internal)) }
 
   return (runtime) => {
-    const payload = { handler: { async: config.handler(runtime) } }
+    const payload = { handler: config.handler(runtime) }
 
     underscore.keys(config).forEach(key => {
       if ((key !== 'handler') && (typeof config[key] !== 'undefined')) payload[key] = config[key]

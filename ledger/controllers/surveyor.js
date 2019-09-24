@@ -15,7 +15,7 @@ const v2 = {}
 
 const slop = 35
 
-const server = async (request, reply, runtime) => {
+const server = async (request, h, runtime) => {
   const debug = braveHapi.debug(module, request)
   const surveyorType = request.params.surveyorType
   const surveyorId = request.params.surveyorId
@@ -27,9 +27,11 @@ const server = async (request, reply, runtime) => {
   } else {
     entry = await surveyors.findOne({ surveyorId: surveyorId })
   }
-  if (!entry) reply(boom.notFound('surveyor does not exist: ' + surveyorId))
-  else if (entry.surveyorType !== surveyorType) reply(boom.badData('surveyorType mismatch for: ' + surveyorId))
-  else {
+  if (!entry) {
+    throw boom.notFound('surveyor does not exist: ' + surveyorId)
+  } else if (entry.surveyorType !== surveyorType) {
+    throw boom.badData('surveyorType mismatch for: ' + surveyorId)
+  } else {
     surveyor = new anonize.Surveyor(entry.parameters)
     surveyor.surveyorId = entry.surveyorId
     surveyor.surveyorType = entry.surveyorType
@@ -96,17 +98,19 @@ module.exports.enumerate = enumerate
 
 v2.read =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const surveyorType = request.params.surveyorType
     let surveyor
 
-    surveyor = await server(request, reply, runtime)
+    surveyor = await server(request, h, runtime)
     if (!surveyor) return
 
-    reply(underscore.extend({ payload: surveyor.payload }, surveyor.publicInfo()))
+    const response = h.response(underscore.extend({ payload: surveyor.payload }, surveyor.publicInfo()))
 
     if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId)
+
+    return response
   }
 },
 
@@ -137,7 +141,7 @@ response: {
 
 v2.create =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const surveyorType = request.params.surveyorType
     let surveyor
@@ -145,15 +149,21 @@ v2.create =
 
     const validity = validateV2(surveyorType, payload)
 
-    if (validity.error) return reply(boom.badData(validity.error))
+    if (validity.error) {
+      throw boom.badData(validity.error)
+    }
 
     payload = await enumerate(runtime, surveyorType, payload)
-    if (!payload) return reply(boom.badData('no available currencies'))
+    if (!payload) {
+      throw boom.badData('no available currencies')
+    }
 
     surveyor = await create(debug, runtime, surveyorType, payload)
-    if (!surveyor) return reply(boom.notFound('invalid surveyorType: ' + surveyorType))
+    if (!surveyor) {
+      throw boom.notFound('invalid surveyorType: ' + surveyorType)
+    }
 
-    reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
+    return underscore.extend({ payload: payload }, surveyor.publicInfo())
   }
 },
 
@@ -190,7 +200,7 @@ response: {
 
 v2.update =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const bump = request.query.bump
     const surveyorType = request.params.surveyorType
     const debug = braveHapi.debug(module, request)
@@ -198,15 +208,19 @@ v2.update =
     let state, surveyor, validity
     let payload = request.payload
 
-    surveyor = await server(request, reply, runtime)
+    surveyor = await server(request, h, runtime)
     if (!surveyor) return
 
     validity = validateV2(surveyorType, payload)
 
-    if (validity.error) return reply(boom.badData(validity.error))
+    if (validity.error) {
+      throw boom.badData(validity.error)
+    }
 
     payload = await enumerate(runtime, surveyorType, payload)
-    if (!payload) return reply(boom.badData('no available currencies'))
+    if (!payload) {
+      throw boom.badData('no available currencies')
+    }
 
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
     await surveyors.update({ surveyorId: surveyor.surveyorId }, state, { upsert: false })
@@ -218,9 +232,11 @@ v2.update =
     }
 
     surveyor.payload = payload
-    reply(underscore.extend({ payload: payload }, surveyor.publicInfo()))
+    const response = h.response(underscore.extend({ payload: payload }, surveyor.publicInfo()))
 
     if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId, bump)
+
+    return response
   }
 },
 
@@ -261,7 +277,7 @@ response: {
 
 v2.phase1 =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const surveyorId = request.params.surveyorId
     const surveyorType = request.params.surveyorType
@@ -269,18 +285,22 @@ v2.phase1 =
     const credentials = runtime.database.get('credentials', debug)
     let entry, f, registrar, signature, surveyor
 
-    surveyor = await server(request, reply, runtime)
+    surveyor = await server(request, h, runtime)
     if (!surveyor) return
 
     registrar = runtime.registrars[registrarType(surveyorType)]
-    if (!registrar) return reply(boom.badImplementation('unable to find registrar for ' + surveyorType))
+    if (!registrar) {
+      throw boom.badImplementation('unable to find registrar for ' + surveyorType)
+    }
 
     entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
 
     f = {
       contribution:
             async () => {
-              if (!entry) return reply(boom.notFound('personaId not valid: ' + uId))
+              if (!entry) {
+                throw boom.notFound('personaId not valid: ' + uId)
+              }
             },
 
       voting:
@@ -288,12 +308,18 @@ v2.phase1 =
               const viewings = runtime.database.get('viewings', debug)
               let viewing
 
-              if (!entry) return reply(boom.notFound('viewingId not valid(1): ' + uId))
+              if (!entry) {
+                throw boom.notFound('viewingId not valid(1): ' + uId)
+              }
 
               viewing = await viewings.findOne({ uId: uId })
-              if (!viewing) return reply(boom.notFound('viewingId not valid(2): ' + uId))
+              if (!viewing) {
+                throw boom.notFound('viewingId not valid(2): ' + uId)
+              }
 
-              if (viewing.surveyorIds.indexOf(surveyorId) === -1) return reply(boom.notFound('viewingId not valid(3): ' + uId))
+              if (viewing.surveyorIds.indexOf(surveyorId) === -1) {
+                throw boom.notFound('viewingId not valid(3): ' + uId)
+              }
             }
     }[surveyor.surveyorType]
     if ((!!f) && (await f())) return
@@ -308,7 +334,7 @@ v2.phase1 =
 
     const payload = surveyor.payload
 
-    reply(underscore.extend({ signature: signature, payload: payload }, surveyor.publicInfo()))
+    return underscore.extend({ signature, payload }, surveyor.publicInfo())
   }
 },
 
@@ -341,13 +367,13 @@ response: {
 
 v2.phase2 =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const proof = request.payload.proof
     const submissions = runtime.database.get('submissions', debug)
     let data, entry, f, response, result, state, submissionId, surveyor
 
-    surveyor = await server(request, reply, runtime)
+    surveyor = await server(request, h, runtime)
     if (!surveyor) return
 
     const verifyEnd = runtime.prometheus.timedRequest('anonizeVerify_request_buckets_milliseconds')
@@ -363,14 +389,14 @@ v2.phase2 =
       verifyEnd({ erred: false })
     } catch (ex) {
       verifyEnd({ erred: true })
-      return reply(boom.badData('invalid surveyor proof: ' + JSON.stringify(proof)))
+      throw boom.badData('invalid surveyor proof: ' + JSON.stringify(proof))
     }
     submissionId = result.token
 
     entry = await submissions.findOne({ submissionId: submissionId })
     if (entry) {
       // NB: in case of a network error on the response (or a premature Heroku 503, etc.)
-      return reply(entry.response)
+      return entry.response
     }
 
     response = { submissionId: submissionId }
@@ -380,7 +406,9 @@ v2.phase2 =
               const schema = Joi.object().keys({ viewingId: Joi.string().guid().required() })
               const validity = Joi.validate(data.report, schema)
 
-              if (validity.error) return reply(boom.badData(validity.error))
+              if (validity.error) {
+                throw boom.badData(validity.error)
+              }
             },
 
       voting:
@@ -388,7 +416,9 @@ v2.phase2 =
               const schema = Joi.object().keys({ publisher: braveJoi.string().publisher().required() })
               const validity = Joi.validate(data, schema)
 
-              if (validity.error) return reply(boom.badData(validity.error))
+              if (validity.error) {
+                throw boom.badData(validity.error)
+              }
 
               await runtime.queue.send(debug, 'voting-report', underscore.extend({ surveyorId: surveyor.parentId, cohort: surveyor.payload.cohort || 'control' }, data))
             }
@@ -398,7 +428,7 @@ v2.phase2 =
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { response: response } }
     await submissions.update({ submissionId: submissionId }, state, { upsert: true })
 
-    reply(response)
+    return response
   }
 },
 
@@ -542,7 +572,7 @@ const provision = async (debug, runtime, surveyorId, bump) => {
 
 v2.batchVote =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const f = v2.phase2.handler(runtime)
     const id = request.id
     const params = request.params
@@ -551,19 +581,29 @@ v2.batchVote =
 
     for (let item of payload) {
       // only these three properties are needed...
-      await f({
-        id: id,
-        params: underscore.extend({ surveyorType: 'voting', surveyorId: item.surveyorId }, params),
-        payload: { proof: item.proof }
-      }, (response) => {
-        results.push({
-          surveyorId: item.surveyorId,
-          response: (response.isBoom && response.output && response.output.payload) || response
+      const { surveyorId, proof } = item
+      let response
+      try {
+        response = await f({
+          id,
+          params: underscore.extend({ surveyorType: 'voting', surveyorId }, params),
+          payload: { proof }
         })
+      } catch (e) {
+        const { isBoom, output } = e
+        if (isBoom && output) {
+          response = output.payload
+        } else {
+          throw boom.boomify(e)
+        }
+      }
+      results.push({
+        surveyorId,
+        response
       })
     }
 
-    return reply(results)
+    return results
   }
 },
 
@@ -608,7 +648,7 @@ response: {
 
 v2.batchSurveyor =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const surveyorType = 'voting'
     const uId = request.params.uId.toLowerCase()
@@ -616,42 +656,44 @@ v2.batchSurveyor =
     let entry, registrar, signature
 
     registrar = runtime.registrars[registrarType(surveyorType)]
-    if (!registrar) return reply(boom.badImplementation('unable to find registrar for ' + surveyorType))
+    if (!registrar) {
+      throw boom.badImplementation('unable to find registrar for ' + surveyorType)
+    }
 
     entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
 
-    if (!entry) return reply(boom.notFound('viewingId not valid(1): ' + uId))
+    if (!entry) {
+      throw boom.notFound('viewingId not valid(1): ' + uId)
+    }
 
     const viewings = runtime.database.get('viewings', debug)
     const viewing = await viewings.findOne({ uId: uId })
 
-    if (!viewing) return reply(boom.notFound('viewingId not valid(2): ' + uId))
+    if (!viewing) {
+      throw boom.notFound('viewingId not valid(2): ' + uId)
+    }
 
-    let surveyors = []
-    await Promise.all(viewing.surveyorIds.map(async (surveyorId) => {
+    let surveyors = await Promise.all(viewing.surveyorIds.map((surveyorId) => {
       const request = {
         params: {
           surveyorId,
           surveyorType
         }
       }
-      surveyors.push(await server(request, reply, runtime))
+      return server(request, h, runtime)
     }))
 
     const now = underscore.now()
 
-    let payload = []
-    surveyors.forEach(surveyor => {
+    return surveyors.map(surveyor => {
       signature = surveyor.sign(uId)
       runtime.newrelic.recordCustomEvent('sign', {
         surveyorId: surveyor.surveyorId,
         surveyorType: surveyor.surveyorType,
         duration: underscore.now() - now
       })
-      payload.push(underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo()))
+      return underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo())
     })
-
-    reply(payload)
   }
 },
 
@@ -746,13 +788,13 @@ module.exports.initialize = async (debug, runtime) => {
 module.exports.addSurveyorChoices = addSurveyorChoices
 
 function getVoteRate () {
-  return (runtime) => async (request, reply) => {
-    const surveyor = await server(request, reply, runtime)
+  return (runtime) => async (request, h) => {
+    const surveyor = await server(request, h, runtime)
     const voteRate = surveyorsLib.voteValueFromSurveyor(runtime, surveyor)
 
-    reply({
+    return {
       rate: voteRate.toString()
-    })
+    }
   }
 }
 

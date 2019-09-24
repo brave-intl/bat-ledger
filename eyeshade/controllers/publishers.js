@@ -18,7 +18,7 @@ let altcurrency
 
 v2.settlement = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const {
         payload
       } = request
@@ -29,7 +29,7 @@ v2.settlement = {
       const mappedFields = [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]
 
       if (payload.find((entry) => entry.altcurrency !== altcurrency)) {
-        return reply(boom.badData('altcurrency should be ' + altcurrency))
+        throw boom.badData('altcurrency should be ' + altcurrency)
       }
 
       const $currentDate = { timestamp: { $type: 'timestamp' } }
@@ -86,7 +86,7 @@ v2.settlement = {
         }
       }
 
-      reply({})
+      return {}
     }
   },
 

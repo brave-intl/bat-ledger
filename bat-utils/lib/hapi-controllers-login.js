@@ -18,40 +18,56 @@ const v1 = {}
 
 v1.login = {
   handler: (runtime) => {
-    return async (request, reply) => {
-      if (!request.auth.isAuthenticated) return reply(boom.forbidden())
+    return async (request, h) => {
+      if (!request.auth.isAuthenticated) throw boom.forbidden()
 
       const debug = braveHapi.debug(module, request)
       const credentials = request.auth.credentials
-      const gh = new GitHub({ debug: false })
-
-      gh.authenticate({ type: 'token', token: credentials.token })
-      gh.users.getTeams({}, (err, data) => {
-        if (err) return reply('Oops!')
-
-        credentials.scope = []
-        data.data.forEach(team => {
-          if (team.organization.login === runtime.login.github.organization) credentials.scope.push(team.name)
-        })
-        if (credentials.scope.length === 0) {
-          runtime.notify(debug, {
-            channel: '#devops-bot',
-            text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email
-          })
-          return reply(boom.forbidden())
-        }
-
-        runtime.notify(debug, {
-          channel: '#devops-bot',
-          text: 'login ' + credentials.provider + ' ' +
-            JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
-            ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + npminfo.name + '@' +
-            npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
-        })
-
-        request.cookieAuth.set(credentials)
-        reply.redirect(runtime.login.github.world)
+      const gh = new GitHub({
+        debug: false
       })
+
+      gh.authenticate({
+        type: 'token',
+        token: credentials.token
+      })
+
+      await getTeams()
+
+      h.redirect(runtime.login.github.world)
+
+      function getTeams () {
+        return new Promise((resolve, reject) => {
+          gh.users.getTeams({}, (err, data) => {
+            if (err) {
+              return reject(new Error('Oops!'))
+            }
+
+            credentials.scope = []
+            data.data.forEach(team => {
+              if (team.organization.login === runtime.login.github.organization) credentials.scope.push(team.name)
+            })
+            if (credentials.scope.length === 0) {
+              runtime.notify(debug, {
+                channel: '#devops-bot',
+                text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email
+              })
+              return reject(boom.forbidden())
+            }
+
+            runtime.notify(debug, {
+              channel: '#devops-bot',
+              text: 'login ' + credentials.provider + ' ' +
+                JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
+                ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + npminfo.name + '@' +
+                npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
+            })
+
+            request.cookieAuth.set(credentials)
+            resolve()
+          })
+        })
+      }
     }
   },
 
@@ -75,7 +91,7 @@ v1.login = {
 
 v1.logout = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const debug = braveHapi.debug(module, request)
       const credentials = request.auth.credentials
       const suffix = ' at ' + os.hostname() + ' ' + npminfo.name + '@' + npminfo.version +
@@ -96,7 +112,7 @@ v1.logout = {
       }
 
       request.cookieAuth.clear()
-      reply.redirect(runtime.login.github.bye)
+      h.redirect(runtime.login.github.bye)
     }
   },
 

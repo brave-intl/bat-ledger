@@ -19,7 +19,7 @@ let altcurrency
 
 v1.getWallet = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const owner = request.params.owner
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
@@ -28,7 +28,7 @@ v1.getWallet = {
       entry = await owners.findOne({ owner })
       provider = entry && entry.provider
       if (!provider) {
-        return reply(boom.notFound('owner does not exist'))
+        throw boom.notFound('owner does not exist')
       }
 
       result = {
@@ -60,7 +60,7 @@ v1.getWallet = {
         result.status = { provider: entry.provider, action: entry.parameters ? 're-authorize' : 'authorize' }
       }
 
-      reply(result)
+      return result
     }
   },
 
@@ -110,7 +110,7 @@ v1.getWallet = {
   }
  */
 v3.createCard = {
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const {
       payload,
@@ -140,7 +140,7 @@ v3.createCard = {
     })
     const info = await owners.findOne(where)
     if (!ownerVerified(info)) {
-      return reply(boom.badData('owner not verified'))
+      throw boom.badData('owner not verified')
     }
     try {
       await wallet.createCard(info, {
@@ -148,9 +148,9 @@ v3.createCard = {
         label
       })
       debug('card data create successful')
-      reply({})
+      return {}
     } catch (e) {
-      reply(e)
+      throw boom.boomify(e)
     }
   },
   description: 'Create a card for uphold',
@@ -188,7 +188,7 @@ function ownerVerified (info) {
 
 v1.putWallet = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const owner = request.params.owner
       const payload = request.payload
       const provider = payload.provider
@@ -208,7 +208,7 @@ v1.putWallet = {
       }
       await owners.update({ owner: owner }, state, { upsert: true })
 
-      reply({})
+      return {}
     }
   },
 
@@ -242,14 +242,16 @@ v1.putWallet = {
 
 v1.patchWallet = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const owner = request.params.owner
       const payload = request.payload
       const debug = braveHapi.debug(module, request)
       const owners = runtime.database.get('owners', debug)
 
       const entry = await owners.findOne({ owner: owner })
-      if (!entry) return reply(boom.notFound('no such entry: ' + owner))
+      if (!entry) {
+        throw boom.notFound('no such entry: ' + owner)
+      }
 
       const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
@@ -260,7 +262,7 @@ v1.patchWallet = {
       }
       await owners.update({ owner: owner }, state, { upsert: true })
 
-      reply({})
+      return {}
     }
   },
 

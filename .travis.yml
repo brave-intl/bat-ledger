@@ -73,6 +73,7 @@ before_script:
 after_failure:
   - npm run docker-log-detached
 after_script:
+  - docker ps
   - npm run docker-migrate-down-all
 
 after_success:
