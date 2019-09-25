@@ -2,7 +2,6 @@ const fs = require('fs')
 const path = require('path')
 const dotenv = require('dotenv')
 dotenv.config()
-const copyFrom = require('pg-copy-streams').from
 const agent = require('supertest').agent
 const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
@@ -277,14 +276,12 @@ function makeSettlement (type, balance, overwrites = {}) {
 
 async function insertReferralInfos (client) {
   const ratesPaths = [{
-    path: filePath('0010_geo_referral', 'groups.csv'),
-    query: 'geo_referral_groups(id, name, min_referral_time, currency, amount)'
+    path: filePath('0010_geo_referral', 'seeds', 'groups.sql')
   }, {
-    path: filePath('0010_geo_referral', 'country.csv'),
-    query: 'geo_referral_countries(group_id, name, country_code)'
+    path: filePath('0010_geo_referral', 'seeds', 'countries.sql')
   }]
   for (const subject of ratesPaths) {
-    await insertCSVFileToDB(client, subject)
+    await insertCSVFileToDB(client, subject.path)
   }
 
   function filePath (...paths) {
@@ -292,22 +289,8 @@ async function insertReferralInfos (client) {
   }
 }
 
-function insertCSVFileToDB (client, {
-  path,
-  query
-}) {
-  return new Promise((resolve, reject) => {
-    const copyQuery = `
-  COPY ${query}
-  FROM STDIN
-  delimiter ',' csv header;`
-    const stream = client.query(copyFrom(copyQuery))
-    const fileStream = fs.createReadStream(path)
-    fileStream.on('error', reject)
-    stream.on('error', reject)
-    stream.on('end', resolve)
-    fileStream.pipe(stream)
-  })
+function insertCSVFileToDB (client, path) {
+  return client.query(fs.readFileSync(path).toString())
 }
 
 function readJSONFile (...paths) {
