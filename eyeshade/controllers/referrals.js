@@ -3,6 +3,7 @@ const bson = require('bson')
 const BigNumber = require('bignumber.js')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
+const _ = underscore
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -40,7 +41,7 @@ const anyReferralVersion = Joi.alternatives().try(
 
 const referralGroupCountriesValidator = Joi.object().keys({
   id: Joi.string().guid().required().description('the group id to report back for correct value categorization'),
-  minReferralTime: Joi.date().iso().required().description('the download cut off time to honor the amount'),
+  activeAt: Joi.date().iso().required().description('the download cut off time to honor the amount'),
   name: groupNameValidator.optional().description('name of the group'),
   codes: Joi.array().items(countryCodeValidator).optional().description('country codes that belong to the group'),
   currency: currencyValidator.optional().description('the currency that the probi is calculated from'),
@@ -114,9 +115,14 @@ v1.findReferrals = {
 
 v1.getReferralGroups = {
   handler: (runtime) => async (request, reply) => {
-    const statement = queries.referralGroups(request.query)
+    let { fields, active } = request.query
+    const statement = queries.referralGroups({ active })
+    fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
+    const allFields = ['id', 'activeAt'].concat(fields)
+
     const { rows } = await runtime.postgres.query(statement)
-    reply(rows)
+
+    reply(rows.map((row) => _.pick(row, allFields)))
   },
 
   auth: {
@@ -241,7 +247,7 @@ v1.createReferrals = {
       const batRatio = new BigNumber(payoutRate)
       const {
         rows: referralGroups
-      } = await postgres.query(`select * from geo_referral_groups where active = true;`)
+      } = await postgres.query(`select id, amount, currency from geo_referral_groups;`)
 
       for (let referral of payload) {
         const {

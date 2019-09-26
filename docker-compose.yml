@@ -132,9 +132,14 @@ services:
       - GRANT_WALLET_PUBLIC_KEY
       - TOKEN_LIST
       - UPHOLD_ACCESS_TOKEN
+      - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade?sslmode=disable"
+      - "DATABASE_MIGRATIONS_URL=file://migrations"
+      - "CHALLENGE_BYPASS_SERVER=http://localhost"
+      - "LEDGER_SERVER=https://ledger-staging.mercury.basicattentiontoken.org"
     depends_on:
       - mongo
       - grant-redis
+      - eyeshade-postgres
     networks:
       - ledger
 

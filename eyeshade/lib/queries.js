@@ -69,25 +69,15 @@ function timeConstraintSettlements (options = {}) {
 }
 
 function referralGroups (options = {}) {
-  let { fields = [], active } = options
-  const fieldsMap = {
-    name: 'name',
-    amount: 'amount',
-    currency: 'currency',
-    codes: 'countries.codes AS codes'
-  }
-  fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : fields
+  let { active } = options
   return `
 SELECT
   id,
-  min_referral_time as "minReferralTime"
-  ${fields.reduce((memo, key) => {
-    const query = fieldsMap[key]
-    if (query) {
-      memo.push(',\n  ', query)
-    }
-    return memo
-  }, []).join('')}
+  active_at as "activeAt",
+  name,
+  amount,
+  currency,
+  countries.codes AS codes
 FROM geo_referral_groups, (
   SELECT
     group_id,

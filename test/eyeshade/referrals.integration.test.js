@@ -46,11 +46,11 @@ test('referral groups are returned correctly', async (t) => {
   const json = normalizeGroups(readJSONFile('data', 'referral-groups', '0010.json'))
 
   body = await getGroups({ fields: ['codes'] })
-  const codesSubset = json.map((j) => _.pick(j, ['id', 'minReferralTime', 'codes']))
+  const codesSubset = json.map((j) => _.pick(j, ['id', 'activeAt', 'codes']))
   t.deepEqual(codesSubset, body, 'referral groups should be present')
 
   body = await getGroups({ fields: ['codes', 'name', 'currency'] })
-  const codesNameSubset = json.map((j) => _.pick(j, ['id', 'minReferralTime', 'codes', 'name', 'currency']))
+  const codesNameSubset = json.map((j) => _.pick(j, ['id', 'activeAt', 'codes', 'name', 'currency']))
   t.deepEqual(codesNameSubset, body, 'referral fields should be present')
   const stringQuery = await getGroups({ fields: 'codes,name,currency' })
   t.deepEqual(codesNameSubset, stringQuery, 'a string or array can be sent for query')
@@ -59,7 +59,7 @@ test('referral groups are returned correctly', async (t) => {
   // disable OT
   await t.context.postgres.query(`update geo_referral_groups set active = false where id = any($1)`, [disabled])
 
-  const minimalJSON = json.map((j) => _.pick(j, ['id', 'minReferralTime']))
+  const minimalJSON = json.map((j) => _.pick(j, ['id', 'activeAt']))
   const disabledReferralGroups = minimalJSON.filter(({ id }) => disabled.includes(id))
   const enabledReferralGroups = minimalJSON.filter(({ id }) => !disabled.includes(id))
   body = await getGroups()
@@ -79,12 +79,12 @@ async function getGroups (query) {
   return normalizeGroups(body)
 }
 
-function normalizeGroups (body) {
-  body.sort((a) => a.id)
+function normalizeGroups (_body) {
+  const body = _body.slice(0).sort((a, b) => a.id > b.id ? 1 : -1)
   for (const group of body) {
     const { codes } = group
     if (codes) {
-      codes.sort()
+      group.codes = codes.slice(0).sort()
     }
   }
   return body
