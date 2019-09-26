@@ -138,7 +138,7 @@ v1.getReferralGroups = {
 
     const { rows } = await runtime.postgres.query(statement)
 
-    reply(rows.map((row) => _.pick(row, allFields)))
+    return rows.map((row) => _.pick(row, allFields))
   },
 
   auth: {
@@ -202,7 +202,7 @@ v1.getReferralsStatement = {
       referralCode: 1
     })
     const scale = currency.alt2scale('BAT')
-    const mappedRefs = refs.map(({
+    return refs.map(({
       publisher,
       groupId,
       referralCode,
@@ -218,7 +218,6 @@ v1.getReferralsStatement = {
         amount: bat.toString()
       }
     })
-    reply(mappedRefs)
   },
 
   auth: {
@@ -282,7 +281,7 @@ v1.createReferrals = {
           id: groupId
         })
         if (!config) {
-          return reply(boom.notFound('referral group not found'))
+          throw boom.notFound('referral group not found')
         }
         const {
           amount: groupAmount,

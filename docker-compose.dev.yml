@@ -7,7 +7,6 @@ services:
       - "./ledger:/usr/src/app/ledger"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-      - "./env.js:/usr/src/app/env.js"
     command: "npm run start-ledger"
   ledger-worker:
     volumes:
@@ -15,7 +14,6 @@ services:
       - "./ledger:/usr/src/app/ledger"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-      - "./env.js:/usr/src/app/env.js"
     command: "npm run start-ledger-worker"
   eyeshade-web:
     volumes:
@@ -23,7 +21,6 @@ services:
       - "./eyeshade:/usr/src/app/eyeshade"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-      - "./env.js:/usr/src/app/env.js"
     command: "npm run start-eyeshade"
   eyeshade-worker:
     volumes:
@@ -31,7 +28,6 @@ services:
       - "./eyeshade:/usr/src/app/eyeshade"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-      - "./env.js:/usr/src/app/env.js"
     command: "npm run start-eyeshade-worker"
   balance-web:
     volumes:
@@ -39,5 +35,4 @@ services:
       - "./balance:/usr/src/app/balance"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-      - "./env.js:/usr/src/app/env.js"
     command: "npm run start-balance"

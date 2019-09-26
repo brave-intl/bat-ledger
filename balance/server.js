@@ -23,6 +23,7 @@ const parentModules = [
 ]
 
 const options = {
+  port: process.env.PORT,
   parentModules,
   routes: controllers.index,
   controllers: controllers,

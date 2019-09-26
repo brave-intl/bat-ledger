@@ -70,10 +70,10 @@ before_script:
   - npm run docker-up-detached
   # let the detached up command start up
   - sleep 20
+  - docker ps
 after_failure:
   - npm run docker-log-detached
 after_script:
-  - docker ps
   - npm run docker-migrate-down-all
 
 after_success:

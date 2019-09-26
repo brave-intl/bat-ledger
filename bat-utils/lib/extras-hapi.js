@@ -71,6 +71,11 @@ AsyncRoute.prototype.get = function () {
   return this
 }
 
+AsyncRoute.prototype.method = function (method) {
+  this.internal.method = method
+  return this
+}
+
 AsyncRoute.prototype.post = function () {
   this.internal.method = 'POST'
   return this
@@ -122,7 +127,7 @@ AsyncRoute.prototype.config = function (config) {
     return {
       method: this.internal.method,
       path: this.internal.path,
-      config: underscore.extend(payload, this.internal.extras)
+      options: underscore.extend(payload, this.internal.extras)
     }
   }
 }

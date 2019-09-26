@@ -2,29 +2,30 @@ const dns = require('dns')
 const os = require('os')
 const _ = require('underscore')
 const authBearerToken = require('hapi-auth-bearer-token')
-const authCookie = require('hapi-auth-cookie')
+const hapiCookie = require('@hapi/cookie')
 const cryptiles = require('cryptiles')
 const bell = require('@hapi/bell')
 const hapi = require('@hapi/hapi')
 const inert = require('@hapi/inert')
-const rateLimiter = require('./hapi-rate-limiter')
-const SDebug = require('sdebug')
-const swagger = require('./hapi-swagger')
 const underscore = require('underscore')
 const vision = require('@hapi/vision')
+const hapiRequireHTTPS = require('hapi-require-https')
+const SDebug = require('sdebug')
 
+const rateLimiter = require('./hapi-rate-limiter')
+const swagger = require('./hapi-swagger')
 const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
-
 const npminfo = require('../npminfo')
 
-const env = require('../../env')
-const {
-  PORT,
-  TOKEN_LIST
-} = env
-
-module.exports = Server
+module.exports = async (options, runtime) => {
+  try {
+    const srvr = await Server(options, runtime)
+    return srvr
+  } catch (e) {
+    console.log(e)
+  }
+}
 
 const pushScopedTokens = pushTokens({
   TOKEN_LIST: 'global',
@@ -37,8 +38,11 @@ function pushTokens (map) {
   const keys = _.keys(map)
   return (token, memo = []) => {
     return keys.reduce((memo, key) => {
-      const has = braveHapi.isSimpleTokenValid(env[key], token)
-      return memo.concat(has ? [map[key]] : [])
+      const value = map[key]
+      const envTokens = process.env[key]
+      const TOKENS = envTokens ? envTokens.split(',') : []
+      const has = braveHapi.isSimpleTokenValid(TOKENS, token)
+      return memo.concat(has ? [value] : [])
     }, memo)
   }
 }
@@ -47,7 +51,7 @@ async function Server (options, runtime) {
   const debug = new SDebug('web')
 
   const serverOpts = {
-    port: PORT,
+    port: options.port,
     host: '0.0.0.0'
   }
   const server = new hapi.Server(serverOpts)
@@ -78,15 +82,17 @@ async function Server (options, runtime) {
     [
       bell,
       authBearerToken,
-      authCookie,
-      whitelist,
+      hapiCookie,
+      {
+        plugin: whitelist.plugin
+      },
       inert,
       vision,
       rateLimiter(runtime),
       swagger()
     ], process.env.NODE_ENV === 'production' ? [
       {
-        register: require('hapi-require-https'),
+        plugin: hapiRequireHTTPS,
         options: { proxy: true }
       }
     ] : []
@@ -97,24 +103,27 @@ async function Server (options, runtime) {
 
   if (runtime.login) {
     if (runtime.login.github) {
+      const { github } = runtime.login
       server.auth.strategy('github', 'bell', {
         provider: 'github',
         password: cryptiles.randomString(64),
-        clientId: runtime.login.github.clientId,
-        clientSecret: runtime.login.github.clientSecret,
-        isSecure: runtime.login.github.isSecure,
-        forceHttps: runtime.login.github.isSecure,
+        clientId: github.clientId,
+        clientSecret: github.clientSecret,
+        isSecure: github.isSecure,
+        forceHttps: github.isSecure,
         scope: ['user:email', 'read:org'],
-        location: 'https://' + process.env.HOST
+        location: (process.env.HOST.startsWith('127.0.0.1') ? 'http://' : 'https://') + process.env.HOST
       })
 
-      debug('github authentication: forceHttps=' + runtime.login.github.isSecure)
+      debug('github authentication: forceHttps=' + github.isSecure)
 
       server.auth.strategy('session', 'cookie', {
-        password: runtime.login.github.ironKey,
-        cookie: 'sid',
-        isSecure: runtime.login.github.isSecure
+        cookie: {
+          password: github.ironKey,
+          isSecure: github.isSecure
+        }
       })
+
       debug('session authentication strategy via cookie')
     } else {
       debug('github authentication disabled')
@@ -127,7 +136,8 @@ async function Server (options, runtime) {
         allowMultipleHeaders: false,
         validate: (request, token, h) => {
           const scope = ['devops', 'ledger', 'QA']
-          const isValid = braveHapi.isSimpleTokenValid(TOKEN_LIST, token)
+          const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
+          const isValid = typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)
           return {
             isValid,
             artifacts: null,
@@ -152,16 +162,22 @@ async function Server (options, runtime) {
     allowMultipleHeaders: false,
     validate: (request, token, h) => {
       const scope = pushScopedTokens(token)
-      return {
-        isValid: !!scope.length,
-        artifacts: null,
-        credentials: {
+      const isValid = !!scope.length
+      const credentials = {}
+      if (isValid) {
+        Object.assign(credentials, {
           token,
           scope
-        }
+        })
+      }
+      return {
+        isValid,
+        artifacts: null,
+        credentials
       }
     }
   })
+  debug('simple-scoped-token authentication strategy via bearer-access-token')
 
   server.ext('onRequest', (request, h) => {
     const headers = options.headersP &&
@@ -225,37 +241,24 @@ async function Server (options, runtime) {
   })
 
   server.events.on('log', (event, tags) => {
-    debug(event.data, {
-      tags
-    })
+    debug(event.data, { tags: tags })
   }).on('request', (request, event, tags) => {
-    debug(event.data, {
-      tags
-    }, {
-      sdebug: {
-        request: {
-          id: event.request,
-          internal: event.internal
-        }
-      }
-    })
+    debug(event.data, { tags: tags }, { sdebug: { request: { id: event.request, internal: event.internal } } })
+  }).on({ name: 'request', channels: 'internal' }, (request, event, tags) => {
+    let params
 
-    if (!tags || !tags.received) {
-      return
-    }
+    if ((!tags) || (!tags.received)) return
 
-    const sdebug = {
-      tags,
+    params = {
       request: {
         id: request.id,
         method: request.method.toUpperCase(),
         pathname: request.url.pathname
-      }
+      },
+      tags
     }
 
-    debug('begin', {
-      sdebug
-    })
+    debug('begin', { sdebug: params })
   }).on('response', (request) => {
     if (!request.response) request.response = {}
     const flattened = {}
@@ -298,8 +301,7 @@ async function Server (options, runtime) {
     debug('end', { sdebug: params })
   })
 
-  const routes = await options.routes.routes(debug, runtime, options)
-  server.route(routes)
+  server.route(await options.routes.routes(debug, runtime, options))
   server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './documentation/favicon.ico' } })
   server.route({ method: 'GET', path: '/favicon.png', handler: { file: './documentation/favicon.png' } })
   server.route({ method: 'GET', path: '/robots.txt', handler: { file: './documentation/robots.txt' } })
@@ -314,6 +316,7 @@ async function Server (options, runtime) {
   server.route({ method: 'GET', path: '/{path*}', handler: { file: './documentation/robots.txt' } })
 
   try {
+    debug('starting server')
     await server.start()
   } catch (err) {
     debug('unable to start server', err)
@@ -324,15 +327,14 @@ async function Server (options, runtime) {
   let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
 
   dns.setServers(resolvers)
-  const startedInfos = underscore.extend({
-    server: runtime.config.server.href,
-    version: server.version,
-    resolvers: resolvers
-  }, server.info, {
-    env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
-    options: underscore.pick(options, [ 'headersP', 'remoteP' ])
-  })
-  debug('webserver started', startedInfos)
+  debug('webserver started',
+    underscore.extend(
+      { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
+      server.info,
+      {
+        env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
+        options: underscore.pick(options, [ 'headersP', 'remoteP' ])
+      }))
   runtime.notify(debug, {
     text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +
       (process.env.DYNO || 'web') + '/' + options.id
@@ -340,6 +342,5 @@ async function Server (options, runtime) {
 
   if (process.send) { process.send('started') }
 
-  console.log('server started', serverOpts)
   return server
 }

@@ -82,7 +82,7 @@ const referralsBar = {
 
 test.afterEach.always(cleanPgDb(runtime.postgres))
 
-const auth = (agent) => agent.set('Authorization', 'Bearer foobarfoobar')
+const auth = (agent) => agent.set('Authorization', `Bearer ${process.env.ALLOWED_PUBLISHERS_TOKENS}`)
 
 test('check auth scope', async (t) => {
   t.plan(0)
