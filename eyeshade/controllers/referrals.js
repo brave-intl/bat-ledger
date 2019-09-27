@@ -30,7 +30,7 @@ const amountValidator = braveJoi.string().numeric()
 const groupNameValidator = Joi.string().optional().description('the name given to the group')
 const publisherValidator = braveJoi.string().publisher().required().description('the publisher identity')
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
-const groupIdValidator = Joi.string().allow('').guid().description('the region from which this referral came')
+const groupIdValidator = Joi.string().guid().description('the region from which this referral came')
 const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
 const referral = Joi.object().keys({
   ownerId: braveJoi.string().owner().required().description('the owner'),
@@ -42,7 +42,7 @@ const referral = Joi.object().keys({
 const manyReferrals = Joi.array().min(1).items(referral).required().description('list of finalized referrals')
 const groupStampedReferral = referral.keys({
   downloadTimestamp: Joi.date().iso().optional().description('the timestamp when the referral was downloaded to apply correct payout to it'),
-  groupId: groupIdValidator.optional()
+  groupId: groupIdValidator.allow('').optional()
 })
 const manyGroupStampedReferrals = Joi.array().min(1).items(groupStampedReferral).required().description('list of finalized referrals to be shown to publishers')
 
@@ -63,7 +63,7 @@ const referralGroupsCountriesValidator = Joi.array().items(referralGroupCountrie
 
 const groupedReferralValidator = Joi.object().keys({
   publisher: publisherValidator,
-  groupId: groupIdValidator.required().allow('').description('group id'),
+  groupId: groupIdValidator.required().description('group id'),
   amount: amountValidator.description('the amount to be paid out in BAT'),
   payoutRate: amountValidator.description('the rate of BAT per USD')
 })
