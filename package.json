@@ -109,7 +109,6 @@
     "rsmq": "^0.8.2",
     "rsmq-worker": "^0.5.2",
     "sdebug": "^0.9.5",
-    "subtext": "github:brave-intl/subtext#v5",
     "tldjs": "2.2.0",
     "tweetnacl": "^1.0.0",
     "underscore": "1.8.3",
