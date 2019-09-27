@@ -1,6 +1,5 @@
 'use strict'
 import { serial as test } from 'ava'
-import bson from 'bson'
 import _ from 'underscore'
 import uuidV4 from 'uuid/v4'
 import BigNumber from 'bignumber.js'
@@ -18,6 +17,9 @@ import {
 } from 'bat-utils/lib/extras-utils'
 import { Runtime } from 'bat-utils'
 
+const originalGroupId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
+const sept = new Date('2019-09-30')
+const oct1 = new Date('2019-10-01')
 const {
   BAT_REDIS_URL,
   BAT_POSTGRES_URL
@@ -165,66 +167,50 @@ test('if promo sends mix of duplicate and valid referrals with same download id,
 
 test('referrals use the correct geo-specific amount and checked values', async t => {
   const tier2GroupId = '6491bbe5-4d50-4c05-af5c-a2ac4a04d14e'
-  const minGroupDate = new Date('2019-10-01')
-  const sept = new Date('2019-09-30')
+
+  await setActiveAt(t.context.postgres, new Date(1))
 
   const {
     referral: referral0
-  } = await sendReferral(sept, tier2GroupId)
-  await checkReferralValue(t, sept, '', '5', referral0)
+  } = await sendReferral(sept, '')
+  await checkReferralValue(t, sept, originalGroupId, '5', referral0)
 
-  const {
-    referral: referral1
-  } = await sendReferral(minGroupDate, uuidV4().toLowerCase())
-  await checkReferralValue(t, minGroupDate, '', '5', referral1)
+  await t.throwsAsync(sendReferral(oct1, uuidV4().toLowerCase()), Error, 'invalid group id fails')
 
   const {
     referral: referral2
-  } = await sendReferral(minGroupDate, tier2GroupId)
-  await checkReferralValue(t, minGroupDate, tier2GroupId, '6.5', referral2)
+  } = await sendReferral(oct1, tier2GroupId)
+  await checkReferralValue(t, oct1, tier2GroupId, '6.5', referral2)
 
-  await ensureReferrals(runtime, 3)
-
-  const bat = new BigNumber(30)
-  const downloadId = uuidV4().toLowerCase()
-  await t.context.referrals.insert({
-    _id: bson.ObjectID.createFromTime(+sept / 1000),
-    downloadId,
-    finalized: sept,
-    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
-    publisher: braveYoutubePublisher,
-    transactionId: uuidV4().toLowerCase(),
-    exclude: false,
-    platform: 'ios',
-    altcurrency: 'BAT',
-    probi: bson.Decimal128.fromString(bat.times(1e18).toString())
-  })
-  await checkReferralValue(t, sept, undefined, '5', {
-    downloadId,
-    defaultPayoutRate: '6',
-    defaultGroupRate: '1'
-  })
+  await ensureReferrals(runtime, 2)
 })
+
+async function setActiveAt (client, date) {
+  const oct1 = new Date('2019-10-01')
+  const min = date > oct1 ? oct1 : date
+  await client.query(`
+UPDATE geo_referral_groups
+SET
+  active_at = $2
+WHERE
+  id != $1;`, [originalGroupId, min])
+}
 
 async function checkReferralValue (t, startDate, expectedGroupId, expectedValue, {
   downloadId,
-  defaultPayoutRate,
-  defaultGroupRate
+  defaultPayoutRate
 }) {
   const referral = await t.context.referrals.findOne({ downloadId })
   const {
     groupId,
     probi,
     owner,
-    payoutRate = defaultPayoutRate,
-    groupRate = defaultGroupRate
+    payoutRate = defaultPayoutRate
   } = referral
-  t.is(expectedGroupId, groupId, 'group id should persist on mongo collection but be ignored for referrals without group')
+  t.is(groupId, expectedGroupId, 'group id should persist on mongo collection but be ignored for referrals without group')
   const bat = (new BigNumber(probi.toString())).dividedBy(1e18)
   const dollars = bat.dividedBy(payoutRate).round(6).toString()
   t.is(expectedValue, dollars, 'a known number of dollars should exist')
-  // currently usd
-  t.is('1', groupRate, 'group rate is from the original group')
 
   const escapedOwnerId = encodeURIComponent(owner)
   const start = startDate.toISOString()
@@ -244,7 +230,6 @@ async function sendReferral (timestamp, groupId) {
     channelId: braveYoutubePublisher,
     platform: 'ios',
     finalized: timestamp || new Date(),
-    // should attribute 6.5 bat / referral
     groupId,
     downloadTimestamp: timestamp || new Date(),
     ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()

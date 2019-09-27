@@ -162,7 +162,6 @@ module.exports = {
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
-  insertCSVFileToDB,
   createSurveyor,
   getSurveyor,
   fetchReport,
@@ -280,17 +279,13 @@ async function insertReferralInfos (client) {
   }, {
     path: filePath('0010_geo_referral', 'seeds', 'countries.sql')
   }]
-  for (const subject of ratesPaths) {
-    await insertCSVFileToDB(client, subject.path)
+  for (const { path } of ratesPaths) {
+    await client.query(fs.readFileSync(path).toString())
   }
 
   function filePath (...paths) {
     return path.join(__dirname, '..', 'eyeshade', 'migrations', ...paths)
   }
-}
-
-function insertCSVFileToDB (client, path) {
-  return client.query(fs.readFileSync(path).toString())
 }
 
 function readJSONFile (...paths) {

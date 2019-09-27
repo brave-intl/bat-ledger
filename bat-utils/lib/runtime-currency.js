@@ -137,7 +137,11 @@ Currency.prototype = {
 
   // satoshis, wei, etc.
   alt2scale: function (altcurrency) {
-    const scale = this.decimals[altcurrency]
+    if (!_.isString(altcurrency)) {
+      return
+    }
+
+    const scale = this.decimals[altcurrency.toUpperCase()]
 
     if (scale) {
       return ('1e' + scale.toString())
