@@ -42,35 +42,28 @@ test.afterEach.always(cleanPgDb(runtime.postgres))
 test.afterEach.always((t) => t.context.postgres.release())
 
 test('referral groups are returned correctly', async (t) => {
-  let body
+  let body, fields
+  const requiredKeys = ['id']
   const json = normalizeGroups(readJSONFile('data', 'referral-groups', '0010.json'))
-
-  body = await getGroups({ fields: ['codes'] })
-  const codesSubset = json.map((j) => _.pick(j, ['id', 'activeAt', 'codes']))
+  body = await getGroups()
+  t.deepEqual(json.map(j => _.pick(j, ['id'])), body, 'no fields results in only ids')
+  // one field
+  fields = ['codes']
+  body = await getGroups({ fields })
+  const codesSubset = json.map((j) => _.pick(j, requiredKeys.concat(fields)))
   t.deepEqual(codesSubset, body, 'referral groups should be present')
 
-  body = await getGroups({ fields: ['codes', 'name', 'currency'] })
-  const codesNameSubset = json.map((j) => _.pick(j, ['id', 'activeAt', 'codes', 'name', 'currency']))
+  fields = ['codes', 'name', 'currency', 'activeAt']
+  body = await getGroups({ fields })
+  const codesNameSubset = json.map((j) => _.pick(j, requiredKeys.concat(fields)))
   t.deepEqual(codesNameSubset, body, 'referral fields should be present')
-  const stringQuery = await getGroups({ fields: 'codes,name,currency' })
+  const stringQuery = await getGroups({ fields: 'codes,name,currency,activeAt' })
   t.deepEqual(codesNameSubset, stringQuery, 'a string or array can be sent for query')
-
-  const disabled = ['ba1cb6cb-0a32-4197-9679-a030c7087977']
-  // disable OT
-  await t.context.postgres.query(`update geo_referral_groups set active = false where id = any($1)`, [disabled])
-
-  const minimalJSON = json.map((j) => _.pick(j, ['id', 'activeAt']))
-  const disabledReferralGroups = minimalJSON.filter(({ id }) => disabled.includes(id))
-  const enabledReferralGroups = minimalJSON.filter(({ id }) => !disabled.includes(id))
-  body = await getGroups()
-  t.deepEqual(minimalJSON, body, 'get active referrals')
-  body = await getGroups({ active: false })
-  t.deepEqual(disabledReferralGroups, body, 'get inactive referrals')
-  body = await getGroups({ active: true })
-  t.deepEqual(enabledReferralGroups, body, 'get active referrals')
+  const whitespacedQuery = await getGroups({ fields: 'codes,name, currency, activeAt' })
+  t.deepEqual(codesNameSubset, whitespacedQuery, 'works with whitespace')
 })
 
-async function getGroups (query) {
+async function getGroups (query = {}) {
   const {
     body
   } = await eyeshadeAgent.get('/v1/referrals/groups')

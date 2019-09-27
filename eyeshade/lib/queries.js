@@ -1,5 +1,4 @@
 const uuidv5 = require('uuid/v5')
-const _ = require('underscore')
 
 module.exports = {
   allSettlements,
@@ -68,8 +67,7 @@ function timeConstraintSettlements (options = {}) {
  limit $2;`
 }
 
-function referralGroups (options = {}) {
-  let { active } = options
+function referralGroups () {
   return `
 SELECT
   id,
@@ -86,6 +84,5 @@ FROM geo_referral_groups, (
   GROUP BY group_id
 ) AS countries
 WHERE
-    countries.group_id = geo_referral_groups.id${_.isBoolean(active) ? `
-AND active = ${active}` : ''};`
+    countries.group_id = geo_referral_groups.id;`
 }

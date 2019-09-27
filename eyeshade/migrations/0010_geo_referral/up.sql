@@ -6,7 +6,6 @@ create table geo_referral_groups(
   id               uuid primary key default uuid_generate_v4(),
   created_at       timestamp with time zone not null default current_timestamp,
   active_at        timestamp with time zone not null default current_timestamp,
-  active           boolean default true,
   currency         varchar(8) not null,
   name             varchar(64) not null,
   amount           numeric(28, 18) not null check (amount > 0.0)

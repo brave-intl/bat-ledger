@@ -16,13 +16,13 @@ const v1 = {}
 
 const amountValidator = braveJoi.string().numeric()
 const groupNameValidator = Joi.string().optional().description('the name given to the group')
-const channelIdValidator = braveJoi.string().publisher().required().description('the publisher identity')
+const publisherValidator = braveJoi.string().publisher().required().description('the publisher identity')
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
 const groupIdValidator = Joi.string().guid().required().description('the region from which this referral came')
 const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
 const referral = Joi.object().keys({
   ownerId: braveJoi.string().owner().required().description('the owner'),
-  channelId: channelIdValidator,
+  channelId: publisherValidator,
   downloadId: Joi.string().guid().required().description('the download identity'),
   platform: Joi.string().token().required().description('the download platform'),
   finalized: Joi.date().iso().required().description('timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
@@ -41,7 +41,7 @@ const anyReferralVersion = Joi.alternatives().try(
 
 const referralGroupCountriesValidator = Joi.object().keys({
   id: Joi.string().guid().required().description('the group id to report back for correct value categorization'),
-  activeAt: Joi.date().iso().required().description('the download cut off time to honor the amount'),
+  activeAt: Joi.date().iso().optional().description('the download cut off time to honor the amount'),
   name: groupNameValidator.optional().description('name of the group'),
   codes: Joi.array().items(countryCodeValidator).optional().description('country codes that belong to the group'),
   currency: currencyValidator.optional().description('the currency that the probi is calculated from'),
@@ -50,7 +50,7 @@ const referralGroupCountriesValidator = Joi.object().keys({
 const referralGroupsCountriesValidator = Joi.array().items(referralGroupCountriesValidator)
 
 const groupedReferralValidator = Joi.object().keys({
-  publisher: channelIdValidator,
+  publisher: publisherValidator,
   groupId: groupIdValidator.allow('').description('group id'),
   amount: amountValidator.description('the amount to be paid out in BAT'),
   payoutRate: amountValidator.description('the rate of BAT per USD'),
@@ -115,10 +115,10 @@ v1.findReferrals = {
 
 v1.getReferralGroups = {
   handler: (runtime) => async (request, reply) => {
-    let { fields, active } = request.query
-    const statement = queries.referralGroups({ active })
+    let { fields } = request.query
+    const statement = queries.referralGroups()
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
-    const allFields = ['id', 'activeAt'].concat(fields)
+    const allFields = ['id'].concat(fields)
 
     const { rows } = await runtime.postgres.query(statement)
 
