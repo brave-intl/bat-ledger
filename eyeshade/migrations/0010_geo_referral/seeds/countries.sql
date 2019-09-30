@@ -193,6 +193,5 @@ VALUES
   ('211e57d3-a490-4cf3-b885-47a85f2e1dc0','Vietnam','VN'),
   ('211e57d3-a490-4cf3-b885-47a85f2e1dc0','Yemen','YE'),
   ('211e57d3-a490-4cf3-b885-47a85f2e1dc0','Zambia','ZM'),
-  ('211e57d3-a490-4cf3-b885-47a85f2e1dc0','Zimbabwe','ZW'),
-  ('ba1cb6cb-0a32-4197-9679-a030c7087977','Other','OT')
+  ('211e57d3-a490-4cf3-b885-47a85f2e1dc0','Zimbabwe','ZW')
 ON CONFLICT DO NOTHING;
