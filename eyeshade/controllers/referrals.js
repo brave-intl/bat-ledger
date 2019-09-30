@@ -279,7 +279,6 @@ v1.createReferrals = {
           id: groupId
         })
         if (!config) {
-          // if no referral group found, report to runtime and use default
           return reply(boom.notFound('referral group not found'))
         }
         const {
