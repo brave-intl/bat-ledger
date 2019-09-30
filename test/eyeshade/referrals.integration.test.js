@@ -197,6 +197,7 @@ WHERE
 }
 
 async function checkReferralValue (t, startDate, expectedGroupId, expectedValue, {
+  referralCode,
   downloadId,
   defaultPayoutRate
 }) {
@@ -207,6 +208,7 @@ async function checkReferralValue (t, startDate, expectedGroupId, expectedValue,
     owner,
     payoutRate = defaultPayoutRate
   } = referral
+  t.is(referral.referralCode, referralCode, 'referral code matches')
   t.is(groupId, expectedGroupId, 'group id should persist on mongo collection but be ignored for referrals without group')
   const bat = (new BigNumber(probi.toString())).dividedBy(1e18)
   const dollars = bat.dividedBy(payoutRate).round(6).toString()
@@ -229,6 +231,7 @@ async function sendReferral (timestamp, groupId) {
     downloadId: uuidV4().toLowerCase(),
     channelId: braveYoutubePublisher,
     platform: 'ios',
+    referralCode: uuidV4().toLowerCase(),
     finalized: timestamp || new Date(),
     groupId,
     downloadTimestamp: timestamp || new Date(),

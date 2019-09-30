@@ -14,15 +14,15 @@ const queries = require('../lib/queries')
 
 const v1 = {}
 
-const statement = `
+const getActiveGroups = `
 SELECT
   id,
   amount,
-  currency
+  currency,
+  active_at as "activeAt"
 FROM geo_referral_groups
 WHERE
-  active_at <= current_timestamp
-ORDER BY active_at DESC;`
+  active_at <= current_timestamp;`
 
 const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 
@@ -32,6 +32,8 @@ const publisherValidator = braveJoi.string().publisher().required().description(
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
 const groupIdValidator = Joi.string().guid().description('the region from which this referral came')
 const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
+const referralCodeValidator = Joi.string().required().description('the referral code tied to the referral')
+
 const referral = Joi.object().keys({
   ownerId: braveJoi.string().owner().required().description('the owner'),
   channelId: publisherValidator,
@@ -42,7 +44,8 @@ const referral = Joi.object().keys({
 const manyReferrals = Joi.array().min(1).items(referral).required().description('list of finalized referrals')
 const groupStampedReferral = referral.keys({
   downloadTimestamp: Joi.date().iso().optional().description('the timestamp when the referral was downloaded to apply correct payout to it'),
-  groupId: groupIdValidator.allow('').optional()
+  groupId: groupIdValidator.allow('').optional(),
+  referralCode: referralCodeValidator
 })
 const manyGroupStampedReferrals = Joi.array().min(1).items(groupStampedReferral).required().description('list of finalized referrals to be shown to publishers')
 
@@ -65,6 +68,7 @@ const groupedReferralValidator = Joi.object().keys({
   publisher: publisherValidator,
   groupId: groupIdValidator.required().description('group id'),
   amount: amountValidator.description('the amount to be paid out in BAT'),
+  referralCode: referralCodeValidator,
   payoutRate: amountValidator.description('the rate of BAT per USD')
 })
 
@@ -192,18 +196,21 @@ v1.getReferralsStatement = {
       publisher: 1,
       groupId: 1,
       probi: 1,
-      payoutRate: 1
+      payoutRate: 1,
+      referralCode: 1
     })
     const scale = currency.alt2scale('BAT')
     const mappedRefs = refs.map(({
       publisher,
       groupId,
+      referralCode,
       payoutRate,
       probi
     }) => {
       const bat = (new BigNumber(probi)).dividedBy(scale)
       return {
         publisher,
+        referralCode: referralCode || '',
         groupId: _.isUndefined(groupId) ? originalRateId : groupId,
         payoutRate: payoutRate || bat.dividedBy(5).toString(),
         amount: bat.toString()
@@ -251,7 +258,8 @@ v1.createReferrals = {
       // get rates once at beginning (uses cache too)
       const {
         rows: referralGroups
-      } = await postgres.query(statement)
+      } = await postgres.query(getActiveGroups)
+      referralGroups.sort((a) => a.activeAt)
 
       for (const referral of payload) {
         const {
@@ -260,17 +268,24 @@ v1.createReferrals = {
           downloadId,
           downloadTimestamp,
           ownerId: owner,
+          referralCode = '',
           channelId: publisher,
-          groupId: _groupId
+          groupId: passedGroupId
         } = referral
+
+        const groupId = passedGroupId || originalRateId
+        const config = _.findWhere(referralGroups, {
+          // no group has falsey id
+          id: groupId
+        })
+        if (!config) {
+          // if no referral group found, report to runtime and use default
+          return reply(boom.notFound('referral group not found'))
+        }
         const {
-          groupId,
           amount: groupAmount,
           currency: groupCurrency
-        } = getReferralGroup({
-          referralGroups,
-          groupId: _groupId
-        })
+        } = config
 
         const probiString = await currency.fiat2alt(groupCurrency, groupAmount, altcurrency)
         let probi = new BigNumber(probiString)
@@ -292,6 +307,7 @@ v1.createReferrals = {
                 downloadId,
                 downloadTimestamp,
                 groupId,
+                referralCode,
                 altcurrency,
                 finalized: new Date(finalized),
                 owner,
@@ -346,8 +362,6 @@ v1.createReferrals = {
     { schema: Joi.object().length(0) }
 }
 
-module.exports.getReferralGroup = getReferralGroup
-
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
   braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement),
@@ -378,6 +392,7 @@ module.exports.initialize = async (debug, runtime) => {
         hash: '',
         groupId: '',
         payoutRate: '',
+        referralCode: '',
 
         timestamp: bson.Timestamp.ZERO
       },
@@ -390,28 +405,4 @@ module.exports.initialize = async (debug, runtime) => {
         { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
     }
   ])
-}
-
-function getReferralGroup ({
-  referralGroups = [],
-  groupId: passedGroupId
-}) {
-  const groupId = passedGroupId || originalRateId
-  const config = _.findWhere(referralGroups, {
-    // no group has falsey id
-    id: groupId
-  })
-  if (!config) {
-    // if no referral group found, report to runtime and use default
-    throw new Error('referral group not found')
-  }
-  const {
-    amount,
-    currency
-  } = config
-  return {
-    groupId,
-    amount: new BigNumber(amount),
-    currency: currency.toUpperCase()
-  }
 }
