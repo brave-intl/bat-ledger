@@ -1,3 +1,5 @@
+const fs = require('fs')
+const path = require('path')
 const dotenv = require('dotenv')
 dotenv.config()
 const agent = require('supertest').agent
@@ -157,7 +159,9 @@ const cleanRedisDb = async () => {
 }
 
 module.exports = {
+  readJSONFile,
   makeSettlement,
+  insertReferralInfos,
   createSurveyor,
   getSurveyor,
   fetchReport,
@@ -190,15 +194,24 @@ function cleanDbs () {
   ])
 }
 
-function cleanPgDb (client) {
-  return () => {
-    return Promise.all([
-      client.query('DELETE from payout_reports_ads;'),
-      client.query('DELETE from potential_payments_ads;'),
-      client.query('DELETE from transactions;'),
-      client.query('DELETE from surveyor_groups;'),
-      client.query('DELETE from votes;')
-    ]).then(() => client.query('REFRESH MATERIALIZED VIEW account_balances;'))
+function cleanPgDb (postgres) {
+  return async () => {
+    const client = await postgres.connect()
+    try {
+      await Promise.all([
+        client.query('DELETE from payout_reports_ads;'),
+        client.query('DELETE from potential_payments_ads;'),
+        client.query('DELETE from transactions;'),
+        client.query('DELETE from surveyor_groups;'),
+        client.query('DELETE from geo_referral_countries;'),
+        client.query('DELETE from geo_referral_groups;'),
+        client.query('DELETE from votes;')
+      ])
+      await client.query('REFRESH MATERIALIZED VIEW account_balances;')
+      await insertReferralInfos(client)
+    } finally {
+      client.release()
+    }
   }
 }
 
@@ -258,4 +271,23 @@ function makeSettlement (type, balance, overwrites = {}) {
     address: uuidV4(),
     hash: uuidV4()
   }, overwrites)
+}
+
+async function insertReferralInfos (client) {
+  const ratesPaths = [{
+    path: filePath('0010_geo_referral', 'seeds', 'groups.sql')
+  }, {
+    path: filePath('0010_geo_referral', 'seeds', 'countries.sql')
+  }]
+  for (const { path } of ratesPaths) {
+    await client.query(fs.readFileSync(path).toString())
+  }
+
+  function filePath (...paths) {
+    return path.join(__dirname, '..', 'eyeshade', 'migrations', ...paths)
+  }
+}
+
+function readJSONFile (...paths) {
+  return JSON.parse(fs.readFileSync(path.join(__dirname, ...paths)).toString())
 }

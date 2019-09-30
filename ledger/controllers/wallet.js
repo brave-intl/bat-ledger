@@ -316,16 +316,18 @@ const write = function (runtime, apiVersion) {
     try {
       result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
     } catch (err) {
-      let payload = err.data.payload
-      payload = payload.toString()
-      if (payload[0] === '{') {
-        payload = JSON.parse(payload)
-        let payloadData = payload.data
-        if (payloadData) {
-          await markGrantsAsRedeemed(payloadData.redeemedIDs)
+      let { data } = err
+      if (data) {
+        let payload = data.payload.toString()
+        if (payload[0] === '{') {
+          payload = JSON.parse(payload)
+          let payloadData = payload.data
+          if (payloadData) {
+            await markGrantsAsRedeemed(payloadData.redeemedIDs)
+          }
         }
       }
-      return reply(err)
+      return reply(boom.boomify(err))
     }
 
     if (!result) {

@@ -4,6 +4,7 @@ module.exports = {
   allSettlements,
   timeConstraintSettlements,
   earnings,
+  referralGroups,
   votesId
 }
 
@@ -64,4 +65,24 @@ function timeConstraintSettlements (options = {}) {
  group by (account_id, channel)
  order by paid ${order}
  limit $2;`
+}
+
+function referralGroups () {
+  return `
+SELECT
+  id,
+  active_at as "activeAt",
+  name,
+  amount,
+  currency,
+  countries.codes AS codes
+FROM geo_referral_groups, (
+  SELECT
+    group_id,
+    array_agg(country_code) AS codes
+  FROM geo_referral_countries
+  GROUP BY group_id
+) AS countries
+WHERE
+    countries.group_id = geo_referral_groups.id;`
 }

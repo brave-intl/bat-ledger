@@ -1,4 +1,6 @@
 #!/bin/sh
+psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0010_referral_amounts/down.sql
+psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0009_unique_payment_ids/down.sql
 psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0008_on_delete_cascade/down.sql
 psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0007_potential_payments_ads/down.sql
 psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0006_payout_reports_ads/down.sql
