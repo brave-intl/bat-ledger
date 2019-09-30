@@ -31,7 +31,7 @@ const groupNameValidator = Joi.string().optional().description('the name given t
 const publisherValidator = braveJoi.string().publisher().required().description('the publisher identity')
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
 const groupIdValidator = Joi.string().guid().description('the region from which this referral came')
-const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
+const countryCodeValidator = braveJoi.string().countryCode().description('a country code in iso 3166 format').example('CA')
 const referralCodeValidator = Joi.string().required().description('the referral code tied to the referral')
 
 const referral = Joi.object().keys({
