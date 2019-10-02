@@ -65,7 +65,8 @@ v1.getWallet = {
   },
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'publishers'],
     mode: 'required'
   },
 
@@ -212,7 +213,8 @@ v1.putWallet = {
   },
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'publishers'],
     mode: 'required'
   },
 
@@ -263,7 +265,8 @@ v1.patchWallet = {
   },
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'publishers'],
     mode: 'required'
   },
 

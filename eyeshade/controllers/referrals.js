@@ -104,7 +104,8 @@ v1.findReferrals = {
   },
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'referrals'],
     mode: 'required'
   },
 
@@ -141,7 +142,8 @@ v1.getReferralGroups = {
   },
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'referrals'],
     mode: 'required'
   },
 
@@ -220,7 +222,8 @@ v1.getReferralsStatement = {
   },
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'referrals'],
     mode: 'required'
   },
 
@@ -342,7 +345,8 @@ v1.createReferrals = {
   },
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'referrals'],
     mode: 'required'
   },
 

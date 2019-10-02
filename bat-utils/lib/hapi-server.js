@@ -22,6 +22,7 @@ const whitelist = require('./hapi-auth-whitelist')
 const npminfo = require('../npminfo')
 
 const pushScopedTokens = pushTokens({
+  TOKEN_LIST: 'global',
   // env var       // scope key
   ALLOWED_ADS_TOKENS: 'ads',
   ALLOWED_PUBLISHERS_TOKENS: 'publishers'
@@ -246,15 +247,6 @@ const Server = async (options, runtime) => {
             token,
             scope
           }, null)
-        }
-      })
-
-      server.auth.strategy('simple', 'bearer-access-token', {
-        allowQueryToken: true,
-        allowMultipleHeaders: false,
-        validateFunc: (token, callback) => {
-          const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-          callback(null, braveHapi.isSimpleTokenValid(tokenlist, token), { token: token }, null)
         }
       })
       resolve()

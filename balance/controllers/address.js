@@ -120,7 +120,8 @@ v2.invalidateWalletBalance =
   }
 },
 auth: {
-  strategy: 'simple',
+  strategy: 'simple-scoped-token',
+  scope: ['global'],
   mode: 'required'
 },
 

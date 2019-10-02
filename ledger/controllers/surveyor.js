@@ -426,7 +426,8 @@ response:
 v1.getVoteRate = {
   handler: getVoteRate(),
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global'],
     mode: 'required'
   },
 
