@@ -38,7 +38,8 @@ v1.grantsStats = {
     }
   },
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'stats'],
     mode: 'required'
   },
   description: 'Retrieves information about grants',
@@ -85,7 +86,8 @@ v1.settlementsStats = {
     }
   },
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'stats'],
     mode: 'required'
   },
   description: 'Retrieves information about bat paid out in referrals',

@@ -512,7 +512,8 @@ v2.getStats = {
   handler: getStats(singleDateQuery),
 
   auth: {
-    strategy: 'simple',
+    strategy: 'simple-scoped-token',
+    scope: ['global', 'stats'],
     mode: 'required'
   },
 
