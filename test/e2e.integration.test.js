@@ -22,8 +22,7 @@ import {
   makeSettlement,
   cleanDbs,
   cleanPgDb,
-  eyeshadeAgent,
-  ledgerAgent,
+  agents,
   ok,
   status,
   braveYoutubeOwner,
@@ -110,7 +109,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   // Purchase votes
   await sendUserTransaction(t, paymentId, amountFunded, userCardId, donorCardId, keypair, surveyorId, viewingId)
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 1,
@@ -159,18 +158,18 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   for (let i = 0; i < surveyorIds.length; i++) {
     const id = surveyorIds[i]
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .get('/v2/surveyor/voting/' + encodeURIComponent(id) + '/' + viewingCredential.parameters.userId)
       .expect(ok)
 
     const surveyor = new anonize.Surveyor(response.body)
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
       .send({ 'proof': viewingCredential.submit(surveyor, { publisher: channels[i % channels.length] }) })
       .expect(ok)
   }
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 1,
@@ -188,7 +187,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     await updateBalances(runtime)
     ;({
       body
-    } = await eyeshadeAgent.get(balanceURL)
+    } = await agents.eyeshade.publishers.get(balanceURL)
       .query({
         pending: true,
         account: braveYoutubePublisher
@@ -202,7 +201,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   }], 'pending votes show up after small delay')
   ;({
     body
-  } = await eyeshadeAgent.get(balanceURL)
+  } = await agents.eyeshade.publishers.get(balanceURL)
     .query({
       pending: false,
       account: braveYoutubePublisher
@@ -210,14 +209,14 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   t.deepEqual(body, [], 'pending votes are not counted if pending is not true')
   ;({
     body
-  } = await eyeshadeAgent.get(balanceURL)
+  } = await agents.eyeshade.publishers.get(balanceURL)
     .query({
       account: braveYoutubePublisher
     }))
   t.deepEqual(body, [], 'endpoint defaults pending to false')
 
   // Create a publisher owner and settle balances to that owner
-  await eyeshadeAgent.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
+  await agents.eyeshade.global.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
     .send({ 'provider': 'uphold', 'parameters': {} })
     .expect(ok)
 
@@ -231,7 +230,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   do {
     await timeout(5000)
     await updateBalances(runtime)
-    ;({ body } = await eyeshadeAgent
+    ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)
       .expect(ok))
@@ -250,7 +249,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   do {
     await timeout(5000)
     await updateBalances(runtime)
-    ;({ body } = await eyeshadeAgent
+    ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)
       .expect(ok))
@@ -301,7 +300,7 @@ WHERE
   transactions = await getReferrals()
   t.deepEqual(transactions, [])
 
-  await eyeshadeAgent
+  await agents.eyeshade.referrals
     .put(referralURL)
     .send(referrals)
     .expect(ok)
@@ -320,7 +319,7 @@ WHERE
   async function getReferrals () {
     const {
       body: transactions
-    } = await eyeshadeAgent
+    } = await agents.eyeshade.publishers
       .get(transactionsURL)
       .expect(ok)
     return transactions.filter(({ transaction_type: type }) => type === 'referral')
@@ -337,7 +336,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
     'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
     'promotions': [{ 'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp' }]
   }
-  await ledgerAgent.post(grantsURL).send(grants).expect(ok)
+  await agents.ledger.global.post(grantsURL).send(grants).expect(ok)
 
   // Create user wallet
   let response, err
@@ -346,7 +345,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   // Request grant for user
   const ledgerDB = await connectToDb('ledger')
   let amountFunded = await requestGrant(t, paymentId, promotionId, ledgerDB)
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 1,
     anyFunds: 1,
@@ -359,7 +358,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
 
   // Exchange grant for BAT and BAT for votes
   let payload = await sendUserTransaction(t, paymentId, amountFunded, userCardId, donorCardId, keypair, surveyorId, viewingId)
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 1,
@@ -392,7 +391,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   // Submit votes
   await submitBatchedVotes(t, viewingCredential)
   do {
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${amountFunded}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
@@ -412,7 +411,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   await wallets.findOneAndUpdate(query, data)
 
   do {
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${amountFunded}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await timeout(500)
@@ -426,7 +425,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .put('/v2/wallet/' + paymentId)
       .send(payload)
   } while (response.status === 503)
@@ -434,7 +433,7 @@ test('ledger : grant contribution workflow with uphold BAT wallet', async t => {
   t.is(response.status, 410)
 
   do {
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${amountFunded}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
@@ -456,7 +455,7 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
     'grants': [ 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhNDMyNjg1My04NzVlLTQ3MDgtYjhkNS00M2IwNGMwM2ZmZTgiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI5MDJlN2U0ZC1jMmRlLTRkNWQtYWFhMy1lZThmZWU2OWY3ZjMiLCJtYXR1cml0eVRpbWUiOjE1MTUwMjkzNTMsImV4cGlyeVRpbWUiOjE4MzAzODkzNTN9.8M5dpr_rdyCURd7KBc4GYaFDsiDEyutVqG-mj1QRk7BCiihianvhiqYeEnxMf-F4OU0wWyCN5qKDTxeqait_BQ' ],
     'promotions': [{ 'active': true, 'priority': 0, 'promotionId': promotionId, 'protocolVersion': 4, 'type': 'ugp' }]
   }
-  await ledgerAgent.post(grantsURL).send(grants).expect(ok)
+  await agents.ledger.global.post(grantsURL).send(grants).expect(ok)
 
   // Create user wallet
   let [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t)
@@ -467,7 +466,7 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
   // Claim grant
   const ledgerDB = await connectToDb('ledger')
   let donateGrantAmount = await requestGrant(t, paymentId, promotionId, ledgerDB)
-  let response = await ledgerAgent.get(statsURL).expect(ok)
+  let response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 1,
     anyFunds: 1,
@@ -482,7 +481,7 @@ test('ledger : user + grant contribution workflow with uphold BAT wallet', async
 
   // Exchange grant for BAT and BAT for votes
   await sendUserTransaction(t, paymentId, desiredTxTotal, userCardId, donorCardId, keypair, surveyorId, viewingId)
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 1,
@@ -567,7 +566,7 @@ test('wallets can be claimed by verified members', async (t) => {
     if (anonymousAddress) {
       _.extend(body, { anonymousAddress })
     }
-    await ledgerAgent
+    await agents.ledger.global
       .post(`/v2/wallet/${anonCard.paymentId}/claim`)
       .send(body)
       .expect(status(code))
@@ -592,7 +591,7 @@ async function createUserWallet (t) {
   const viewingId = uuidV4().toLowerCase()
   let response, octets, headers, payload
 
-  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
   const keypair = tweetnacl.sign.keyPair()
@@ -619,7 +618,7 @@ async function createUserWallet (t) {
     proof: personaCredential.request()
   }
 
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
 
   t.true(response.body.hasOwnProperty('wallet'))
@@ -637,7 +636,7 @@ async function createUserWallet (t) {
 
   personaCredential.finalize(response.body.verification)
 
-  response = await ledgerAgent.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+  response = await agents.ledger.global.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
     .expect(ok)
 
   t.true(response.body.paymentId === paymentId)
@@ -647,7 +646,7 @@ async function createUserWallet (t) {
 
 async function getSurveyorContributionAmount (t, personaCredential) {
   let response
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
 
@@ -663,7 +662,7 @@ async function getSurveyorContributionAmount (t, personaCredential) {
 async function waitForContributionAmount (t, paymentId, donateAmt) {
   let response, err
   do { // This depends on currency conversion rates being available, retry until they are available
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
@@ -688,7 +687,7 @@ async function fundUserWalletAndTestStats (t, personaCredential, paymentId, user
   let response
   const donateAmt = await getSurveyorContributionAmount(t, personaCredential)
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 0,
@@ -701,7 +700,7 @@ async function fundUserWalletAndTestStats (t, personaCredential, paymentId, user
 
   const desiredTxAmt = await waitForContributionAmount(t, paymentId, donateAmt)
 
-  response = await ledgerAgent.get(statsURL).expect(ok)
+  response = await agents.ledger.stats.get(statsURL).expect(ok)
   t.deepEqual(response.body, [{
     activeGrant: 0,
     anyFunds: 1,
@@ -729,7 +728,7 @@ async function createCardTransaction (desiredTxAmt, userCardId) {
 
 async function requestGrant (t, paymentId, promotionId, ledgerDB) {
   // see if promotion is available
-  let response = await ledgerAgent
+  let response = await agents.ledger.global
     .get('/v4/grants')
     .expect(ok)
 
@@ -738,7 +737,7 @@ async function requestGrant (t, paymentId, promotionId, ledgerDB) {
   t.true(response.body.grants[0].hasOwnProperty('promotionId'))
   t.is(response.body.grants[0].promotionId, promotionId)
 
-  await ledgerAgent
+  await agents.ledger.global
     .get(`/v4/captchas/${paymentId}`)
     .set('brave-product', 'brave-core')
     .expect(ok)
@@ -748,7 +747,7 @@ async function requestGrant (t, paymentId, promotionId, ledgerDB) {
     captcha
   } = await wallets.findOne({ paymentId })
 
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .put(`/v2/grants/${paymentId}`)
     .send({
       promotionId,
@@ -769,7 +768,7 @@ async function requestGrant (t, paymentId, promotionId, ledgerDB) {
 async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCardId, keypair, surveyorId, viewingId) {
   let response, err
   do {
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${txAmount}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     else if (response.body.balance === '0.0000') await timeout(500)
@@ -811,7 +810,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
       currency
     }
   })
-  await ledgerAgent
+  await agents.ledger.global
     .put('/v2/wallet/' + paymentId)
     .send(tooLowPayload)
     .expect(416)
@@ -823,7 +822,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
       currency
     }
   })
-  await ledgerAgent
+  await agents.ledger.global
     .put('/v2/wallet/' + paymentId)
     .send(notSettlementAddressPayload)
     .expect(422)
@@ -834,7 +833,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .put('/v2/wallet/' + paymentId)
       .send(justRightPayload)
   } while (response.status === 503)
@@ -853,7 +852,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
 }
 
 async function getLedgerBalance (paymentId) {
-  const { body } = await ledgerAgent
+  const { body } = await agents.ledger.global
     .get(`/v2/wallet/${paymentId}`)
     .query({
       refresh: true
@@ -864,7 +863,7 @@ async function getLedgerBalance (paymentId) {
 
 async function createVotingCredentials (t, viewingId) {
   let response, err
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .get('/v2/registrar/viewing')
     .expect(ok)
 
@@ -875,7 +874,7 @@ async function createVotingCredentials (t, viewingId) {
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
       .send({ proof: viewingCredential.request() })
   } while (response.status === 503)
@@ -891,7 +890,7 @@ async function createVotingCredentials (t, viewingId) {
 }
 
 async function submitBatchedVotes (t, viewingCredential) {
-  let response = await ledgerAgent
+  let response = await agents.ledger.global
     .get(`/v2/batch/surveyor/voting/${viewingCredential.parameters.userId}`)
     .expect(ok)
 
@@ -903,7 +902,7 @@ async function submitBatchedVotes (t, viewingCredential) {
     }
   })
 
-  await ledgerAgent
+  await agents.ledger.global
     .post('/v2/batch/surveyor/voting')
     .send(bulkVotePayload)
     .expect(ok)

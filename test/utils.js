@@ -21,6 +21,20 @@ const debug = new SDebug('test')
 const Pool = pg.Pool
 const Server = require('bat-utils/lib/hapi-server')
 const { Runtime } = require('bat-utils')
+
+const {
+  TOKEN_LIST,
+  BAT_EYESHADE_SERVER,
+  BAT_LEDGER_SERVER,
+  BAT_BALANCE_SERVER,
+  ALLOWED_REFERRALS_TOKENS,
+  ALLOWED_STATS_TOKENS,
+  ALLOWED_ADS_TOKENS,
+  ALLOWED_PUBLISHERS_TOKENS,
+  BAT_MONGODB_URI,
+  BAT_GRANT_REDIS_URL
+} = process.env
+
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
@@ -48,8 +62,7 @@ const ledgerCollections = [
   'restricted'
 ]
 
-const tkn = process.env.TOKEN_LIST.split(',')[0]
-const token = `Bearer ${tkn}`
+const token = (tkn) => `Bearer ${tkn}`
 
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 
@@ -63,9 +76,18 @@ const formURL = createFormURL({
 })
 
 const AUTH_KEY = 'Authorization'
-const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
-const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
-const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
+const GLOBAL_TOKEN = TOKEN_LIST.split(',')[0]
+const ledgerAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+const ledgerStatsAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
+
+const balanceAgent = agent(BAT_BALANCE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+
+const eyeshadeAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+const eyeshadeReferralsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_REFERRALS_TOKENS))
+const eyeshadeStatsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
+const eyeshadeAdsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_ADS_TOKENS))
+const eyeshadePublishersAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_PUBLISHERS_TOKENS))
+
 const grantAgent = agent(process.env.BAT_GRANT_SERVER).set(AUTH_KEY, token)
 
 const status = (expectation) => (res) => {
@@ -139,6 +161,7 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
   }
 }
 const dbUri = (db) => `${process.env.BAT_MONGODB_URI}/${db}`
+const dbUri = (db) => `${BAT_MONGODB_URI}/${db}`
 const connectToDb = async (key) => {
   const client = await mongodb.MongoClient.connect(dbUri(key), {
     useNewUrlParser: true,
@@ -180,6 +203,7 @@ module.exports = {
   cleanRedeemerRedisDb,
   setupForwardingServer,
   agentAutoAuth,
+  AUTH_KEY,
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
@@ -194,6 +218,22 @@ module.exports = {
   grantAgent,
   ledgerAgent,
   balanceAgent,
+  agents: {
+    eyeshade: {
+      global: eyeshadeAgent,
+      referrals: eyeshadeReferralsAgent,
+      ads: eyeshadeAdsAgent,
+      publishers: eyeshadePublishersAgent,
+      stats: eyeshadeStatsAgent
+    },
+    ledger: {
+      global: ledgerAgent,
+      stats: ledgerStatsAgent
+    },
+    balance: {
+      global: balanceAgent
+    }
+  },
   assertWithinBounds,
   connectToDb,
   dbUri,

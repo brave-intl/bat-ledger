@@ -6,13 +6,12 @@ import {
   ok,
   cleanDbs,
   cleanPgDb,
-  eyeshadeAgent,
+  agents,
   connectToDb
 } from '../utils'
 import {
   timeout
 } from 'bat-utils/lib/extras-utils'
-import { agent } from 'supertest'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
@@ -23,13 +22,15 @@ test.afterEach.always(async t => {
 })
 
 test('unauthed requests cannot post settlement', async t => {
-  const unauthedAgent = agent(process.env.BAT_EYESHADE_SERVER)
-  const url = `/v2/publishers/settlement`
-  const response = await unauthedAgent.post(url).send({}).expect(401)
-  t.true(response.status === 401)
+  t.plan(0)
+  await agents.eyeshade.global
+    .post(`/v2/publishers/settlement`)
+    .send({})
+    .expect(403)
 })
 
 test('cannot post payouts if the publisher field is blank and type is not manual', async t => {
+  t.plan(0)
   const url = `/v2/publishers/settlement`
   const manualSettlement = {
     owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
@@ -47,8 +48,7 @@ test('cannot post payouts if the publisher field is blank and type is not manual
     hash: uuidV4().toLowerCase()
   }
 
-  const response = await eyeshadeAgent.post(url).send([manualSettlement])
-  t.true(response.status === 400)
+  await agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(400)
 })
 
 test('can post a manual settlement from publisher app using token auth', async t => {
@@ -127,7 +127,7 @@ test('can post a manual settlement from publisher app using token auth', async t
 
   const {
     body
-  } = await eyeshadeAgent
+  } = await agents.eyeshade.publishers
     .get(`/v1/accounts/${encodeURIComponent(owner)}/transactions`)
     .expect(ok)
 
@@ -187,8 +187,8 @@ test('only can post settlement files under to 20mbs', async t => {
   }
 
   // ensure settlement files > 20mb fail
-  let response = await eyeshadeAgent.post(url).send([bigSettlement])
-  t.true(response.statusCode === 413)
+  let response = await agents.eyeshade.publishers.post(url).send([bigSettlement])
+  t.is(413, response.statusCode)
   t.true(response.body.message === 'Payload content length greater than maximum allowed: 20971520')
 
   // ensure small settlement files succeed

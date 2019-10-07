@@ -7,7 +7,7 @@ import {
   ok,
   cleanDbs,
   cleanPgDb,
-  eyeshadeAgent,
+  agents,
   readJSONFile,
   connectToDb,
   braveYoutubePublisher
@@ -68,7 +68,7 @@ test('referral groups are returned correctly', async (t) => {
 async function getGroups (query = {}) {
   const {
     body
-  } = await eyeshadeAgent.get('/v1/referrals/groups')
+  } = await agents.eyeshade.referrals.get('/v1/referrals/groups')
     .query(query)
     .expect(ok)
   return normalizeGroups(body)
@@ -96,7 +96,7 @@ test('referrals are inserted into mongo then eventually postgres', async t => {
     finalized: new Date(),
     ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
   }
-  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
 
   // ensure referral docs are created in mongo
   const referralCollection = await eyeshadeMongo.collection('referrals')
@@ -116,7 +116,7 @@ test('duplicate referrals will not be inserted into mongo', async t => {
     finalized: new Date(),
     ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
   }
-  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
 
   // ensure referral docs are created in mongo
   const referralCollection = await eyeshadeMongo.collection('referrals')
@@ -124,13 +124,13 @@ test('duplicate referrals will not be inserted into mongo', async t => {
   t.true(referralDocs.length === 1)
 
   // post the same referral again and ensure no more were created
-  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`).send([referral]).expect(200)
   referralDocs = await referralCollection.find({ downloadId: referral.downloadId }).toArray()
   t.true(referralDocs.length === 1)
 
   // post the same referral again under different txId but same downloadId and ensure no more were created
   const txId2 = uuidV4().toLowerCase()
-  await eyeshadeAgent.put(`/v1/referrals/${txId2}`).send([referral]).expect(200)
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId2}`).send([referral]).expect(200)
   referralDocs = await referralCollection.find({ downloadId: referral.downloadId }).toArray()
 
   t.true(referralDocs.length === 1)
@@ -147,7 +147,7 @@ test('if promo sends mix of duplicate and valid referrals with same download id,
     ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
   }
 
-  await eyeshadeAgent.put(`/v1/referrals/${uuidV4().toLowerCase()}`).send([referral]).expect(200)
+  await agents.eyeshade.referrals.put(`/v1/referrals/${uuidV4().toLowerCase()}`).send([referral]).expect(200)
 
   const txId = uuidV4().toLowerCase()
   const referral2 = {
@@ -158,7 +158,7 @@ test('if promo sends mix of duplicate and valid referrals with same download id,
     ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
   }
 
-  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral, referral2]).expect(200)
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`).send([referral, referral2]).expect(200)
   const referralDocs = await t.context.referrals.find({ transactionId: txId }).toArray()
   t.is(referralDocs.length, 1)
 
@@ -223,7 +223,7 @@ async function checkReferralValue (t, startDate, expectedGroupId, expectedValue,
   const start = startDate.toISOString()
   const {
     body
-  } = await eyeshadeAgent
+  } = await agents.eyeshade.referrals
     .get(`/v1/referrals/statement/${escapedOwnerId}`)
     .query({ start })
     .expect(ok)
@@ -242,7 +242,7 @@ async function sendReferral (timestamp, groupId) {
     downloadTimestamp: timestamp || new Date(),
     ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
   }
-  await eyeshadeAgent.put(`/v1/referrals/${txId}`).send([referral]).expect(ok)
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`).send([referral]).expect(ok)
   return {
     referral,
     txId
