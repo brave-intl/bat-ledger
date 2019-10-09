@@ -168,6 +168,14 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
   await handler(runtime)(request, reply)
 }
 
+async function logDAU (runtime, identifier) {
+  const { logger } = runtime
+  const key = logger.dailyKey(['dau'])
+  return logger.log(key, identifier).catch((err) => {
+    runtime.captureException(err)
+  })
+}
+
 /*
    GET /v5/grants
  */
@@ -215,7 +223,6 @@ const getGrant = (protocolVersion) => (runtime) => {
     }
 
     if (qaOnlyP(request)) return reply(boom.notFound())
-
     if (paymentId) {
       promotionIds = []
       wallet = await wallets.findOne({ paymentId: paymentId })
@@ -225,6 +232,7 @@ const getGrant = (protocolVersion) => (runtime) => {
       }
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
       walletTooYoung = walletCooldown(wallet, bypassCooldown)
+      await logDAU(runtime, paymentId)
     }
 
     if (walletTooYoung) {
@@ -280,7 +288,16 @@ const getGrant = (protocolVersion) => (runtime) => {
 }
 
 v3.read = {
-  handler: safetynetPassthrough((runtime) => (request, reply) => {
+  handler: safetynetPassthrough((runtime) => async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    const { database } = runtime
+    const wallets = database.get('wallets', debug)
+    const { paymentId } = request.query
+    if (paymentId) {
+      const wallet = await wallets.findOne({ paymentId })
+      if (!wallet) return reply(boom.notFound(`no such wallet: ${paymentId}`))
+      await logDAU(runtime, paymentId)
+    }
     reply(boom.notFound('promotion not available'))
   }),
   description: 'See if a v3 promotion is available',

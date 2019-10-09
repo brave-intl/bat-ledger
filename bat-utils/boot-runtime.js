@@ -14,6 +14,7 @@ const queue = require('./lib/runtime-queue')
 const sentry = require('./lib/runtime-sentry')
 const slack = require('./lib/runtime-slack')
 const wallet = require('./lib/runtime-wallet')
+const logger = require('./lib/runtime-logger')
 
 const hash = {
   cache,
@@ -25,7 +26,8 @@ const hash = {
   queue,
   sentry,
   slack,
-  wallet
+  wallet,
+  logger
 }
 
 module.exports = Object.assign(Runtime, hash)

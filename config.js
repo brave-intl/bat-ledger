@@ -126,7 +126,8 @@ module.exports =
   }
 , newrelic              : { key: process.env.NEW_RELIC_LICENSE_KEY
                                                                 || false }
-, wallet                : { }
+, wallet                : {}
+, logger                : {}
 
 , testingCohorts        : process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : []
 , currency:

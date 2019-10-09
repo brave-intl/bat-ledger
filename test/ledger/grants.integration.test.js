@@ -8,6 +8,7 @@ import uuidV4 from 'uuid/v4'
 import { sign } from 'http-request-signature'
 import tweetnacl from 'tweetnacl'
 import _ from 'underscore'
+import { Runtime } from 'bat-utils'
 import {
   balanceAgent,
   ledgerAgent,
@@ -20,6 +21,10 @@ import {
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
 
+test.before(async (t) => {
+  const ledgerDB = await connectToDb('ledger')
+  t.context.wallets = ledgerDB.collection('wallets')
+})
 test.before(cleanDbs)
 test.after(cleanDbs)
 test.afterEach.always(cleanDbs)
@@ -31,6 +36,60 @@ const expired = { 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5je
 
 const BAT_CAPTCHA_BRAVE_TOKEN = 'eyJhbGciOiJSUzI1NiIsIng1YyI6WyJNSUlGbERDQ0JIeWdBd0lCQWdJUkFNa2J6Mm9GaitnaUNBQUFBQUFWZGYwd0RRWUpLb1pJaHZjTkFRRUxCUUF3UWpFTE1Ba0dBMVVFQmhNQ1ZWTXhIakFjQmdOVkJBb1RGVWR2YjJkc1pTQlVjblZ6ZENCVFpYSjJhV05sY3pFVE1CRUdBMVVFQXhNS1IxUlRJRU5CSURGUE1UQWVGdzB4T1RBNU1qQXdOelUyTVRoYUZ3MHhPVEV5TVRrd056VTJNVGhhTUd3eEN6QUpCZ05WQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxTmIzVnVkR0ZwYmlCV2FXVjNNUk13RVFZRFZRUUtFd3BIYjI5bmJHVWdURXhETVJzd0dRWURWUVFERXhKaGRIUmxjM1F1WVc1a2NtOXBaQzVqYjIwd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUUNkcmtpWEgza2dMTGFSeGI0ZkYyaWV0QjltQjdmTDNyVzFVVyt1UGZ4dDBid2VVZXprV290RktrcVVJUGlReVhLejNNMVYxS1h6RHY2ZmNoNk41ODNRamg4allXZ0F2c3FHdmE1RmlqaFdYcWtkUERkOGRiaTdjb1NrTjlTWTlXNU8ycHN0RVQzY2RkS3p0cks2NEJPcU5SUGRDeEc2aFJwK29VUklXTzhDU01xV08yTVdSTnAwRlpOaFNLcGgvay9Md2pVN2lUY1ZVWWJuRHFLWmQ1WVFsclFYMTBKdkw2cENadUZOSzR2VlBJRXlGL094U2xJQzcvRmdoRGR3MEdMWHplZnF0V2owRFBha2tiSGRzTTNQS1hxdnpPdGpiLzZoeVRDcFZQbnM1L1ZXRjQ5S3E3Ui9SeTNwTkZhaDR2Tmhoam5td01vNmZQZ21LQ1NCNWlEL0FnTUJBQUdqZ2dKWk1JSUNWVEFPQmdOVkhROEJBZjhFQkFNQ0JhQXdFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd0V3REFZRFZSMFRBUUgvQkFJd0FEQWRCZ05WSFE0RUZnUVUzeXpXZk5QdXRlazR6REpJd2dUZWlEOGg1V1F3SHdZRFZSMGpCQmd3Rm9BVW1OSDRiaERyejV2c1lKOFlrQnVnNjMwSi9Tc3daQVlJS3dZQkJRVUhBUUVFV0RCV01DY0dDQ3NHQVFVRkJ6QUJoaHRvZEhSd09pOHZiMk56Y0M1d2Eya3VaMjl2Wnk5bmRITXhiekV3S3dZSUt3WUJCUVVITUFLR0gyaDBkSEE2THk5d2Eya3VaMjl2Wnk5bmMzSXlMMGRVVXpGUE1TNWpjblF3SFFZRFZSMFJCQll3RklJU1lYUjBaWE4wTG1GdVpISnZhV1F1WTI5dE1DRUdBMVVkSUFRYU1CZ3dDQVlHWjRFTUFRSUNNQXdHQ2lzR0FRUUIxbmtDQlFNd0x3WURWUjBmQkNnd0pqQWtvQ0tnSUlZZWFIUjBjRG92TDJOeWJDNXdhMmt1WjI5dlp5OUhWRk14VHpFdVkzSnNNSUlCQlFZS0t3WUJCQUhXZVFJRUFnU0I5Z1NCOHdEeEFIWUFZL0xiemVnN3pDelBDM0tFSjFkck02U05ZWGVQdlhXbU9MSEhhRlJMMkkwQUFBRnRUZUxuMHdBQUJBTUFSekJGQWlFQWluek1vN3J0UzJjLzNKQmdRdDJDSytoaGMvYzN0SVg5cUwyWW9xcTE1RVFDSUNaekN6RVFPME5YdWl4bSs2N2xUclkzcmFQN2t1K09CTlVua1FXV0Q5ZElBSGNBZEg3YWd6R3RNeENSSVp6T0pVOUNjTUsvL1Y1Q0lBakdOelY1NWhCN3pGWUFBQUZ0VGVMbjRBQUFCQU1BU0RCR0FpRUExRjRYN0pvSWZuTVJ5alVlU1pYZlArMnhhaGl3Q0R1V2FpQkVkYnJWMnJFQ0lRRFdYaStGUUFJMnBva2h1R2pDTXVkK1dMMmFFODcxRHVRQzdKdVJ6dGR1V3pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQVhHNUhxbUNSTzJCSjkxVGJZMEh3QWcyYzFHUVYzd1NWMnBPbDVSbjJrWjNsbHBHRHRselhTQTVhaEVHOWdWZ0xGSTc4S1ZxdVRmeldVOUZhMHllSjVJbFFSUFJOM0ZXcGFLN1RmMkc3bFZ1TytwUFMvMjV2UloyN3hzZ0gwMFh4blpmRVNvMGxhWXd0eml0UFVDWS9USkl6bmJ1SlE2Qm5xbGlCdk0xN0p1eGVWckg5MjZnUjRGMnpKbkhiY1dqRFo1c0JFQXo5bS9UMzZaOG95djR0eEEvT2xGQVJRUDNqc21FK2g2cEg1RENTSU83SXgwZ2VNenE2UlNiNTJtTTRsemRjREo5c1YwQlphVndQeE9lU2paWW82anl0RGhWLzF4T1ZlZVVaLzBEa2g1ZXViTnVZOWErNHFLTTNFSzYxZGpuZ2JvZWVzUUptSjdJUktveko0UT09IiwiTUlJRVNqQ0NBektnQXdJQkFnSU5BZU8wbXFHTmlxbUJKV2xRdURBTkJna3Foa2lHOXcwQkFRc0ZBREJNTVNBd0hnWURWUVFMRXhkSGJHOWlZV3hUYVdkdUlGSnZiM1FnUTBFZ0xTQlNNakVUTUJFR0ExVUVDaE1LUjJ4dlltRnNVMmxuYmpFVE1CRUdBMVVFQXhNS1IyeHZZbUZzVTJsbmJqQWVGdzB4TnpBMk1UVXdNREF3TkRKYUZ3MHlNVEV5TVRVd01EQXdOREphTUVJeEN6QUpCZ05WQkFZVEFsVlRNUjR3SEFZRFZRUUtFeFZIYjI5bmJHVWdWSEoxYzNRZ1UyVnlkbWxqWlhNeEV6QVJCZ05WQkFNVENrZFVVeUJEUVNBeFR6RXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFEUUdNOUYxSXZOMDV6a1FPOSt0TjFwSVJ2Snp6eU9USFc1RHpFWmhEMmVQQ252VUEwUWsyOEZnSUNmS3FDOUVrc0M0VDJmV0JZay9qQ2ZDM1IzVlpNZFMvZE40WktDRVBaUnJBekRzaUtVRHpScm1CQko1d3VkZ3puZElNWWNMZS9SR0dGbDV5T0RJS2dqRXYvU0pIL1VMK2RFYWx0TjExQm1zSytlUW1NRisrQWN4R05ocjU5cU0vOWlsNzFJMmROOEZHZmNkZHd1YWVqNGJYaHAwTGNRQmJqeE1jSTdKUDBhTTNUNEkrRHNheG1LRnNianphVE5DOXV6cEZsZ09JZzdyUjI1eG95blV4djh2Tm1rcTd6ZFBHSFhreFdZN29HOWorSmtSeUJBQms3WHJKZm91Y0JaRXFGSkpTUGs3WEEwTEtXMFkzejVvejJEMGMxdEpLd0hBZ01CQUFHamdnRXpNSUlCTHpBT0JnTlZIUThCQWY4RUJBTUNBWVl3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdFR0NDc0dBUVVGQndNQ01CSUdBMVVkRXdFQi93UUlNQVlCQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSmpSK0c0UTY4K2I3R0NmR0pBYm9PdDlDZjByTUI4R0ExVWRJd1FZTUJhQUZKdmlCMWRuSEI3QWFnYmVXYlNhTGQvY0dZWXVNRFVHQ0NzR0FRVUZCd0VCQkNrd0p6QWxCZ2dyQmdFRkJRY3dBWVlaYUhSMGNEb3ZMMjlqYzNBdWNHdHBMbWR2YjJjdlozTnlNakF5QmdOVkhSOEVLekFwTUNlZ0phQWpoaUZvZEhSd09pOHZZM0pzTG5CcmFTNW5iMjluTDJkemNqSXZaM055TWk1amNtd3dQd1lEVlIwZ0JEZ3dOakEwQmdabmdRd0JBZ0l3S2pBb0JnZ3JCZ0VGQlFjQ0FSWWNhSFIwY0hNNkx5OXdhMmt1WjI5dlp5OXlaWEJ2YzJsMGIzSjVMekFOQmdrcWhraUc5dzBCQVFzRkFBT0NBUUVBR29BK05ubjc4eTZwUmpkOVhsUVdOYTdIVGdpWi9yM1JOR2ttVW1ZSFBRcTZTY3RpOVBFYWp2d1JUMmlXVEhRcjAyZmVzcU9xQlkyRVRVd2daUStsbHRvTkZ2aHNPOXR2QkNPSWF6cHN3V0M5YUo5eGp1NHRXRFFIOE5WVTZZWlovWHRlRFNHVTlZekpxUGpZOHEzTUR4cnptcWVwQkNmNW84bXcvd0o0YTJHNnh6VXI2RmI2VDhNY0RPMjJQTFJMNnUzTTRUenMzQTJNMWo2YnlrSllpOHdXSVJkQXZLTFdadS9heEJWYnpZbXFtd2ttNXpMU0RXNW5JQUpiRUxDUUNad01INTZ0MkR2cW9meHM2QkJjQ0ZJWlVTcHh1Nng2dGQwVjdTdkpDQ29zaXJTbUlhdGovOWRTU1ZEUWliZXQ4cS83VUs0djRaVU44MGF0blp6MXlnPT0iXX0.eyJub25jZSI6ImxCbHQxc1hhVDNocmRtK2FrbzYzU09zUXNuYmRqL1JlIiwidGltZXN0YW1wTXMiOjE1NzA4MTAxNzg0NTIsImFwa1BhY2thZ2VOYW1lIjoiY29tLmJyYXZlLmJyb3dzZXJfZGVmYXVsdCIsImFwa0RpZ2VzdFNoYTI1NiI6IkxnRUlNZXJNVW0wdDRoMmZYRXFaYXFjdHpkZ1YwbXQyVHBKbzROejB3Y009IiwiY3RzUHJvZmlsZU1hdGNoIjp0cnVlLCJhcGtDZXJ0aWZpY2F0ZURpZ2VzdFNoYTI1NiI6WyJNcUw4ZE5jeEVGaFo1YWhkOFcyVjhRTFlXeUlKbTRCa3hkaVJYR0hhMGVBPSJdLCJiYXNpY0ludGVncml0eSI6dHJ1ZX0.ItBbc5ARdyl7C9dMo2K3fV0W7mtK9vBt5tjVNAJwda_9Ohq0aZqUjhefFpuEPv3wIz85EUtLTSu7J2hHMJPi54bywnlkNzBkiwNqPqGTFP_1-k60EKcOy_KsRB999UWzs4HX113Q85wYiw1rT3ARkoJfjBVejBDsSq28Js7JSB4yT3Jma0CBEEAzUSIZl5Mo2xhrFM8Tja-SL4h0RXP60Fabx44SRIgaOU63WxS5F8xDg0RuLkdJyJ2Afgd0uhdNWzf-VqY4xLAcdu-JXzAENyF3MHwnA_xwXXGEqMhs_15rBIYAJD12Pdv_VSsXQFI7N6BapGZA8RBzDLwS3eHCfQ'
 const BAT_NONCE = 'lBlt1sXaT3hrdm+ako63SOsQsnbdj/Re'
+
+test('dau is measured by hitting GET on /vX/grants', async (t) => {
+  const runtime = new Runtime({
+    logger: {},
+    cache: {
+      redis: {
+        url: process.env.BAT_REDIS_URL
+      }
+    }
+  })
+  await runEachVersion()
+  t.is(0, await getDAU(runtime), 'when no paymentId is found, no dau is counted')
+
+  await runEachVersion(uuidV4())
+  t.is(0, await getDAU(runtime), 'when no wallet is found from a given paymentId, no dau is counted')
+
+  const paymentId = await insert()
+  await runEachVersion(paymentId)
+  t.is(1, await getDAU(runtime), 'if a wallet is found the shared hll is used')
+
+  async function runEachVersion (paymentId, expectations = {}) {
+    const {
+      v3 = 404,
+      v4 = 404,
+      v5 = 404
+    } = expectations
+    await ledgerAgent
+      .get('/v3/grants')
+      .query({ paymentId })
+      .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+      .set('Fastly-GeoIP-CountryCode', 'US')
+      .expect(v3)
+    await ledgerAgent
+      .get('/v4/grants')
+      .query({ paymentId })
+      .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+      .set('Fastly-GeoIP-CountryCode', 'US')
+      .expect(v4)
+    await ledgerAgent
+      .get('/v5/grants')
+      .query({ paymentId })
+      .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+      .set('Fastly-GeoIP-CountryCode', 'US')
+      .expect(v5)
+  }
+
+  async function insert () {
+    const paymentId = uuidV4()
+    await t.context.wallets.insert({
+      paymentId
+    })
+    return paymentId
+  }
+})
 
 test('grants: add expired grant and make sure it does not add to wallet', async t => {
   let body
@@ -656,4 +715,11 @@ async function balanceGrants (paymentId) {
     .get(`/v2/wallet/${paymentId}/balance`)
     .expect(ok)
   return balanceGrants
+}
+
+async function getDAU (runtime) {
+  const key = runtime.logger.dailyKey(['dau'])
+  const value = await runtime.logger.read(key)
+  await runtime.logger.clear(key)
+  return value
 }
