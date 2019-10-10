@@ -9,6 +9,7 @@ const promotionIdExclusions = {
   'bc4d2067-dfe6-4f9b-9bf7-5bd80ec99180': true
 }
 const promotionIdBonuses = {
+  '6cb7ac17-963c-4175-bd52-fd7a8179dd87': '25',
   '21870643-7e03-4b0b-a0c4-b9e1eb9b046c': '25'
 }
 module.exports = {

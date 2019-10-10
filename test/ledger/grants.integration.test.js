@@ -104,7 +104,7 @@ test('attestation returns a random value for the same paymentId', async (t) => {
   t.not(body.nonce, second.nonce)
 })
 
-test('claim grants with attestations', async (t) => {
+test.skip('claim grants with attestations', async (t) => {
   let body, wallet
   const url = '/v4/grants'
   const adPromotionId = 'bad49132-de38-47e7-8003-986af88eeb1c'

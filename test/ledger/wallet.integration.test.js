@@ -101,6 +101,7 @@ test('compositing wallet grant information', async (t) => {
   const tokenIDf66eac41 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJhOTJhNzM3Ny02ODU1LTQxMzctYmViZS0zNDBmNTZjMTU1MjEiLCJwcm9iaSI6IjUxMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImY2NmVhYzQxLTIyYjEtNGMxMS05NGNlLTljNTA0ZDA1MzlkOCIsIm1hdHVyaXR5VGltZSI6MTU1OTc1MjA1OCwiZXhwaXJ5VGltZSI6MjE2NDU1NTY1OCwidHlwZSI6ImFkcyJ9.JrqzCdLppWqZ83bmSJiSJKmBvVIJChWwsYanpWX6NQKBOhFtBehr6T9tTeIiXjrC1B332ltPhS_BdKnrrdZuBA' // 5.1 bat
   const tokenIDc7a12742 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1OWViNDgwMS0wNGY2LTRmZWItYmM2ZS1hNzM4NGMyMjQ2MmYiLCJwcm9iaSI6IjYwMTAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJjN2ExMjc0Mi0yYzdjLTRmZmMtOTczMi0wZTYwMWU4NDQwOTkiLCJtYXR1cml0eVRpbWUiOjE1NTk3NTIxMTIsImV4cGlyeVRpbWUiOjIxNjQ1NTU3MTIsInR5cGUiOiJhZHMifQ.Jx6ox44D8RaJKsmytCwR5XqMW_xD-jXNjobt0UQE5O8PFpyZDOJggx1JSIAsMETBLiujSzQmmCV-mpjS-tKlBw' // 60.1 bat
   const tokenID21870643 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI3ZDg2NzM2Ny0xNjNjLTQ5YWEtODQ0Yi1jY2MxNThiOTM5MzMiLCJwcm9iaSI6IjM4MDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJmYjMyOGJmMS00MmFhLTRlNzEtYjk1Mi01YzUyYjU5MmQ4OTgiLCJtYXR1cml0eVRpbWUiOjE1Njc0Njg4MDAsImV4cGlyeVRpbWUiOjE2NzI0NDQ4MDAsInR5cGUiOiJhZHMifQ.bZwbxBT4dQ1OtjTMXZF6OMta8kRRwawNtvdxCsubmaMLzd_n9dARl_7D34FzWjy3ULjHZsjPq1sDrHbJr-_YAw' // 38 bat
+  const tokenID6cb7ac17 = 'eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiJkMWZkN2E5ZS1lMTUwLTQ2NzAtOTk3NC0wNzA1YWYyMDBjNjMiLCJwcm9iaSI6IjI2MDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiI2Y2I3YWMxNy05NjNjLTQxNzUtYmQ1Mi1mZDdhODE3OWRkODciLCJtYXR1cml0eVRpbWUiOjE1Njk4ODgwMDAsImV4cGlyeVRpbWUiOjE2NzI0NDQ4MDAsInR5cGUiOiJhZHMifQ.GPOVnGEMgvWZGVtrDhxhW3b0qqKgQi6GSnlZGCNvQdtHw2uNakZHaIB42nePV82HBizN3T8jJQxq_mM2GsEvBA' // 26 bat
   const lastUgpTimestamp = new Date('2019-01-03')
   const lastAdsTimestamp = new Date('2019-01-02')
   const earliestTimestamp = new Date('2019-01-01')
@@ -139,6 +140,11 @@ test('compositing wallet grant information', async (t) => {
     claimTimestamp: earliestTimestamp,
     token: tokenID21870643, // minus 25 from bonus
     promotionId: '21870643-7e03-4b0b-a0c4-b9e1eb9b046c'
+  }, {
+    type: 'ads',
+    claimTimestamp: earliestTimestamp,
+    token: tokenID6cb7ac17,
+    promotionId: '6cb7ac17-963c-4175-bd52-fd7a8179dd87'
   }]
   const paymentIdEmpty = uuidV4()
   const emptyURL = `/v2/wallet/${paymentIdEmpty}/grants/ads`
@@ -176,7 +182,7 @@ test('compositing wallet grant information', async (t) => {
   } = await ledgerAgent.get(`/v2/wallet/${paymentId}/grants/ads`).expect(ok)
   const expectedAds = createComposite({
     type: 'ads',
-    amount: (new BigNumber(2)).plus(13),
+    amount: (new BigNumber(2)).plus(14),
     lastClaim: lastAdsTimestamp
   })
   t.deepEqual(expectedAds, compositedAds, 'a composite is created correctly')
