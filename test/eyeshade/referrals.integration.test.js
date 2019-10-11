@@ -175,6 +175,11 @@ test('referrals use the correct geo-specific amount and checked values', async t
   } = await sendReferral(sept, '')
   await checkReferralValue(t, sept, originalGroupId, '5', referral0)
 
+  const {
+    referral: referral1
+  } = await sendReferral(sept, null)
+  await checkReferralValue(t, sept, originalGroupId, '5', referral1)
+
   await t.throwsAsync(sendReferral(oct1, uuidV4().toLowerCase()), Error, 'invalid group id fails')
 
   const {
@@ -182,7 +187,7 @@ test('referrals use the correct geo-specific amount and checked values', async t
   } = await sendReferral(oct1, tier2GroupId)
   await checkReferralValue(t, oct1, tier2GroupId, '6.5', referral2)
 
-  await ensureReferrals(runtime, 2)
+  await ensureReferrals(runtime, 3)
 })
 
 async function setActiveAt (client, date) {
