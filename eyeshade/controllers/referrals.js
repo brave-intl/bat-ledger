@@ -44,7 +44,7 @@ const referral = Joi.object().keys({
 const manyReferrals = Joi.array().min(1).items(referral).required().description('list of finalized referrals')
 const groupStampedReferral = referral.keys({
   downloadTimestamp: Joi.date().iso().optional().description('the timestamp when the referral was downloaded to apply correct payout to it'),
-  groupId: groupIdValidator.allow('').optional(),
+  groupId: groupIdValidator.allow('', null).optional(),
   referralCode: referralCodeValidator
 })
 const manyGroupStampedReferrals = Joi.array().min(1).items(groupStampedReferral).required().description('list of finalized referrals to be shown to publishers')
