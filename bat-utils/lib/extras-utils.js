@@ -1,5 +1,6 @@
 const getPublisherProps = require('bat-publisher').getPublisherProps
 // this can be abstracted elsewhere as soon as we finish #274
+const useragent = require('useragent')
 const BigNumber = require('bignumber.js')
 const dotenv = require('dotenv')
 const _ = require('underscore')
@@ -11,6 +12,7 @@ BigNumber.config({
 const PROBI_FACTOR = 1e18
 
 module.exports = {
+  parsePlatform,
   PROBI_FACTOR,
   backfillDateRange,
   changeMonth,
@@ -141,4 +143,23 @@ function isUUID (string) {
   var uuidRegExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
   return uuidRegExp.test(string)
+}
+
+function parsePlatform (agent) {
+  const ua = useragent.lookup(agent)
+  const other = 'other'
+  const os = {
+    'Mac OS X': 'mac',
+    'Windows': 'windows',
+    'Linux': 'linux',
+    'Android': 'android',
+    'iOS': 'ios'
+  }[ua.os.family] || other
+  if (ua.family.indexOf('Chrome') === 0) {
+    return os
+  }
+  if (ua.family === 'Firefox iOS' && os === 'ios') {
+    return os
+  }
+  return other
 }

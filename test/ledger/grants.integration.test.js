@@ -718,7 +718,7 @@ async function balanceGrants (paymentId) {
 }
 
 async function getDAU (runtime) {
-  const key = runtime.logger.dailyKey(['dau'])
+  const key = runtime.logger.dailyKey(['dau', 'other'])
   const value = await runtime.logger.read(key)
   await runtime.logger.clear(key)
   return value

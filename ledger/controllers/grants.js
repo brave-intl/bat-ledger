@@ -168,9 +168,10 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, reply) =>
   await handler(runtime)(request, reply)
 }
 
-async function logDAU (runtime, identifier) {
+async function logDAU (runtime, ua, identifier) {
   const { logger } = runtime
-  const key = logger.dailyKey(['dau'])
+  const platform = braveUtils.parsePlatform(ua)
+  const key = logger.dailyKey(['dau', platform])
   return logger.log(key, identifier).catch((err) => {
     runtime.captureException(err)
   })
@@ -232,7 +233,8 @@ const getGrant = (protocolVersion) => (runtime) => {
       }
       underscore.extend(query, { promotionId: { $nin: promotionIds } })
       walletTooYoung = walletCooldown(wallet, bypassCooldown)
-      await logDAU(runtime, paymentId)
+      const ua = request.headers['user-agent']
+      await logDAU(runtime, ua, paymentId)
     }
 
     if (walletTooYoung) {
@@ -296,7 +298,8 @@ v3.read = {
     if (paymentId) {
       const wallet = await wallets.findOne({ paymentId })
       if (!wallet) return reply(boom.notFound(`no such wallet: ${paymentId}`))
-      await logDAU(runtime, paymentId)
+      const ua = request.headers['user-agent']
+      await logDAU(runtime, ua, paymentId)
     }
     reply(boom.notFound('promotion not available'))
   }),

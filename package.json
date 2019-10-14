@@ -114,6 +114,7 @@
     "tldjs": "2.2.0",
     "tweetnacl": "^1.0.0",
     "underscore": "1.8.3",
+    "useragent": "^2.3.0",
     "uuid": "3.1.0",
     "validate-ip-node": "1.0.6",
     "vision": "^4.1.1",
