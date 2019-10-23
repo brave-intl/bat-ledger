@@ -14,6 +14,7 @@ const queue = require('./lib/runtime-queue')
 const sentry = require('./lib/runtime-sentry')
 const slack = require('./lib/runtime-slack')
 const wallet = require('./lib/runtime-wallet')
+const wreck = require('./lib/runtime-wreck')
 
 const hash = {
   cache,
@@ -25,6 +26,7 @@ const hash = {
   queue,
   sentry,
   slack,
+  wreck,
   wallet
 }
 

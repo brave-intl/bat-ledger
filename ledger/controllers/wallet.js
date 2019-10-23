@@ -752,6 +752,7 @@ v2.claimWallet = {
 }
 
 module.exports.compositeGrants = compositeGrants
+module.exports.walletGrantsInfoHandler = walletGrantsInfoHandler
 
 module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/grants/{type}').config(v1.walletGrantsInfo),
@@ -927,7 +928,54 @@ function claimWalletHandler (runtime) {
   }
 }
 
+function walletGrantsInfoHandlerFWD (runtime) {
+  return async (request, reply) => {
+    const debug = braveHapi.debug(module, request)
+    try {
+      let {
+        res,
+        payload
+      } = await compositeGrantsFWD(debug, runtime, request.params)
+      const { statusCode } = res
+      if (statusCode === 204) {
+        return reply('').code(statusCode)
+      }
+      payload = JSON.parse(payload.toString())
+      if (statusCode === 200) {
+        const { earnings, lastClaim, type } = payload
+        reply({
+          lastClaim,
+          type,
+          amount: earnings
+        })
+      } else {
+        reply(boom.boomify(payload))
+      }
+    } catch (e) {
+      reply(boom.boomify(e))
+    }
+  }
+}
+
+async function compositeGrantsFWD (debug, runtime, {
+  paymentId,
+  type
+}) {
+  const url = `/v1/promotions/${type}/grants/summary`
+  return runtime.wreck.grants.get(debug, url, {
+    query: {
+      paymentId,
+      paymentID: paymentId,
+      walletId: paymentId,
+      walletID: paymentId
+    }
+  })
+}
+
 function walletGrantsInfoHandler (runtime) {
+  if (runtime.config.forward.grants) {
+    return walletGrantsInfoHandlerFWD(runtime)
+  }
   return async (request, reply) => {
     const debug = braveHapi.debug(module, request)
     const {

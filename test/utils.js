@@ -160,6 +160,7 @@ const cleanRedisDb = async () => {
 
 module.exports = {
   readJSONFile,
+  agentAutoAuth,
   makeSettlement,
   insertReferralInfos,
   createSurveyor,
@@ -290,4 +291,8 @@ async function insertReferralInfos (client) {
 
 function readJSONFile (...paths) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, ...paths)).toString())
+}
+
+function agentAutoAuth (listener) {
+  return agent(listener).set(AUTH_KEY, token)
 }

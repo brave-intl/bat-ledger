@@ -9,6 +9,7 @@ import {
   debug,
   status,
   cleanDbs,
+  agentAutoAuth,
   ledgerAgent
 } from '../utils'
 import {
@@ -17,8 +18,11 @@ import {
 import {
   Runtime
 } from 'bat-utils'
+import braveUtils from 'bat-utils/lib/extras-utils'
+import Server from 'bat-utils/lib/hapi-server'
 import BigNumber from 'bignumber.js'
 import {
+  walletGrantsInfoHandler,
   compositeGrants
 } from '../../ledger/controllers/wallet'
 import {
@@ -202,6 +206,73 @@ test('compositing wallet grant information', async (t) => {
   })
   t.deepEqual(expectedUgp, compositedUgp, 'a composite is created correctly')
   t.deepEqual(expectedUgp, bodyUgp, 'a composite is responded with')
+})
+
+test('stats get forwarded from grants server', async (t) => {
+  // assume inserted has already occurred on grants
+  await braveUtils.mungeEnv(['PORT'], async (set) => {
+    set(['5001'])
+    const runtime = new Runtime({
+      sentry: {},
+      server: {},
+      cache: {
+        redis: {
+          url: process.env.BAT_REDIS_URL
+        }
+      },
+      forward: {
+        grants: '1'
+      },
+      wreck: {
+        grants: {
+          baseUrl: process.env.GRANTS_URL
+        }
+      }
+    })
+    const serverOpts = {
+      id: uuidV4(),
+      routes: {
+        routes: (debug, runtime, options) => {
+          return {
+            method: 'GET',
+            path: '/v2/wallet/{paymentId}/grants/{type}',
+            handler: {
+              'async': walletGrantsInfoHandler(runtime)
+            }
+          }
+        }
+      }
+    }
+    const server = await Server(serverOpts, runtime)
+    await server.started
+    const ledgerAgent = agentAutoAuth(server.listener)
+
+    const paymentId = '76e24dda-dbaf-41ad-ab7e-67bd8e8f5a69'
+    const emptyPaymentId = '0f6d6fad-7f87-4fbd-a4ae-3110b28b6a68'
+    await ledgerAgent
+      .get(`/v2/wallet/${uuidV4()}/grants/ugp`)
+      .expect(404)
+
+    const {
+      text: emptyResponse
+    } = await ledgerAgent
+      .get(`/v2/wallet/${emptyPaymentId}/grants/ugp`)
+      .expect(204)
+    t.deepEqual('', emptyResponse, 'empty matches expected')
+
+    const {
+      body
+    } = await ledgerAgent
+      .get(`/v2/wallet/${paymentId}/grants/ugp`)
+      .expect(ok)
+    // grants response
+    // {"earnings": "3","lastClaim": "2019-10-22T21:15:22.032885Z","type": "ugp"}
+    t.deepEqual({
+      amount: '3',
+      lastClaim: '2019-10-23T15:54:12.5065Z',
+      type: 'ugp'
+    }, body, 'response should match expected')
+  })
 })
 
 test('wallet endpoint returns default tip choices', async (t) => {

@@ -201,4 +201,5 @@ const WreckDelete = async (server, opts) => {
   return payload
 }
 
+exports.WreckProxy = WreckProxy
 exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
