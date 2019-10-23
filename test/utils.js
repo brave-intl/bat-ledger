@@ -132,7 +132,13 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
   }
 }
 const dbUri = (db) => `${process.env.BAT_MONGODB_URI}/${db}`
-const connectToDb = async (key) => mongodb.MongoClient.connect(dbUri(key))
+const connectToDb = async (key) => {
+  const client = await mongodb.MongoClient.connect(dbUri(key), {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+  return client.db(key)
+}
 
 const cleanDb = async (key, collections) => {
   const db = await connectToDb(key)
