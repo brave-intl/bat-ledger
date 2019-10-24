@@ -37,7 +37,7 @@ module.exports = (runtime) => {
   */
   const rateLimiterAuthed = new RateLimiterRedis({
     redis: redisClient,
-    keyPrefix: 'rate-limiter',
+    keyPrefix: 'rate-limiter-authed',
     points: 3000, // requests per
     duration: 60 // seconds by IP
   })
@@ -51,8 +51,8 @@ module.exports = (runtime) => {
 
   const rateLimiter = new RateLimiterRedis({
     redis: redisClient,
-    keyPrefix: 'rate-limiter-whitelist',
-    points: 60000, // requests per
+    keyPrefix: 'rate-limiter',
+    points: 60, // requests per
     duration: 60 // seconds by IP
   })
 

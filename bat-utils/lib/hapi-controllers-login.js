@@ -15,36 +15,49 @@ const v1 = {}
  */
 
 v1.login = {
-  handler: (runtime) => async (request, h) => {
-    const { auth } = request
-    const { credentials, isAuthenticated } = auth
+  handler: (runtime) => {
+    return async (request, reply) => {
+      if (!request.auth.isAuthenticated) throw boom.forbidden()
 
-    if (!isAuthenticated) {
-      throw boom.forbidden()
-    }
+      const debug = braveHapi.debug(module, request)
+      const credentials = request.auth.credentials
+      const { organization } = runtime.login.github
 
-    const debug = braveHapi.debug(module, request)
+      try {
+        const octokit = new Octokit({
+          debug: false,
+          auth: `token ${credentials.token}`
+        })
+        const { data: teams } = await octokit.teams.listForAuthenticatedUser({
+          org: organization
+        })
 
-    try {
-      credentials.scope = await checkTeams(runtime, credentials)
-    } catch (e) {
+        credentials.scope = []
+        teams.forEach(team => {
+          if (team.organization.login === organization) credentials.scope.push(team.name)
+        })
+        if (credentials.scope.length === 0) {
+          throw boom.forbidden()
+        }
+      } catch (e) {
+        runtime.notify(debug, {
+          channel: '#devops-bot',
+          text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email
+        })
+        throw e
+      }
+
       runtime.notify(debug, {
         channel: '#devops-bot',
-        text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email
+        text: 'login ' + credentials.provider + ' ' +
+          JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
+          ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + npminfo.name + '@' +
+          npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
       })
-      throw e
+
+      request.cookieAuth.set(credentials)
+      reply.redirect(runtime.login.github.world)
     }
-
-    runtime.notify(debug, {
-      channel: '#devops-bot',
-      text: 'login ' + credentials.provider + ' ' +
-        JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
-        ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + npminfo.name + '@' +
-        npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
-    })
-
-    request.cookieAuth.set(credentials)
-    return h.redirect(runtime.login.github.world)
   },
 
   auth: 'github',
@@ -68,7 +81,7 @@ v1.login = {
 
 v1.logout = {
   handler: (runtime) => {
-    return async (request, h) => {
+    return async (request, reply) => {
       const debug = braveHapi.debug(module, request)
       const credentials = request.auth.credentials
       const suffix = ' at ' + os.hostname() + ' ' + npminfo.name + '@' + npminfo.version +
@@ -89,7 +102,7 @@ v1.logout = {
       }
 
       request.cookieAuth.clear()
-      return h.redirect(runtime.login.github.bye)
+      reply.redirect(runtime.login.github.bye)
     }
   },
 
@@ -105,31 +118,3 @@ module.exports.routes = [
   braveHapi.routes.async().method(['GET', 'POST']).path('/v1/login').whitelist().config(v1.login),
   braveHapi.routes.async().path('/v1/logout').config(v1.logout)
 ]
-
-module.exports.checkTeams = checkTeams
-
-async function checkTeams (runtime, credentials) {
-  const { organization } = runtime.login.github
-  const scope = []
-  const octokit = new Octokit({
-    debug: false,
-    auth: `token ${credentials.token}`
-  })
-
-  const { data: teams } = await octokit.teams.listForAuthenticatedUser({
-    org: organization
-  })
-
-  teams.forEach(({
-    name,
-    organization: { login }
-  }) => {
-    if (login === organization) {
-      scope.push(name)
-    }
-  })
-  if (!scope.length) {
-    throw boom.forbidden()
-  }
-  return scope
-}
