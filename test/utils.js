@@ -9,18 +9,17 @@ const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuidV4 = require('uuid/v4')
-const redis = require('redis')
 const BigNumber = require('bignumber.js')
+const pg = require('pg')
 const {
   timeout,
   uint8tohex
 } = require('bat-utils/lib/extras-utils')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
-const pg = require('pg')
-
 const Pool = pg.Pool
-
+const Server = require('bat-utils/lib/hapi-server')
+const { Runtime } = require('bat-utils')
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
@@ -168,7 +167,7 @@ const cleanGrantDb = async () => {
       client.query('DELETE from claim_creds;'),
       client.query('DELETE from claims;'),
       client.query('DELETE from wallets;'),
-      client.query('DELETE from promotions;'),
+      client.query('DELETE from promotions;')
     ])
   } finally {
     client.release()
@@ -176,6 +175,8 @@ const cleanGrantDb = async () => {
 }
 
 module.exports = {
+  setupForwardingServer,
+  agentAutoAuth,
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
@@ -338,4 +339,44 @@ async function insertReferralInfos (client) {
 
 function readJSONFile (...paths) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, ...paths)).toString())
+}
+
+async function setupForwardingServer ({
+  routes,
+  wreck,
+  token
+}) {
+  const runtime = new Runtime({
+    sentry: {},
+    server: {},
+    login: { github: false },
+    cache: {
+      redis: {
+        url: process.env.BAT_REDIS_URL
+      }
+    },
+    forward: {
+      grants: '1'
+    },
+    wreck: _.assign({
+      grants: {
+        baseUrl: process.env.BAT_GRANT_SERVER
+      }
+    }, wreck)
+  })
+  const serverOpts = {
+    id: uuidV4(),
+    routes: {
+      routes: (debug, runtime, options) => {
+        return _.toArray(routes).map((route) => route(runtime))
+      }
+    }
+  }
+  const server = await Server(serverOpts, runtime)
+  await server.started
+  return agentAutoAuth(server.listener, token)
+}
+
+function agentAutoAuth (listener, token) {
+  return agent(listener).set(AUTH_KEY, `Bearer ${token || tkn}`)
 }

@@ -132,9 +132,6 @@ const v3 = {}
 const v4 = {}
 const v5 = {}
 
-// FIXME
-const grantPollthrough = true
-
 const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
   const endpoint = '/v1/attestations/safetynet'
   const {
@@ -182,29 +179,32 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
    GET /v5/grants
  */
 
-const getGrant = (protocolVersion) => {
-  if (grantPollthrough) {
-    return getPromotionsFromGrantServer(protocolVersion)
+const getGrant = (protocolVersion) => (runtime) => {
+  if (runtime.config.forward.grants) {
+    return getPromotionsFromGrantServer(protocolVersion)(runtime)
   } else {
-    return getGrantLegacy(protocolVersion)
+    return getGrantLegacy(protocolVersion)(runtime)
   }
 }
 
 const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
   return async (request, h) => {
     const {
-      lang,
-      paymentId,
-      bypassCooldown
+      // lang,
+      paymentId
+      // ,
+      // bypassCooldown
     } = request.query
 
-    if (!runtime.config.redeemer) {
+    const { baseUrl } = runtime.config.wreck.grants
+    console.log(runtime.config.wreck)
+    if (!baseUrl) {
       throw boom.badGateway('not configured for promotions')
     }
 
-    const platform = protocolVersion === 3 ? "android" : ""
+    const platform = protocolVersion === 3 ? 'android' : ''
 
-    const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + platform, {
+    const payload = await braveHapi.wreck.get(baseUrl + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + (platform || ''), {
       headers: {
         'Content-Type': 'application/json'
       },
@@ -216,7 +216,7 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
 
     const filteredPromotions = []
     for (let { id, type, platform } of promotions) {
-      const promotion = { promotionId: id, type: legacyTypeFromTypeAndPlatform(type, platform)}
+      const promotion = { promotionId: id, type: legacyTypeFromTypeAndPlatform(type, platform) }
       if (type === 'ugp' && adsAvailable) { // only make ugp (both desktop and android) grants available in non-ads regions
         continue
       }
@@ -230,6 +230,7 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
       throw boom.notFound('promotion not available')
     }
 
+    console.log(filteredPromotions)
     if (protocolVersion < 4) {
       return filteredPromotions[0]
     }
@@ -502,8 +503,8 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const code = request.headers['fastly-geoip-countrycode']
     const adsAvailable = await adsGrantsAvailable(code)
 
-    if (grantPollthrough) {
-      const platformQp = protocolVersion === 3 ? "android" : ""
+    if (runtime.config.forward.grants) {
+      const platformQp = protocolVersion === 3 ? 'android' : ''
 
       const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
         headers: {
@@ -520,7 +521,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
       const { available, expiresAt, type, platform } = newPromo
       promotion = {
-        active: available, 
+        active: available,
         expiresAt,
         type: legacyTypeFromTypeAndPlatform(type, platform),
         protocolVersion: 4
@@ -558,7 +559,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       throw validationError
     }
 
-    if (grantPollthrough) {
+    if (runtime.config.forward.grants) {
       const claimPayload = {
         wallet: underscore.extend(
           underscore.pick(wallet, ['paymentId', 'altcurrency', 'provider', 'providerId']),
@@ -579,9 +580,9 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
       const BATtoProbi = runtime.currency.alt2scale('BAT')
       result = {
-        'altcurrency': 'BAT', 
+        'altcurrency': 'BAT',
         'probi': new BigNumber(approximateValue).times(BATtoProbi).toString(),
-        'expiryTime': Math.round(new Date(promotion.expiresAt).getTime()/1000),
+        'expiryTime': Math.round(new Date(promotion.expiresAt).getTime() / 1000),
         'type': promotion.type
       }
     } else {
@@ -633,7 +634,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       }
     }
 
-    if (!grantPollthrough) {
+    if (!runtime.config.forward.grants) {
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $inc: { count: -1 }

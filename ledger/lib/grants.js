@@ -17,11 +17,11 @@ module.exports = {
   legacyTypeFromTypeAndPlatform
 }
 
-function legacyTypeFromTypeAndPlatform(type, platform) {
+function legacyTypeFromTypeAndPlatform (type, platform) {
   if (type === 'ugp' && platform === 'android') {
-    return 'android' 
+    return 'android'
   }
-  return type 
+  return type
 }
 
 function defaultCooldownHrs (hours) {

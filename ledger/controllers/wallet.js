@@ -28,9 +28,6 @@ const defaultMonthlyChoices = (process.env.DEFAULT_MONTHLY_CHOICES && process.en
 const v1 = {}
 const v2 = {}
 
-// FIXME
-const grantPollthrough = true
-
 const walletStatsList = Joi.array().items(
   Joi.object().keys({
     created: Joi.string().required().description('date the wallets in this cohort were created'),
@@ -101,7 +98,7 @@ const read = function (runtime, apiVersion) {
     if (balances) {
       balances.cardBalance = balances.confirmed
 
-      if (grantPollthrough) {
+      if (runtime.config.forward.grants) {
         const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/grants/active?paymentId=' + paymentId, {
           headers: {
             'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
@@ -111,7 +108,7 @@ const read = function (runtime, apiVersion) {
         })
         const { grants } = JSON.parse(payload.toString())
         if (grants.length > 0) {
-          const total = grants.reduce((total, grant) =>  {
+          const total = grants.reduce((total, grant) => {
             return total.plus(grant.probi)
           }, new BigNumber(0))
           balances.confirmed = new BigNumber(balances.confirmed).plus(total)
@@ -345,7 +342,7 @@ const write = function (runtime, apiVersion) {
     }
 
     try {
-      if (grantPollthrough) {
+      if (runtime.config.forward.grants) {
         const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/grants/active?paymentId=' + paymentId, {
           headers: {
             'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
@@ -359,7 +356,7 @@ const write = function (runtime, apiVersion) {
         result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
       }
     } catch (err) {
-      if (!grantPollthrough) {
+      if (!runtime.config.forward.grants) {
         const { data } = err
         if (data) {
           let { payload } = data
@@ -391,7 +388,7 @@ const write = function (runtime, apiVersion) {
     const grantTotal = result.grantTotal
 
     if (grantIds) { // some grants were redeemed
-      if (!grantPollthrough) {
+      if (!runtime.config.forward.grants) {
         await markGrantsAsRedeemed(grantIds)
         grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
       } else {
