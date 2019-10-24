@@ -7,38 +7,42 @@ import anonize from 'node-anonize2-relic'
 import uuidV4 from 'uuid/v4'
 import { sign } from 'http-request-signature'
 import tweetnacl from 'tweetnacl'
-import _ from 'underscore'
+// import _ from 'underscore'
 import {
-  balanceAgent,
+  // balanceAgent,
   grantAgent,
-  ledgerAgent,
+  // ledgerAgent,
   ok,
   setupCreatePayload,
   createSurveyor,
   cleanDbs,
   cleanGrantDb,
+  setupForwardingServer,
   connectToDb
 } from '../utils'
-import braveHapi from 'bat-utils/lib/extras-hapi'
+// import braveHapi from 'bat-utils/lib/extras-hapi'
 import {
+  // mungeEnv,
   timeout,
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
+
+import { routes } from '../../ledger/controllers/grants'
 
 test.before(cleanDbs)
 test.after(cleanDbs)
 test.afterEach.always(cleanDbs)
 
-const bypassCooldown = process.env.WALLET_COOLDOWN_BYPASS_TOKEN
-const promotionId = 'c96c39c8-77dd-4b2d-a8df-2ecf824bc9e9'
-// expired grant
-const expired = { 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI0Y2ZjMzFmYy1mYjE1LTRmMTUtOTc0Zi0zNzJiMmI0YzBkYjYiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJjOTZjMzljOC03N2RkLTRiMmQtYThkZi0yZWNmODI0YmM5ZTkiLCJtYXR1cml0eVRpbWUiOjE1MjY5NDE0MDAsImV4cGlyeVRpbWUiOjE1MjUxNzYwMDB9.iZBTNb9zilKubYYwYuc9MIUHZq0iv-7DsmnNu0GakeiEjcNqgbgbg-Wc2dowlMmMyjRbXjDUIC8rK4FiIqH8CQ'], 'promotions': [{ promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1526941400000, 'protocolVersion': 4, 'type': 'ugp' }] }
+// const bypassCooldown = process.env.WALLET_COOLDOWN_BYPASS_TOKEN
+// const promotionId = 'c96c39c8-77dd-4b2d-a8df-2ecf824bc9e9'
+// // expired grant
+// const expired = { 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI0Y2ZjMzFmYy1mYjE1LTRmMTUtOTc0Zi0zNzJiMmI0YzBkYjYiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJjOTZjMzljOC03N2RkLTRiMmQtYThkZi0yZWNmODI0YmM5ZTkiLCJtYXR1cml0eVRpbWUiOjE1MjY5NDE0MDAsImV4cGlyeVRpbWUiOjE1MjUxNzYwMDB9.iZBTNb9zilKubYYwYuc9MIUHZq0iv-7DsmnNu0GakeiEjcNqgbgbg-Wc2dowlMmMyjRbXjDUIC8rK4FiIqH8CQ'], 'promotions': [{ promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1526941400000, 'protocolVersion': 4, 'type': 'ugp' }] }
 
 const BAT_CAPTCHA_BRAVE_TOKEN = 'eyJhbGciOiJSUzI1NiIsIng1YyI6WyJNSUlGbERDQ0JIeWdBd0lCQWdJUkFNa2J6Mm9GaitnaUNBQUFBQUFWZGYwd0RRWUpLb1pJaHZjTkFRRUxCUUF3UWpFTE1Ba0dBMVVFQmhNQ1ZWTXhIakFjQmdOVkJBb1RGVWR2YjJkc1pTQlVjblZ6ZENCVFpYSjJhV05sY3pFVE1CRUdBMVVFQXhNS1IxUlRJRU5CSURGUE1UQWVGdzB4T1RBNU1qQXdOelUyTVRoYUZ3MHhPVEV5TVRrd056VTJNVGhhTUd3eEN6QUpCZ05WQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxTmIzVnVkR0ZwYmlCV2FXVjNNUk13RVFZRFZRUUtFd3BIYjI5bmJHVWdURXhETVJzd0dRWURWUVFERXhKaGRIUmxjM1F1WVc1a2NtOXBaQzVqYjIwd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUUNkcmtpWEgza2dMTGFSeGI0ZkYyaWV0QjltQjdmTDNyVzFVVyt1UGZ4dDBid2VVZXprV290RktrcVVJUGlReVhLejNNMVYxS1h6RHY2ZmNoNk41ODNRamg4allXZ0F2c3FHdmE1RmlqaFdYcWtkUERkOGRiaTdjb1NrTjlTWTlXNU8ycHN0RVQzY2RkS3p0cks2NEJPcU5SUGRDeEc2aFJwK29VUklXTzhDU01xV08yTVdSTnAwRlpOaFNLcGgvay9Md2pVN2lUY1ZVWWJuRHFLWmQ1WVFsclFYMTBKdkw2cENadUZOSzR2VlBJRXlGL094U2xJQzcvRmdoRGR3MEdMWHplZnF0V2owRFBha2tiSGRzTTNQS1hxdnpPdGpiLzZoeVRDcFZQbnM1L1ZXRjQ5S3E3Ui9SeTNwTkZhaDR2Tmhoam5td01vNmZQZ21LQ1NCNWlEL0FnTUJBQUdqZ2dKWk1JSUNWVEFPQmdOVkhROEJBZjhFQkFNQ0JhQXdFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd0V3REFZRFZSMFRBUUgvQkFJd0FEQWRCZ05WSFE0RUZnUVUzeXpXZk5QdXRlazR6REpJd2dUZWlEOGg1V1F3SHdZRFZSMGpCQmd3Rm9BVW1OSDRiaERyejV2c1lKOFlrQnVnNjMwSi9Tc3daQVlJS3dZQkJRVUhBUUVFV0RCV01DY0dDQ3NHQVFVRkJ6QUJoaHRvZEhSd09pOHZiMk56Y0M1d2Eya3VaMjl2Wnk5bmRITXhiekV3S3dZSUt3WUJCUVVITUFLR0gyaDBkSEE2THk5d2Eya3VaMjl2Wnk5bmMzSXlMMGRVVXpGUE1TNWpjblF3SFFZRFZSMFJCQll3RklJU1lYUjBaWE4wTG1GdVpISnZhV1F1WTI5dE1DRUdBMVVkSUFRYU1CZ3dDQVlHWjRFTUFRSUNNQXdHQ2lzR0FRUUIxbmtDQlFNd0x3WURWUjBmQkNnd0pqQWtvQ0tnSUlZZWFIUjBjRG92TDJOeWJDNXdhMmt1WjI5dlp5OUhWRk14VHpFdVkzSnNNSUlCQlFZS0t3WUJCQUhXZVFJRUFnU0I5Z1NCOHdEeEFIWUFZL0xiemVnN3pDelBDM0tFSjFkck02U05ZWGVQdlhXbU9MSEhhRlJMMkkwQUFBRnRUZUxuMHdBQUJBTUFSekJGQWlFQWluek1vN3J0UzJjLzNKQmdRdDJDSytoaGMvYzN0SVg5cUwyWW9xcTE1RVFDSUNaekN6RVFPME5YdWl4bSs2N2xUclkzcmFQN2t1K09CTlVua1FXV0Q5ZElBSGNBZEg3YWd6R3RNeENSSVp6T0pVOUNjTUsvL1Y1Q0lBakdOelY1NWhCN3pGWUFBQUZ0VGVMbjRBQUFCQU1BU0RCR0FpRUExRjRYN0pvSWZuTVJ5alVlU1pYZlArMnhhaGl3Q0R1V2FpQkVkYnJWMnJFQ0lRRFdYaStGUUFJMnBva2h1R2pDTXVkK1dMMmFFODcxRHVRQzdKdVJ6dGR1V3pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQVhHNUhxbUNSTzJCSjkxVGJZMEh3QWcyYzFHUVYzd1NWMnBPbDVSbjJrWjNsbHBHRHRselhTQTVhaEVHOWdWZ0xGSTc4S1ZxdVRmeldVOUZhMHllSjVJbFFSUFJOM0ZXcGFLN1RmMkc3bFZ1TytwUFMvMjV2UloyN3hzZ0gwMFh4blpmRVNvMGxhWXd0eml0UFVDWS9USkl6bmJ1SlE2Qm5xbGlCdk0xN0p1eGVWckg5MjZnUjRGMnpKbkhiY1dqRFo1c0JFQXo5bS9UMzZaOG95djR0eEEvT2xGQVJRUDNqc21FK2g2cEg1RENTSU83SXgwZ2VNenE2UlNiNTJtTTRsemRjREo5c1YwQlphVndQeE9lU2paWW82anl0RGhWLzF4T1ZlZVVaLzBEa2g1ZXViTnVZOWErNHFLTTNFSzYxZGpuZ2JvZWVzUUptSjdJUktveko0UT09IiwiTUlJRVNqQ0NBektnQXdJQkFnSU5BZU8wbXFHTmlxbUJKV2xRdURBTkJna3Foa2lHOXcwQkFRc0ZBREJNTVNBd0hnWURWUVFMRXhkSGJHOWlZV3hUYVdkdUlGSnZiM1FnUTBFZ0xTQlNNakVUTUJFR0ExVUVDaE1LUjJ4dlltRnNVMmxuYmpFVE1CRUdBMVVFQXhNS1IyeHZZbUZzVTJsbmJqQWVGdzB4TnpBMk1UVXdNREF3TkRKYUZ3MHlNVEV5TVRVd01EQXdOREphTUVJeEN6QUpCZ05WQkFZVEFsVlRNUjR3SEFZRFZRUUtFeFZIYjI5bmJHVWdWSEoxYzNRZ1UyVnlkbWxqWlhNeEV6QVJCZ05WQkFNVENrZFVVeUJEUVNBeFR6RXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFEUUdNOUYxSXZOMDV6a1FPOSt0TjFwSVJ2Snp6eU9USFc1RHpFWmhEMmVQQ252VUEwUWsyOEZnSUNmS3FDOUVrc0M0VDJmV0JZay9qQ2ZDM1IzVlpNZFMvZE40WktDRVBaUnJBekRzaUtVRHpScm1CQko1d3VkZ3puZElNWWNMZS9SR0dGbDV5T0RJS2dqRXYvU0pIL1VMK2RFYWx0TjExQm1zSytlUW1NRisrQWN4R05ocjU5cU0vOWlsNzFJMmROOEZHZmNkZHd1YWVqNGJYaHAwTGNRQmJqeE1jSTdKUDBhTTNUNEkrRHNheG1LRnNianphVE5DOXV6cEZsZ09JZzdyUjI1eG95blV4djh2Tm1rcTd6ZFBHSFhreFdZN29HOWorSmtSeUJBQms3WHJKZm91Y0JaRXFGSkpTUGs3WEEwTEtXMFkzejVvejJEMGMxdEpLd0hBZ01CQUFHamdnRXpNSUlCTHpBT0JnTlZIUThCQWY4RUJBTUNBWVl3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdFR0NDc0dBUVVGQndNQ01CSUdBMVVkRXdFQi93UUlNQVlCQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSmpSK0c0UTY4K2I3R0NmR0pBYm9PdDlDZjByTUI4R0ExVWRJd1FZTUJhQUZKdmlCMWRuSEI3QWFnYmVXYlNhTGQvY0dZWXVNRFVHQ0NzR0FRVUZCd0VCQkNrd0p6QWxCZ2dyQmdFRkJRY3dBWVlaYUhSMGNEb3ZMMjlqYzNBdWNHdHBMbWR2YjJjdlozTnlNakF5QmdOVkhSOEVLekFwTUNlZ0phQWpoaUZvZEhSd09pOHZZM0pzTG5CcmFTNW5iMjluTDJkemNqSXZaM055TWk1amNtd3dQd1lEVlIwZ0JEZ3dOakEwQmdabmdRd0JBZ0l3S2pBb0JnZ3JCZ0VGQlFjQ0FSWWNhSFIwY0hNNkx5OXdhMmt1WjI5dlp5OXlaWEJ2YzJsMGIzSjVMekFOQmdrcWhraUc5dzBCQVFzRkFBT0NBUUVBR29BK05ubjc4eTZwUmpkOVhsUVdOYTdIVGdpWi9yM1JOR2ttVW1ZSFBRcTZTY3RpOVBFYWp2d1JUMmlXVEhRcjAyZmVzcU9xQlkyRVRVd2daUStsbHRvTkZ2aHNPOXR2QkNPSWF6cHN3V0M5YUo5eGp1NHRXRFFIOE5WVTZZWlovWHRlRFNHVTlZekpxUGpZOHEzTUR4cnptcWVwQkNmNW84bXcvd0o0YTJHNnh6VXI2RmI2VDhNY0RPMjJQTFJMNnUzTTRUenMzQTJNMWo2YnlrSllpOHdXSVJkQXZLTFdadS9heEJWYnpZbXFtd2ttNXpMU0RXNW5JQUpiRUxDUUNad01INTZ0MkR2cW9meHM2QkJjQ0ZJWlVTcHh1Nng2dGQwVjdTdkpDQ29zaXJTbUlhdGovOWRTU1ZEUWliZXQ4cS83VUs0djRaVU44MGF0blp6MXlnPT0iXX0.eyJub25jZSI6IlVoMC9yVW53dTFUWWVXNzFpYnJYVjc2c3FOZ3R6aDd3IiwidGltZXN0YW1wTXMiOjE1NzExNTU2MjczNzQsImFwa1BhY2thZ2VOYW1lIjoiY29tLmJyYXZlLmJyb3dzZXJfZGVmYXVsdCIsImFwa0RpZ2VzdFNoYTI1NiI6Ijc2NnVzTndINlEzZUtyN3hmaGprSDI2UDFFUjRFZE0xSnFya3BWcnFsUXM9IiwiY3RzUHJvZmlsZU1hdGNoIjp0cnVlLCJhcGtDZXJ0aWZpY2F0ZURpZ2VzdFNoYTI1NiI6WyJNcUw4ZE5jeEVGaFo1YWhkOFcyVjhRTFlXeUlKbTRCa3hkaVJYR0hhMGVBPSJdLCJiYXNpY0ludGVncml0eSI6dHJ1ZX0.lOc2fVF3_I322sKi828NZUIirJRISooDzxCkqI2SkOpV-LyyJkFffFK8T_DmdDZq6HHAPgbu6wq6EX5xrGJsYXXek9BS-GTvKMWbPXYllaZZeu3XfQIF5MO9sHBIB2WuXDLWeaq9DZXs5oyhTT43gGqHwJNCZLpubH-6O3aUBeWgBiHdXBogcEaY8SOp2OWtDAMjokVcKl1JiRvTCKa9cgpVgCsbKeonN7K19rKR3N4jYwTQkLkEIG8T3iIMpCNdw4XsragLas4ckIZQlbobV6PpRSphj5vvmUCCADyQx7EWUDfQWUZKP0yTxY19YP2KDaR0_7Lb8aj2IXiL05nIoA'
 const BAT_CAPTCHA_BRAVE_NONCE = 'Uh0/rUnwu1TYeW71ibrXV76sqNgtzh7w'
 
 async function createPromotion (type, platform, active) {
-  const result = await grantAgent.post('/v1/promotions')
+  const result = await this.grants.post('/v1/promotions')
     .set('Content-Type', 'application/json')
     .send({
       type,
@@ -50,14 +54,24 @@ async function createPromotion (type, platform, active) {
   return result.body
 }
 
+test.before(async (t) => {
+  const ledgerServer = await setupForwardingServer({
+    token: null,
+    routes
+  })
+  t.context.createPromotion = createPromotion
+  t.context.grants = grantAgent
+  t.context.ledger = ledgerServer
+})
+
 test('grants: fetch available promotions', async t => {
-  const androidPromotion = await createPromotion('ugp', 'android', true)
+  const androidPromotion = await t.context.createPromotion('ugp', 'android', true)
 
   // Desktop should not show any grants
-  await ledgerAgent.get('/v4/grants').expect(404)
+  await t.context.ledger.get('/v4/grants').expect(404)
 
   // Android should show a single grant
-  let response = await ledgerAgent.get('/v5/grants')
+  let response = await t.context.ledger.get('/v5/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(ok)
   let promotion = response.body
@@ -67,26 +81,26 @@ test('grants: fetch available promotions', async t => {
 
   await cleanGrantDb()
 
-  await createPromotion('ugp', 'android', false)
+  await t.context.createPromotion('ugp', 'android', false)
 
-  await ledgerAgent.get('/v4/grants').expect(404)
-  await ledgerAgent.get('/v5/grants')
+  await t.context.ledger.get('/v4/grants').expect(404)
+  await t.context.ledger.get('/v5/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(404)
 
-  await createPromotion('ugp', '', true)
+  await t.context.createPromotion('ugp', '', true)
 
-  await ledgerAgent.get('/v5/grants')
+  await t.context.ledger.get('/v5/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(ok)
-  response = await ledgerAgent.get('/v4/grants').expect(ok)
+  response = await t.context.ledger.get('/v4/grants').expect(ok)
 
   let promotions = response.body.grants
   t.is(promotions.length, 1)
 
-  await createPromotion('ugp', '', true)
+  await t.context.createPromotion('ugp', '', true)
 
-  response = await ledgerAgent.get('/v4/grants').expect(ok)
+  response = await t.context.ledger.get('/v4/grants').expect(ok)
 
   promotions = response.body.grants
   t.is(promotions.length, 2)
@@ -98,7 +112,7 @@ test('grants: claim promotions', async t => {
 
   const personaId = uuidV4().toLowerCase()
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  var response = await t.context.ledger.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -126,13 +140,13 @@ test('grants: claim promotions', async t => {
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await t.context.ledger.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   const paymentId = response.body.wallet.paymentId
 
-  const androidPromotion = await createPromotion('ugp', 'android', true)
+  const androidPromotion = await t.context.createPromotion('ugp', 'android', true)
 
-  response = await ledgerAgent.get('/v5/grants')
+  response = await t.context.ledger.get('/v5/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(ok)
   let promotion = response.body
@@ -141,14 +155,14 @@ test('grants: claim promotions', async t => {
   t.is(promotion.type, 'android')
 
   // Cannot claim from ads geo
-  await ledgerAgent
+  await t.context.ledger
     .put(`/v3/grants/${paymentId}`)
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .set('Fastly-GeoIP-CountryCode', 'US')
     .send({ promotionId: androidPromotion.id })
     .expect(400)
 
-  await ledgerAgent
+  await t.context.ledger
     .get(`/v4/captchas/${paymentId}`)
     .set('brave-product', 'brave-core')
     .expect(ok)
@@ -156,7 +170,7 @@ test('grants: claim promotions', async t => {
   const { captcha } = await wallets.findOne({ paymentId })
 
   // Cannot claim android grant with desktop solution
-  await ledgerAgent
+  await t.context.ledger
     .put(`/v4/grants/${paymentId}`)
     .send({
       promotionId: androidPromotion.id,
@@ -175,18 +189,18 @@ test('grants: claim promotions', async t => {
     }
   })
 
-  await ledgerAgent
+  await t.context.ledger
     .put(`/v3/grants/${paymentId}`)
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .set('Fastly-GeoIP-CountryCode', 'JA')
     .send({ promotionId: androidPromotion.id })
     .expect(200)
 
-  await ledgerAgent.get('/v5/grants')
+  await t.context.ledger.get('/v5/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(404)
 
-  response = await ledgerAgent.get(`/v2/wallet/${paymentId}?refresh=true`)
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true`)
     .expect(200)
   const walletInfo = response.body
   t.is(walletInfo.grants.length, 1)
@@ -199,7 +213,7 @@ test('grants: redeem promotions', async t => {
 
   const personaId = uuidV4().toLowerCase()
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  var response = await t.context.ledger.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -227,11 +241,11 @@ test('grants: redeem promotions', async t => {
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await t.context.ledger.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   const paymentId = response.body.wallet.paymentId
 
-  const androidPromotion = await createPromotion('ugp', 'android', true)
+  const androidPromotion = await t.context.createPromotion('ugp', 'android', true)
 
   await wallets.update({
     paymentId
@@ -241,14 +255,14 @@ test('grants: redeem promotions', async t => {
     }
   })
 
-  await ledgerAgent
+  await t.context.ledger
     .put(`/v3/grants/${paymentId}`)
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .set('Fastly-GeoIP-CountryCode', 'JA')
     .send({ promotionId: androidPromotion.id })
     .expect(200)
 
-  response = await ledgerAgent.get(`/v2/wallet/${paymentId}?refresh=true&amount=15.0&altcurrency=BAT`)
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true&amount=15.0&altcurrency=BAT`)
     .expect(200)
   const { unsignedTx } = response.body
   t.is(response.body.grants.length, 1)
@@ -269,7 +283,7 @@ test('grants: redeem promotions', async t => {
     if (response.status === 503) {
       await timeout(response.headers['retry-after'] * 1000)
     }
-    response = await ledgerAgent
+    response = await t.context.ledger
       .put('/v2/wallet/' + paymentId)
       .send(redeemPayload)
   } while (response.status === 503)
