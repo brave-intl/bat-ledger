@@ -1,10 +1,12 @@
 'use strict'
-import _ from 'underscore'
 import {
   validateHops,
   forwardedIPShift,
   ipaddr
 } from './hapi-auth-whitelist.js'
+import {
+  mungeEnv
+} from './extras-utils'
 import {
   serial as test
 } from 'ava'
@@ -22,7 +24,7 @@ test('ipaddr', async (t) => {
 })
 
 test('validateHops', async (t) => {
-  await munge(['FASTLY_TOKEN_LIST', 'FORWARDED_IP_SHIFT'], (setEnvs) => {
+  await mungeEnv(['FASTLY_TOKEN_LIST', 'FORWARDED_IP_SHIFT'], (setEnvs) => {
     const run = (token) => {
       const remoteAddress = '123.123.123.123'
       const xForwardedFor = '1.1.1.1,2.2.2.2,3.3.3.3'
@@ -51,7 +53,7 @@ test('validateHops', async (t) => {
 })
 
 test('ipaddr can be shifted', async (t) => {
-  await munge(['FORWARDED_IP_SHIFT'], (setEnvs) => {
+  await mungeEnv(['FORWARDED_IP_SHIFT'], (setEnvs) => {
     t.is(ipaddr(req('', '0.0.0.0,8.8.8.8,9.0.0.0')), '9.0.0.0', 'by default the last ip is taken')
     setEnvs(['2'])
     t.is(ipaddr(req('', '0.0.0.0,8.8.8.8,9.0.0.0')), '8.8.8.8', 'by changing the env, you can choose which ip in the list of forwarded ips to take by default')
@@ -59,7 +61,7 @@ test('ipaddr can be shifted', async (t) => {
 })
 
 test('shift amount can be retrieved', async (t) => {
-  await munge(['FORWARDED_IP_SHIFT'], (setEnvs) => {
+  await mungeEnv(['FORWARDED_IP_SHIFT'], (setEnvs) => {
     t.is(forwardedIPShift(), 1, 'by default it is one')
     setEnvs(['3'])
     t.is(forwardedIPShift(), 3, 'but can be overwritten')
@@ -79,22 +81,5 @@ function req (remoteAddress, XForwardedFor, token = validFastlyToken) {
     info: {
       remoteAddress
     }
-  }
-}
-
-async function munge (keys, handler) {
-  const cachedEnv = _.toArray(keys).map((key) => process.env[key])
-  await handler(setEnvs)
-  setEnvs(cachedEnv)
-
-  function setEnvs (values = []) {
-    _.toArray(values).forEach((value, index) => {
-      const key = keys[index]
-      if (_.isString(value)) {
-        process.env[key] = value
-      } else {
-        delete process.env[key]
-      }
-    })
   }
 }

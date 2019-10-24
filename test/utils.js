@@ -7,14 +7,16 @@ const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuidV4 = require('uuid/v4')
-const redis = require('redis')
 const BigNumber = require('bignumber.js')
+const Server = require('bat-utils/lib/hapi-server')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
+const { Runtime } = require('bat-utils')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
-
+const pg = require('pg')
+const Pool = pg.Pool
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
@@ -60,6 +62,7 @@ const AUTH_KEY = 'Authorization'
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
 const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
+const grantAgent = agent(process.env.BAT_GRANT_SERVER).set(AUTH_KEY, token)
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -145,20 +148,26 @@ const cleanLedgerDb = async (collections) => {
 const cleanEyeshadeDb = async (collections) => {
   return cleanDb('eyeshade', collections || eyeshadeCollections)
 }
-
-const cleanRedisDb = async () => {
-  const url = process.env.BAT_GRANT_REDIS_URL
-  const client = redis.createClient(url)
-  await new Promise((resolve, reject) => {
-    client.on('ready', () => {
-      client.flushdb((err) => {
-        err ? reject(err) : resolve()
-      })
-    }).on('error', (err) => reject(err))
-  })
+const cleanGrantDb = async () => {
+  const url = process.env.BAT_GRANT_POSTGRES_URL
+  const pool = new Pool({ connectionString: url, ssl: false })
+  const client = await pool.connect()
+  try {
+    await Promise.all([
+      client.query('DELETE from claim_creds;'),
+      client.query('DELETE from claims;'),
+      client.query('DELETE from wallets;'),
+      client.query('DELETE from promotions;')
+    ])
+  } finally {
+    client.release()
+  }
 }
 
 module.exports = {
+  grantAgent,
+  setupForwardingServer,
+  agentAutoAuth,
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
@@ -180,7 +189,7 @@ module.exports = {
   cleanPgDb,
   cleanLedgerDb,
   cleanEyeshadeDb,
-  cleanRedisDb,
+  cleanGrantDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
   statsUrl
@@ -190,7 +199,7 @@ function cleanDbs () {
   return Promise.all([
     cleanEyeshadeDb(),
     cleanLedgerDb(),
-    cleanRedisDb()
+    cleanGrantDb()
   ])
 }
 
@@ -290,4 +299,50 @@ async function insertReferralInfos (client) {
 
 function readJSONFile (...paths) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, ...paths)).toString())
+}
+
+async function setupForwardingServer ({
+  routes,
+  wreck,
+  token
+}) {
+  const runtime = new Runtime({
+    sentry: {},
+    server: {},
+    cache: {
+      redis: {
+        url: process.env.BAT_REDIS_URL
+      }
+    },
+    forward: {
+      grants: '1'
+    },
+    wreck: _.assign({
+      grants: {
+        baseUrl: process.env.BAT_GRANT_SERVER
+      }
+    }, wreck)
+  })
+  const serverOpts = {
+    id: uuidV4(),
+    routes: {
+      routes: (debug, runtime, options) => {
+        const rts = _.toArray(routes)
+        return rts.map((route) => ({
+          // method, path, handler minimum
+          ...route,
+          handler: {
+            'async': route.handler(runtime)
+          }
+        }))
+      }
+    }
+  }
+  const server = await Server(serverOpts, runtime)
+  await server.started
+  return agentAutoAuth(server.listener, token)
+}
+
+function agentAutoAuth (listener, token) {
+  return agent(listener).set(AUTH_KEY, `Bearer ${token || tkn}`)
 }

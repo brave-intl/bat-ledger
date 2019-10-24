@@ -19,6 +19,7 @@ module.exports = {
   timeout,
   extractJws,
   utf8ify,
+  mungeEnv,
   uint8tohex,
   createdTimestamp,
   documentOlderThan,
@@ -141,4 +142,21 @@ function isUUID (string) {
   var uuidRegExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
   return uuidRegExp.test(string)
+}
+
+async function mungeEnv (keys, handler) {
+  const cachedEnv = _.toArray(keys).map((key) => process.env[key])
+  await handler(setEnvs)
+  setEnvs(cachedEnv)
+
+  function setEnvs (values = []) {
+    _.toArray(values).forEach((value, index) => {
+      const key = keys[index]
+      if (_.isString(value)) {
+        process.env[key] = value
+      } else {
+        delete process.env[key]
+      }
+    })
+  }
 }

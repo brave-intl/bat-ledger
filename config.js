@@ -106,7 +106,16 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
 })
 
 module.exports =
-{ altcurrency           : process.env.ALTCURRENCY               || 'BAT'
+{
+  forward: {
+    grants: process.env.FORWARD_TO_GRANTS || false
+  },
+  wreck: {
+    grants: {
+      baseUrl: process.env.GRANTS_URL || false
+    }
+  },
+  altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :
     { url               : process.env.REDIS_URL                 || 'redis://localhost:6379' }
