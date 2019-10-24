@@ -111,7 +111,7 @@ const read = function (runtime, apiVersion) {
         })
         const { grants } = JSON.parse(payload.toString())
         if (grants.length > 0) {
-          const total = grants.reduce((total, grant) =>  {
+          const total = grants.reduce((total, grant) => {
             return total.plus(grant.probi)
           }, new BigNumber(0))
           balances.confirmed = new BigNumber(balances.confirmed).plus(total)
@@ -346,15 +346,27 @@ const write = function (runtime, apiVersion) {
 
     try {
       if (grantPollthrough) {
-        const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/grants/active?paymentId=' + paymentId, {
-          headers: {
-            'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-            'Content-Type': 'application/json'
-          },
-          useProxyP: true
-        })
-        result = JSON.parse(payload.toString())
-        result.grantIds = true
+        const infoKeys = [ 'altcurrency', 'provider', 'providerId', 'paymentId' ]
+        const redeemPayload = {
+          wallet: underscore.extend(underscore.pick(wallet, infoKeys), { publicKey: wallet.httpSigningPubKey }),
+          transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, [ 'headers', 'octets' ]))).toString('base64')
+
+        }
+        try {
+          const payload = await braveHapi.wreck.post(runtime.config.redeemer.url + '/v1/grants', {
+            headers: {
+              'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+              'Content-Type': 'application/json'
+            },
+            payload: JSON.stringify(redeemPayload),
+            useProxyP: true
+          })
+          result = JSON.parse(payload.toString())
+          result.grantIds = true
+        } catch (ex) {
+          console.log(ex.data.payload.toString())
+          throw ex
+        }
       } else {
         result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
       }
