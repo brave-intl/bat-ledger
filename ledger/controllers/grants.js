@@ -192,17 +192,13 @@ const getGrant = (protocolVersion) => {
 
 const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
   return async (request, h) => {
-    const {
-      lang,
-      paymentId,
-      bypassCooldown
-    } = request.query
+    const { paymentId } = request.query
 
     if (!runtime.config.redeemer) {
       throw boom.badGateway('not configured for promotions')
     }
 
-    const platform = protocolVersion === 3 ? "android" : ""
+    const platform = protocolVersion === 3 ? 'android' : ''
 
     const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + platform, {
       headers: {
@@ -216,7 +212,7 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
 
     const filteredPromotions = []
     for (let { id, type, platform } of promotions) {
-      const promotion = { promotionId: id, type: legacyTypeFromTypeAndPlatform(type, platform)}
+      const promotion = { promotionId: id, type: legacyTypeFromTypeAndPlatform(type, platform) }
       if (type === 'ugp' && adsAvailable) { // only make ugp (both desktop and android) grants available in non-ads regions
         continue
       }
@@ -503,7 +499,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const adsAvailable = await adsGrantsAvailable(code)
 
     if (grantPollthrough) {
-      const platformQp = protocolVersion === 3 ? "android" : ""
+      const platformQp = protocolVersion === 3 ? 'android' : ''
 
       const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
         headers: {
@@ -520,7 +516,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
       const { available, expiresAt, type, platform } = newPromo
       promotion = {
-        active: available, 
+        active: available,
         expiresAt,
         type: legacyTypeFromTypeAndPlatform(type, platform),
         protocolVersion: 4
@@ -567,21 +563,27 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
         promotionId
       }
 
-      const payload = await braveHapi.wreck.post(runtime.config.redeemer.url + '/v1/grants/claim', {
-        headers: {
-          'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-          'Content-Type': 'application/json'
-        },
-        payload: JSON.stringify(claimPayload),
-        useProxyP: true
-      })
+      let payload
+      try {
+        payload = await braveHapi.wreck.post(runtime.config.redeemer.url + '/v1/grants/claim', {
+          headers: {
+            'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+            'Content-Type': 'application/json'
+          },
+          payload: JSON.stringify(claimPayload),
+          useProxyP: true
+        })
+      } catch (ex) {
+        console.log(ex.data.payload.toString())
+        throw ex
+      }
       const { approximateValue } = JSON.parse(payload.toString())
 
       const BATtoProbi = runtime.currency.alt2scale('BAT')
       result = {
-        'altcurrency': 'BAT', 
+        'altcurrency': 'BAT',
         'probi': new BigNumber(approximateValue).times(BATtoProbi).toString(),
-        'expiryTime': Math.round(new Date(promotion.expiresAt).getTime()/1000),
+        'expiryTime': Math.round(new Date(promotion.expiresAt).getTime() / 1000),
         'type': promotion.type
       }
     } else {

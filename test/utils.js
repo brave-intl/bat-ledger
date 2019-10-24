@@ -168,7 +168,7 @@ const cleanGrantDb = async () => {
       client.query('DELETE from claim_creds;'),
       client.query('DELETE from claims;'),
       client.query('DELETE from wallets;'),
-      client.query('DELETE from promotions;'),
+      client.query('DELETE from promotions;')
     ])
   } finally {
     client.release()
