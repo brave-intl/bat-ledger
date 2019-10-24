@@ -18,6 +18,7 @@ v1.login = {
   handler: (runtime) => async (request, h) => {
     const { auth } = request
     const { credentials, isAuthenticated } = auth
+
     if (!isAuthenticated) {
       throw boom.forbidden()
     }
@@ -27,10 +28,11 @@ v1.login = {
     try {
       await checkTeams(runtime, credentials)
     } catch (e) {
-      return runtime.notify(debug, {
+      runtime.notify(debug, {
         channel: '#devops-bot',
         text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email
       })
+      throw e
     }
 
     runtime.notify(debug, {
@@ -113,14 +115,15 @@ async function checkTeams (runtime, credentials) {
     auth: `token ${credentials.token}`
   })
 
-  const { data: teams } = await octokit.teams.listForAuthenticatedUser({
+  const {
+    data: teams
+  } = await octokit.teams.listForAuthenticatedUser({
     org: organization
   })
 
-  if (!teams.find(({ organization: { login } }) => login === organization)) {
+  if (!teams.find(({
+    organization: { login }
+  }) => login === organization)) {
     throw boom.forbidden()
-  }
-  return {
-    scope: [organization]
   }
 }

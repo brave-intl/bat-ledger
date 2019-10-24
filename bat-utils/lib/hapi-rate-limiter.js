@@ -29,43 +29,45 @@ if (graylist.addresses) {
 module.exports = (runtime) => {
   const redisClient = (runtime.cache && runtime.cache.cache) || runtime.queue.config.client
 
-  // const redisClient = redis.createClient({
-  //   host: 'localhost',
-  //   port: 6379,
-  //   enable_offline_queue: false
-  // })
-
   /*  access type            requests/minute per IP address
     -------------------    ------------------------------
     anonymous (browser)       60
     administrator (github)  3000
     server (bearer token)  60000
   */
-  const rateLimiter = new RateLimiterRedis({
+  const rateLimiterAuthed = new RateLimiterRedis({
     redis: redisClient,
     keyPrefix: 'rate-limiter',
-    points: 3000, // requests
-    duration: 60 // per second by IP
+    points: 3000, // requests per
+    duration: 60 // seconds by IP
   })
 
   const rateLimiterWhitelisted = new RateLimiterRedis({
     redis: redisClient,
     keyPrefix: 'rate-limiter-whitelist',
-    points: 60000, // requests
-    duration: 60 // per second by IP
+    points: 60000, // requests per
+    duration: 60 // seconds by IP
+  })
+
+  const rateLimiter = new RateLimiterRedis({
+    redis: redisClient,
+    keyPrefix: 'rate-limiter-whitelist',
+    points: 60000, // requests per
+    duration: 60 // seconds by IP
   })
 
   const noRateLimiter = new RateLimiterRedis({
     redis: redisClient,
     keyPrefix: 'no-rate-limiter',
-    points: Number.MAX_SAFE_INTEGER, // requests
-    duration: 1 // per second by IP
+    points: Number.MAX_SAFE_INTEGER, // requests per
+    duration: 1 // seconds by IP
   })
 
   const internals = {
     pluginName,
     redisClient,
     rateLimiter,
+    rateLimiterAuthed,
     rateLimiterWhitelisted,
     noRateLimiter
   }
@@ -130,7 +132,7 @@ module.exports = (runtime) => {
           return internals.rateLimiterWhitelisted
         }
 
-        return internals.rateLimiter
+        return internals.rateLimiterAuthed
       }
     } catch (e) {}
 
