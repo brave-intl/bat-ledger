@@ -89,6 +89,7 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "CAPTCHA_URL=${CAPTCHA_URL-http://captcha-web:3334}"
       - "PORT=3001"
       - "SERVICE=ledger"
       - PUBLISHERS_TAKEOVER
@@ -114,21 +115,18 @@ services:
       - redis
     networks:
       - ledger
-  grant-redis:
-    container_name: grant-redis
-    ports:
-      - "3013:6379"
-    image: redis:latest
-    networks:
-      - ledger
   grant-web:
     container_name: grant-web
     image: brave/bat-go:latest
     ports:
       - "3333:3333"
     environment:
-      - "REDIS_URL=redis://grant-redis:6379"
+      - "DATABASE_URL=postgres://grants:password@grant-postgres/grants?sslmode=disable"
+      - "LEDGER_SERVER=http://ledger-web:3001"
+      - "DATABASE_MIGRATIONS_URL=file:///migrations"
       - BAT_SETTLEMENT_ADDRESS
+      - CHALLENGE_BYPASS_SERVER=http://challenge-bypass:2416
+      - CHALLENGE_BYPASS_TOKEN
       - GRANT_SIGNATOR_PUBLIC_KEY
       - GRANT_WALLET_CARD_ID
       - GRANT_WALLET_PRIVATE_KEY
@@ -136,12 +134,40 @@ services:
       - TOKEN_LIST
       - UPHOLD_ACCESS_TOKEN
     depends_on:
-      - mongo
-      - grant-redis
+      - grant-postgres
+      - challenge-bypass
     networks:
       - ledger
-
-
+  grant-postgres:
+    container_name: grant-postgres
+    image: postgres:10.4
+    environment:
+      - "POSTGRES_USER=grants"
+      - "POSTGRES_PASSWORD=password"
+    networks:
+      - ledger
+  challenge-bypass-postgres:
+    container_name: challenge-bypass-postgres
+    image: postgres:10.4
+    environment:
+      - "POSTGRES_USER=btokens"
+      - "POSTGRES_PASSWORD=password"
+    networks:
+      - ledger
+  challenge-bypass:
+    container_name: challenge-bypass
+    image: brave/challenge-bypass
+    restart: always
+    ports:
+      - "2416:2416"
+    environment:
+      - "SENTRY_DSN"
+      - "DATABASE_URL=postgres://btokens:password@challenge-bypass-postgres/btokens?sslmode=disable"
+      - "DATABASE_MIGRATIONS_URL=file:///src/migrations"
+    depends_on:
+      - challenge-bypass-postgres
+    networks:
+      - ledger
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus

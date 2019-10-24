@@ -28,6 +28,9 @@ const defaultMonthlyChoices = (process.env.DEFAULT_MONTHLY_CHOICES && process.en
 const v1 = {}
 const v2 = {}
 
+// FIXME
+const grantPollthrough = true
+
 const walletStatsList = Joi.array().items(
   Joi.object().keys({
     created: Joi.string().required().description('date the wallets in this cohort were created'),
@@ -98,11 +101,31 @@ const read = function (runtime, apiVersion) {
     if (balances) {
       balances.cardBalance = balances.confirmed
 
-      let { grants } = wallet
-      if (grants) {
-        let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
-        balances.confirmed = new BigNumber(balances.confirmed).plus(total)
-        result.grants = results
+      if (grantPollthrough) {
+        const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/grants/active?paymentId=' + paymentId, {
+          headers: {
+            'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+            'Content-Type': 'application/json'
+          },
+          useProxyP: true
+        })
+        const { grants } = JSON.parse(payload.toString())
+        if (grants.length > 0) {
+          const total = grants.reduce((total, grant) =>  {
+            return total.plus(grant.probi)
+          }, new BigNumber(0))
+          balances.confirmed = new BigNumber(balances.confirmed).plus(total)
+          result.grants = grants.map((grant) => {
+            return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
+          })
+        }
+      } else {
+        let { grants } = wallet
+        if (grants) {
+          let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
+          balances.confirmed = new BigNumber(balances.confirmed).plus(total)
+          result.grants = results
+        }
       }
 
       underscore.extend(result, {
@@ -322,17 +345,31 @@ const write = function (runtime, apiVersion) {
     }
 
     try {
-      result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
+      if (grantPollthrough) {
+        const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/grants/active?paymentId=' + paymentId, {
+          headers: {
+            'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+            'Content-Type': 'application/json'
+          },
+          useProxyP: true
+        })
+        result = JSON.parse(payload.toString())
+        result.grantIds = true
+      } else {
+        result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
+      }
     } catch (err) {
-      const { data } = err
-      if (data) {
-        let { payload } = data
-        payload = payload.toString()
-        if (payload[0] === '{') {
-          payload = JSON.parse(payload)
-          let payloadData = payload.data
-          if (payloadData) {
-            await markGrantsAsRedeemed(payloadData.redeemedIDs)
+      if (!grantPollthrough) {
+        const { data } = err
+        if (data) {
+          let { payload } = data
+          payload = payload.toString()
+          if (payload[0] === '{') {
+            payload = JSON.parse(payload)
+            let payloadData = payload.data
+            if (payloadData) {
+              await markGrantsAsRedeemed(payloadData.redeemedIDs)
+            }
           }
         }
       }
@@ -354,8 +391,13 @@ const write = function (runtime, apiVersion) {
     const grantTotal = result.grantTotal
 
     if (grantIds) { // some grants were redeemed
-      await markGrantsAsRedeemed(grantIds)
-      grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
+      if (!grantPollthrough) {
+        await markGrantsAsRedeemed(grantIds)
+        grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
+      } else {
+        grantCohort = 'grant'
+      }
+
       let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
 
       if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
