@@ -26,7 +26,7 @@ v1.login = {
     const debug = braveHapi.debug(module, request)
 
     try {
-      await checkTeams(runtime, credentials)
+      credentials.scope = await checkTeams(runtime, credentials)
     } catch (e) {
       runtime.notify(debug, {
         channel: '#devops-bot',
@@ -110,20 +110,26 @@ module.exports.checkTeams = checkTeams
 
 async function checkTeams (runtime, credentials) {
   const { organization } = runtime.login.github
+  const scope = []
   const octokit = new Octokit({
     debug: false,
     auth: `token ${credentials.token}`
   })
 
-  const {
-    data: teams
-  } = await octokit.teams.listForAuthenticatedUser({
+  const { data: teams } = await octokit.teams.listForAuthenticatedUser({
     org: organization
   })
 
-  if (!teams.find(({
+  teams.forEach(({
+    name,
     organization: { login }
-  }) => login === organization)) {
+  }) => {
+    if (login === organization) {
+      scope.push(name)
+    }
+  })
+  if (!scope.length) {
     throw boom.forbidden()
   }
+  return scope
 }
