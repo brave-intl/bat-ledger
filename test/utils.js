@@ -1,4 +1,6 @@
 const fs = require('fs')
+const { sign } = require('http-request-signature')
+const crypto = require('crypto')
 const path = require('path')
 const dotenv = require('dotenv')
 dotenv.config()
@@ -10,10 +12,14 @@ const uuidV4 = require('uuid/v4')
 const redis = require('redis')
 const BigNumber = require('bignumber.js')
 const {
-  timeout
+  timeout,
+  uint8tohex
 } = require('bat-utils/lib/extras-utils')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
+const pg = require('pg')
+
+const Pool = pg.Pool
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
@@ -60,6 +66,7 @@ const AUTH_KEY = 'Authorization'
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
 const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
+const grantAgent = agent(process.env.BAT_GRANT_SERVER).set(AUTH_KEY, token)
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -152,16 +159,20 @@ const cleanEyeshadeDb = async (collections) => {
   return cleanDb('eyeshade', collections || eyeshadeCollections)
 }
 
-const cleanRedisDb = async () => {
-  const url = process.env.BAT_GRANT_REDIS_URL
-  const client = redis.createClient(url)
-  await new Promise((resolve, reject) => {
-    client.on('ready', () => {
-      client.flushdb((err) => {
-        err ? reject(err) : resolve()
-      })
-    }).on('error', (err) => reject(err))
-  })
+const cleanGrantDb = async () => {
+  const url = process.env.BAT_GRANT_POSTGRES_URL
+  const pool = new Pool({ connectionString: url, ssl: false })
+  const client = await pool.connect()
+  try {
+    await Promise.all([
+      client.query('DELETE from claim_creds;'),
+      client.query('DELETE from claims;'),
+      client.query('DELETE from wallets;'),
+      client.query('DELETE from promotions;'),
+    ])
+  } finally {
+    client.release()
+  }
 }
 
 module.exports = {
@@ -176,6 +187,7 @@ module.exports = {
   debug,
   status,
   eyeshadeAgent,
+  grantAgent,
   ledgerAgent,
   balanceAgent,
   assertWithinBounds,
@@ -186,9 +198,10 @@ module.exports = {
   cleanPgDb,
   cleanLedgerDb,
   cleanEyeshadeDb,
-  cleanRedisDb,
+  cleanGrantDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
+  setupCreatePayload,
   statsUrl
 }
 
@@ -196,7 +209,7 @@ function cleanDbs () {
   return Promise.all([
     cleanEyeshadeDb(),
     cleanLedgerDb(),
-    cleanRedisDb()
+    cleanGrantDb()
   ])
 }
 
@@ -244,6 +257,35 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
+}
+
+function setupCreatePayload ({
+  surveyorId,
+  viewingId,
+  keypair
+}) {
+  return (unsignedTx) => {
+    const octets = JSON.stringify(unsignedTx)
+    const headers = {
+      digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+    }
+    headers['signature'] = sign({
+      headers: headers,
+      keyId: 'primary',
+      secretKey: uint8tohex(keypair.secretKey)
+    }, {
+      algorithm: 'ed25519'
+    })
+    return {
+      requestType: 'httpSignature',
+      signedTx: {
+        headers: headers,
+        octets: octets
+      },
+      surveyorId: surveyorId,
+      viewingId: viewingId
+    }
+  }
 }
 
 function statsUrl () {

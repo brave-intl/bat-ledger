@@ -28,6 +28,7 @@ import {
   braveYoutubeOwner,
   braveYoutubePublisher,
   createSurveyor,
+  setupCreatePayload,
   debug,
   statsUrl,
   connectToDb
@@ -878,35 +879,6 @@ async function getLedgerBalance (paymentId) {
     })
     .expect(ok)
   return body.probi
-}
-
-function setupCreatePayload ({
-  surveyorId,
-  viewingId,
-  keypair
-}) {
-  return (unsignedTx) => {
-    const octets = JSON.stringify(unsignedTx)
-    const headers = {
-      digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
-    }
-    headers['signature'] = sign({
-      headers: headers,
-      keyId: 'primary',
-      secretKey: uint8tohex(keypair.secretKey)
-    }, {
-      algorithm: 'ed25519'
-    })
-    return {
-      requestType: 'httpSignature',
-      signedTx: {
-        headers: headers,
-        octets: octets
-      },
-      surveyorId: surveyorId,
-      viewingId: viewingId
-    }
-  }
 }
 
 async function createVotingCredentials (t, viewingId) {
