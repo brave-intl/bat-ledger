@@ -813,6 +813,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
     { 'amount': txAmount, 'currency': 'BAT', 'destination': donorCardId },
     true // commit tx in one swoop
   ))
+  console.log('tx amount', txAmount)
 
   const createPayload = setupCreatePayload({
     viewingId,
@@ -856,6 +857,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
     response = await ledgerAgent
       .put('/v2/wallet/' + paymentId)
       .send(justRightPayload)
+    console.log('status', response.status)
   } while (response.status === 503)
   err = ok(response)
   if (err) throw err

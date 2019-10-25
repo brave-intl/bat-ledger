@@ -191,7 +191,6 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
     const { paymentId } = request.query
 
     const { baseUrl } = runtime.config.wreck.grants
-    console.log(runtime.config.wreck)
     if (!baseUrl) {
       throw boom.badGateway('not configured for promotions')
     }
@@ -489,7 +488,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const wallets = runtime.database.get('wallets', debug)
     let promotion, grant, result, state, wallet
 
-    if (!runtime.config.redeemer) {
+    if (!runtime.config.wreck.grants.baseUrl) {
       throw boom.badGateway('not configured for promotions')
     }
 
@@ -499,7 +498,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     if (runtime.config.forward.grants) {
       const platformQp = protocolVersion === 3 ? 'android' : ''
 
-      const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
+      const payload = await braveHapi.wreck.get(runtime.config.wreck.grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
         headers: {
           'Content-Type': 'application/json'
         },
@@ -538,6 +537,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       throw boom.notFound('promotion is not active: ' + promotionId)
     }
 
+    console.log('available', adsAvailable, promotion.type)
     if (adsAvailable && (!promotion.type || promotion.type === 'ugp' || promotion.type === 'android')) {
       throw boom.badRequest('claim from this area is not allowed')
     }
