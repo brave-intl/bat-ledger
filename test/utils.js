@@ -20,6 +20,7 @@ const debug = new SDebug('test')
 const Pool = pg.Pool
 const Server = require('bat-utils/lib/hapi-server')
 const { Runtime } = require('bat-utils')
+const globalConfig = require('../config')
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
@@ -343,37 +344,28 @@ function readJSONFile (...paths) {
 
 async function setupForwardingServer ({
   routes,
-  wreck,
+  config,
+  initers = [],
   token
 }) {
-  const runtime = new Runtime({
-    sentry: {},
-    server: {},
-    login: { github: false },
-    cache: {
-      redis: {
-        url: process.env.BAT_REDIS_URL
-      }
-    },
-    forward: {
-      grants: '1'
-    },
-    wreck: _.assign({
-      grants: {
-        baseUrl: process.env.BAT_GRANT_SERVER
-      }
-    }, wreck)
-  })
+  const conf = _.extend({}, globalConfig, config)
   const serverOpts = {
     id: uuidV4(),
+    headersP: false,
+    remoteP: false,
     routes: {
       routes: (debug, runtime, options) => {
         return _.toArray(routes).map((route) => route(runtime))
       }
     }
   }
+  const runtime = new Runtime(conf)
   const server = await Server(serverOpts, runtime)
   await server.started
+  const debug = new SDebug('init')
+  for (let i = 0; i < initers.length; i += 1) {
+    await initers[i](debug, runtime)
+  }
   return agentAutoAuth(server.listener, token)
 }
 

@@ -224,7 +224,6 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
       throw boom.notFound('promotion not available')
     }
 
-    console.log(filteredPromotions)
     if (protocolVersion < 4) {
       return filteredPromotions[0]
     }
