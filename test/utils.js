@@ -1,4 +1,5 @@
 const fs = require('fs')
+const redis = require('redis')
 const { sign } = require('http-request-signature')
 const crypto = require('crypto')
 const path = require('path')
@@ -176,6 +177,7 @@ const cleanGrantDb = async () => {
 }
 
 module.exports = {
+  cleanRedeemerRedisDb,
   setupForwardingServer,
   agentAutoAuth,
   readJSONFile,
@@ -211,7 +213,8 @@ function cleanDbs () {
   return Promise.all([
     cleanEyeshadeDb(),
     cleanLedgerDb(),
-    cleanGrantDb()
+    cleanGrantDb(),
+    cleanRedeemerRedisDb()
   ])
 }
 
@@ -371,4 +374,16 @@ async function setupForwardingServer ({
 
 function agentAutoAuth (listener, token) {
   return agent(listener).set(AUTH_KEY, `Bearer ${token || tkn}`)
+}
+
+async function cleanRedeemerRedisDb () {
+  const url = process.env.BAT_REDEEMER_REDIS_URL
+  const client = redis.createClient(url)
+  await new Promise((resolve, reject) => {
+    client.on('ready', () => {
+      client.flushdb((err) => {
+        err ? reject(err) : resolve()
+      })
+    }).on('error', (err) => reject(err))
+  })
 }
