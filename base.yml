@@ -21,6 +21,7 @@ services:
       - "FASTLY_TOKEN_LIST=foobarfoobar"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
+      - "GRANT_SERVER=http://grant-web:3333"
       - "LEDGER_URL=${LEDGER_URL-http://ledger-web:3001}"
       - "MONGODB_URI=${MONGODB_URI-mongodb://mongo/ledger}"
       - "NODE_ENV=${NODE_ENV-development}"

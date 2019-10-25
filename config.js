@@ -110,6 +110,11 @@ module.exports =
   forward: {
     grants: process.env.FORWARD_TO_GRANTS || false
   },
+  wreck: {
+    grants: {
+      baseUrl: process.env.GRANT_SERVER
+    }
+  },
   altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :

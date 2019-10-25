@@ -27,7 +27,18 @@ import {
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
 
-import { routes } from '../../ledger/controllers/grants'
+import {
+  routes as grantsRoutes,
+  initialize as grantsInitializer
+} from '../../ledger/controllers/grants'
+import {
+  routes as registrarRoutes,
+  initialize as registrarInitializer
+} from '../../ledger/controllers/registrar'
+import {
+  routes as walletRoutes,
+  initialize as walletInitializer
+} from '../../ledger/controllers/wallet'
 
 test.before(cleanDbs)
 test.after(cleanDbs)
@@ -57,7 +68,13 @@ async function createPromotion (type, platform, active) {
 test.before(async (t) => {
   const ledgerServer = await setupForwardingServer({
     token: null,
-    routes
+    routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
+    initers: [grantsInitializer, registrarInitializer, walletInitializer],
+    config: {
+      forward: {
+        grants: '1'
+      }
+    }
   })
   t.context.createPromotion = createPromotion
   t.context.grants = grantAgent

@@ -157,7 +157,6 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
     })
   } catch (e) {
     try {
-      console.log(e.data.payload.toString())
       const errPayload = JSON.parse(e.data.payload.toString())
       throw boom.badData(errPayload.message)
     } catch (ex) {
@@ -225,7 +224,6 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
       throw boom.notFound('promotion not available')
     }
 
-    console.log(filteredPromotions)
     if (protocolVersion < 4) {
       return filteredPromotions[0]
     }
