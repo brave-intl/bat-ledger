@@ -96,15 +96,12 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
-      console.log('card balance', balances.confirmed)
       balances.cardBalance = balances.confirmed
 
       if (runtime.config.forward.grants) {
-        const payload = await braveHapi.wreck.get(runtime.config.redeemer.url + '/v1/grants/active?paymentId=' + paymentId, {
-          headers: {
-            'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-            'Content-Type': 'application/json'
-          },
+        const { grants: grantsConfig } = runtime.config.wreck
+        const payload = await braveHapi.wreck.get(grantsConfig.baseUrl + '/v1/grants/active?paymentId=' + paymentId, {
+          headers: grantsConfig.headers,
           useProxyP: true
         })
         const { grants } = JSON.parse(payload.toString())
@@ -119,11 +116,8 @@ const read = function (runtime, apiVersion) {
         }
       } else {
         let { grants } = wallet
-        console.log('grants', grants && grants.length)
         if (grants) {
-          console.log('grants', grants)
           let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
-          console.log('balances', balances.confirmed.toString(), total.toString())
           balances.confirmed = new BigNumber(balances.confirmed).plus(total)
           result.grants = results
         }
@@ -353,11 +347,9 @@ const write = function (runtime, apiVersion) {
           transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, [ 'headers', 'octets' ]))).toString('base64')
         }
         try {
-          const payload = await braveHapi.wreck.post(runtime.config.wreck.grants.baseUrl + '/v1/grants', {
-            headers: {
-              'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-              'Content-Type': 'application/json'
-            },
+          const { grants } = runtime.config.wreck
+          const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants', {
+            headers: grants.headers,
             payload: JSON.stringify(redeemPayload),
             useProxyP: true
           })

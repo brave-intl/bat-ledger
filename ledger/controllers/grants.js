@@ -497,11 +497,9 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
     if (runtime.config.forward.grants) {
       const platformQp = protocolVersion === 3 ? 'android' : ''
-
-      const payload = await braveHapi.wreck.get(runtime.config.wreck.grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
+      const { grants } = runtime.config.wreck
+      const payload = await braveHapi.wreck.get(grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
+        headers: grants.headers,
         useProxyP: true
       })
       const promotions = JSON.parse(payload.toString()).promotions
@@ -537,7 +535,6 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       throw boom.notFound('promotion is not active: ' + promotionId)
     }
 
-    console.log('available', adsAvailable, promotion.type)
     if (adsAvailable && (!promotion.type || promotion.type === 'ugp' || promotion.type === 'android')) {
       throw boom.badRequest('claim from this area is not allowed')
     }
@@ -563,11 +560,9 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
 
       let payload
       try {
-        payload = await braveHapi.wreck.post(runtime.config.redeemer.url + '/v1/grants/claim', {
-          headers: {
-            'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-            'Content-Type': 'application/json'
-          },
+        const { grants } = runtime.config.wreck
+        payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/claim', {
+          headers: grants.headers,
           payload: JSON.stringify(claimPayload),
           useProxyP: true
         })

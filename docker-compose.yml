@@ -115,11 +115,36 @@ services:
       - redis
     networks:
       - ledger
-  grant-web:
-    container_name: grant-web
+  redeemer-redis:
+    container_name: redeemer-redis
+    ports:
+      - "3013:6379"
+    image: redis:latest
+    networks:
+      - ledger
+  redeemer-web:
+    container_name: redeemer-web
     image: brave/bat-go:latest
     ports:
-      - "3333:3333"
+      - "3335:3333"
+    environment:
+      - "REDIS_URL=redis://redeemer-redis:6379"
+      - BAT_SETTLEMENT_ADDRESS
+      - "GRANT_SIGNATOR_PUBLIC_KEY=${REDEEMER_SIGNATOR_PUBLIC_KEY}"
+      - "GRANT_WALLET_CARD_ID=${REDEEMER_WALLET_CARD_ID}"
+      - "GRANT_WALLET_PRIVATE_KEY=${REDEEMER_WALLET_PRIVATE_KEY}"
+      - "GRANT_WALLET_PUBLIC_KEY=${REDEEMER_WALLET_PUBLIC_KEY}"
+      - TOKEN_LIST
+      - UPHOLD_ACCESS_TOKEN
+    depends_on:
+      - redeemer-redis
+    networks:
+      - ledger
+  grant-web:
+    container_name: grant-web
+    image: brave/bat-go:grants
+    ports:
+      - "3336:3333"
     environment:
       - "DATABASE_URL=postgres://grants:password@grant-postgres/grants?sslmode=disable"
       - "LEDGER_SERVER=http://ledger-web:3001"
@@ -144,6 +169,8 @@ services:
     environment:
       - "POSTGRES_USER=grants"
       - "POSTGRES_PASSWORD=password"
+    ports:
+      - "3014:5432"
     networks:
       - ledger
   challenge-bypass-postgres:
