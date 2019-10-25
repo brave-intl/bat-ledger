@@ -189,12 +189,7 @@ const getGrant = (protocolVersion) => (runtime) => {
 
 const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
   return async (request, h) => {
-    const {
-      // lang,
-      paymentId
-      // ,
-      // bypassCooldown
-    } = request.query
+    const { paymentId } = request.query
 
     const { baseUrl } = runtime.config.wreck.grants
     console.log(runtime.config.wreck)
@@ -568,14 +563,20 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
         promotionId
       }
 
-      const payload = await braveHapi.wreck.post(runtime.config.redeemer.url + '/v1/grants/claim', {
-        headers: {
-          'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-          'Content-Type': 'application/json'
-        },
-        payload: JSON.stringify(claimPayload),
-        useProxyP: true
-      })
+      let payload
+      try {
+        payload = await braveHapi.wreck.post(runtime.config.redeemer.url + '/v1/grants/claim', {
+          headers: {
+            'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
+            'Content-Type': 'application/json'
+          },
+          payload: JSON.stringify(claimPayload),
+          useProxyP: true
+        })
+      } catch (ex) {
+        console.log(ex.data.payload.toString())
+        throw ex
+      }
       const { approximateValue } = JSON.parse(payload.toString())
 
       const BATtoProbi = runtime.currency.alt2scale('BAT')

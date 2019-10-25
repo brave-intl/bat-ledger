@@ -265,6 +265,8 @@ test('grants: redeem promotions', async t => {
   response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true&amount=15.0&altcurrency=BAT`)
     .expect(200)
   const { unsignedTx } = response.body
+  t.is(response.body.grants.length, 1)
+  t.true(new BigNumber(response.body.balance).equals('15.0'))
 
   const viewingId = uuidV4().toLowerCase()
   const surveyorId = (await createSurveyor({ rate: 1, votes: 12 })).body.surveyorId
@@ -287,6 +289,12 @@ test('grants: redeem promotions', async t => {
   } while (response.status === 503)
   const err = ok(response)
   if (err) throw err
+
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true`)
+    .expect(200)
+  const walletInfo = response.body
+  t.is(walletInfo.grants, undefined)
+  t.true(new BigNumber(walletInfo.balance).equals('0.0'))
 })
 
 /*
