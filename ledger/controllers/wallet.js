@@ -339,45 +339,47 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    try {
-      if (runtime.config.forward.grants) {
-        const infoKeys = [ 'altcurrency', 'provider', 'providerId', 'paymentId' ]
-        const redeemPayload = {
-          wallet: underscore.extend(underscore.pick(wallet, infoKeys), { publicKey: wallet.httpSigningPubKey }),
-          transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, [ 'headers', 'octets' ]))).toString('base64')
+    if (!runtime.config.disable.grants) {
+      try {
+        if (runtime.config.forward.grants) {
+          const infoKeys = [ 'altcurrency', 'provider', 'providerId', 'paymentId' ]
+          const redeemPayload = {
+            wallet: underscore.extend(underscore.pick(wallet, infoKeys), { publicKey: wallet.httpSigningPubKey }),
+            transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, [ 'headers', 'octets' ]))).toString('base64')
+          }
+          try {
+            const { grants } = runtime.config.wreck
+            const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants', {
+              headers: grants.headers,
+              payload: JSON.stringify(redeemPayload),
+              useProxyP: true
+            })
+            result = JSON.parse(payload.toString())
+            result.grantIds = true
+          } catch (ex) {
+            console.log(ex.data.payload.toString())
+            throw ex
+          }
+        } else {
+          result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
         }
-        try {
-          const { grants } = runtime.config.wreck
-          const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants', {
-            headers: grants.headers,
-            payload: JSON.stringify(redeemPayload),
-            useProxyP: true
-          })
-          result = JSON.parse(payload.toString())
-          result.grantIds = true
-        } catch (ex) {
-          console.log(ex.data.payload.toString())
-          throw ex
-        }
-      } else {
-        result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
-      }
-    } catch (err) {
-      if (!runtime.config.forward.grants) {
-        const { data } = err
-        if (data) {
-          let { payload } = data
-          payload = payload.toString()
-          if (payload[0] === '{') {
-            payload = JSON.parse(payload)
-            let payloadData = payload.data
-            if (payloadData) {
-              await markGrantsAsRedeemed(payloadData.redeemedIDs)
+      } catch (err) {
+        if (!runtime.config.forward.grants) {
+          const { data } = err
+          if (data) {
+            let { payload } = data
+            payload = payload.toString()
+            if (payload[0] === '{') {
+              payload = JSON.parse(payload)
+              let payloadData = payload.data
+              if (payloadData) {
+                await markGrantsAsRedeemed(payloadData.redeemedIDs)
+              }
             }
           }
         }
+        throw boom.boomify(err)
       }
-      throw boom.boomify(err)
     }
 
     if (!result) {

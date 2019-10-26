@@ -179,6 +179,9 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
  */
 
 const getGrant = (protocolVersion) => (runtime) => {
+  if (runtime.config.disable.grants) {
+    throw boom.serverUnavailable()
+  }
   if (runtime.config.forward.grants) {
     return getPromotionsFromGrantServer(protocolVersion)(runtime)
   } else {
@@ -487,6 +490,10 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
     let promotion, grant, result, state, wallet
+
+    if (runtime.config.disable.grants) {
+      throw boom.serverUnavailable()
+    }
 
     if (!runtime.config.wreck.grants.baseUrl) {
       throw boom.badGateway('not configured for promotions')
