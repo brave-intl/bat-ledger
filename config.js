@@ -106,7 +106,13 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
 })
 
 module.exports =
-{ altcurrency           : process.env.ALTCURRENCY               || 'BAT'
+{
+  kafka: {
+    connection: {
+      id: process.env.SERVICE + '.' + (process.env.DYNO || 1)
+    }
+  },
+  altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :
     { url               : process.env.REDIS_URL                 || 'redis://localhost:6379' }
