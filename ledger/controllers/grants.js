@@ -584,6 +584,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
         'altcurrency': 'BAT',
         'probi': new BigNumber(approximateValue).times(BATtoProbi).toString(),
         'expiryTime': Math.round(new Date(promotion.expiresAt).getTime() / 1000),
+        'providerId': wallet.ProviderId,
         'type': promotion.type
       }
     } else {
