@@ -9,6 +9,7 @@ import {
   debug,
   status,
   cleanDbs,
+  setupForwardingServer,
   ledgerAgent
 } from '../utils'
 import {
@@ -19,11 +20,22 @@ import {
 } from 'bat-utils'
 import BigNumber from 'bignumber.js'
 import {
-  compositeGrants
-} from '../../ledger/controllers/wallet'
-import {
   createComposite
 } from '../../ledger/lib/wallet'
+
+import {
+  routes as grantsRoutes,
+  initialize as grantsInitializer
+} from '../../ledger/controllers/grants'
+import {
+  routes as registrarRoutes,
+  initialize as registrarInitializer
+} from '../../ledger/controllers/registrar'
+import {
+  compositeGrants,
+  routes as walletRoutes,
+  initialize as walletInitializer
+} from '../../ledger/controllers/wallet'
 
 const statsURL = '/v2/wallet/stats'
 const frozenDay = today()
@@ -37,6 +49,29 @@ const runtime = new Runtime({
 })
 
 test.afterEach.always(cleanDbs)
+
+test.before(async (t) => {
+  const {
+    agent,
+    runtime
+  } = await setupForwardingServer({
+    token: null,
+    routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
+    initers: [grantsInitializer, registrarInitializer, walletInitializer],
+    config: {
+      postgres: {
+        url: process.env.BAT_GRANT_POSTGRES_URL
+      },
+      forward: {
+        grants: '1'
+      }
+    }
+  })
+  t.context.runtime = runtime
+  // t.context.createPromotion = createPromotion
+  // t.context.grants = grantAgent
+  t.context.ledger = agent
+})
 
 test('a stats endpoint exists', async (t) => {
   const url = `${statsURL}/${frozenDay.toISOString()}`
@@ -202,6 +237,53 @@ test('compositing wallet grant information', async (t) => {
   })
   t.deepEqual(expectedUgp, compositedUgp, 'a composite is created correctly')
   t.deepEqual(expectedUgp, bodyUgp, 'a composite is responded with')
+})
+
+test('stats get forwarded from grants server', async (t) => {
+  // backfill grants db
+//   const postgres = new pg.Pool({
+//     connectionString: process.env.DATABASE_URL,
+//     ssl: false
+//   })
+//   const client = await postgres.connect()
+  const pid1 = '76e24dda-dbaf-41ad-ab7e-67bd8e8f5a69'
+  const pid2 = '0f6d6fad-7f87-4fbd-a4ae-3110b28b6a68'
+  const { postgres } = t.context.runtime
+  await postgres.query(`
+insert into promotions (id, promotion_type, expires_at, version, suggestions_per_grant, approximate_value, remaining_grants, platform, active)
+values('fecd782e-819c-489f-acbb-0f08bf2164a4', 'ugp', '2020-02-23 09:52:54.956206+00', 5, 60, 15.000000000000000000, 1000, '', true );`)
+  await postgres.query(`
+insert into wallets (id, provider, provider_id, public_key)
+values($1, 'uphold', 'ffd92163-ba67-4008-98e5-b2bc34522234', 'b9e11df051019746937e7f0176800b5714b6fcc803992e0694603e95d5884e38'),
+      ($2, 'uphold', 'd8369b74-60ca-4cb3-98b0-d515161469a1', '1ad78b16065b4b74ba5382ca93276afb39889d196f860a75e911c56b5f2cdf0f');`, [pid1, pid2])
+  await postgres.query(`
+insert into claims (id, created_at, promotion_id, wallet_id, approximate_value, bonus, legacy_claimed, redeemed)
+values('044633b4-20d2-4f10-be60-1fb2a5c0a6d2', '2019-10-23 15:54:12.5065+00', 'fecd782e-819c-489f-acbb-0f08bf2164a4', $1, 5, 2, false, true);
+`, [pid1])
+
+  await t.context.ledger
+    .get(`/v2/wallet/${uuidV4()}/grants/ugp`)
+    .expect(404)
+
+  const {
+    text: emptyResponse
+  } = await t.context.ledger
+    .get(`/v2/wallet/${pid2}/grants/ugp`)
+    .expect(204)
+  t.deepEqual('', emptyResponse, 'empty matches expected')
+
+  const {
+    body
+  } = await t.context.ledger
+    .get(`/v2/wallet/${pid1}/grants/ugp`)
+    .expect(ok)
+  // grants response
+  // {"earnings": "3","lastClaim": "2019-10-22T21:15:22.032885Z","type": "ugp"}
+  t.deepEqual({
+    amount: '3',
+    lastClaim: '2019-10-23T15:54:12.5065Z',
+    type: 'ugp'
+  }, body, 'response should match expected')
 })
 
 test('wallet endpoint returns default tip choices', async (t) => {

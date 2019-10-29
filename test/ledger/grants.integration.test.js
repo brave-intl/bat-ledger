@@ -64,7 +64,7 @@ async function createPromotion (type, platform, active) {
 }
 
 test.before(async (t) => {
-  const ledgerServer = await setupForwardingServer({
+  const { agent } = await setupForwardingServer({
     token: null,
     routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
     initers: [grantsInitializer, registrarInitializer, walletInitializer],
@@ -76,7 +76,7 @@ test.before(async (t) => {
   })
   t.context.createPromotion = createPromotion
   t.context.grants = grantAgent
-  t.context.ledger = ledgerServer
+  t.context.ledger = agent
 })
 
 test('grants: fetch available promotions', async t => {
