@@ -47,7 +47,7 @@ GROUP BY channel;
 
 v1.getTransactions =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const account = request.params.account
     const query1 = `select
   created_at,
@@ -67,12 +67,10 @@ ORDER BY created_at
     const result = await runtime.postgres.query(query1, [ account ])
     const transactions = result.rows
 
-    const txs = _.map(transactions, (tx) => {
+    return _.map(transactions, (tx) => {
       const omitted = _.omit(tx, (value) => value == null)
       return Object.assign({ channel: '' }, omitted)
     })
-
-    reply(txs)
   }
 },
 
@@ -118,7 +116,7 @@ response: {
 
 v1.getTopBalances =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     let { limit } = request.query
     const { type } = request.params
 
@@ -128,8 +126,8 @@ v1.getTopBalances =
     ORDER BY balance DESC
     LIMIT $2;`
 
-    const transactions = await runtime.postgres.query(query1, [ type, limit ])
-    reply(transactions.rows)
+    const { rows } = await runtime.postgres.query(query1, [ type, limit ])
+    return rows
   }
 },
 
@@ -168,13 +166,13 @@ response: {
 */
 
 v1.getBalances = {
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     let {
       account: accounts,
       pending: includePending
     } = request.query
     if (!accounts) {
-      return reply(boom.badData())
+      throw boom.badData()
     }
 
     if (!Array.isArray(accounts)) {
@@ -201,7 +199,7 @@ v1.getBalances = {
     const balanceRows = results[1].rows
     const body = votesRows.reduce(mergeVotes, balanceRows)
 
-    reply(body)
+    return body
   },
 
   auth: {
@@ -265,7 +263,7 @@ function mergeVotes (_memo, {
 
 v1.getEarningsTotals =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     let { type } = request.params
     let {
       order,
@@ -277,15 +275,15 @@ v1.getEarningsTotals =
     } else if (type === 'referrals') {
       type = 'referral'
     } else {
-      return reply(boom.badData('type must be contributions or referrals'))
+      throw boom.badData('type must be contributions or referrals')
     }
 
     const query1 = queries.earnings({
       asc: order === 'asc'
     })
 
-    const amounts = await runtime.postgres.query(query1, [type, limit])
-    reply(amounts.rows)
+    const { rows } = await runtime.postgres.query(query1, [type, limit])
+    return rows
   }
 },
 
@@ -326,7 +324,7 @@ response: {
 
 v1.getPaidTotals =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const { params, query } = request
     const { postgres } = runtime
     let { type } = params
@@ -359,7 +357,7 @@ v1.getPaidTotals =
       const query = queries.allSettlements(options)
       ;({ rows } = await postgres.query(query, [type, limit]))
     }
-    reply(rows)
+    return rows
   }
 },
 
@@ -400,7 +398,7 @@ response: {
   PUT /v1/accounts/{payment_id}/transactions/ads/{token_id}
 */
 v1.adTransactions = {
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     const {
       params,
       payload
@@ -409,20 +407,20 @@ v1.adTransactions = {
     const { amount } = payload
 
     if (typeof process.env.ENABLE_ADS_PAYOUT === 'undefined') {
-      return reply(boom.serverUnavailable())
+      throw boom.serverUnavailable()
     }
     if (amount <= 0) {
-      return reply(boom.badData('amount must be greater than 0'))
+      throw boom.badData('amount must be greater than 0')
     }
 
     try {
       await transactions.insertFromAd(runtime, postgres, Object.assign({}, params, { amount }))
-      reply({})
+      return {}
     } catch (e) {
       if (e.code && e.code === '23505') { // Unique constraint violation
-        reply(boom.conflict('Transaction with that id exists, updates are not allowed'))
+        throw boom.conflict('Transaction with that id exists, updates are not allowed')
       } else {
-        throw e
+        throw boom.boomify(e)
       }
     }
   },

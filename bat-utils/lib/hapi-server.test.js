@@ -32,15 +32,13 @@ test('hapi throws', async (t) => {
         return {
           method: 'GET',
           path: '/throwing-test',
-          handler: async (request, reply) => {
+          handler: async (request, h) => {
             throw new Error(message)
           }
         }
       }
     }
   }, runtime)
-
-  await server.started
 
   await supertest(server.listener).get('/throwing-test').send().expect(500)
 

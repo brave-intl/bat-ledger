@@ -85,21 +85,21 @@ const fieldValidator = Joi.string().description('whether the field should be inc
 
 v1.findReferrals = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const transactionId = request.params.transactionId
       const debug = braveHapi.debug(module, request)
       const transactions = runtime.database.get('referrals', debug)
-      let entries, results
+      let entries
 
       entries = await transactions.find({ transactionId: transactionId })
-      if (entries.length === 0) return reply(boom.notFound('no such transaction-identifier: ' + transactionId))
+      if (entries.length === 0) {
+        throw boom.notFound('no such transaction-identifier: ' + transactionId)
+      }
 
-      results = []
-      entries.forEach((entry) => {
-        results.push(underscore.extend({ channelId: entry.publisher },
-          underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ])))
+      return entries.map((entry) => {
+        return underscore.extend({ channelId: entry.publisher },
+          underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ]))
       })
-      reply(results)
     }
   },
 
@@ -138,7 +138,7 @@ v1.getReferralGroups = {
 
     const { rows } = await runtime.postgres.query(statement)
 
-    reply(rows.map((row) => _.pick(row, allFields)))
+    return rows.map((row) => _.pick(row, allFields))
   },
 
   auth: {
@@ -202,7 +202,7 @@ v1.getReferralsStatement = {
       referralCode: 1
     })
     const scale = currency.alt2scale('BAT')
-    const mappedRefs = refs.map(({
+    return refs.map(({
       publisher,
       groupId,
       referralCode,
@@ -218,7 +218,6 @@ v1.getReferralsStatement = {
         amount: bat.toString()
       }
     })
-    reply(mappedRefs)
   },
 
   auth: {
@@ -282,7 +281,7 @@ v1.createReferrals = {
           id: groupId
         })
         if (!config) {
-          return reply(boom.notFound('referral group not found'))
+          throw boom.notFound('referral group not found')
         }
         const {
           amount: groupAmount,
@@ -340,7 +339,7 @@ v1.createReferrals = {
       })
       prometheus.getMetric('referral_received_counter').inc(bulkResult.upsertedCount)
 
-      reply({})
+      return {}
     }
   },
 

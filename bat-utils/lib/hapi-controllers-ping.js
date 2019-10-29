@@ -1,5 +1,5 @@
 const Joi = require('@hapi/joi')
-const underscore = require('underscore')
+const _ = require('underscore')
 
 const braveHapi = require('./extras-hapi')
 const npminfo = require('../npminfo')
@@ -11,11 +11,7 @@ const v1 = {}
  */
 
 v1.ping = {
-  handler: (runtime) => {
-    return async (request, reply) => {
-      reply(underscore.omit(npminfo, [ 'dependencies' ]))
-    }
-  },
+  handler: (runtime) => async (request, h) => _.omit(npminfo, [ 'dependencies' ]),
 
   auth: {
     strategy: 'session',

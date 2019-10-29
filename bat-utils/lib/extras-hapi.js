@@ -71,6 +71,11 @@ AsyncRoute.prototype.get = function () {
   return this
 }
 
+AsyncRoute.prototype.method = function (method) {
+  this.internal.method = method
+  return this
+}
+
 AsyncRoute.prototype.post = function () {
   this.internal.method = 'POST'
   return this
@@ -113,7 +118,7 @@ AsyncRoute.prototype.config = function (config) {
   if (typeof config.handler === 'undefined') { throw new Error('undefined handler for ' + JSON.stringify(this.internal)) }
 
   return (runtime) => {
-    const payload = { handler: { async: config.handler(runtime) } }
+    const payload = { handler: config.handler(runtime) }
 
     underscore.keys(config).forEach(key => {
       if ((key !== 'handler') && (typeof config[key] !== 'undefined')) payload[key] = config[key]
@@ -122,7 +127,7 @@ AsyncRoute.prototype.config = function (config) {
     return {
       method: this.internal.method,
       path: this.internal.path,
-      config: underscore.extend(payload, this.internal.extras)
+      options: underscore.extend(payload, this.internal.extras)
     }
   }
 }

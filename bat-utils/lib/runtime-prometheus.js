@@ -172,29 +172,31 @@ function registerMetrics (prometheus) {
 Prometheus.prototype.plugin = function () {
   const { register } = this
   const plugin = {
-    register: (server, o, done) => {
+    name: 'runtime-prometheus',
+    version: '1.0.0',
+    register: async (server, o) => {
       server.route({
         method: 'GET',
         path: '/metrics',
-        handler: async (req, reply) => {
+        handler: async (req, h) => {
           const registry = this.allMetrics()
           const metrics = registry.metrics()
-          reply(metrics).type('text/plain')
+          return h.response(metrics).type('text/plain')
         }
       })
 
       server.route({
         method: 'GET',
         path: '/metrics-internal',
-        handler: (req, reply) => reply(register.metrics()).type('text/plain')
+        handler: (req, h) => h.response(register.metrics()).type('text/plain')
       })
 
-      server.ext('onRequest', (request, reply) => {
+      server.ext('onRequest', (request, h) => {
         request.prometheus = { start: process.hrtime() }
-        reply.continue()
+        return h.continue
       })
 
-      server.on('response', (response) => {
+      server.events.on('response', (response) => {
         const analysis = response._route._analysis
         const statusCode = response.response.statusCode
         let cardinality, method, params, path
@@ -218,13 +220,7 @@ Prometheus.prototype.plugin = function () {
       })
 
       this.maintenance()
-      return done()
     }
-  }
-
-  plugin.register.attributes = {
-    name: 'runtime-prometheus',
-    version: '1.0.0'
   }
 
   return plugin

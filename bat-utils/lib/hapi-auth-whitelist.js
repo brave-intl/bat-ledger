@@ -52,37 +52,27 @@ exports.validateHops = validateHops
 exports.invalidHops = invalidHops
 exports.forwardedIPShift = forwardedIPShift
 
-exports.authenticate = (request, reply) => {
+exports.authenticate = (request, h) => {
   const ipaddr = exports.ipaddr(request)
-  let result
 
   if ((authorizedAddrs) &&
         (authorizedAddrs.indexOf(ipaddr) === -1) &&
-        (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) return reply(boom.notAcceptable())
+        (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) return boom.notAcceptable()
 
-  try {
-    validateHops(request)
-  } catch (e) {
-    return reply(e)
-  }
+  validateHops(request)
 
-  try {
-    result = reply.continue({ credentials: { ipaddr: ipaddr } })
-  } catch (ex) {
-    /* something odd with reply.continue not allowing any arguments... */
-    result = reply.continue()
+  if (h.authenticated) {
+    return h.authenticated({ credentials: { ipaddr } })
   }
-  return result
+  return h.continue
 }
 
-exports.register = (server, options, next) => {
-  server.auth.scheme('whitelist', internals.implementation)
-  server.auth.strategy('whitelist', 'whitelist', {})
-  next()
-}
-
-exports.register.attributes = {
-  pkg: require(path.join(__dirname, '..', 'package.json'))
+exports.plugin = {
+  pkg: require(path.join(__dirname, '..', 'package.json')),
+  register: (server, options) => {
+    server.auth.scheme('whitelist', internals.implementation)
+    server.auth.strategy('whitelist', 'whitelist', {})
+  }
 }
 
 function invalidHops (err) {

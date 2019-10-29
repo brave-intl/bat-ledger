@@ -22,6 +22,7 @@ const parentModules = [
 Runtime.newrelic.setupNewrelic(config, __filename)
 
 const options = {
+  port: process.env.PORT,
   parentModules,
   routes: controllers.index,
   controllers: controllers,

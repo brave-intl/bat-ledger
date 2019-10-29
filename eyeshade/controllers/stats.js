@@ -21,7 +21,7 @@ const v1 = {}
 */
 
 v1.grantsStats = {
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     const { params } = request
     const { type } = params
     const client = await runtime.postgres.connect()
@@ -30,9 +30,9 @@ v1.grantsStats = {
     }, extrasUtils.backfillDateRange(params))
     try {
       const stats = await grantsLib.stats(runtime, client, options)
-      reply(sanitize(stats))
+      return sanitize(stats)
     } catch (e) {
-      reply(boom.boomify(e))
+      throw boom.boomify(e)
     } finally {
       await client.release()
     }
@@ -62,7 +62,7 @@ v1.grantsStats = {
 */
 
 v1.settlementsStats = {
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     const { params, query } = request
     const { settlement_currency: settlementCurrency } = query
     const { type } = params
@@ -78,9 +78,9 @@ v1.settlementsStats = {
       } else {
         stats = await transactionsLib.allSettlementStats(runtime, client, options)
       }
-      reply(sanitize(stats))
+      return sanitize(stats)
     } catch (e) {
-      reply(boom.boomify(e))
+      throw boom.boomify(e)
     } finally {
       await client.release()
     }

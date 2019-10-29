@@ -41,7 +41,7 @@ module.exports.configuration = {
 
 v2.walletBalance =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const paymentId = request.params.paymentId
     let fresh = false
     const { wallet, link } = cacheConfig
@@ -56,24 +56,19 @@ v2.walletBalance =
         walletInfo = await braveHapi.wreck.get(url, { useProxyP: true })
         if (Buffer.isBuffer(walletInfo)) walletInfo = JSON.parse(walletInfo)
       } catch (ex) {
-        if (ex.isBoom) {
-          return reply(ex)
-        } else {
-          return reply(boom.boomify(ex))
-        }
+        throw boom.boomify(ex)
       }
       fresh = true
     }
 
-    const balances = underscore.pick(walletInfo, ['altcurrency', 'probi', 'cardBalance', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants'])
-
-    reply(balances)
-
     if (fresh) {
-      let cardId = accessCardId(walletInfo)
-      runtime.cache.set(cardId, paymentId, {}, link)
-      runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
+      setTimeout(() => {
+        let cardId = accessCardId(walletInfo)
+        runtime.cache.set(cardId, paymentId, {}, link)
+        runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
+      })
     }
+    return underscore.pick(walletInfo, ['altcurrency', 'probi', 'cardBalance', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants'])
   }
 },
 
@@ -111,12 +106,12 @@ response: {
 
 v2.invalidateWalletBalance =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const paymentId = request.params.paymentId
 
     await runtime.cache.del(paymentId, cacheConfig.wallet)
 
-    reply({})
+    return {}
   }
 },
 auth: {
@@ -143,7 +138,7 @@ response: { schema: Joi.object().length(0) }
 
 v2.invalidateCardBalance =
 { handler: (runtime) => {
-  return async (request, reply) => {
+  return async (request, h) => {
     const hapiPayload = request.payload
     const upholdPayload = hapiPayload.payload
     const cardId = upholdPayload.id
@@ -159,7 +154,7 @@ v2.invalidateCardBalance =
       await cache.del(paymentId, wallet)
     }
 
-    reply({})
+    return {}
   }
 },
 plugins,
