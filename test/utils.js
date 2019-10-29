@@ -369,7 +369,11 @@ async function setupForwardingServer ({
   for (let i = 0; i < initers.length; i += 1) {
     await initers[i](debug, runtime)
   }
-  return agentAutoAuth(server.listener, token)
+  const agent = agentAutoAuth(server.listener, token)
+  return {
+    runtime,
+    agent
+  }
 }
 
 function agentAutoAuth (listener, token) {

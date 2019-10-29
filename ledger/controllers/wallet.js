@@ -989,10 +989,57 @@ function claimWalletHandler (runtime) {
   }
 }
 
+function walletGrantsInfoHandlerFWD (runtime) {
+  return async (request, h) => {
+    const debug = braveHapi.debug(module, request)
+    try {
+      let {
+        res,
+        payload
+      } = await compositeGrantsFWD(debug, runtime, request.params)
+      const { statusCode } = res
+      payload = payload.toString()
+      if (statusCode === 204) {
+        return h.response({}).code(statusCode)
+      }
+      payload = JSON.parse(payload)
+      if (statusCode === 200) {
+        const { earnings, lastClaim, type } = payload
+        return {
+          lastClaim,
+          type,
+          amount: earnings
+        }
+      } else {
+        throw boom.boomify(payload)
+      }
+    } catch (e) {
+      throw boom.boomify(e)
+    }
+  }
+}
+
+async function compositeGrantsFWD (debug, runtime, {
+  paymentId,
+  type
+}) {
+  return runtime.wreck.grants.get(debug, `/v1/promotions/${type}/grants/summary`, {
+    query: {
+      paymentId,
+      // just here until we swap it out
+      // with the key above
+      paymentID: paymentId
+    }
+  })
+}
+
 /*
   GET /v2/wallet/{paymentId}/grants/{type}
 */
 function walletGrantsInfoHandler (runtime) {
+  if (runtime.config.forward.grants) {
+    return walletGrantsInfoHandlerFWD(runtime)
+  }
   return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const {
