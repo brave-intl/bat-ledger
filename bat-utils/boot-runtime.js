@@ -7,6 +7,7 @@ const _ = require('underscore')
 const cache = require('./lib/runtime-cache')
 const currency = require('./lib/runtime-currency')
 const database = require('./lib/runtime-database')
+const kafka = require('./lib/runtime-kafka')
 const newrelic = require('./lib/runtime-newrelic')
 const postgres = require('./lib/runtime-postgres')
 const prometheus = require('./lib/runtime-prometheus')
@@ -19,6 +20,7 @@ const hash = {
   cache,
   currency,
   database,
+  kafka,
   newrelic,
   postgres,
   prometheus,

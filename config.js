@@ -42,6 +42,10 @@ const services = {
     portno: 3002,
 
     f: () => {
+      if (process.env.KAFKA_BROKER) {
+        module.exports.kafka = { broker : process.env.KAFKA_BROKER }
+      }
+
       module.exports.referrals =
         { currency              : process.env.REFERRALS_CURRENCY || 'USD'
         , amount                : process.env.REFERRALS_AMOUNT || 5

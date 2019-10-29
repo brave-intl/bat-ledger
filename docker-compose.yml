@@ -5,6 +5,29 @@ networks:
     driver: bridge
 
 services:
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    #network_mode: "host"
+    networks:
+      - ledger
+  kafka:
+    container_name: kafka
+    image: confluentinc/cp-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - ledger
   mongo:
     container_name: ledger-mongo
     image: mongo:3.6.7
@@ -74,6 +97,7 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
+      - "KAFKA_CONSUMER_GROUP=bat-ledger"
       - "DYNO=worker.1"
     depends_on:
       - mongo
@@ -91,11 +115,13 @@ services:
     environment:
       - "PORT=3001"
       - "SERVICE=ledger"
+      - "KAFKA_CONSUMER_GROUP=bat-ledger"
       - PUBLISHERS_TAKEOVER
       - "DYNO=web.1"
     depends_on:
       - mongo
       - redis
+      - kafka
     networks:
       - ledger
   balance-web:
@@ -138,6 +164,7 @@ services:
     depends_on:
       - mongo
       - grant-redis
+      - kafka
     networks:
       - ledger
 
