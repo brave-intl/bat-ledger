@@ -41,14 +41,7 @@ exports.plugin = {
   pkg: require(path.join(__dirname, '..', 'package.json'))
 }
 
-exports.authorizedP = authorizedP
-function authorizedP (ipaddr) {
-  if ((authorizedAddrs) &&
-        ((authorizedAddrs.indexOf(ipaddr) !== -1) ||
-         (underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) })))) return true
-}
-
-function authenticate (request, h) {
+exports.authenticate = (request, h) => {
   const ipaddr = exports.ipaddr(request)
 
   if ((authorizedAddrs) &&
@@ -63,16 +56,11 @@ function authenticate (request, h) {
   return h.continue
 }
 
-function ipaddr (request) {
-  const { headers } = request
-  const forwardedFor = headers['x-forwarded-for']
-  if (forwardedFor) {
-    const forwardedIps = forwardedFor.split(',')
-    const shift = forwardedIPShift()
-    const target = forwardedIps[forwardedIps.length - shift]
-    return target.trim() || request.info.remoteAddress
-  } else {
-    return request.info.remoteAddress
+exports.plugin = {
+  pkg: require(path.join(__dirname, '..', 'package.json')),
+  register: (server, options) => {
+    server.auth.scheme('whitelist', internals.implementation)
+    server.auth.strategy('whitelist', 'whitelist', {})
   }
 }
 
