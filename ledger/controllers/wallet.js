@@ -359,7 +359,7 @@ const write = function (runtime, apiVersion) {
           } catch (ex) {
             console.log(ex.data.payload.toString())
             // FIXME
-            //throw ex
+            // throw ex
           }
         } else {
           result = await runtime.wallet.redeem(wallet, txn, signedTx, request)

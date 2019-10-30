@@ -124,6 +124,7 @@ const grantsUploadTypedValidator = grantsUploadValidator.keys({
   promotions: promotionsTypedValidator
 })
 const captchaHeadersValidator = Joi.object().keys({
+  'captcha-bypass': Joi.string().guid().optional().description('a token to help bypass the captcha validation'),
   'brave-product': braveProductEnumValidator.optional().default('browser-laptop')
 }).unknown(true).description('headers')
 
@@ -726,6 +727,10 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
       }
     }
 
+    if (shouldBypassCaptcha(request.headers['captcha-bypass'])) {
+      return
+    }
+
     if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
       return boom.forbidden()
     }
@@ -1125,6 +1130,14 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
 
     return {}
   }
+}
+
+function shouldBypassCaptcha (bypassTokenRequest) {
+  const bypassToken = process.env.CAPTCHA_BYPASS_TOKEN
+  if (!bypassToken) {
+    return false
+  }
+  return bypassTokenRequest === bypassToken
 }
 
 function walletCooldown (wallet, bypassCooldown) {
