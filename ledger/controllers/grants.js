@@ -1135,8 +1135,10 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
 function shouldBypassCaptcha (bypassTokenRequest) {
   const bypassToken = process.env.CAPTCHA_BYPASS_TOKEN
   if (!bypassToken) {
+    console.log('unable to bypass')
     return false
   }
+  console.log('bypassing', bypassTokenRequest === bypassToken)
   return bypassTokenRequest === bypassToken
 }
 
