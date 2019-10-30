@@ -305,7 +305,7 @@ test('grants: redeem promotions', async t => {
   const err = ok(response)
   if (err) throw err
 
-  response = await ledgerAgent.get(`/v2/wallet/${paymentId}?refresh=true`)
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true`)
     .expect(200)
   const walletInfo = response.body
   t.is(walletInfo.grants, undefined)
