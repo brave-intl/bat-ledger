@@ -16,7 +16,7 @@ const v1 = {}
 
 v1.login = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       if (!request.auth.isAuthenticated) throw boom.forbidden()
 
       const debug = braveHapi.debug(module, request)

@@ -72,11 +72,7 @@ const minimumReconcileTimestampValidator = Joi.number().description('time when t
 const encodedGrantValidator = Joi.string().description('the jws encoded grant')
 const grantsValidator = Joi.array().min(0).items(encodedGrantValidator).description('grants for bulk upload')
 const expiryTimeValidator = Joi.number().positive().description('the time the grant expires')
-const grantProviderIdValidator = Joi.string().guid().when('type', {
-  is: 'ads',
-  then: Joi.required(),
-  otherwise: Joi.forbidden()
-})
+const grantProviderIdValidator = Joi.string().guid().optional()
 const braveProductEnumValidator = Joi.string().valid(['browser-laptop', 'brave-core']).description('the brave product requesting the captcha')
 const captchaResponseValidator = Joi.object().keys({
   x: Joi.number().required(),
@@ -653,6 +649,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       }, result))
     }
 
+    console.log(JSON.stringify(result))
     return result
   }
 }
