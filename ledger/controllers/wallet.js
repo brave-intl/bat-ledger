@@ -355,11 +355,12 @@ const write = function (runtime, apiVersion) {
               useProxyP: true
             })
             result = JSON.parse(payload.toString())
+            // FIXME if return code is 204 then set this to false
             result.grantIds = true
           } catch (ex) {
             console.log(ex.data.payload.toString())
             // FIXME
-            //throw ex
+            // throw ex
           }
         } else {
           result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
