@@ -58,7 +58,6 @@ v1.login = {
       request.cookieAuth.set(credentials)
       return h.redirect(runtime.login.github.world)
     }
-
   },
 
   auth: 'github',

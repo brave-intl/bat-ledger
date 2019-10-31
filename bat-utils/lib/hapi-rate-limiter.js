@@ -35,12 +35,6 @@ module.exports = (runtime) => {
     administrator (github)  3000
     server (bearer token)  60000
   */
-  const rateLimiter = new RateLimiterRedis({
-    redis: redisClient,
-    keyPrefix: 'rate-limiter',
-    points: 3000, // requests
-    duration: 60 // per second by IP
-  })
   const rateLimiterAuthed = new RateLimiterRedis({
     redis: redisClient,
     keyPrefix: 'rate-limiter-authed',
