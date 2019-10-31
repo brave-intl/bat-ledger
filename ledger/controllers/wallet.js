@@ -137,8 +137,6 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
-      balances.cardBalance = balances.confirmed
-
       if (runtime.config.forward.grants) {
         const { grants: grantsConfig } = runtime.config.wreck
         const payload = await braveHapi.wreck.get(grantsConfig.baseUrl + '/v1/grants/active?paymentId=' + paymentId, {
@@ -155,7 +153,13 @@ const read = function (runtime, apiVersion) {
             return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
           })
         }
+        // when we are using the grant server compatibility layer, include the grant balance in the "cardBalance"
+        balances.cardBalance = balances.confirmed
       } else {
+        // when we are not using the grant server compatibility layer,
+        // don't include the grant balance in the "cardBalance"
+        balances.cardBalance = balances.confirmed
+
         let { grants } = wallet
         if (grants) {
           let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
@@ -1023,6 +1027,28 @@ function claimWalletHandler (runtime) {
     }
 
     if (+txn.denomination.amount !== 0) {
+      if (runtime.config.forward.grants) {
+        const drainPayload = {
+          wallet: underscore.extend(
+            underscore.pick(wallet, ['paymentId', 'altcurrency', 'provider', 'providerId']),
+            { publicKey: wallet.httpSigningPubKey }
+          ),
+          anonymousAddress: anonymousAddress || txn.destination
+        }
+
+        const { grants } = runtime.config.wreck
+        const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/drain', {
+          headers: grants.headers,
+          payload: JSON.stringify(drainPayload),
+          useProxyP: true
+        })
+        const result = JSON.parse(payload.toString())
+
+        if (result.grantTotal > 0) {
+          return {}
+        }
+      }
+
       await runtime.wallet.submitTx(wallet, txn, signedTx, {
         commit: true
       })
