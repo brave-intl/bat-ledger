@@ -358,7 +358,7 @@ const write = function (runtime, apiVersion) {
             // FIXME if return code is 204 then set this to false
             result.grantIds = true
           } catch (ex) {
-            console.log(ex.data.payload.toString())
+            // console.log(ex.data.payload.toString())
             // FIXME throw when above is resolved
           }
         } else {
