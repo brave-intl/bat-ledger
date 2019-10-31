@@ -64,7 +64,7 @@ exports.authenticate = (request, h) => {
 
   if ((authorizedAddrs) &&
         (authorizedAddrs.indexOf(ipaddr) === -1) &&
-        (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) throw boom.notAcceptable()
+        (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) return boom.notAcceptable()
 
   validateHops(request)
 
