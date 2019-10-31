@@ -137,7 +137,6 @@ module.exports = (runtime) => {
         if (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)) {
           return internals.rateLimiterWhitelisted
         }
-
         return internals.rateLimiterAuthed
       }
     } catch (e) {}

@@ -120,6 +120,7 @@ const grantsUploadTypedValidator = grantsUploadValidator.keys({
   promotions: promotionsTypedValidator
 })
 const captchaHeadersValidator = Joi.object().keys({
+  'captcha-bypass': Joi.string().guid().optional().description('a token to help bypass the captcha validation'),
   'brave-product': braveProductEnumValidator.optional().default('browser-laptop')
 }).unknown(true).description('headers')
 
@@ -207,8 +208,11 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
     const adsAvailable = await adsGrantsAvailable(request.headers['fastly-geoip-countrycode'])
 
     const filteredPromotions = []
-    for (let { id, type, platform } of promotions) {
-      const promotion = { promotionId: id, type: legacyTypeFromTypeAndPlatform(type, platform) }
+    for (let { id, type, platform: plt } of promotions) {
+      const promotion = {
+        promotionId: id,
+        type: legacyTypeFromTypeAndPlatform(type, plt || platform)
+      }
       if (type === 'ugp' && adsAvailable) { // only make ugp (both desktop and android) grants available in non-ads regions
         continue
       }
@@ -445,7 +449,7 @@ v3.claimGrant = {
 }
 
 /*
-   PUT /v4/grants/{paymentId}
+   PUT /v2/grants/{paymentId}
  */
 
 v2.claimGrant = {
@@ -649,7 +653,6 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       }, result))
     }
 
-    console.log(JSON.stringify(result))
     return result
   }
 }
@@ -721,6 +724,10 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
       if (promotion.protocolVersion !== 2) {
         return boom.forbidden('must first request correct captcha version')
       }
+    }
+
+    if (shouldBypassCaptcha(request.headers['captcha-bypass'])) {
+      return
     }
 
     if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
@@ -1122,6 +1129,14 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
 
     return {}
   }
+}
+
+function shouldBypassCaptcha (bypassTokenRequest) {
+  const bypassToken = process.env.CAPTCHA_BYPASS_TOKEN
+  if (!bypassToken) {
+    return false
+  }
+  return bypassTokenRequest === bypassToken
 }
 
 function walletCooldown (wallet, bypassCooldown) {
