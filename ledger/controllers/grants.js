@@ -189,17 +189,15 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
   return async (request, h) => {
     const { paymentId } = request.query
 
-    const { baseUrl } = runtime.config.wreck.grants
-    if (!baseUrl) {
+    if (!runtime.config.wreck.grants.baseUrl) {
       throw boom.badGateway('not configured for promotions')
     }
 
     const platform = protocolVersion === 3 ? 'android' : ''
 
-    const payload = await braveHapi.wreck.get(baseUrl + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + (platform || ''), {
-      headers: {
-        'Content-Type': 'application/json'
-      },
+    const { grants } = runtime.config.wreck
+    const payload = await braveHapi.wreck.get(grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + (platform || ''), {
+      headers: grants.headers,
       useProxyP: true
     })
     const promotions = JSON.parse(payload.toString()).promotions
