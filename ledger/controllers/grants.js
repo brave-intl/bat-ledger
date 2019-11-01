@@ -647,7 +647,6 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       }, result))
     }
 
-    console.log(JSON.stringify(result))
     return result
   }
 }
