@@ -175,9 +175,6 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
  */
 
 const getGrant = (protocolVersion) => (runtime) => {
-  if (runtime.config.disable.grants) {
-    throw boom.serverUnavailable()
-  }
   if (runtime.config.forward.grants) {
     return getPromotionsFromGrantServer(protocolVersion)(runtime)
   } else {
@@ -187,6 +184,9 @@ const getGrant = (protocolVersion) => (runtime) => {
 
 const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
   return async (request, h) => {
+    if (runtime.config.disable.grants) {
+      throw boom.serverUnavailable()
+    }
     const { paymentId } = request.query
 
     if (!runtime.config.wreck.grants.baseUrl) {
@@ -232,6 +232,9 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
 
 const getGrantLegacy = (protocolVersion) => (runtime) => {
   return async (request, h) => {
+    if (runtime.config.disable.grants) {
+      throw boom.serverUnavailable()
+    }
     const {
       lang,
       paymentId,
