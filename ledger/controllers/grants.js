@@ -443,7 +443,7 @@ v3.claimGrant = {
 }
 
 /*
-   PUT /v4/grants/{paymentId}
+   PUT /v2/grants/{paymentId}
  */
 
 v2.claimGrant = {
