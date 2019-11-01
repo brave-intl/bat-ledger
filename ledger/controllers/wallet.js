@@ -41,6 +41,47 @@ const walletStatsList = Joi.array().items(
 )
 
 /*
+   GET /v2/wallet/{paymentId}/info
+ */
+v2.readInfo = { handler: (runtime) => {
+  return async (request, h) => {
+    const debug = braveHapi.debug(module, request)
+    const wallets = runtime.database.get('wallets', debug)
+    const paymentId = request.params.paymentId.toLowerCase()
+
+    const wallet = await wallets.findOne({ paymentId: paymentId })
+    if (!wallet) {
+      throw boom.notFound('no such wallet: ' + paymentId)
+    }
+
+    const infoKeys = [ 'addresses', 'altcurrency', 'provider', 'providerId', 'paymentId', 'httpSigningPubKey' ]
+    return underscore.pick(wallet, infoKeys)
+  }
+},
+description: 'Returns information about the wallet associated with the user',
+tags: [ 'api' ],
+
+validate: {
+  params: {
+    paymentId: Joi.string().guid().required().description('identity of the wallet')
+  }
+},
+
+response: {
+  schema: Joi.object().keys({
+    altcurrency: Joi.string().optional().description('the wallet balance currency'),
+    addresses: Joi.object().keys({
+      BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
+      BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
+      CARD_ID: Joi.string().guid().optional().description('Card id'),
+      ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
+      LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
+    })
+  }).unknown(true)
+}
+}
+
+/*
    GET /v2/wallet/{paymentId}
  */
 
@@ -98,11 +139,29 @@ const read = function (runtime, apiVersion) {
     if (balances) {
       balances.cardBalance = balances.confirmed
 
-      let { grants } = wallet
-      if (grants) {
-        let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
-        balances.confirmed = new BigNumber(balances.confirmed).plus(total)
-        result.grants = results
+      if (runtime.config.forward.grants) {
+        const { grants: grantsConfig } = runtime.config.wreck
+        const payload = await braveHapi.wreck.get(grantsConfig.baseUrl + '/v1/grants/active?paymentId=' + paymentId, {
+          headers: grantsConfig.headers,
+          useProxyP: true
+        })
+        const { grants } = JSON.parse(payload.toString())
+        if (grants.length > 0) {
+          const total = grants.reduce((total, grant) => {
+            return total.plus(grant.probi)
+          }, new BigNumber(0))
+          balances.confirmed = new BigNumber(balances.confirmed).plus(total)
+          result.grants = grants.map((grant) => {
+            return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
+          })
+        }
+      } else {
+        let { grants } = wallet
+        if (grants) {
+          let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
+          balances.confirmed = new BigNumber(balances.confirmed).plus(total)
+          result.grants = results
+        }
       }
 
       underscore.extend(result, {
@@ -321,22 +380,48 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    try {
-      result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
-    } catch (err) {
-      const { data } = err
-      if (data) {
-        let { payload } = data
-        payload = payload.toString()
-        if (payload[0] === '{') {
-          payload = JSON.parse(payload)
-          let payloadData = payload.data
-          if (payloadData) {
-            await markGrantsAsRedeemed(payloadData.redeemedIDs)
+    if (!runtime.config.disable.grants) {
+      try {
+        if (runtime.config.forward.grants) {
+          const infoKeys = [ 'altcurrency', 'provider', 'providerId', 'paymentId' ]
+          const redeemPayload = {
+            wallet: underscore.extend(underscore.pick(wallet, infoKeys), { publicKey: wallet.httpSigningPubKey }),
+            transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, [ 'headers', 'octets' ]))).toString('base64')
+          }
+          try {
+            const { grants } = runtime.config.wreck
+            const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants', {
+              headers: grants.headers,
+              payload: JSON.stringify(redeemPayload),
+              useProxyP: true
+            })
+            result = JSON.parse(payload.toString())
+            // FIXME if return code is 204 then set this to false
+            result.grantIds = true
+          } catch (ex) {
+            // console.log(ex.data.payload.toString())
+            // FIXME throw when above is resolved
+          }
+        } else {
+          result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
+        }
+      } catch (err) {
+        if (!runtime.config.forward.grants) {
+          const { data } = err
+          if (data) {
+            let { payload } = data
+            payload = payload.toString()
+            if (payload[0] === '{') {
+              payload = JSON.parse(payload)
+              let payloadData = payload.data
+              if (payloadData) {
+                await markGrantsAsRedeemed(payloadData.redeemedIDs)
+              }
+            }
           }
         }
+        throw boom.boomify(err)
       }
-      throw boom.boomify(err)
     }
 
     if (!result) {
@@ -354,8 +439,13 @@ const write = function (runtime, apiVersion) {
     const grantTotal = result.grantTotal
 
     if (grantIds) { // some grants were redeemed
-      await markGrantsAsRedeemed(grantIds)
-      grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
+      if (!runtime.config.forward.grants) {
+        await markGrantsAsRedeemed(grantIds)
+        grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
+      } else {
+        grantCohort = 'grant'
+      }
+
       let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
 
       if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
@@ -771,6 +861,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/grants/{type}').config(v1.walletGrantsInfo),
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
   braveHapi.routes.async().post().path('/v2/wallet/{paymentId}/claim').config(v2.claimWallet),
+  braveHapi.routes.async().path('/v2/wallet/{paymentId}/info').config(v2.readInfo),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
@@ -941,10 +1032,57 @@ function claimWalletHandler (runtime) {
   }
 }
 
+function walletGrantsInfoHandlerFWD (runtime) {
+  return async (request, h) => {
+    const debug = braveHapi.debug(module, request)
+    try {
+      let {
+        res,
+        payload
+      } = await compositeGrantsFWD(debug, runtime, request.params)
+      const { statusCode } = res
+      payload = payload.toString()
+      if (statusCode === 204) {
+        return h.response({}).code(statusCode)
+      }
+      payload = JSON.parse(payload)
+      if (statusCode === 200) {
+        const { earnings, lastClaim, type } = payload
+        return {
+          lastClaim,
+          type,
+          amount: earnings
+        }
+      } else {
+        throw boom.boomify(payload)
+      }
+    } catch (e) {
+      throw boom.boomify(e)
+    }
+  }
+}
+
+async function compositeGrantsFWD (debug, runtime, {
+  paymentId,
+  type
+}) {
+  return runtime.wreck.grants.get(debug, `/v1/promotions/${type}/grants/summary`, {
+    query: {
+      paymentId,
+      // just here until we swap it out
+      // with the key above
+      paymentID: paymentId
+    }
+  })
+}
+
 /*
   GET /v2/wallet/{paymentId}/grants/{type}
 */
 function walletGrantsInfoHandler (runtime) {
+  if (runtime.config.forward.grants) {
+    return walletGrantsInfoHandlerFWD(runtime)
+  }
   return async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const {

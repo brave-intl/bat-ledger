@@ -9,10 +9,10 @@ const services = {
         module.exports.wallet.coinbase = { widgetCode : process.env.COINBASE_WIDGET_CODE }
       }
 
-      if (process.env.REDEEMER_URL) {
+      if (process.env.REDEEMER_SERVER) {
         module.exports.redeemer =
-        { url               : process.env.REDEEMER_URL   || 'http://127.0.0.1:3333'
-        , access_token      : process.env.REDEEMER_TOKEN || '00000000-0000-4000-0000-000000000000'
+        { url               : process.env.REDEEMER_SERVER || 'http://127.0.0.1:3333'
+        , access_token      : process.env.REDEEMER_TOKEN  || '00000000-0000-4000-0000-000000000000'
         }
       }
       if (process.env.REDEEMER_CARD_ID) {
@@ -106,7 +106,23 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
 })
 
 module.exports =
-{ altcurrency           : process.env.ALTCURRENCY               || 'BAT'
+{
+  disable: {
+    grants: process.env.DISABLE_GRANTS || false
+  },
+  forward: {
+    grants: process.env.FORWARD_TO_GRANTS || false
+  },
+  wreck: {
+    grants: {
+      baseUrl: process.env.GRANT_SERVER,
+      headers: {
+        'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN  || '00000000-0000-4000-0000-000000000000'),
+        'Content-Type': 'application/json'
+      }
+    }
+  },
+  altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :
     { url               : process.env.REDIS_URL                 || 'redis://localhost:6379' }

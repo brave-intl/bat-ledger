@@ -11,9 +11,17 @@ const adsAvailableList = getAdsAvailableList()
 
 module.exports = {
   adsGrantsAvailable,
-  getCohort,
+  cooldownOffset,
   defaultCooldownHrs,
-  cooldownOffset
+  getCohort,
+  legacyTypeFromTypeAndPlatform
+}
+
+function legacyTypeFromTypeAndPlatform (type, platform) {
+  if (type === 'ugp' && platform === 'android') {
+    return 'android'
+  }
+  return type
 }
 
 function defaultCooldownHrs (hours) {

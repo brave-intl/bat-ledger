@@ -130,7 +130,7 @@ v1.findReferrals = {
 */
 
 v1.getReferralGroups = {
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     let { fields } = request.query
     const statement = queries.referralGroups()
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
@@ -173,7 +173,7 @@ v1.getReferralGroups = {
 */
 
 v1.getReferralsStatement = {
-  handler: (runtime) => async (request, reply) => {
+  handler: (runtime) => async (request, h) => {
     const { database, currency } = runtime
     const { params, query } = request
     const { owner } = params
@@ -248,7 +248,7 @@ v1.getReferralsStatement = {
 
 v1.createReferrals = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const { payload, params } = request
       const { transactionId } = params
       const debug = braveHapi.debug(module, request)

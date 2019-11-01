@@ -18,6 +18,7 @@ import {
 import {
   eyeshadeAgent,
   cleanPgDb,
+  cleanGrantDb,
   ok
 } from '../utils'
 import {
@@ -81,6 +82,7 @@ const referralsBar = {
 }
 
 test.afterEach.always(cleanPgDb(runtime.postgres))
+test.afterEach.always(cleanGrantDb)
 
 const auth = (agent) => agent.set('Authorization', `Bearer ${process.env.ALLOWED_PUBLISHERS_TOKENS}`)
 

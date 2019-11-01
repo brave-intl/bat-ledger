@@ -192,13 +192,7 @@ const createPersona = function (runtime) {
 
     const registerEnd = runtime.prometheus.timedRequest('anonizeRegister_request_buckets_milliseconds')
     try {
-      const now = underscore.now()
       verification = registrar.register(proof)
-      runtime.newrelic.recordCustomEvent('register', {
-        registrarId: registrar.registrarId,
-        registrarType: registrar.registrarType,
-        duration: underscore.now() - now
-      })
       registerEnd({ erred: false })
     } catch (ex) {
       registerEnd({ erred: true })

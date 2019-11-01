@@ -123,10 +123,6 @@ module.exports = (runtime) => {
           token = request.query.access_token
         }
 
-        if (!_.isString(token)) {
-          return internals.rateLimiter
-        }
-
         const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
         if (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)) {
           return internals.rateLimiterWhitelisted

@@ -10,15 +10,33 @@ import tweetnacl from 'tweetnacl'
 import _ from 'underscore'
 import {
   balanceAgent,
+  grantAgent,
   ledgerAgent,
   ok,
+  setupCreatePayload,
+  createSurveyor,
   cleanDbs,
+  cleanGrantDb,
+  setupForwardingServer,
   connectToDb
 } from '../utils'
 import {
   timeout,
   uint8tohex
 } from 'bat-utils/lib/extras-utils'
+
+import {
+  routes as grantsRoutes,
+  initialize as grantsInitializer
+} from '../../ledger/controllers/grants'
+import {
+  routes as registrarRoutes,
+  initialize as registrarInitializer
+} from '../../ledger/controllers/registrar'
+import {
+  routes as walletRoutes,
+  initialize as walletInitializer
+} from '../../ledger/controllers/wallet'
 
 test.before(cleanDbs)
 test.after(cleanDbs)
@@ -29,7 +47,270 @@ const promotionId = 'c96c39c8-77dd-4b2d-a8df-2ecf824bc9e9'
 // expired grant
 const expired = { 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI0Y2ZjMzFmYy1mYjE1LTRmMTUtOTc0Zi0zNzJiMmI0YzBkYjYiLCJwcm9iaSI6IjMwMDAwMDAwMDAwMDAwMDAwMDAwIiwicHJvbW90aW9uSWQiOiJjOTZjMzljOC03N2RkLTRiMmQtYThkZi0yZWNmODI0YmM5ZTkiLCJtYXR1cml0eVRpbWUiOjE1MjY5NDE0MDAsImV4cGlyeVRpbWUiOjE1MjUxNzYwMDB9.iZBTNb9zilKubYYwYuc9MIUHZq0iv-7DsmnNu0GakeiEjcNqgbgbg-Wc2dowlMmMyjRbXjDUIC8rK4FiIqH8CQ'], 'promotions': [{ promotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1526941400000, 'protocolVersion': 4, 'type': 'ugp' }] }
 
-const BAT_CAPTCHA_BRAVE_TOKEN = 'eyJhbGciOiJSUzI1NiIsIng1YyI6WyJNSUlGa2pDQ0JIcWdBd0lCQWdJUVJYcm9OMFpPZFJrQkFBQUFBQVB1bnpBTkJna3Foa2lHOXcwQkFRc0ZBREJDTVFzd0NRWURWUVFHRXdKVlV6RWVNQndHQTFVRUNoTVZSMjl2WjJ4bElGUnlkWE4wSUZObGNuWnBZMlZ6TVJNd0VRWURWUVFERXdwSFZGTWdRMEVnTVU4eE1CNFhEVEU0TVRBeE1EQTNNVGswTlZvWERURTVNVEF3T1RBM01UazBOVm93YkRFTE1Ba0dBMVVFQmhNQ1ZWTXhFekFSQmdOVkJBZ1RDa05oYkdsbWIzSnVhV0V4RmpBVUJnTlZCQWNURFUxdmRXNTBZV2x1SUZacFpYY3hFekFSQmdOVkJBb1RDa2R2YjJkc1pTQk1URU14R3pBWkJnTlZCQU1URW1GMGRHVnpkQzVoYm1SeWIybGtMbU52YlRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTmpYa3owZUsxU0U0bSsvRzV3T28rWEdTRUNycWRuODhzQ3BSN2ZzMTRmSzBSaDNaQ1laTEZIcUJrNkFtWlZ3Mks5RkcwTzlyUlBlUURJVlJ5RTMwUXVuUzl1Z0hDNGVnOW92dk9tK1FkWjJwOTNYaHp1blFFaFVXWEN4QURJRUdKSzNTMmFBZnplOTlQTFMyOWhMY1F1WVhIRGFDN09acU5ub3NpT0dpZnM4djFqaTZIL3hobHRDWmUybEorN0d1dHpleEtweHZwRS90WlNmYlk5MDVxU2xCaDlmcGowMTVjam5RRmtVc0FVd21LVkFVdWVVejR0S2NGSzRwZXZOTGF4RUFsK09raWxNdElZRGFjRDVuZWw0eEppeXM0MTNoYWdxVzBXaGg1RlAzOWhHazlFL0J3UVRqYXpTeEdkdlgwbTZ4RlloaC8yVk15WmpUNEt6UEpFQ0F3RUFBYU9DQWxnd2dnSlVNQTRHQTFVZER3RUIvd1FFQXdJRm9EQVRCZ05WSFNVRUREQUtCZ2dyQmdFRkJRY0RBVEFNQmdOVkhSTUJBZjhFQWpBQU1CMEdBMVVkRGdRV0JCUXFCUXdHV29KQmExb1RLcXVwbzRXNnhUNmoyREFmQmdOVkhTTUVHREFXZ0JTWTBmaHVFT3ZQbSt4Z254aVFHNkRyZlFuOUt6QmtCZ2dyQmdFRkJRY0JBUVJZTUZZd0p3WUlLd1lCQlFVSE1BR0dHMmgwZEhBNkx5OXZZM053TG5CcmFTNW5iMjluTDJkMGN6RnZNVEFyQmdnckJnRUZCUWN3QW9ZZmFIUjBjRG92TDNCcmFTNW5iMjluTDJkemNqSXZSMVJUTVU4eExtTnlkREFkQmdOVkhSRUVGakFVZ2hKaGRIUmxjM1F1WVc1a2NtOXBaQzVqYjIwd0lRWURWUjBnQkJvd0dEQUlCZ1puZ1F3QkFnSXdEQVlLS3dZQkJBSFdlUUlGQXpBdkJnTlZIUjhFS0RBbU1DU2dJcUFnaGg1b2RIUndPaTh2WTNKc0xuQnJhUzVuYjI5bkwwZFVVekZQTVM1amNtd3dnZ0VFQmdvckJnRUVBZFo1QWdRQ0JJSDFCSUh5QVBBQWR3Q2t1UW1RdEJoWUZJZTdFNkxNWjNBS1BEV1lCUGtiMzdqamQ4ME95QTNjRUFBQUFXWmREM1BMQUFBRUF3QklNRVlDSVFDU1pDV2VMSnZzaVZXNkNnK2dqLzl3WVRKUnp1NEhpcWU0ZVk0Yy9teXpqZ0loQUxTYmkvVGh6Y3pxdGlqM2RrM3ZiTGNJVzNMbDJCMG83NUdRZGhNaWdiQmdBSFVBVmhRR21pL1h3dXpUOWVHOVJMSSt4MFoydWJ5WkVWekE3NVNZVmRhSjBOMEFBQUZtWFE5ejVBQUFCQU1BUmpCRUFpQmNDd0E5ajdOVEdYUDI3OHo0aHIvdUNIaUFGTHlvQ3EySzAreUxSd0pVYmdJZ2Y4Z0hqdnB3Mm1CMUVTanEyT2YzQTBBRUF3Q2tuQ2FFS0ZVeVo3Zi9RdEl3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUk5blRmUktJV2d0bFdsM3dCTDU1RVRWNmthenNwaFcxeUFjNUR1bTZYTzQxa1p6d0o2MXdKbWRSUlQvVXNDSXkxS0V0MmMwRWpnbG5KQ0YyZWF3Y0VXbExRWTJYUEx5RmprV1FOYlNoQjFpNFcyTlJHelBodDNtMWI0OWhic3R1WE02dFg1Q3lFSG5UaDhCb200L1dsRmloemhnbjgxRGxkb2d6L0syVXdNNlM2Q0IvU0V4a2lWZnYremJKMHJqdmc5NEFsZGpVZlV3a0k5Vk5NakVQNWU4eWRCM29MbDZnbHBDZUY1ZGdmU1g0VTl4MzVvai9JSWQzVUUvZFBwYi9xZ0d2c2tmZGV6dG1VdGUvS1Ntcml3Y2dVV1dlWGZUYkkzenNpa3daYmtwbVJZS21qUG1odjRybGl6R0NHdDhQbjhwcThNMktEZi9QM2tWb3QzZTE4UT0iLCJNSUlFU2pDQ0F6S2dBd0lCQWdJTkFlTzBtcUdOaXFtQkpXbFF1REFOQmdrcWhraUc5dzBCQVFzRkFEQk1NU0F3SGdZRFZRUUxFeGRIYkc5aVlXeFRhV2R1SUZKdmIzUWdRMEVnTFNCU01qRVRNQkVHQTFVRUNoTUtSMnh2WW1Gc1UybG5iakVUTUJFR0ExVUVBeE1LUjJ4dlltRnNVMmxuYmpBZUZ3MHhOekEyTVRVd01EQXdOREphRncweU1URXlNVFV3TURBd05ESmFNRUl4Q3pBSkJnTlZCQVlUQWxWVE1SNHdIQVlEVlFRS0V4VkhiMjluYkdVZ1ZISjFjM1FnVTJWeWRtbGpaWE14RXpBUkJnTlZCQU1UQ2tkVVV5QkRRU0F4VHpFd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUURRR005RjFJdk4wNXprUU85K3ROMXBJUnZKenp5T1RIVzVEekVaaEQyZVBDbnZVQTBRazI4RmdJQ2ZLcUM5RWtzQzRUMmZXQllrL2pDZkMzUjNWWk1kUy9kTjRaS0NFUFpSckF6RHNpS1VEelJybUJCSjV3dWRnem5kSU1ZY0xlL1JHR0ZsNXlPRElLZ2pFdi9TSkgvVUwrZEVhbHROMTFCbXNLK2VRbU1GKytBY3hHTmhyNTlxTS85aWw3MUkyZE44RkdmY2Rkd3VhZWo0YlhocDBMY1FCYmp4TWNJN0pQMGFNM1Q0SStEc2F4bUtGc2JqemFUTkM5dXpwRmxnT0lnN3JSMjV4b3luVXh2OHZObWtxN3pkUEdIWGt4V1k3b0c5aitKa1J5QkFCazdYckpmb3VjQlpFcUZKSlNQazdYQTBMS1cwWTN6NW96MkQwYzF0Skt3SEFnTUJBQUdqZ2dFek1JSUJMekFPQmdOVkhROEJBZjhFQkFNQ0FZWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DTUJJR0ExVWRFd0VCL3dRSU1BWUJBZjhDQVFBd0hRWURWUjBPQkJZRUZKalIrRzRRNjgrYjdHQ2ZHSkFib090OUNmMHJNQjhHQTFVZEl3UVlNQmFBRkp2aUIxZG5IQjdBYWdiZVdiU2FMZC9jR1lZdU1EVUdDQ3NHQVFVRkJ3RUJCQ2t3SnpBbEJnZ3JCZ0VGQlFjd0FZWVphSFIwY0RvdkwyOWpjM0F1Y0d0cExtZHZiMmN2WjNOeU1qQXlCZ05WSFI4RUt6QXBNQ2VnSmFBamhpRm9kSFJ3T2k4dlkzSnNMbkJyYVM1bmIyOW5MMmR6Y2pJdlozTnlNaTVqY213d1B3WURWUjBnQkRnd05qQTBCZ1puZ1F3QkFnSXdLakFvQmdnckJnRUZCUWNDQVJZY2FIUjBjSE02THk5d2Eya3VaMjl2Wnk5eVpYQnZjMmwwYjNKNUx6QU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFHb0ErTm5uNzh5NnBSamQ5WGxRV05hN0hUZ2laL3IzUk5Ha21VbVlIUFFxNlNjdGk5UEVhanZ3UlQyaVdUSFFyMDJmZXNxT3FCWTJFVFV3Z1pRK2xsdG9ORnZoc085dHZCQ09JYXpwc3dXQzlhSjl4anU0dFdEUUg4TlZVNllaWi9YdGVEU0dVOVl6SnFQalk4cTNNRHhyem1xZXBCQ2Y1bzhtdy93SjRhMkc2eHpVcjZGYjZUOE1jRE8yMlBMUkw2dTNNNFR6czNBMk0xajZieWtKWWk4d1dJUmRBdktMV1p1L2F4QlZielltcW13a201ekxTRFc1bklBSmJFTENRQ1p3TUg1NnQyRHZxb2Z4czZCQmNDRklaVVNweHU2eDZ0ZDBWN1N2SkNDb3NpclNtSWF0ai85ZFNTVkRRaWJldDhxLzdVSzR2NFpVTjgwYXRuWnoxeWc9PSJdfQ.eyJub25jZSI6InhnTUdCWVl3aW53dVhrQ2x4OXNYVDdtSWxLMEtodDJaWW5KaGRtVmZibTl1WTJVeE5UUXdORGszTnpJME1ESTIiLCJ0aW1lc3RhbXBNcyI6MTU0MDQ5NzcyNTQ4MCwiYXBrUGFja2FnZU5hbWUiOiJjb20uYnJhdmUuYnJvd3NlciIsImFwa0RpZ2VzdFNoYTI1NiI6IldPRTVQRk9pNjI4UjhRZHAxa3B2UUhMVVNwWUtnWjU2YUZkbFJyTE5UZ3M9IiwiY3RzUHJvZmlsZU1hdGNoIjp0cnVlLCJhcGtDZXJ0aWZpY2F0ZURpZ2VzdFNoYTI1NiI6WyJNcUw4ZE5jeEVGaFo1YWhkOFcyVjhRTFlXeUlKbTRCa3hkaVJYR0hhMGVBPSJdLCJiYXNpY0ludGVncml0eSI6dHJ1ZX0.K39pNLtS7w-jlnNlP1fz31RGH-xP23t_FyInL3FrxNJGQq5oRMpkBGUeE49sOeUJMi8gjYpQR1Ek2-3M8gS_0IwOUFcIXJjAJuLVJHwg_i0hxtgJLRvCAS3ifsfk-UX7HsYKdY1voUsPtZ9ilYLIJCY5Gy5uHqedgznDKyrGYKPMuiMNyfkp88AjN2XA9D2Axqys9s67uEivMF37HUDK_Kqh8uYF276vs9SU7ovedbz7tG1suGUT9zpEDCZBLqdhj2wfdiXphhOZJG2ogMUzp3IOCRLYsfWSha-OQX3UI84cYUG1Ubrqd4mahl5dpkxclkMr-zyFQC5WNCQLO2OA_g'
+const BAT_CAPTCHA_BRAVE_TOKEN = 'eyJhbGciOiJSUzI1NiIsIng1YyI6WyJNSUlGbERDQ0JIeWdBd0lCQWdJUkFNa2J6Mm9GaitnaUNBQUFBQUFWZGYwd0RRWUpLb1pJaHZjTkFRRUxCUUF3UWpFTE1Ba0dBMVVFQmhNQ1ZWTXhIakFjQmdOVkJBb1RGVWR2YjJkc1pTQlVjblZ6ZENCVFpYSjJhV05sY3pFVE1CRUdBMVVFQXhNS1IxUlRJRU5CSURGUE1UQWVGdzB4T1RBNU1qQXdOelUyTVRoYUZ3MHhPVEV5TVRrd056VTJNVGhhTUd3eEN6QUpCZ05WQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxTmIzVnVkR0ZwYmlCV2FXVjNNUk13RVFZRFZRUUtFd3BIYjI5bmJHVWdURXhETVJzd0dRWURWUVFERXhKaGRIUmxjM1F1WVc1a2NtOXBaQzVqYjIwd2dnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUUNkcmtpWEgza2dMTGFSeGI0ZkYyaWV0QjltQjdmTDNyVzFVVyt1UGZ4dDBid2VVZXprV290RktrcVVJUGlReVhLejNNMVYxS1h6RHY2ZmNoNk41ODNRamg4allXZ0F2c3FHdmE1RmlqaFdYcWtkUERkOGRiaTdjb1NrTjlTWTlXNU8ycHN0RVQzY2RkS3p0cks2NEJPcU5SUGRDeEc2aFJwK29VUklXTzhDU01xV08yTVdSTnAwRlpOaFNLcGgvay9Md2pVN2lUY1ZVWWJuRHFLWmQ1WVFsclFYMTBKdkw2cENadUZOSzR2VlBJRXlGL094U2xJQzcvRmdoRGR3MEdMWHplZnF0V2owRFBha2tiSGRzTTNQS1hxdnpPdGpiLzZoeVRDcFZQbnM1L1ZXRjQ5S3E3Ui9SeTNwTkZhaDR2Tmhoam5td01vNmZQZ21LQ1NCNWlEL0FnTUJBQUdqZ2dKWk1JSUNWVEFPQmdOVkhROEJBZjhFQkFNQ0JhQXdFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd0V3REFZRFZSMFRBUUgvQkFJd0FEQWRCZ05WSFE0RUZnUVUzeXpXZk5QdXRlazR6REpJd2dUZWlEOGg1V1F3SHdZRFZSMGpCQmd3Rm9BVW1OSDRiaERyejV2c1lKOFlrQnVnNjMwSi9Tc3daQVlJS3dZQkJRVUhBUUVFV0RCV01DY0dDQ3NHQVFVRkJ6QUJoaHRvZEhSd09pOHZiMk56Y0M1d2Eya3VaMjl2Wnk5bmRITXhiekV3S3dZSUt3WUJCUVVITUFLR0gyaDBkSEE2THk5d2Eya3VaMjl2Wnk5bmMzSXlMMGRVVXpGUE1TNWpjblF3SFFZRFZSMFJCQll3RklJU1lYUjBaWE4wTG1GdVpISnZhV1F1WTI5dE1DRUdBMVVkSUFRYU1CZ3dDQVlHWjRFTUFRSUNNQXdHQ2lzR0FRUUIxbmtDQlFNd0x3WURWUjBmQkNnd0pqQWtvQ0tnSUlZZWFIUjBjRG92TDJOeWJDNXdhMmt1WjI5dlp5OUhWRk14VHpFdVkzSnNNSUlCQlFZS0t3WUJCQUhXZVFJRUFnU0I5Z1NCOHdEeEFIWUFZL0xiemVnN3pDelBDM0tFSjFkck02U05ZWGVQdlhXbU9MSEhhRlJMMkkwQUFBRnRUZUxuMHdBQUJBTUFSekJGQWlFQWluek1vN3J0UzJjLzNKQmdRdDJDSytoaGMvYzN0SVg5cUwyWW9xcTE1RVFDSUNaekN6RVFPME5YdWl4bSs2N2xUclkzcmFQN2t1K09CTlVua1FXV0Q5ZElBSGNBZEg3YWd6R3RNeENSSVp6T0pVOUNjTUsvL1Y1Q0lBakdOelY1NWhCN3pGWUFBQUZ0VGVMbjRBQUFCQU1BU0RCR0FpRUExRjRYN0pvSWZuTVJ5alVlU1pYZlArMnhhaGl3Q0R1V2FpQkVkYnJWMnJFQ0lRRFdYaStGUUFJMnBva2h1R2pDTXVkK1dMMmFFODcxRHVRQzdKdVJ6dGR1V3pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQVhHNUhxbUNSTzJCSjkxVGJZMEh3QWcyYzFHUVYzd1NWMnBPbDVSbjJrWjNsbHBHRHRselhTQTVhaEVHOWdWZ0xGSTc4S1ZxdVRmeldVOUZhMHllSjVJbFFSUFJOM0ZXcGFLN1RmMkc3bFZ1TytwUFMvMjV2UloyN3hzZ0gwMFh4blpmRVNvMGxhWXd0eml0UFVDWS9USkl6bmJ1SlE2Qm5xbGlCdk0xN0p1eGVWckg5MjZnUjRGMnpKbkhiY1dqRFo1c0JFQXo5bS9UMzZaOG95djR0eEEvT2xGQVJRUDNqc21FK2g2cEg1RENTSU83SXgwZ2VNenE2UlNiNTJtTTRsemRjREo5c1YwQlphVndQeE9lU2paWW82anl0RGhWLzF4T1ZlZVVaLzBEa2g1ZXViTnVZOWErNHFLTTNFSzYxZGpuZ2JvZWVzUUptSjdJUktveko0UT09IiwiTUlJRVNqQ0NBektnQXdJQkFnSU5BZU8wbXFHTmlxbUJKV2xRdURBTkJna3Foa2lHOXcwQkFRc0ZBREJNTVNBd0hnWURWUVFMRXhkSGJHOWlZV3hUYVdkdUlGSnZiM1FnUTBFZ0xTQlNNakVUTUJFR0ExVUVDaE1LUjJ4dlltRnNVMmxuYmpFVE1CRUdBMVVFQXhNS1IyeHZZbUZzVTJsbmJqQWVGdzB4TnpBMk1UVXdNREF3TkRKYUZ3MHlNVEV5TVRVd01EQXdOREphTUVJeEN6QUpCZ05WQkFZVEFsVlRNUjR3SEFZRFZRUUtFeFZIYjI5bmJHVWdWSEoxYzNRZ1UyVnlkbWxqWlhNeEV6QVJCZ05WQkFNVENrZFVVeUJEUVNBeFR6RXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFEUUdNOUYxSXZOMDV6a1FPOSt0TjFwSVJ2Snp6eU9USFc1RHpFWmhEMmVQQ252VUEwUWsyOEZnSUNmS3FDOUVrc0M0VDJmV0JZay9qQ2ZDM1IzVlpNZFMvZE40WktDRVBaUnJBekRzaUtVRHpScm1CQko1d3VkZ3puZElNWWNMZS9SR0dGbDV5T0RJS2dqRXYvU0pIL1VMK2RFYWx0TjExQm1zSytlUW1NRisrQWN4R05ocjU5cU0vOWlsNzFJMmROOEZHZmNkZHd1YWVqNGJYaHAwTGNRQmJqeE1jSTdKUDBhTTNUNEkrRHNheG1LRnNianphVE5DOXV6cEZsZ09JZzdyUjI1eG95blV4djh2Tm1rcTd6ZFBHSFhreFdZN29HOWorSmtSeUJBQms3WHJKZm91Y0JaRXFGSkpTUGs3WEEwTEtXMFkzejVvejJEMGMxdEpLd0hBZ01CQUFHamdnRXpNSUlCTHpBT0JnTlZIUThCQWY4RUJBTUNBWVl3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdFR0NDc0dBUVVGQndNQ01CSUdBMVVkRXdFQi93UUlNQVlCQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSmpSK0c0UTY4K2I3R0NmR0pBYm9PdDlDZjByTUI4R0ExVWRJd1FZTUJhQUZKdmlCMWRuSEI3QWFnYmVXYlNhTGQvY0dZWXVNRFVHQ0NzR0FRVUZCd0VCQkNrd0p6QWxCZ2dyQmdFRkJRY3dBWVlaYUhSMGNEb3ZMMjlqYzNBdWNHdHBMbWR2YjJjdlozTnlNakF5QmdOVkhSOEVLekFwTUNlZ0phQWpoaUZvZEhSd09pOHZZM0pzTG5CcmFTNW5iMjluTDJkemNqSXZaM055TWk1amNtd3dQd1lEVlIwZ0JEZ3dOakEwQmdabmdRd0JBZ0l3S2pBb0JnZ3JCZ0VGQlFjQ0FSWWNhSFIwY0hNNkx5OXdhMmt1WjI5dlp5OXlaWEJ2YzJsMGIzSjVMekFOQmdrcWhraUc5dzBCQVFzRkFBT0NBUUVBR29BK05ubjc4eTZwUmpkOVhsUVdOYTdIVGdpWi9yM1JOR2ttVW1ZSFBRcTZTY3RpOVBFYWp2d1JUMmlXVEhRcjAyZmVzcU9xQlkyRVRVd2daUStsbHRvTkZ2aHNPOXR2QkNPSWF6cHN3V0M5YUo5eGp1NHRXRFFIOE5WVTZZWlovWHRlRFNHVTlZekpxUGpZOHEzTUR4cnptcWVwQkNmNW84bXcvd0o0YTJHNnh6VXI2RmI2VDhNY0RPMjJQTFJMNnUzTTRUenMzQTJNMWo2YnlrSllpOHdXSVJkQXZLTFdadS9heEJWYnpZbXFtd2ttNXpMU0RXNW5JQUpiRUxDUUNad01INTZ0MkR2cW9meHM2QkJjQ0ZJWlVTcHh1Nng2dGQwVjdTdkpDQ29zaXJTbUlhdGovOWRTU1ZEUWliZXQ4cS83VUs0djRaVU44MGF0blp6MXlnPT0iXX0.eyJub25jZSI6IlVoMC9yVW53dTFUWWVXNzFpYnJYVjc2c3FOZ3R6aDd3IiwidGltZXN0YW1wTXMiOjE1NzExNTU2MjczNzQsImFwa1BhY2thZ2VOYW1lIjoiY29tLmJyYXZlLmJyb3dzZXJfZGVmYXVsdCIsImFwa0RpZ2VzdFNoYTI1NiI6Ijc2NnVzTndINlEzZUtyN3hmaGprSDI2UDFFUjRFZE0xSnFya3BWcnFsUXM9IiwiY3RzUHJvZmlsZU1hdGNoIjp0cnVlLCJhcGtDZXJ0aWZpY2F0ZURpZ2VzdFNoYTI1NiI6WyJNcUw4ZE5jeEVGaFo1YWhkOFcyVjhRTFlXeUlKbTRCa3hkaVJYR0hhMGVBPSJdLCJiYXNpY0ludGVncml0eSI6dHJ1ZX0.lOc2fVF3_I322sKi828NZUIirJRISooDzxCkqI2SkOpV-LyyJkFffFK8T_DmdDZq6HHAPgbu6wq6EX5xrGJsYXXek9BS-GTvKMWbPXYllaZZeu3XfQIF5MO9sHBIB2WuXDLWeaq9DZXs5oyhTT43gGqHwJNCZLpubH-6O3aUBeWgBiHdXBogcEaY8SOp2OWtDAMjokVcKl1JiRvTCKa9cgpVgCsbKeonN7K19rKR3N4jYwTQkLkEIG8T3iIMpCNdw4XsragLas4ckIZQlbobV6PpRSphj5vvmUCCADyQx7EWUDfQWUZKP0yTxY19YP2KDaR0_7Lb8aj2IXiL05nIoA'
+const BAT_CAPTCHA_BRAVE_NONCE = 'Uh0/rUnwu1TYeW71ibrXV76sqNgtzh7w'
+
+async function createPromotion (type, platform, active) {
+  const result = await this.grants.post('/v1/promotions')
+    .set('Content-Type', 'application/json')
+    .send({
+      type,
+      numGrants: 1,
+      value: '15.0',
+      platform,
+      active
+    }).expect(ok)
+  return result.body
+}
+
+test.before(async (t) => {
+  const { agent } = await setupForwardingServer({
+    token: null,
+    routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
+    initers: [grantsInitializer, registrarInitializer, walletInitializer],
+    config: {
+      forward: {
+        grants: '1'
+      }
+    }
+  })
+  t.context.createPromotion = createPromotion
+  t.context.grants = grantAgent
+  t.context.ledger = agent
+})
+
+test('grants: fetch available promotions', async t => {
+  const androidPromotion = await t.context.createPromotion('ugp', 'android', true)
+
+  // Desktop should not show any grants
+  await t.context.ledger.get('/v4/grants').expect(404)
+
+  // Android should show a single grant
+  let response = await t.context.ledger.get('/v5/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(ok)
+  let promotion = response.body
+
+  t.is(promotion.promotionId, androidPromotion.id)
+  t.is(promotion.type, 'android')
+
+  await cleanGrantDb()
+
+  await t.context.createPromotion('ugp', 'android', false)
+
+  await t.context.ledger.get('/v4/grants').expect(404)
+  await t.context.ledger.get('/v5/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(404)
+
+  await t.context.createPromotion('ugp', '', true)
+
+  await t.context.ledger.get('/v5/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(ok)
+  response = await t.context.ledger.get('/v4/grants').expect(ok)
+
+  let promotions = response.body.grants
+  t.is(promotions.length, 1)
+
+  await t.context.createPromotion('ugp', '', true)
+
+  response = await t.context.ledger.get('/v4/grants').expect(ok)
+
+  promotions = response.body.grants
+  t.is(promotions.length, 2)
+})
+
+test('grants: claim promotions', async t => {
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+
+  const personaId = uuidV4().toLowerCase()
+
+  var response = await t.context.ledger.get('/v2/registrar/persona').expect(ok)
+  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
+
+  const keypair = tweetnacl.sign.keyPair()
+  const body = {
+    label: uuidV4().toLowerCase(),
+    currency: 'BAT',
+    publicKey: uint8tohex(keypair.publicKey)
+  }
+  var octets = JSON.stringify(body)
+  var headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers.signature = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, { algorithm: 'ed25519' })
+
+  var payload = { requestType: 'httpSignature',
+    request: {
+      body: body,
+      headers: headers,
+      octets: octets
+    },
+    proof: personaCredential.request()
+  }
+  response = await t.context.ledger.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+    .send(payload).expect(ok)
+  const paymentId = response.body.wallet.paymentId
+
+  const androidPromotion = await t.context.createPromotion('ugp', 'android', true)
+
+  response = await t.context.ledger.get('/v5/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(ok)
+  let promotion = response.body
+
+  t.is(promotion.promotionId, androidPromotion.id)
+  t.is(promotion.type, 'android')
+
+  // Cannot claim from ads geo
+  await t.context.ledger
+    .put(`/v3/grants/${paymentId}`)
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-CountryCode', 'US')
+    .send({ promotionId: androidPromotion.id })
+    .expect(400)
+
+  await t.context.ledger
+    .get(`/v4/captchas/${paymentId}`)
+    .set('brave-product', 'brave-core')
+    .expect(ok)
+
+  const { captcha } = await wallets.findOne({ paymentId })
+
+  // Cannot claim android grant with desktop solution
+  await t.context.ledger
+    .put(`/v4/grants/${paymentId}`)
+    .send({
+      promotionId: androidPromotion.id,
+      captchaResponse: {
+        x: captcha.x,
+        y: captcha.y
+      }
+    })
+    .expect(404)
+
+  await wallets.update({
+    paymentId
+  }, {
+    $set: {
+      nonce: BAT_CAPTCHA_BRAVE_NONCE
+    }
+  })
+
+  await t.context.ledger
+    .put(`/v3/grants/${paymentId}`)
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-CountryCode', 'JA')
+    .send({ promotionId: androidPromotion.id })
+    .expect(200)
+
+  await t.context.ledger.get('/v5/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(404)
+
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true`)
+    .expect(200)
+  const walletInfo = response.body
+  t.is(walletInfo.grants.length, 1)
+  t.true(new BigNumber(walletInfo.balance).equals('15.0'))
+})
+
+test('grants: redeem promotions', async t => {
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+
+  const personaId = uuidV4().toLowerCase()
+
+  var response = await t.context.ledger.get('/v2/registrar/persona').expect(ok)
+  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
+
+  const keypair = tweetnacl.sign.keyPair()
+  const body = {
+    label: uuidV4().toLowerCase(),
+    currency: 'BAT',
+    publicKey: uint8tohex(keypair.publicKey)
+  }
+  var octets = JSON.stringify(body)
+  var headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers.signature = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, { algorithm: 'ed25519' })
+
+  var payload = { requestType: 'httpSignature',
+    request: {
+      body: body,
+      headers: headers,
+      octets: octets
+    },
+    proof: personaCredential.request()
+  }
+  response = await t.context.ledger.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+    .send(payload).expect(ok)
+  const paymentId = response.body.wallet.paymentId
+
+  const androidPromotion = await t.context.createPromotion('ugp', 'android', true)
+
+  await wallets.update({
+    paymentId
+  }, {
+    $set: {
+      nonce: BAT_CAPTCHA_BRAVE_NONCE
+    }
+  })
+
+  await t.context.ledger
+    .put(`/v3/grants/${paymentId}`)
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-CountryCode', 'JA')
+    .send({ promotionId: androidPromotion.id })
+    .expect(200)
+
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true&amount=15.0&altcurrency=BAT`)
+    .expect(200)
+  const { unsignedTx } = response.body
+  t.is(response.body.grants.length, 1)
+  t.true(new BigNumber(response.body.balance).equals('15.0'))
+
+  const viewingId = uuidV4().toLowerCase()
+  const surveyorId = (await createSurveyor({ rate: 1, votes: 12 })).body.surveyorId
+
+  const createPayload = setupCreatePayload({
+    viewingId,
+    surveyorId,
+    keypair
+  })
+
+  const redeemPayload = createPayload(unsignedTx)
+
+  do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
+    if (response.status === 503) {
+      await timeout(response.headers['retry-after'] * 1000)
+    }
+    response = await t.context.ledger
+      .put('/v2/wallet/' + paymentId)
+      .send(redeemPayload)
+  } while (response.status === 503)
+  const err = ok(response)
+  if (err) throw err
+
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true`)
+    .expect(200)
+  const walletInfo = response.body
+  t.is(walletInfo.grants, undefined)
+  t.true(new BigNumber(walletInfo.balance).equals('0.0'))
+})
 
 test('grants: add expired grant and make sure it does not add to wallet', async t => {
   let body
@@ -205,7 +486,7 @@ test.skip('claim grants with attestations', async (t) => {
     paymentId: wrongPaymentId
   }, {
     $set: {
-      nonce: 'xgMGBYYwinwuXkClx9sXT7mIlK0Kht2ZYnJhdmVfbm9uY2UxNTQwNDk3NzI0MDI2'
+      nonce: BAT_CAPTCHA_BRAVE_NONCE
     }
   })
 
@@ -268,7 +549,7 @@ test.skip('claim grants with attestations', async (t) => {
     paymentId
   }, {
     $set: {
-      nonce: 'xgMGBYYwinwuXkClx9sXT7mIlK0Kht2ZYnJhdmVfbm9uY2UxNTQwNDk3NzI0MDI2'
+      nonce: BAT_CAPTCHA_BRAVE_NONCE
     }
   })
 
@@ -308,7 +589,7 @@ test.skip('claim grants with attestations', async (t) => {
     paymentId
   }, {
     $set: {
-      nonce: 'xgMGBYYwinwuXkClx9sXT7mIlK0Kht2ZYnJhdmVfbm9uY2UxNTQwNDk3NzI0MDI2'
+      nonce: BAT_CAPTCHA_BRAVE_NONCE
     }
   })
 
