@@ -7,6 +7,7 @@ services:
       - "./ledger:/usr/src/app/ledger"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
+      - "./test:/usr/src/app/test"
     command: "npm run start-ledger"
   ledger-worker:
     volumes:

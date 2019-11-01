@@ -394,7 +394,22 @@ async function setupForwardingServer ({
       grants: false
     },
     database: {
-      mongo: process.env.BAT_MONGODB_URI
+      mongo: process.env.BAT_MONGODB_URI + '/ledger'
+    },
+    wallet: {
+      uphold: {
+        accessToken: process.env.UPHOLD_ACCESS_TOKEN || 'none',
+        clientId: process.env.UPHOLD_CLIENT_ID || 'none',
+        clientSecret: process.env.UPHOLD_CLIENT_SECRET || 'none',
+        environment: process.env.UPHOLD_ENVIRONMENT || 'sandbox'
+      },
+      settlementAddress: {
+        BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
+      }
+    },
+    currency: {
+      url: process.env.BAT_RATIOS_URL,
+      access_token: process.env.BAT_RATIOS_TOKEN
     }
   }, config)
   const serverOpts = {
