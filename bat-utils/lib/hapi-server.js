@@ -20,9 +20,7 @@ const npminfo = require('../npminfo')
 
 module.exports = async (options, runtime) => {
   try {
-    console.log('setup', options)
     const srvr = await Server(options, runtime)
-    console.log('finished')
     return srvr
   } catch (e) {
     console.log(e)
