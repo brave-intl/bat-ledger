@@ -41,6 +41,47 @@ const walletStatsList = Joi.array().items(
 )
 
 /*
+   GET /v2/wallet/{paymentId}/info
+ */
+v2.readInfo = { handler: (runtime) => {
+  return async (request, h) => {
+    const debug = braveHapi.debug(module, request)
+    const wallets = runtime.database.get('wallets', debug)
+    const paymentId = request.params.paymentId.toLowerCase()
+
+    const wallet = await wallets.findOne({ paymentId: paymentId })
+    if (!wallet) {
+      throw boom.notFound('no such wallet: ' + paymentId)
+    }
+
+    const infoKeys = [ 'addresses', 'altcurrency', 'provider', 'providerId', 'paymentId', 'httpSigningPubKey' ]
+    return underscore.pick(wallet, infoKeys)
+  }
+},
+description: 'Returns information about the wallet associated with the user',
+tags: [ 'api' ],
+
+validate: {
+  params: {
+    paymentId: Joi.string().guid().required().description('identity of the wallet')
+  }
+},
+
+response: {
+  schema: Joi.object().keys({
+    altcurrency: Joi.string().optional().description('the wallet balance currency'),
+    addresses: Joi.object().keys({
+      BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
+      BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
+      CARD_ID: Joi.string().guid().optional().description('Card id'),
+      ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
+      LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
+    })
+  }).unknown(true)
+}
+}
+
+/*
    GET /v2/wallet/{paymentId}
  */
 
@@ -820,6 +861,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/grants/{type}').config(v1.walletGrantsInfo),
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
   braveHapi.routes.async().post().path('/v2/wallet/{paymentId}/claim').config(v2.claimWallet),
+  braveHapi.routes.async().path('/v2/wallet/{paymentId}/info').config(v2.readInfo),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
