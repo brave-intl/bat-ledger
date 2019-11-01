@@ -193,10 +193,10 @@ const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
       throw boom.badGateway('not configured for promotions')
     }
 
-    const platform = protocolVersion === 3 ? 'android' : ''
+    const platform = protocolVersion === 3 ? 'android' : 'desktop'
 
     const { grants } = runtime.config.wreck
-    const payload = await braveHapi.wreck.get(grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + (platform || ''), {
+    const payload = await braveHapi.wreck.get(grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + platform, {
       headers: grants.headers,
       useProxyP: true
     })
@@ -497,7 +497,7 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const adsAvailable = await adsGrantsAvailable(code)
 
     if (runtime.config.forward.grants) {
-      const platformQp = protocolVersion === 3 ? 'android' : ''
+      const platformQp = protocolVersion === 3 ? 'android' : 'desktop'
       const { grants } = runtime.config.wreck
       const payload = await braveHapi.wreck.get(grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
         headers: grants.headers,
