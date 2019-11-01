@@ -59,6 +59,7 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "KAFKA_CONSUMER_GROUP=bat-eyeshade"
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
@@ -97,7 +98,6 @@ services:
       service: ledger
     environment:
       - "SERVICE=ledger"
-      - "KAFKA_CONSUMER_GROUP=bat-ledger"
       - "DYNO=worker.1"
     depends_on:
       - mongo
@@ -115,7 +115,7 @@ services:
     environment:
       - "PORT=3001"
       - "SERVICE=ledger"
-      - "KAFKA_CONSUMER_GROUP=bat-ledger"
+      - "KAFKA_CONSUMER_GROUP=bat-eyeshade"
       - PUBLISHERS_TAKEOVER
       - "DYNO=web.1"
     depends_on:
