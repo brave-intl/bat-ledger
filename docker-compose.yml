@@ -89,6 +89,7 @@ services:
       file: base.yml
       service: ledger
     environment:
+      - "GRANT_TOKEN=596fde96-cc80-40e5-b81f-a21c81bb101a"
       - "CAPTCHA_URL=${CAPTCHA_URL-http://captcha-web:3334}"
       - "PORT=3001"
       - "SERVICE=ledger"
@@ -156,7 +157,7 @@ services:
       - GRANT_WALLET_CARD_ID
       - GRANT_WALLET_PRIVATE_KEY
       - GRANT_WALLET_PUBLIC_KEY
-      - TOKEN_LIST
+      - "TOKEN_LIST=596fde96-cc80-40e5-b81f-a21c81bb101a"
       - UPHOLD_ACCESS_TOKEN
     depends_on:
       - grant-postgres
