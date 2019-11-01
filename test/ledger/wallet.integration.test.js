@@ -68,8 +68,6 @@ test.before(async (t) => {
     }
   })
   t.context.runtime = runtime
-  // t.context.createPromotion = createPromotion
-  // t.context.grants = grantAgent
   t.context.ledger = agent
 })
 
@@ -240,12 +238,6 @@ test('compositing wallet grant information', async (t) => {
 })
 
 test('stats get forwarded from grants server', async (t) => {
-  // backfill grants db
-//   const postgres = new pg.Pool({
-//     connectionString: process.env.DATABASE_URL,
-//     ssl: false
-//   })
-//   const client = await postgres.connect()
   const pid1 = '76e24dda-dbaf-41ad-ab7e-67bd8e8f5a69'
   const pid2 = '0f6d6fad-7f87-4fbd-a4ae-3110b28b6a68'
   const { postgres } = t.context.runtime

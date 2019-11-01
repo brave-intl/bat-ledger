@@ -21,7 +21,6 @@ const debug = new SDebug('test')
 const Pool = pg.Pool
 const Server = require('bat-utils/lib/hapi-server')
 const { Runtime } = require('bat-utils')
-const globalConfig = require('../config')
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
@@ -351,7 +350,48 @@ async function setupForwardingServer ({
   initers = [],
   token
 }) {
-  const conf = _.extend({}, globalConfig, config)
+  const conf = _.extend({
+    sentry: {},
+    server: {},
+    queue: {
+      rsmq: process.env.BAT_REDIS_URL
+    },
+    cache: {
+      redis: {
+        url: process.env.BAT_REDIS_URL
+      }
+    },
+    login: {
+      github: false
+    },
+    forward: {
+      grants: '1'
+    },
+    wreck: {
+      grants: {
+        baseUrl: process.env.BAT_GRANT_SERVER,
+        headers: {
+          'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN || '00000000-0000-4000-0000-000000000000'),
+          'Content-Type': 'application/json'
+        }
+      }
+    },
+    balance: {
+      url: process.env.BAT_BALANCE_URL || 'http://127.0.0.1:3000',
+      access_token: process.env.BALANCE_TOKEN || 'foobarfoobar'
+    },
+    testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
+    prometheus: {
+      label: process.env.SERVICE + '.' + (process.env.DYNO || 1),
+      redis: process.env.BAT_REDIS_URL
+    },
+    disable: {
+      grants: false
+    },
+    database: {
+      mongo: process.env.BAT_MONGODB_URI
+    }
+  }, config)
   const serverOpts = {
     id: uuidV4(),
     headersP: false,
