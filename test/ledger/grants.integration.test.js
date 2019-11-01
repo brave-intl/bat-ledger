@@ -21,7 +21,6 @@ import {
   connectToDb
 } from '../utils'
 import {
-  // mungeEnv,
   timeout,
   uint8tohex
 } from 'bat-utils/lib/extras-utils'

@@ -133,9 +133,7 @@ module.exports = (runtime) => {
         }
         return internals.rateLimiterAuthed
       }
-    } catch (e) {
-      console.log(e)
-    }
+    } catch (e) {}
 
     return internals.rateLimiter
   }
