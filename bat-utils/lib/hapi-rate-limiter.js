@@ -103,6 +103,9 @@ module.exports = (runtime) => {
     let authorization, parts, token
 
     try {
+      if (process.env.NODE_ENV !== 'production') {
+        return internals.noRateLimiter
+      }
       const ipaddr = whitelist.ipaddr(request)
       if (ipaddr === '127.0.0.1') {
         return internals.noRateLimiter
