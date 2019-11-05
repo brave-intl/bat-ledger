@@ -9,6 +9,7 @@ import { sign } from 'http-request-signature'
 import tweetnacl from 'tweetnacl'
 import _ from 'underscore'
 import {
+  signTxn,
   balanceAgent,
   grantAgent,
   ledgerAgent,
@@ -53,6 +54,7 @@ const BAT_CAPTCHA_BRAVE_NONCE = 'Uh0/rUnwu1TYeW71ibrXV76sqNgtzh7w'
 async function createPromotion (type, platform, active) {
   const result = await this.grants.post('/v1/promotions')
     .set('Content-Type', 'application/json')
+    .set('Authorization', `Bearer ${process.env.GRANT_TOKEN}`)
     .send({
       type,
       numGrants: 1,
@@ -77,6 +79,130 @@ test.before(async (t) => {
   t.context.createPromotion = createPromotion
   t.context.grants = grantAgent
   t.context.ledger = agent
+})
+
+test('grants: drain grants', async t => {
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+
+  const personaId = uuidV4().toLowerCase()
+
+  var response = await t.context.ledger.get('/v2/registrar/persona').expect(ok)
+  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
+
+  const keypair = tweetnacl.sign.keyPair()
+  let body = {
+    label: uuidV4().toLowerCase(),
+    currency: 'BAT',
+    publicKey: uint8tohex(keypair.publicKey)
+  }
+  var octets = JSON.stringify(body)
+  var headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers.signature = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, { algorithm: 'ed25519' })
+
+  var payload = { requestType: 'httpSignature',
+    request: {
+      body: body,
+      headers: headers,
+      octets: octets
+    },
+    proof: personaCredential.request()
+  }
+  response = await t.context.ledger.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+    .send(payload).expect(ok)
+  const paymentId = response.body.wallet.paymentId
+
+  const androidPromotion = await t.context.createPromotion('ugp', 'android', true)
+
+  response = await t.context.ledger.get('/v5/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(ok)
+  let promotion = response.body
+
+  t.is(promotion.promotionId, androidPromotion.id)
+  t.is(promotion.type, 'android')
+
+  // Cannot claim from ads geo
+  await t.context.ledger
+    .put(`/v3/grants/${paymentId}`)
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-CountryCode', 'US')
+    .send({ promotionId: androidPromotion.id })
+    .expect(400)
+
+  await t.context.ledger
+    .get(`/v4/captchas/${paymentId}`)
+    .set('brave-product', 'brave-core')
+    .expect(ok)
+
+  const { captcha } = await wallets.findOne({ paymentId })
+
+  // Cannot claim android grant with desktop solution
+  await t.context.ledger
+    .put(`/v4/grants/${paymentId}`)
+    .send({
+      promotionId: androidPromotion.id,
+      captchaResponse: {
+        x: captcha.x,
+        y: captcha.y
+      }
+    })
+    .expect(404)
+
+  await wallets.update({
+    paymentId
+  }, {
+    $set: {
+      nonce: BAT_CAPTCHA_BRAVE_NONCE
+    }
+  })
+
+  await t.context.ledger
+    .put(`/v3/grants/${paymentId}`)
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .set('Fastly-GeoIP-CountryCode', 'JA')
+    .send({ promotionId: androidPromotion.id })
+    .expect(200)
+
+  await t.context.ledger.get('/v5/grants')
+    .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
+    .expect(404)
+
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true`)
+    .expect(200)
+  let walletInfo = response.body
+  t.is(walletInfo.grants.length, 1)
+  t.true(new BigNumber(walletInfo.balance).equals('15.0'))
+  // FIXME
+  t.true(new BigNumber(walletInfo.cardBalance).equals('0.0'))
+
+  const settlement = process.env.BAT_SETTLEMENT_ADDRESS
+
+  const txn = {
+    destination: settlement,
+    denomination: {
+      currency: 'BAT',
+      amount: '0.0' // FIXME
+    }
+  }
+  body = { signedTx: signTxn(keypair, txn) }
+  await t.context.ledger
+    .post(`/v2/wallet/${paymentId}/claim`)
+    .send(body)
+    .expect(200)
+
+  response = await t.context.ledger.get(`/v2/wallet/${paymentId}?refresh=true`)
+    .expect(200)
+  walletInfo = response.body
+  // FIXME
+  t.true(new BigNumber(walletInfo.balance).equals('15.0'))
 })
 
 test('grants: fetch available promotions', async t => {

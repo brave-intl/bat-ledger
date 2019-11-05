@@ -151,10 +151,17 @@ const read = function (runtime, apiVersion) {
             return total.plus(grant.probi)
           }, new BigNumber(0))
           balances.confirmed = new BigNumber(balances.confirmed).plus(total)
+
+          const adsTotal = grants.filter((grant) => grant.type === 'ads').reduce((adsTotal, grant) => {
+            return adsTotal.plus(grant.probi)
+          }, new BigNumber(0))
+          balances.cardBalance = new BigNumber(balances.cardBalance).plus(adsTotal)
+
           result.grants = grants.map((grant) => {
             return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
           })
         }
+        // when we are using the grant server compatibility layer, include the ad grant balance in the "cardBalance"
       } else {
         let { grants } = wallet
         if (grants) {
@@ -1023,6 +1030,28 @@ function claimWalletHandler (runtime) {
     }
 
     if (+txn.denomination.amount !== 0) {
+      if (runtime.config.forward.grants) {
+        const drainPayload = {
+          wallet: underscore.extend(
+            underscore.pick(wallet, ['paymentId', 'altcurrency', 'provider', 'providerId']),
+            { publicKey: wallet.httpSigningPubKey }
+          ),
+          anonymousAddress: anonymousAddress || txn.destination
+        }
+
+        const { grants } = runtime.config.wreck
+        const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/drain', {
+          headers: grants.headers,
+          payload: JSON.stringify(drainPayload),
+          useProxyP: true
+        })
+        const result = JSON.parse(payload.toString())
+
+        if (result.grantTotal > 0) {
+          return {}
+        }
+      }
+
       await runtime.wallet.submitTx(wallet, txn, signedTx, {
         commit: true
       })

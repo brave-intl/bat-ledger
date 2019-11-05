@@ -176,6 +176,7 @@ const cleanGrantDb = async () => {
 }
 
 module.exports = {
+  signTxn,
   cleanRedeemerRedisDb,
   setupForwardingServer,
   agentAutoAuth,
@@ -450,4 +451,25 @@ async function cleanRedeemerRedisDb () {
       })
     }).on('error', (err) => reject(err))
   })
+}
+
+function signTxn (keypair, body, octets) {
+  if (!octets) {
+    octets = JSON.stringify(body)
+  }
+  const headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers['signature'] = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, {
+    algorithm: 'ed25519'
+  })
+  return {
+    headers,
+    octets
+  }
 }
