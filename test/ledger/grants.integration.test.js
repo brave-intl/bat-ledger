@@ -54,6 +54,7 @@ const BAT_CAPTCHA_BRAVE_NONCE = 'Uh0/rUnwu1TYeW71ibrXV76sqNgtzh7w'
 async function createPromotion (type, platform, active) {
   const result = await this.grants.post('/v1/promotions')
     .set('Content-Type', 'application/json')
+    .set('Authorization', `Bearer ${process.env.GRANT_TOKEN}`)
     .send({
       type,
       numGrants: 1,
