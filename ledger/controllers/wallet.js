@@ -137,6 +137,8 @@ const read = function (runtime, apiVersion) {
       balances = wallet.balances
     }
     if (balances) {
+      balances.cardBalance = balances.confirmed
+
       if (runtime.config.forward.grants) {
         const { grants: grantsConfig } = runtime.config.wreck
         const payload = await braveHapi.wreck.get(grantsConfig.baseUrl + '/v1/grants/active?paymentId=' + paymentId, {
@@ -149,17 +151,18 @@ const read = function (runtime, apiVersion) {
             return total.plus(grant.probi)
           }, new BigNumber(0))
           balances.confirmed = new BigNumber(balances.confirmed).plus(total)
+
+          const adsTotal = grants.filter((grant) => grant.type === 'ads').reduce((adsTotal, grant) => {
+            return adsTotal.plus(grant.probi)
+          }, new BigNumber(0))
+          balances.cardBalance = new BigNumber(balances.cardBalance).plus(adsTotal)
+
           result.grants = grants.map((grant) => {
             return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
           })
         }
-        // when we are using the grant server compatibility layer, include the grant balance in the "cardBalance"
-        balances.cardBalance = balances.confirmed
+        // when we are using the grant server compatibility layer, include the ad grant balance in the "cardBalance"
       } else {
-        // when we are not using the grant server compatibility layer,
-        // don't include the grant balance in the "cardBalance"
-        balances.cardBalance = balances.confirmed
-
         let { grants } = wallet
         if (grants) {
           let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
