@@ -18,7 +18,7 @@ services:
       - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "ENABLE_ADS_PAYOUT=1"
       - "FASTLY_TOKEN_LIST=foobarfoobar"
-      - "KAFKA_BROKER=kafka:9092"
+      - "KAFKA_BROKERS=kafka:9092"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
       - "LEDGER_URL=${LEDGER_URL-http://ledger-web:3001}"

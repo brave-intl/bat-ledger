@@ -42,8 +42,8 @@ const services = {
     portno: 3002,
 
     f: () => {
-      if (process.env.KAFKA_BROKER) {
-        module.exports.kafka = { broker : process.env.KAFKA_BROKER }
+      if (process.env.KAFKA_BROKERS) {
+        module.exports.kafka = { brokers : process.env.KAFKA_BROKERS }
       }
 
       module.exports.referrals =

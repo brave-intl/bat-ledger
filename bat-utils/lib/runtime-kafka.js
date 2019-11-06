@@ -2,7 +2,7 @@ const { NConsumer, NProducer } = require('sinek')
 
 const kafkaConfiguration = {
   noptions: {
-    'metadata.broker.list': process.env.KAFKA_BROKER,
+    'metadata.broker.list': process.env.KAFKA_BROKERS,
     'group.id': process.env.KAFKA_CONSUMER_GROUP,
     'socket.keepalive.enable': true,
     'api.version.request': true,
@@ -39,7 +39,10 @@ class Kafka {
     const partitionCount = 1
 
     this.producer = new NProducer(kafkaConfiguration, null, partitionCount)
-    this.producer.on('error', error => console.error(error))
+    this.producer.on('error', error => {
+      console.error(error)
+      this.runtime.captureException(error)
+    })
     await this.producer.connect()
   }
   async send (topicName, message, _partition = null, _key = null, _partitionKey = null) {
