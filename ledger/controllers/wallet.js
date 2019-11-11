@@ -1049,27 +1049,27 @@ function claimWalletHandler (runtime) {
           const result = JSON.parse(payload.toString())
 
           if (result.grantTotal > 0) {
+            if (runtime.config.balance) {
+              // invalidate any cached balance
+              try {
+                await braveHapi.wreck.delete(runtime.config.balance.url + '/v2/wallet/' + paymentId + '/balance',
+                  {
+                    headers: {
+                      authorization: 'Bearer ' + runtime.config.balance.access_token,
+                      'content-type': 'application/json'
+                    },
+                    useProxyP: true
+                  })
+              } catch (ex) {
+                runtime.captureException(ex, { req: request })
+              }
+            }
+
             return {}
           }
         } catch (ex) {
           console.log(ex.data.payload.toString())
           throw ex
-        }
-
-        if (runtime.config.balance) {
-          // invalidate any cached balance
-          try {
-            await braveHapi.wreck.delete(runtime.config.balance.url + '/v2/wallet/' + paymentId + '/balance',
-              {
-                headers: {
-                  authorization: 'Bearer ' + runtime.config.balance.access_token,
-                  'content-type': 'application/json'
-                },
-                useProxyP: true
-              })
-          } catch (ex) {
-            runtime.captureException(ex, { req: request })
-          }
         }
       }
 
