@@ -1040,15 +1040,20 @@ function claimWalletHandler (runtime) {
         }
 
         const { grants } = runtime.config.wreck
-        const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/drain', {
-          headers: grants.headers,
-          payload: JSON.stringify(drainPayload),
-          useProxyP: true
-        })
-        const result = JSON.parse(payload.toString())
+        try {
+          const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/drain', {
+            headers: grants.headers,
+            payload: JSON.stringify(drainPayload),
+            useProxyP: true
+          })
+          const result = JSON.parse(payload.toString())
 
-        if (result.grantTotal > 0) {
-          return {}
+          if (result.grantTotal > 0) {
+            return {}
+          }
+        } catch (ex) {
+          console.log(ex.data.payload.toString())
+          throw ex
         }
       }
 
