@@ -22,9 +22,10 @@ services:
       - zookeeper
     ports:
       - "9092:9092"
+      - "19092:19092"
     environment:
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: SSL://kafka:19092
+      KAFKA_ADVERTISED_LISTENERS: "SSL://kafka:19092,SSL://localhost:19092"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_SSL_KEYSTORE_FILENAME: kafka.broker1.keystore.jks
       KAFKA_SSL_KEYSTORE_CREDENTIALS: broker1_keystore_creds
