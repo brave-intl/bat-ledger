@@ -43,7 +43,7 @@ env:
     - "GRANT_DATABASE_URL=postgres://grants:password@grant-postgres/grants?sslmode=disable"
     - "ADS_URL=https://ads-serve.bravesoftware.com"
     - "SERVICE=ledger"
-    - "KAFKA_BROKERS=kafka:19092"
+    - "KAFKA_BROKERS=localhost:19092"
     - "KAFKA_SSL_CA_LOCATION=test/secrets/snakeoil-ca-1.crt"
     - "KAFKA_SSL_CERTIFICATE_LOCATION=test/secrets/consumer-ca1-signed.pem"
     - "KAFKA_SSL_KEY_LOCATION=test/secrets/consumer.client.key"
