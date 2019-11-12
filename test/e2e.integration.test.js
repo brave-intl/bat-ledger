@@ -18,6 +18,7 @@ import {
 } from 'bat-utils/lib/extras-utils'
 import { Runtime } from 'bat-utils'
 import {
+  signTxn,
   makeSettlement,
   cleanDbs,
   cleanPgDb,
@@ -28,6 +29,7 @@ import {
   braveYoutubeOwner,
   braveYoutubePublisher,
   createSurveyor,
+  setupCreatePayload,
   debug,
   statsUrl,
   connectToDb
@@ -584,27 +586,6 @@ test('wallets can be claimed by verified members', async (t) => {
   }
 })
 
-function signTxn (keypair, body, octets) {
-  if (!octets) {
-    octets = JSON.stringify(body)
-  }
-  const headers = {
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
-  }
-
-  headers['signature'] = sign({
-    headers: headers,
-    keyId: 'primary',
-    secretKey: uint8tohex(keypair.secretKey)
-  }, {
-    algorithm: 'ed25519'
-  })
-  return {
-    headers,
-    octets
-  }
-}
-
 async function createUserWallet (t) {
   const personaId = uuidV4().toLowerCase()
   const viewingId = uuidV4().toLowerCase()
@@ -878,35 +859,6 @@ async function getLedgerBalance (paymentId) {
     })
     .expect(ok)
   return body.probi
-}
-
-function setupCreatePayload ({
-  surveyorId,
-  viewingId,
-  keypair
-}) {
-  return (unsignedTx) => {
-    const octets = JSON.stringify(unsignedTx)
-    const headers = {
-      digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
-    }
-    headers['signature'] = sign({
-      headers: headers,
-      keyId: 'primary',
-      secretKey: uint8tohex(keypair.secretKey)
-    }, {
-      algorithm: 'ed25519'
-    })
-    return {
-      requestType: 'httpSignature',
-      signedTx: {
-        headers: headers,
-        octets: octets
-      },
-      surveyorId: surveyorId,
-      viewingId: viewingId
-    }
-  }
 }
 
 async function createVotingCredentials (t, viewingId) {

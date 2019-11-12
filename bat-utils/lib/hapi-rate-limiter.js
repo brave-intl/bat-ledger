@@ -103,6 +103,9 @@ module.exports = (runtime) => {
     let authorization, parts, token
 
     try {
+      if (process.env.NODE_ENV !== 'production') {
+        return internals.noRateLimiter
+      }
       const ipaddr = whitelist.ipaddr(request)
       if (ipaddr === '127.0.0.1') {
         return internals.noRateLimiter
@@ -121,10 +124,6 @@ module.exports = (runtime) => {
           token = (parts[0].toLowerCase() === 'bearer') && parts[1]
         } else {
           token = request.query.access_token
-        }
-
-        if (!_.isString(token)) {
-          return internals.rateLimiter
         }
 
         const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []

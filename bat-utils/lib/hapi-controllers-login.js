@@ -16,7 +16,7 @@ const v1 = {}
 
 v1.login = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       if (!request.auth.isAuthenticated) throw boom.forbidden()
 
       const debug = braveHapi.debug(module, request)
@@ -56,7 +56,7 @@ v1.login = {
       })
 
       request.cookieAuth.set(credentials)
-      reply.redirect(runtime.login.github.world)
+      return h.redirect(runtime.login.github.world)
     }
   },
 
@@ -81,7 +81,7 @@ v1.login = {
 
 v1.logout = {
   handler: (runtime) => {
-    return async (request, reply) => {
+    return async (request, h) => {
       const debug = braveHapi.debug(module, request)
       const credentials = request.auth.credentials
       const suffix = ' at ' + os.hostname() + ' ' + npminfo.name + '@' + npminfo.version +
@@ -102,7 +102,7 @@ v1.logout = {
       }
 
       request.cookieAuth.clear()
-      reply.redirect(runtime.login.github.bye)
+      return h.redirect(runtime.login.github.bye)
     }
   },
 

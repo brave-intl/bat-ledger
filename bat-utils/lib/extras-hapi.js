@@ -175,6 +175,7 @@ const WreckProxy = (server, opts) => {
 
   return { server: server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }
 }
+exports.WreckProxy = WreckProxy
 
 const WreckGet = async (server, opts) => {
   const params = WreckProxy(server, opts)

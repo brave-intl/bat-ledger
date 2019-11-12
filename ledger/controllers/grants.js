@@ -1,3 +1,4 @@
+const BigNumber = require('bignumber.js')
 const Joi = require('@hapi/joi')
 const Netmask = require('netmask').Netmask
 const l10nparser = require('accept-language-parser')
@@ -8,13 +9,17 @@ const uuidV4 = require('uuid/v4')
 const wreck = require('wreck')
 const {
   adsGrantsAvailable,
-  cooldownOffset
+  cooldownOffset,
+  legacyTypeFromTypeAndPlatform
 } = require('../lib/grants')
 const utils = require('bat-utils')
 const braveJoi = utils.extras.joi
 const braveHapi = utils.extras.hapi
 const braveUtils = utils.extras.utils
 const whitelist = utils.hapi.auth.whitelist
+
+// from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
+const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/
 
 const { NODE_ENV } = process.env
 const isProduction = NODE_ENV === 'production'
@@ -67,11 +72,7 @@ const minimumReconcileTimestampValidator = Joi.number().description('time when t
 const encodedGrantValidator = Joi.string().description('the jws encoded grant')
 const grantsValidator = Joi.array().min(0).items(encodedGrantValidator).description('grants for bulk upload')
 const expiryTimeValidator = Joi.number().positive().description('the time the grant expires')
-const grantProviderIdValidator = Joi.string().guid().when('type', {
-  is: 'ads',
-  then: Joi.required(),
-  otherwise: Joi.forbidden()
-})
+const grantProviderIdValidator = Joi.string().guid().optional()
 const braveProductEnumValidator = Joi.string().valid(['browser-laptop', 'brave-core']).description('the brave product requesting the captcha')
 const captchaResponseValidator = Joi.object().keys({
   x: Joi.number().required(),
@@ -173,20 +174,66 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
    GET /v5/grants
  */
 
-// from https://github.com/opentable/accept-language-parser/blob/master/index.js#L1
-const localeRegExp = /((([a-zA-Z]+(-[a-zA-Z0-9]+){0,2})|\*)(;q=[0-1](\.[0-9]+)?)?)*/
 const getGrant = (protocolVersion) => (runtime) => {
+  if (runtime.config.forward.grants) {
+    return getPromotionsFromGrantServer(protocolVersion)(runtime)
+  } else {
+    return getGrantLegacy(protocolVersion)(runtime)
+  }
+}
+
+const getPromotionsFromGrantServer = (protocolVersion) => (runtime) => {
   return async (request, h) => {
-    // Only support requests from Chrome versions > 70
-    if (protocolVersion === 2) {
-      let userAgent = request.headers['user-agent']
-      let userAgentIsChrome = userAgent.split('Chrome/').length > 1
-      if (userAgentIsChrome) {
-        let chromeVersion = parseInt(userAgent.split('Chrome/')[1].substring(0, 2))
-        if (chromeVersion < 70) {
-          throw boom.notFound('promotion not available for browser-laptop.')
-        }
+    if (runtime.config.disable.grants) {
+      throw boom.serverUnavailable()
+    }
+    const { paymentId } = request.query
+
+    if (!runtime.config.wreck.grants.baseUrl) {
+      throw boom.badGateway('not configured for promotions')
+    }
+
+    const platform = protocolVersion === 3 ? 'android' : 'desktop'
+
+    const { grants } = runtime.config.wreck
+    const payload = await braveHapi.wreck.get(grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + (paymentId || '') + '&platform=' + platform, {
+      headers: grants.headers,
+      useProxyP: true
+    })
+    const promotions = JSON.parse(payload.toString()).promotions
+
+    const adsAvailable = await adsGrantsAvailable(request.headers['fastly-geoip-countrycode'])
+
+    const filteredPromotions = []
+    for (let { id, type, platform } of promotions) {
+      const promotion = { promotionId: id, type: legacyTypeFromTypeAndPlatform(type, platform) }
+      if (type === 'ugp' && adsAvailable) { // only make ugp (both desktop and android) grants available in non-ads regions
+        continue
       }
+      if (type === 'ads' && protocolVersion === 3) { // hack - return ads grants first for v3 endpoint
+        return promotion
+      }
+      filteredPromotions.push(promotion)
+    }
+
+    if (filteredPromotions.length === 0) {
+      throw boom.notFound('promotion not available')
+    }
+
+    if (protocolVersion < 4) {
+      return filteredPromotions[0]
+    }
+
+    return {
+      grants: filteredPromotions
+    }
+  }
+}
+
+const getGrantLegacy = (protocolVersion) => (runtime) => {
+  return async (request, h) => {
+    if (runtime.config.disable.grants) {
+      throw boom.serverUnavailable()
     }
     const {
       lang,
@@ -399,7 +446,7 @@ v3.claimGrant = {
 }
 
 /*
-   PUT /v4/grants/{paymentId}
+   PUT /v2/grants/{paymentId}
  */
 
 v2.claimGrant = {
@@ -439,23 +486,52 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
     const grants = runtime.database.get('grants', debug)
     const promotions = runtime.database.get('promotions', debug)
     const wallets = runtime.database.get('wallets', debug)
-    let grant, result, state, wallet
+    let promotion, grant, result, state, wallet
 
-    if (!runtime.config.redeemer) {
+    if (runtime.config.disable.grants) {
+      throw boom.serverUnavailable()
+    }
+
+    if (!runtime.config.wreck.grants.baseUrl) {
       throw boom.badGateway('not configured for promotions')
     }
 
-    const promotionQuery = { promotionId, protocolVersion }
     const code = request.headers['fastly-geoip-countrycode']
     const adsAvailable = await adsGrantsAvailable(code)
 
-    if (protocolVersion === 3) {
-      underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android'] } })
-    } else if (protocolVersion === 4) {
-      underscore.extend(promotionQuery, { type: { $in: ['ugp', 'ads'] } })
+    if (runtime.config.forward.grants) {
+      const platformQp = protocolVersion === 3 ? 'android' : 'desktop'
+      const { grants } = runtime.config.wreck
+      const payload = await braveHapi.wreck.get(grants.baseUrl + '/v1/promotions?legacy=true&paymentId=' + paymentId + '&platform=' + platformQp, {
+        headers: grants.headers,
+        useProxyP: true
+      })
+      const promotions = JSON.parse(payload.toString()).promotions
+
+      const newPromo = underscore.find(promotions, (promotion) => { return promotion.id === promotionId })
+      if (!newPromo) {
+        throw boom.notFound('no such promotion: ' + promotionId)
+      }
+
+      const { available, expiresAt, type, platform } = newPromo
+      promotion = {
+        active: available,
+        expiresAt,
+        type: legacyTypeFromTypeAndPlatform(type, platform),
+        protocolVersion: 4
+      }
+    } else {
+      const promotionQuery = { promotionId, protocolVersion }
+
+      if (protocolVersion === 3) {
+        underscore.extend(promotionQuery, { protocolVersion: 4, type: { $in: ['ads', 'android'] } })
+      } else if (protocolVersion === 4) {
+        underscore.extend(promotionQuery, { type: { $in: ['ugp', 'ads'] } })
+      }
+
+      promotion = await promotions.findOne(promotionQuery)
     }
 
-    const promotion = await promotions.findOne(promotionQuery)
     if (!promotion) {
       throw boom.notFound('no such promotion: ' + promotionId)
     }
@@ -477,53 +553,68 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       throw validationError
     }
 
-    if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
-      // promotion already applied to wallet
-      throw boom.conflict()
-    }
+    if (runtime.config.forward.grants) {
+      const claimPayload = {
+        wallet: underscore.extend(
+          underscore.pick(wallet, ['paymentId', 'altcurrency', 'provider', 'providerId']),
+          { publicKey: wallet.httpSigningPubKey }
+        ),
+        promotionId
+      }
 
-    // pop off one grant
-    const grantQuery = createGrantQuery(promotion, wallet)
-    grant = await grants.findOneAndDelete(grantQuery)
-    if (!grant) {
-      throw boom.resourceGone('promotion no longer available')
-    }
+      let payload
+      try {
+        const { grants } = runtime.config.wreck
+        payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/claim', {
+          headers: grants.headers,
+          payload: JSON.stringify(claimPayload),
+          useProxyP: true
+        })
+      } catch (ex) {
+        console.log(ex.data.payload.toString())
+        throw ex
+      }
+      const { approximateValue } = JSON.parse(payload.toString())
 
-    const grantProperties = ['token', 'grantId', 'promotionId', 'status', 'type', 'paymentId']
-    const grantSubset = underscore.pick(grant, grantProperties)
-    const currentProperties = {
-      claimTimestamp: Date.now(),
-      claimIP: whitelist.ipaddr(request)
-    }
-    const grantInfo = underscore.extend(grantSubset, currentProperties)
+      const BATtoProbi = runtime.currency.alt2scale('BAT')
+      result = {
+        'altcurrency': 'BAT',
+        'probi': new BigNumber(approximateValue).times(BATtoProbi).toString(),
+        'expiryTime': Math.round(new Date(promotion.expiresAt).getTime() / 1000),
+        'providerId': wallet.providerId,
+        'type': promotion.type
+      }
+    } else {
+      if (wallet.grants && wallet.grants.some(x => x.promotionId === promotionId)) {
+        // promotion already applied to wallet
+        throw boom.conflict()
+      }
 
-    // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
-    wallet = await wallets.findOneAndUpdate({ 'paymentId': paymentId, 'grants.promotionId': { '$ne': promotionId } },
-      { $push: { grants: grantInfo } }
-    )
-    if (!wallet) {
-      // reinsert grant, another request already added a grant for this promotion to the wallet
-      await grants.insert(grant)
-      // promotion already applied to wallet
-      throw boom.conflict()
-    }
+      // pop off one grant
+      const grantQuery = createGrantQuery(promotion, wallet)
+      grant = await grants.findOneAndDelete(grantQuery)
+      if (!grant) {
+        throw boom.resourceGone('promotion no longer available')
+      }
 
-    // register the users claim to the grant with the redemption server
-    const walletPayload = { wallet: underscore.pick(wallet, ['altcurrency', 'provider', 'providerId']) }
-    try {
-      result = await braveHapi.wreck.put(runtime.config.redeemer.url + '/v1/grants/' + grant.grantId, {
-        headers: {
-          'Authorization': 'Bearer ' + runtime.config.redeemer.access_token,
-          'Content-Type': 'application/json',
-          // Only pass "trusted" IP, not previous value of X-Forwarded-For
-          'X-Forwarded-For': whitelist.ipaddr(request),
-          'User-Agent': request.headers['user-agent']
-        },
-        payload: JSON.stringify(walletPayload),
-        useProxyP: true
-      })
-    } catch (ex) {
-      runtime.captureException(ex, { req: request })
+      const grantProperties = ['token', 'grantId', 'promotionId', 'status', 'type', 'paymentId']
+      const grantSubset = underscore.pick(grant, grantProperties)
+      const currentProperties = {
+        claimTimestamp: Date.now(),
+        claimIP: whitelist.ipaddr(request)
+      }
+      const grantInfo = underscore.extend(grantSubset, currentProperties)
+
+      // atomic find & update, only one request is able to add a grant for the given promotion to this wallet
+      wallet = await wallets.findOneAndUpdate({ 'paymentId': paymentId, 'grants.promotionId': { '$ne': promotionId } },
+        { $push: { grants: grantInfo } }
+      )
+      if (!wallet) {
+        // reinsert grant, another request already added a grant for this promotion to the wallet
+        await grants.insert(grant)
+        // promotion already applied to wallet
+        throw boom.conflict()
+      }
     }
 
     if (runtime.config.balance) {
@@ -542,20 +633,22 @@ function claimGrant (protocolVersion, validate, createGrantQuery) {
       }
     }
 
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $inc: { count: -1 }
+    if (!runtime.config.forward.grants) {
+      state = {
+        $currentDate: { timestamp: { $type: 'timestamp' } },
+        $inc: { count: -1 }
+      }
+      await promotions.update({ promotionId: promotionId }, state, { upsert: true })
+
+      const grantContent = braveUtils.extractJws(grant.token)
+
+      result = underscore.pick(grantContent, [ 'altcurrency', 'probi', 'expiryTime', 'type', 'providerId' ])
+      await runtime.queue.send(debug, 'grant-report', underscore.extend({
+        grantId: grantContent.grantId,
+        paymentId: paymentId,
+        promotionId: promotionId
+      }, result))
     }
-    await promotions.update({ promotionId: promotionId }, state, { upsert: true })
-
-    const grantContent = braveUtils.extractJws(grant.token)
-
-    result = underscore.pick(grantContent, [ 'altcurrency', 'probi', 'expiryTime', 'type', 'providerId' ])
-    await runtime.queue.send(debug, 'grant-report', underscore.extend({
-      grantId: grantContent.grantId,
-      paymentId: paymentId,
-      promotionId: promotionId
-    }, result))
 
     return result
   }

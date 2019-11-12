@@ -16,7 +16,9 @@ const Database = function (config, runtime) {
 
   if (config.database.mongo) config.database = config.database.mongo
   this.config = config.database
-  this.db = monk(this.config, (err, db) => {
+  this.db = monk(this.config, {
+    retryWrites: false
+  }, (err, db) => {
     if (!err) return
 
     debug('database', { message: err.message })

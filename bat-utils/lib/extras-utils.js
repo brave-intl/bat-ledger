@@ -62,7 +62,11 @@ function changeMonth (date, months = 1) {
   return d
 
   function getCurrentMonth (d) {
-    return (12 * d.getYear()) + d.getMonth()
+    const iso = d.toISOString()
+    const split = iso.split('-')
+    const year = +split[0]
+    const month = +split[1]
+    return (12 * year) + month
   }
 }
 

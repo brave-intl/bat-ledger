@@ -1,4 +1,7 @@
 const fs = require('fs')
+const redis = require('redis')
+const { sign } = require('http-request-signature')
+const crypto = require('crypto')
 const path = require('path')
 const dotenv = require('dotenv')
 dotenv.config()
@@ -7,14 +10,17 @@ const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuidV4 = require('uuid/v4')
-const redis = require('redis')
 const BigNumber = require('bignumber.js')
+const pg = require('pg')
 const {
-  timeout
+  timeout,
+  uint8tohex
 } = require('bat-utils/lib/extras-utils')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
-
+const Pool = pg.Pool
+const Server = require('bat-utils/lib/hapi-server')
+const { Runtime } = require('bat-utils')
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
@@ -60,6 +66,7 @@ const AUTH_KEY = 'Authorization'
 const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
 const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
 const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
+const grantAgent = agent(process.env.BAT_GRANT_SERVER).set(AUTH_KEY, token)
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -152,19 +159,27 @@ const cleanEyeshadeDb = async (collections) => {
   return cleanDb('eyeshade', collections || eyeshadeCollections)
 }
 
-const cleanRedisDb = async () => {
-  const url = process.env.BAT_GRANT_REDIS_URL
-  const client = redis.createClient(url)
-  await new Promise((resolve, reject) => {
-    client.on('ready', () => {
-      client.flushdb((err) => {
-        err ? reject(err) : resolve()
-      })
-    }).on('error', (err) => reject(err))
-  })
+const cleanGrantDb = async () => {
+  const url = process.env.BAT_GRANT_POSTGRES_URL
+  const pool = new Pool({ connectionString: url, ssl: false })
+  const client = await pool.connect()
+  try {
+    await Promise.all([
+      client.query('DELETE from claim_creds;'),
+      client.query('DELETE from claims;'),
+      client.query('DELETE from wallets;'),
+      client.query('DELETE from promotions;')
+    ])
+  } finally {
+    client.release()
+  }
 }
 
 module.exports = {
+  signTxn,
+  cleanRedeemerRedisDb,
+  setupForwardingServer,
+  agentAutoAuth,
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
@@ -176,6 +191,7 @@ module.exports = {
   debug,
   status,
   eyeshadeAgent,
+  grantAgent,
   ledgerAgent,
   balanceAgent,
   assertWithinBounds,
@@ -186,9 +202,10 @@ module.exports = {
   cleanPgDb,
   cleanLedgerDb,
   cleanEyeshadeDb,
-  cleanRedisDb,
+  cleanGrantDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
+  setupCreatePayload,
   statsUrl
 }
 
@@ -196,7 +213,8 @@ function cleanDbs () {
   return Promise.all([
     cleanEyeshadeDb(),
     cleanLedgerDb(),
-    cleanRedisDb()
+    cleanGrantDb(),
+    cleanRedeemerRedisDb()
   ])
 }
 
@@ -244,6 +262,35 @@ function createSurveyor (options = {}) {
     }
   }
   return ledgerAgent.post(url).send(data).expect(ok)
+}
+
+function setupCreatePayload ({
+  surveyorId,
+  viewingId,
+  keypair
+}) {
+  return (unsignedTx) => {
+    const octets = JSON.stringify(unsignedTx)
+    const headers = {
+      digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+    }
+    headers['signature'] = sign({
+      headers: headers,
+      keyId: 'primary',
+      secretKey: uint8tohex(keypair.secretKey)
+    }, {
+      algorithm: 'ed25519'
+    })
+    return {
+      requestType: 'httpSignature',
+      signedTx: {
+        headers: headers,
+        octets: octets
+      },
+      surveyorId: surveyorId,
+      viewingId: viewingId
+    }
+  }
 }
 
 function statsUrl () {
@@ -296,4 +343,133 @@ async function insertReferralInfos (client) {
 
 function readJSONFile (...paths) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, ...paths)).toString())
+}
+
+async function setupForwardingServer ({
+  routes,
+  config,
+  initers = [],
+  token
+}) {
+  const conf = _.extend({
+    sentry: {},
+    server: {},
+    queue: {
+      rsmq: process.env.BAT_REDIS_URL
+    },
+    cache: {
+      redis: {
+        url: process.env.BAT_REDIS_URL
+      }
+    },
+    captcha: {
+      url: process.env.CAPTCHA_URL || 'http://127.0.0.1:3334',
+      access_token: process.env.CAPTCHA_TOKEN || '00000000-0000-4000-0000-000000000000',
+      bypass: process.env.CAPTCHA_BYPASS_TOKEN || '00000000-0000-4000-0000-000000000000'
+    },
+    login: {
+      github: false
+    },
+    forward: {
+      grants: '1'
+    },
+    wreck: {
+      grants: {
+        baseUrl: process.env.BAT_GRANT_SERVER,
+        headers: {
+          'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN || '00000000-0000-4000-0000-000000000000'),
+          'Content-Type': 'application/json'
+        }
+      }
+    },
+    balance: {
+      url: process.env.BAT_BALANCE_URL || 'http://127.0.0.1:3000',
+      access_token: process.env.BALANCE_TOKEN || 'foobarfoobar'
+    },
+    testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
+    prometheus: {
+      label: process.env.SERVICE + '.' + (process.env.DYNO || 1),
+      redis: process.env.BAT_REDIS_URL
+    },
+    disable: {
+      grants: false
+    },
+    database: {
+      mongo: process.env.BAT_MONGODB_URI + '/ledger'
+    },
+    wallet: {
+      uphold: {
+        accessToken: process.env.UPHOLD_ACCESS_TOKEN || 'none',
+        clientId: process.env.UPHOLD_CLIENT_ID || 'none',
+        clientSecret: process.env.UPHOLD_CLIENT_SECRET || 'none',
+        environment: process.env.UPHOLD_ENVIRONMENT || 'sandbox'
+      },
+      settlementAddress: {
+        BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
+      }
+    },
+    currency: {
+      url: process.env.BAT_RATIOS_URL,
+      access_token: process.env.BAT_RATIOS_TOKEN
+    }
+  }, config)
+  const serverOpts = {
+    id: uuidV4(),
+    headersP: false,
+    remoteP: false,
+    routes: {
+      routes: (debug, runtime, options) => {
+        return _.toArray(routes).map((route) => route(runtime))
+      }
+    }
+  }
+  const runtime = new Runtime(conf)
+  const server = await Server(serverOpts, runtime)
+  await server.started
+  const debug = new SDebug('init')
+  for (let i = 0; i < initers.length; i += 1) {
+    await initers[i](debug, runtime)
+  }
+  const agent = agentAutoAuth(server.listener, token)
+  return {
+    runtime,
+    agent
+  }
+}
+
+function agentAutoAuth (listener, token) {
+  return agent(listener).set(AUTH_KEY, `Bearer ${token || tkn}`)
+}
+
+async function cleanRedeemerRedisDb () {
+  const url = process.env.BAT_REDEEMER_REDIS_URL
+  const client = redis.createClient(url)
+  await new Promise((resolve, reject) => {
+    client.on('ready', () => {
+      client.flushdb((err) => {
+        err ? reject(err) : resolve()
+      })
+    }).on('error', (err) => reject(err))
+  })
+}
+
+function signTxn (keypair, body, octets) {
+  if (!octets) {
+    octets = JSON.stringify(body)
+  }
+  const headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+
+  headers['signature'] = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, {
+    algorithm: 'ed25519'
+  })
+  return {
+    headers,
+    octets
+  }
 }
