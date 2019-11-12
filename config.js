@@ -42,10 +42,6 @@ const services = {
     portno: 3002,
 
     f: () => {
-      if (process.env.KAFKA_BROKERS) {
-        module.exports.kafka = { brokers : process.env.KAFKA_BROKERS }
-      }
-
       module.exports.referrals =
         { currency              : process.env.REFERRALS_CURRENCY || 'USD'
         , amount                : process.env.REFERRALS_AMOUNT || 5
@@ -173,6 +169,27 @@ if (process.env.GITHUB_ORG) {
   , clientSecret        : process.env.GITHUB_CLIENT_SECRET
   , ironKey             : process.env.IRON_KEYPASS              || 'cookie-encryption-password-at-least-32-octets'
   , isSecure            : process.env.GITHUB_FORCE_HTTPS        || false
+  }
+}
+
+if (process.env.KAFKA_CONSUMER_GROUP) {
+  module.exports.kafka = {
+    noptions:
+    { 'metadata.broker.list': process.env.KAFKA_BROKERS
+    , 'group.id': process.env.KAFKA_CONSUMER_GROUP
+    , 'socket.keepalive.enable': true
+    , 'api.version.request': true
+    , 'socket.blocking.max.ms': 100
+    , "security.protocol": "SSL"
+    , "ssl.ca.location": process.env.KAFKA_SSL_CA_LOCATION
+    , "ssl.certificate.location": process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+    , "ssl.key.location": process.env.KAFKA_SSL_KEY_LOCATION
+    , "ssl.key.password": process.env.KAFKA_SSL_KEY_PASSWORD
+    },
+    tconf:
+    { 'request.required.acks': +process.env.KAFKA_REQUIRED_ACKS
+    , 'auto.offset.reset': 'earliest'
+    }
   }
 }
 

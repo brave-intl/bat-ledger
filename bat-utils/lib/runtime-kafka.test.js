@@ -4,13 +4,15 @@ import Kafka from './runtime-kafka'
 import test from 'ava'
 
 test('can create kafka consumer', async (t) => {
+  process.env.KAFKA_CONSUMER_GROUP = 'test-consumer'
+
   const runtime = {
-    config: { kafka: {} }
+    config: require('../../config')
   }
-  const producer = new Kafka(runtime.config)
+  const producer = new Kafka(runtime.config, runtime)
   await producer.connect()
 
-  const consumer = new Kafka(runtime.config)
+  const consumer = new Kafka(runtime.config, runtime)
   const messagesPromise = new Promise(resolve => {
     consumer.on('test-topic', async (messages) => {
       resolve(messages)

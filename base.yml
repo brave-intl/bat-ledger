@@ -5,6 +5,8 @@ services:
     image: bat-ledger
     build: .
     restart: always
+    volumes:
+      - ./test/secrets:/etc/kafka/secrets
     environment:
       - "BAT_BALANCE_SERVER=http://balance-web:3003"
       - "BAT_EYESHADE_SERVER=http://eyeshade-web:3002"
@@ -18,7 +20,12 @@ services:
       - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "ENABLE_ADS_PAYOUT=1"
       - "FASTLY_TOKEN_LIST=foobarfoobar"
-      - "KAFKA_BROKERS=kafka:9092"
+      - "KAFKA_BROKERS=kafka:19092"
+      - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/snakeoil-ca-1.crt"
+      - "KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/consumer-ca1-signed.pem"
+      - "KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/consumer.client.key"
+      - "KAFKA_SSL_KEY_PASSWORD=confluent"
+      - "KAFKA_REQUIRED_ACKS=1"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_REDIS_HOST=${GRANT_REDIS_HOST-grant-redis}"
       - "LEDGER_URL=${LEDGER_URL-http://ledger-web:3001}"

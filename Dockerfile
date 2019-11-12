@@ -1,4 +1,4 @@
-FROM node:8
+FROM node:8-jessie
 
 RUN wget https://cmake.org/files/v3.6/cmake-3.6.2-Linux-x86_64.tar.gz
 RUN tar -xf cmake-3.6.2-Linux-x86_64.tar.gz

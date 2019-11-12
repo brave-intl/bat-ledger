@@ -1,19 +1,5 @@
 const { NConsumer, NProducer } = require('sinek')
 
-const kafkaConfiguration = {
-  noptions: {
-    'metadata.broker.list': process.env.KAFKA_BROKERS,
-    'group.id': process.env.KAFKA_CONSUMER_GROUP,
-    'socket.keepalive.enable': true,
-    'api.version.request': true,
-    'socket.blocking.max.ms': 100
-  },
-  tconf: {
-    'request.required.acks': 1, // FIXME testing only
-    'auto.offset.reset': 'earliest'
-  }
-}
-
 const batchOptions = {
   batchSize: 1000, // decides on the max size of our "batchOfMessages"
   commitEveryNBatch: 1, // will be ignored
@@ -35,13 +21,19 @@ class Kafka {
     this.topicHandlers = {}
   }
   async connect () {
-    // FIXME testing only
+    // testing only
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Kafka producer not allowed in production')
+    }
+
     const partitionCount = 1
 
-    this.producer = new NProducer(kafkaConfiguration, null, partitionCount)
+    this.producer = new NProducer(this.config, null, partitionCount)
     this.producer.on('error', error => {
       console.error(error)
-      this.runtime.captureException(error)
+      if (this.runtime.captureException) {
+        this.runtime.captureException(error)
+      }
     })
     await this.producer.connect()
   }
@@ -53,7 +45,7 @@ class Kafka {
     this.topicHandlers[topic] = handler
   }
   async consume () {
-    const consumer = new NConsumer(Object.keys(this.topicHandlers), kafkaConfiguration)
+    const consumer = new NConsumer(Object.keys(this.topicHandlers), this.config)
     await consumer.connect()
     consumer.consume(async (batchOfMessages, callback) => {
       // parallel processing on topic level
