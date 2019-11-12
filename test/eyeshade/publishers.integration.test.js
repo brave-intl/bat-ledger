@@ -47,8 +47,8 @@ test('cannot post payouts if the publisher field is blank and type is not manual
     hash: uuidV4().toLowerCase()
   }
 
-  const reponse = await eyeshadeAgent.post(url).send([manualSettlement])
-  t.true(reponse.status === 400)
+  const response = await eyeshadeAgent.post(url).send([manualSettlement])
+  t.true(response.status === 400)
 })
 
 test('can post a manual settlement from publisher app using token auth', async t => {
@@ -74,7 +74,8 @@ test('can post a manual settlement from publisher app using token auth', async t
     hash: uuidV4().toLowerCase()
   }
 
-  await eyeshadeAgent.post(url).send([manualSettlement]).expect(200)
+  const response = await eyeshadeAgent.post(url).send([manualSettlement]).expect(200)
+  await eyeshadeAgent.post(url + '/submit').send(response.body).expect(200)
 
   // ensure the manual settlement doc was created with the document id
   const settlementDoc = await settlements.findOne({ settlementId: manualSettlement.transactionId })
@@ -191,6 +192,6 @@ test('only can post settlement files under to 20mbs', async t => {
   t.true(response.body.message === 'Payload content length greater than maximum allowed: 20971520')
 
   // ensure small settlement files succeed
-  response = await eyeshadeAgent.post(url).send([smallSettlement])
-  t.true(response.statusCode === 200)
+  response = await eyeshadeAgent.post(url).send([smallSettlement]).expect(200)
+  response = await eyeshadeAgent.post(url + '/submit').send(response.body).expect(200)
 })
