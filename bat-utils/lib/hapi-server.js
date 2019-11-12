@@ -118,6 +118,7 @@ async function Server (options, runtime) {
       debug('github authentication: forceHttps=' + github.isSecure)
 
       server.auth.strategy('session', 'cookie', {
+        redirectTo: '/v1/login',
         cookie: {
           password: github.ironKey,
           isSecure: github.isSecure
@@ -134,6 +135,7 @@ async function Server (options, runtime) {
       const bearerAccessTokenConfig = {
         allowQueryToken: true,
         allowMultipleHeaders: false,
+        allowChaining: true,
         validate: (request, token, h) => {
           const scope = ['devops', 'ledger', 'QA']
           const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
@@ -160,6 +162,7 @@ async function Server (options, runtime) {
   server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
     allowQueryToken: true,
     allowMultipleHeaders: false,
+    allowChaining: true,
     validate: (request, token, h) => {
       const scope = pushScopedTokens(token)
       const isValid = !!scope.length
@@ -230,11 +233,6 @@ async function Server (options, runtime) {
     if ((!response.isBoom) || (response.output.statusCode !== 401)) {
       if (typeof response.header === 'function') response.header('Cache-Control', 'private')
       return h.continue
-    }
-
-    if (request && request.auth && request.cookieAuth && request.cookieAuth.clear) {
-      request.cookieAuth.clear()
-      return h.redirect('/v1/login')
     }
 
     return h.continue

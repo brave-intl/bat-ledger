@@ -245,7 +245,8 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     executedAt: newYear.toISOString()
   })
 
-  await eyeshadeAgent.post(settlementURL).send([settlement]).expect(ok)
+  response = await eyeshadeAgent.post(settlementURL).send([settlement]).expect(ok)
+  await eyeshadeAgent.post(settlementURL + '/submit').send(response.body).expect(ok)
   do {
     await timeout(5000)
     await updateBalances(runtime)
