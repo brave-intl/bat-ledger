@@ -16,6 +16,12 @@ let altcurrency
    POST /v2/publishers/settlement
  */
 
+const settlementGroupsValidator = Joi.object().pattern(
+  /\w{2,25}/, Joi.array().items(
+    Joi.string().guid()
+  )
+)
+
 v2.settlement = {
   handler: (runtime) => {
     return async (request, h) => {
@@ -76,17 +82,10 @@ v2.settlement = {
       }
 
       for (let type in settlementGroups) {
-        const settlementIds = underscore.uniq(settlementGroups[type])
-        for (let settlementId of settlementIds) {
-          await runtime.queue.send(debug, 'settlement-report', {
-            type,
-            settlementId,
-            shouldUpdateBalances: true
-          })
-        }
+        settlementGroups[type] = underscore.uniq(settlementGroups[type])
       }
 
-      return {}
+      return settlementGroups
     }
   },
 
@@ -120,12 +119,52 @@ v2.settlement = {
     }).unknown(true)).required().description('publisher settlement report')
   },
 
-  response:
-    { schema: Joi.object().length(0) }
+  response: {
+    schema: settlementGroupsValidator
+  }
+}
+
+v2.submitSettlement = {
+  handler: (runtime) => async (request, h) => {
+    const debug = braveHapi.debug(module, request)
+    const { payload: settlementGroups } = request
+    for (let type in settlementGroups) {
+      const settlementIds = underscore.uniq(settlementGroups[type])
+      for (let settlementId of settlementIds) {
+        await runtime.queue.send(debug, 'settlement-report', {
+          type,
+          settlementId,
+          shouldUpdateBalances: true
+        })
+      }
+    }
+
+    return {}
+  },
+
+  auth: {
+    strategies: ['session', 'simple-scoped-token'],
+    scope: ['ledger', 'publishers'],
+    mode: 'required'
+  },
+  payload: {
+    maxBytes: 1024 * 1024 * 20 // 20 MB
+  },
+  description: 'Posts a list of settlement ids and types to trigger the worker',
+  tags: [ 'api' ],
+
+  validate: {
+    payload: settlementGroupsValidator
+  },
+
+  response: {
+    schema: Joi.object().length(0)
+  }
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement)
+  braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement),
+  braveHapi.routes.async().post().path('/v2/publishers/settlement/submit').config(v2.submitSettlement)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
