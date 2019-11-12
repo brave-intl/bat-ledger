@@ -78,11 +78,9 @@ v2.settlement = {
           entries = []
           settlementGroups[type] = entries
         }
-        entries.push(settlementId)
-      }
-
-      for (let type in settlementGroups) {
-        settlementGroups[type] = underscore.uniq(settlementGroups[type])
+        if (!entries.includes(settlementId)) {
+          entries.push(settlementId)
+        }
       }
 
       return settlementGroups
