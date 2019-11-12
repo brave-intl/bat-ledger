@@ -135,6 +135,7 @@ async function Server (options, runtime) {
       const bearerAccessTokenConfig = {
         allowQueryToken: true,
         allowMultipleHeaders: false,
+        allowChaining: true,
         validate: (request, token, h) => {
           const scope = ['devops', 'ledger', 'QA']
           const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
@@ -161,6 +162,7 @@ async function Server (options, runtime) {
   server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
     allowQueryToken: true,
     allowMultipleHeaders: false,
+    allowChaining: true,
     validate: (request, token, h) => {
       const scope = pushScopedTokens(token)
       const isValid = !!scope.length

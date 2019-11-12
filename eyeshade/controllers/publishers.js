@@ -88,7 +88,7 @@ v2.settlement = {
   },
 
   auth: {
-    strategies: ['session', 'simple-scoped-token'],
+    strategies: ['simple-scoped-token', 'session'],
     scope: ['ledger', 'publishers'],
     mode: 'required'
   },
@@ -141,7 +141,7 @@ v2.submitSettlement = {
   },
 
   auth: {
-    strategies: ['session', 'simple-scoped-token'],
+    strategies: ['simple-scoped-token', 'session'],
     scope: ['ledger', 'publishers'],
     mode: 'required'
   },
@@ -161,8 +161,8 @@ v2.submitSettlement = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement),
-  braveHapi.routes.async().post().path('/v2/publishers/settlement/submit').config(v2.submitSettlement)
+  braveHapi.routes.async().post().path('/v2/publishers/settlement/submit').config(v2.submitSettlement),
+  braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement)
 ]
 
 module.exports.initialize = async (debug, runtime) => {
