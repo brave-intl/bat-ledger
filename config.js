@@ -188,6 +188,27 @@ if (process.env.GITHUB_ORG) {
   }
 }
 
+if (process.env.KAFKA_CONSUMER_GROUP) {
+  module.exports.kafka = {
+    noptions:
+    { 'metadata.broker.list': process.env.KAFKA_BROKERS
+    , 'group.id': process.env.KAFKA_CONSUMER_GROUP
+    , 'socket.keepalive.enable': true
+    , 'api.version.request': true
+    , 'socket.blocking.max.ms': 100
+    , "security.protocol": "SSL"
+    , "ssl.ca.location": process.env.KAFKA_SSL_CA_LOCATION
+    , "ssl.certificate.location": process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+    , "ssl.key.location": process.env.KAFKA_SSL_KEY_LOCATION
+    , "ssl.key.password": process.env.KAFKA_SSL_KEY_PASSWORD
+    },
+    tconf:
+    { 'request.required.acks': +process.env.KAFKA_REQUIRED_ACKS
+    , 'auto.offset.reset': 'earliest'
+    }
+  }
+}
+
 module.exports.prometheus =
   { label              : process.env.SERVICE + '.' + (process.env.DYNO || 1)
   , redis              : process.env.REDIS2_URL               || process.env.REDIS_URL               ||  false

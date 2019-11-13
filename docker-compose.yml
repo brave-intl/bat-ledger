@@ -5,6 +5,40 @@ networks:
     driver: bridge
 
 services:
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:5.2.2
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    #network_mode: "host"
+    networks:
+      - ledger
+  kafka:
+    container_name: kafka
+    image: confluentinc/cp-kafka:5.2.2 # kafka version 2.2.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: "SSL://kafka:19092,SSL2://localhost:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,SSL2:SSL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka.broker1.keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: broker1_keystore_creds
+      KAFKA_SSL_KEY_CREDENTIALS: broker1_sslkey_creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.broker1.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: broker1_truststore_creds
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_SSL_CLIENT_AUTH: requested
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+    volumes:
+      - ./test/secrets:/etc/kafka/secrets
+    networks:
+      - ledger
   mongo:
     container_name: ledger-mongo
     image: mongo:3.6.7
@@ -29,6 +63,22 @@ services:
     environment:
       - "POSTGRES_USER=eyeshade"
       - "POSTGRES_PASSWORD=password"
+  eyeshade-consumer:
+    container_name: eyeshade-consumer
+    command: "npm run eyeshade-consumer"
+    extends:
+      file: base.yml
+      service: ledger
+    environment:
+      - "KAFKA_CONSUMER_GROUP=bat-eyeshade"
+      - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
+      - "SERVICE=eyeshade"
+      - "DYNO=worker.1"
+    depends_on:
+      - eyeshade-postgres
+      - kafka
+    networks:
+      - ledger
   eyeshade-worker:
     container_name: eyeshade-worker
     command: "npm run eyeshade-worker"
@@ -98,6 +148,7 @@ services:
     depends_on:
       - mongo
       - redis
+      - kafka
     networks:
       - ledger
   balance-web:
@@ -162,6 +213,7 @@ services:
     depends_on:
       - grant-postgres
       - challenge-bypass
+      - kafka
     networks:
       - ledger
   grant-postgres:

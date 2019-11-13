@@ -1,4 +1,4 @@
-FROM node:8
+FROM node:8-jessie
 
 RUN wget https://cmake.org/files/v3.6/cmake-3.6.2-Linux-x86_64.tar.gz
 RUN tar -xf cmake-3.6.2-Linux-x86_64.tar.gz
@@ -21,3 +21,5 @@ COPY bat-utils/package.json /usr/src/app/bat-utils/
 RUN npm ci
 COPY . /usr/src/app
 RUN npm run build
+
+CMD npm run eyeshade-consumer
