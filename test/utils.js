@@ -27,12 +27,16 @@ const {
   BAT_EYESHADE_SERVER,
   BAT_LEDGER_SERVER,
   BAT_BALANCE_SERVER,
+  BAT_GRANT_SERVER,
+  BAT_REDEEMER_SERVER,
   ALLOWED_REFERRALS_TOKENS,
   ALLOWED_STATS_TOKENS,
   ALLOWED_ADS_TOKENS,
   ALLOWED_PUBLISHERS_TOKENS,
   BAT_MONGODB_URI,
-  BAT_GRANT_REDIS_URL
+  BAT_REDEEMER_REDIS_URL,
+  GRANT_TOKEN,
+  REDEEMER_TOKEN
 } = process.env
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
@@ -62,6 +66,7 @@ const ledgerCollections = [
   'restricted'
 ]
 
+const tkn = 'foobarfoobar'
 const token = (tkn) => `Bearer ${tkn}`
 
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
@@ -88,7 +93,9 @@ const eyeshadeStatsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWE
 const eyeshadeAdsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_ADS_TOKENS))
 const eyeshadePublishersAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_PUBLISHERS_TOKENS))
 
-const grantAgent = agent(process.env.BAT_GRANT_SERVER).set(AUTH_KEY, token)
+const grantAgent = agent(BAT_GRANT_SERVER).set(AUTH_KEY, token(GRANT_TOKEN))
+
+const redeemerAgent = agent(BAT_REDEEMER_SERVER).set(AUTH_KEY, token(REDEEMER_TOKEN))
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -160,7 +167,7 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
     t.true((v2 - v1) <= tol, msg)
   }
 }
-const dbUri = (db) => `${process.env.BAT_MONGODB_URI}/${db}`
+
 const dbUri = (db) => `${BAT_MONGODB_URI}/${db}`
 const connectToDb = async (key) => {
   const client = await mongodb.MongoClient.connect(dbUri(key), {
@@ -219,6 +226,12 @@ module.exports = {
   ledgerAgent,
   balanceAgent,
   agents: {
+    grants: {
+      global: grantAgent
+    },
+    redeemer: {
+      global: redeemerAgent
+    },
     eyeshade: {
       global: eyeshadeAgent,
       referrals: eyeshadeReferralsAgent,
@@ -482,8 +495,7 @@ function agentAutoAuth (listener, token) {
 }
 
 async function cleanRedeemerRedisDb () {
-  const url = process.env.BAT_REDEEMER_REDIS_URL
-  const client = redis.createClient(url)
+  const client = redis.createClient(BAT_REDEEMER_REDIS_URL)
   await new Promise((resolve, reject) => {
     client.on('ready', () => {
       client.flushdb((err) => {

@@ -75,7 +75,7 @@ test.before(async (t) => {
     }
   })
   t.context.createPromotion = createPromotion
-  t.context.grants = grantAgent
+  t.context.grants = agents.grants.global
   t.context.ledger = agent
 })
 
