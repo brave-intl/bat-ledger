@@ -10,8 +10,6 @@ const surveyorsWorker = require('./workers/surveyors')
 const walletWorker = require('./workers/wallet')
 const adsWorker = require('./workers/ads')
 
-const suggestionsConsumer = require('./workers/suggestions')
-
 const {
   Runtime,
   extras
@@ -44,6 +42,3 @@ config.postgres.schemaVersion = require('./migrations/current')
 
 const runtime = new Runtime(config)
 extras.worker(options, runtime)
-
-suggestionsConsumer(runtime)
-runtime.kafka.consume()

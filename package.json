@@ -13,6 +13,7 @@
     "build-utils": "babel bat-utils --ignore **/*.test.js -d dist/bat-utils && cp bat-utils/package.json dist/bat-utils/package.json",
     "eyeshade-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/eyeshade/server.js",
     "eyeshade-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/eyeshade/worker.js",
+    "eyeshade-consumer": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/eyeshade/consumer.js",
     "heroku-postbuild": "npm run build",
     "ledger-server": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/server.js",
     "ledger-worker": "NODE_PATH=dist node --optimize_for_size --max_old_space_size=460 --gc_interval=100 dist/ledger/worker.js",
@@ -20,6 +21,7 @@
     "start-balance": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=balance ./node_modules/.bin/babel-node balance/server.js",
     "start-eyeshade": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node eyeshade/server.js",
     "start-eyeshade-worker": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
+    "start-eyeshade-consumer": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=eyeshade ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/consumer.js",
     "start-ledger": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node ledger/server.js",
     "start-ledger-worker": "NODE_PATH=. DEBUG=*,-babel*,-mongo:*,mongo:queries SERVICE=ledger ./node_modules/.bin/babel-node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
     "test": "nyc --reporter=html --reporter=text npm run test-all",
@@ -53,7 +55,7 @@
   },
   "config": {
     "dockermonitors": "prometheus grafana",
-    "dockerservices": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker grant-web redeemer-web"
+    "dockerservices": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker eyeshade-consumer grant-web redeemer-web"
   },
   "repository": {
     "type": "git",

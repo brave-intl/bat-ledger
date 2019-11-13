@@ -21,3 +21,5 @@ COPY bat-utils/package.json /usr/src/app/bat-utils/
 RUN npm ci
 COPY . /usr/src/app
 RUN npm run build
+
+CMD npm run eyeshade-consumer
