@@ -19,16 +19,20 @@ if (!process.env.BATUTIL_SPACES) {
 Runtime.newrelic.setupNewrelic(config, __filename)
 
 config.cache = false
+config.currency = false
+config.database = false
+config.queue = false
+config.prometheus = false
 config.postgres.schemaVersion = require('./migrations/current')
 
 const runtime = new Runtime(config)
 
-const kafkaSslCa = process.env.KAFKA_SSL_CA
-const kafkaSslCaLocation = process.env.KAFKA_SSL_CA_LOCATION
+const kafkaSslCertificate = process.env.KAFKA_SSL_CERTIFICATE
+const kafkaSslCertificateLocation = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
 
-if (kafkaSslCa) {
-  if (kafkaSslCaLocation && !fs.existsSync(kafkaSslCaLocation)) {
-    fs.writeFileSync(kafkaSslCaLocation, kafkaSslCa)
+if (kafkaSslCertificate) {
+  if (kafkaSslCertificateLocation && !fs.existsSync(kafkaSslCertificateLocation)) {
+    fs.writeFileSync(kafkaSslCertificateLocation, kafkaSslCertificate)
   }
 }
 

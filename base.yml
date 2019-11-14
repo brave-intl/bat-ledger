@@ -23,6 +23,7 @@ services:
       - "BAT_REDIS_URL=redis://redis:6379"
       - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "ENABLE_ADS_PAYOUT=1"
+      - "ENV=local"
       - "FASTLY_TOKEN_LIST=foobarfoobar"
       - "KAFKA_BROKERS=kafka:19092"
       - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/snakeoil-ca-1.crt"

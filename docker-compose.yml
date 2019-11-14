@@ -70,7 +70,6 @@ services:
       file: base.yml
       service: ledger
     environment:
-      - "KAFKA_CONSUMER_GROUP=bat-eyeshade"
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "SERVICE=eyeshade"
       - "DYNO=worker.1"

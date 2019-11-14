@@ -51,7 +51,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     })
   t.is(body.length, 0)
 
-  await producer.send('grant-suggestions', suggestionType.toBuffer(example))
+  await producer.send(process.env.ENV + '.grant.suggestion', suggestionType.toBuffer(example))
 
   while (!body.length) {
     await timeout(2000)
