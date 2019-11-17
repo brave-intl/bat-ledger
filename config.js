@@ -146,8 +146,8 @@ module.exports =
 
 , testingCohorts        : process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : []
 , currency:
-  { url: process.env.BAT_RATIOS_URL
-  , access_token: process.env.BAT_RATIOS_TOKEN
+  { url: process.env.BAT_RATIOS_URL || false
+  , access_token: process.env.BAT_RATIOS_TOKEN || false
   }
 }
 if (service.f) service.f()
@@ -188,16 +188,15 @@ if (process.env.GITHUB_ORG) {
   }
 }
 
-if (process.env.KAFKA_CONSUMER_GROUP) {
+if (process.env.KAFKA_BROKERS) {
   module.exports.kafka = {
     noptions:
     { 'metadata.broker.list': process.env.KAFKA_BROKERS
-    , 'group.id': process.env.KAFKA_CONSUMER_GROUP
+    , 'group.id': process.env.ENV + '.' + process.env.SERVICE
     , 'socket.keepalive.enable': true
     , 'api.version.request': true
     , 'socket.blocking.max.ms': 100
     , "security.protocol": "SSL"
-    , "ssl.ca.location": process.env.KAFKA_SSL_CA_LOCATION
     , "ssl.certificate.location": process.env.KAFKA_SSL_CERTIFICATE_LOCATION
     , "ssl.key.location": process.env.KAFKA_SSL_KEY_LOCATION
     , "ssl.key.password": process.env.KAFKA_SSL_KEY_PASSWORD
@@ -206,6 +205,9 @@ if (process.env.KAFKA_CONSUMER_GROUP) {
     { 'request.required.acks': +process.env.KAFKA_REQUIRED_ACKS
     , 'auto.offset.reset': 'earliest'
     }
+  }
+  if (process.env.KAFKA_SSL_CA_LOCATION) {
+    module.exports.kafka.noptions["ssl.ca.location"] = process.env.KAFKA_SSL_CA_LOCATION
   }
 }
 
