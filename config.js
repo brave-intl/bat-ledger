@@ -207,7 +207,7 @@ if (process.env.KAFKA_BROKERS) {
     }
   }
   if (process.env.KAFKA_SSL_CA_LOCATION) {
-    kafka.noptions["ssl.ca.location"] = process.env.KAFKA_SSL_CA_LOCATION
+    module.exports.kafka.noptions["ssl.ca.location"] = process.env.KAFKA_SSL_CA_LOCATION
   }
 }
 
