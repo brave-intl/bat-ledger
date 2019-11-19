@@ -395,20 +395,13 @@ const write = function (runtime, apiVersion) {
             wallet: underscore.extend(underscore.pick(wallet, infoKeys), { publicKey: wallet.httpSigningPubKey }),
             transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, [ 'headers', 'octets' ]))).toString('base64')
           }
-          try {
-            const { grants } = runtime.config.wreck
-            const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants', {
-              headers: grants.headers,
-              payload: JSON.stringify(redeemPayload),
-              useProxyP: true
-            })
-            result = JSON.parse(payload.toString())
-            // FIXME if return code is 204 then set this to false
-            result.grantIds = true
-          } catch (ex) {
-            // console.log(ex.data.payload.toString())
-            // FIXME throw when above is resolved
-          }
+          const { res, payload } = await runtime.wreck.grants.post('/v1/grants', {
+            payload: JSON.stringify(redeemPayload),
+            useProxyP: true
+          })
+          result = JSON.parse(payload.toString())
+          // FIXME if return code is 204 then set this to false
+          result.grantIds = res.statusCode !== 204
         } else {
           result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
         }
