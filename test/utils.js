@@ -82,20 +82,20 @@ const formURL = createFormURL({
 
 const AUTH_KEY = 'Authorization'
 const GLOBAL_TOKEN = TOKEN_LIST.split(',')[0]
-const ledgerAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+const ledgerGlobalAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
 const ledgerStatsAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
 
-const balanceAgent = agent(BAT_BALANCE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+const balanceGlobalAgent = agent(BAT_BALANCE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
 
-const eyeshadeAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+const eyeshadeGlobalAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
 const eyeshadeReferralsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_REFERRALS_TOKENS))
 const eyeshadeStatsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
 const eyeshadeAdsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_ADS_TOKENS))
 const eyeshadePublishersAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_PUBLISHERS_TOKENS))
 
-const grantAgent = agent(BAT_GRANT_SERVER).set(AUTH_KEY, token(GRANT_TOKEN))
+const grantGlobalAgent = agent(BAT_GRANT_SERVER).set(AUTH_KEY, token(GRANT_TOKEN))
 
-const redeemerAgent = agent(BAT_REDEEMER_SERVER).set(AUTH_KEY, token(REDEEMER_TOKEN))
+const redeemerGlobalAgent = agent(BAT_REDEEMER_SERVER).set(AUTH_KEY, token(REDEEMER_TOKEN))
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -221,30 +221,26 @@ module.exports = {
   ok,
   debug,
   status,
-  eyeshadeAgent,
-  grantAgent,
-  ledgerAgent,
-  balanceAgent,
   agents: {
     grants: {
-      global: grantAgent
+      global: grantGlobalAgent
     },
     redeemer: {
-      global: redeemerAgent
+      global: redeemerGlobalAgent
     },
     eyeshade: {
-      global: eyeshadeAgent,
+      global: eyeshadeGlobalAgent,
       referrals: eyeshadeReferralsAgent,
       ads: eyeshadeAdsAgent,
       publishers: eyeshadePublishersAgent,
       stats: eyeshadeStatsAgent
     },
     ledger: {
-      global: ledgerAgent,
+      global: ledgerGlobalAgent,
       stats: ledgerStatsAgent
     },
     balance: {
-      global: balanceAgent
+      global: balanceGlobalAgent
     }
   },
   assertWithinBounds,
@@ -293,7 +289,7 @@ function cleanPgDb (postgres) {
 }
 
 function getSurveyor (id) {
-  return ledgerAgent
+  return ledgerGlobalAgent
     .get(`/v2/surveyor/contribution/${id || 'current'}`)
     .expect(ok)
 }
@@ -314,7 +310,7 @@ function createSurveyor (options = {}) {
       probi: probi || new BigNumber(votes * rate).times('1e18').toString()
     }
   }
-  return ledgerAgent.post(url).send(data).expect(ok)
+  return ledgerGlobalAgent.post(url).send(data).expect(ok)
 }
 
 function setupCreatePayload ({
