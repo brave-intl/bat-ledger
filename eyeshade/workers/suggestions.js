@@ -21,8 +21,6 @@ module.exports = (runtime, callback) => {
             continue
           }
 
-          console.log(suggestion)
-
           const publisher = suggestion.channel
           for (let source of suggestion.funding) {
             // FIXME
