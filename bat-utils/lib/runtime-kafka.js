@@ -1,6 +1,6 @@
 const { NConsumer, NProducer } = require('sinek')
 const SDebug = require('sdebug')
-const debug = SDebug('kafka')
+const debug = new SDebug('kafka')
 
 const batchOptions = {
   batchSize: 1000, // decides on the max size of our "batchOfMessages"
