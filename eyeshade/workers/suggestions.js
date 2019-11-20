@@ -10,7 +10,6 @@ module.exports = (runtime, callback) => {
     try {
       await client.query('BEGIN')
       try {
-        console.log('kafka batch', suggestionTopic, messages.length, messages[0])
         for (let message of messages) {
           const buf = Buffer.from(message.value, 'binary')
           let suggestion
