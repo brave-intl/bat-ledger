@@ -63,6 +63,13 @@ module.exports = (runtime) => {
     duration: 1 // seconds by IP
   })
 
+  const globalRateLimiter = new RateLimiterRedis({
+    redis: redisClient,
+    keyPrefix: 'global-limiter',
+    points: 1000, // requests per
+    duration: 1 // seconds by IP
+  })
+
   const internals = {
     pluginName,
     redisClient,
@@ -81,6 +88,7 @@ module.exports = (runtime) => {
         const rateLimiter = chooseRateLimiter(request)
         try {
           await rateLimiter.consume(address)
+          await globalRateLimiter.consume('all')
           return h.continue
         } catch (err) {
           let error
