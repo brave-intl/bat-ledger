@@ -66,8 +66,8 @@ module.exports = (runtime) => {
   const globalRateLimiter = new RateLimiterRedis({
     redis: redisClient,
     keyPrefix: 'global-limiter',
-    points: 1000, // requests per
-    duration: 1 // seconds by IP
+    points: +process.env.GLOBAL_RATE_LIMIT_PER_10S || 10000, // requests per
+    duration: 10 // seconds
   })
 
   const internals = {
