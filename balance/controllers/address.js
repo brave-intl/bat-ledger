@@ -53,7 +53,7 @@ v2.walletBalance =
       try {
         const headers = {}
         if (process.env.LEDGER_TOKEN) {
-          headers['Authorization'] = 'Bearer ' + (process.env.LEDGER_TOKEN || '00000000-0000-4000-0000-000000000000')
+          headers['Authorization'] = 'Bearer ' + process.env.LEDGER_TOKEN
         }
         const url = `${runtime.config.ledger.url}/v2/wallet/${paymentId}?refresh=true`
         debug('GET', url)
