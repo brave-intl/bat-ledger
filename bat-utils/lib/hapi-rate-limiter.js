@@ -52,7 +52,7 @@ module.exports = (runtime) => {
   const rateLimiter = new RateLimiterRedis({
     redis: redisClient,
     keyPrefix: 'rate-limiter',
-    points: 60, // requests per
+    points: +process.env.ANON_RATE_LIMIT_PER_M || 60, // requests per
     duration: 60 // seconds by IP
   })
 

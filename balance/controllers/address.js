@@ -51,9 +51,16 @@ v2.walletBalance =
       walletInfo = JSON.parse(walletInfo)
     } else {
       try {
+        const headers = {}
+        if (process.env.LEDGER_TOKEN) {
+          headers['Authorization'] = 'Bearer ' + (process.env.LEDGER_TOKEN || '00000000-0000-4000-0000-000000000000')
+        }
         const url = `${runtime.config.ledger.url}/v2/wallet/${paymentId}?refresh=true`
         debug('GET', url)
-        walletInfo = await braveHapi.wreck.get(url, { useProxyP: true })
+        walletInfo = await braveHapi.wreck.get(url, {
+          headers,
+          useProxyP: true
+        })
         if (Buffer.isBuffer(walletInfo)) walletInfo = JSON.parse(walletInfo)
       } catch (ex) {
         throw boom.boomify(ex)
