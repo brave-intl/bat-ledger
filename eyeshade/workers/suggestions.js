@@ -29,7 +29,7 @@ module.exports = (runtime, callback) => {
             const surveyorId = source.promotion // abuse promotion id as surveyor id
 
             const surveyorUpdate = `
-            insert into surveyor_groups (id, price) values ($1, $2)
+            insert into surveyor_groups (id, price, virtual) values ($1, $2, true)
             on conflict (id) do nothing;
             `
             await client.query(surveyorUpdate, [
