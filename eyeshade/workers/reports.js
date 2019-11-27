@@ -42,7 +42,9 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
 
   const query = `
   update surveyor_groups set frozen = true, updated_at = current_timestamp
-  where not frozen and created_at < current_date - $1 * interval '1d'
+  where not frozen
+  and not virtual
+  and created_at < current_date - $1 * interval '1d'
   returning id;
   `
 
