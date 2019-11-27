@@ -26,6 +26,7 @@ const isProduction = NODE_ENV === 'production'
 const rateLimitEnabled = isProduction
 
 const qalist = { addresses: process.env.IP_QA_WHITELIST && process.env.IP_QA_WHITELIST.split(',') }
+const bypassTokenlist = process.env.CAPTCHA_BYPASS_TOKEN ? process.env.CAPTCHA_BYPASS_TOKEN.split(',') : []
 
 const claimRate = {
   limit: process.env.GRANT_CLAIM_RATE ? Number(process.env.GRANT_CLAIM_RATE) : 50,
@@ -704,7 +705,8 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
 }
 
 async function captchaCheck (debug, runtime, request, promotion, wallet) {
-  const { captchaResponse } = request.payload
+  const { payload, headers } = request
+  const { captchaResponse } = payload
   const { paymentId } = wallet
   const wallets = runtime.database.get('wallets', debug)
   const configCaptcha = runtime.config.captcha
@@ -721,6 +723,10 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
       if (promotion.protocolVersion !== 2) {
         return boom.forbidden('must first request correct captcha version')
       }
+    }
+
+    if (braveHapi.isSimpleTokenValid(bypassTokenlist, headers['captcha-bypass'])) {
+      return
     }
 
     if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
