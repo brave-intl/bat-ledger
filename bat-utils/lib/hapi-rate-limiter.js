@@ -6,7 +6,6 @@ const {
 const _ = require('underscore')
 const underscore = _
 
-const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
 
 const pluginName = 'rateLimitRedisPlugin'
@@ -108,8 +107,6 @@ module.exports = (runtime) => {
   }
 
   function chooseRateLimiter (request) {
-    let authorization, parts, token
-
     try {
       if (process.env.NODE_ENV !== 'production') {
         return internals.noRateLimiter
@@ -126,16 +123,7 @@ module.exports = (runtime) => {
       }
 
       if (whitelist.authorizedP(ipaddr)) {
-        authorization = request.raw.req.headers.authorization
-        if (authorization) {
-          parts = authorization.split(/\s+/)
-          token = (parts[0].toLowerCase() === 'bearer') && parts[1]
-        } else {
-          token = request.query.access_token
-        }
-
-        const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-        if (typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)) {
+        if (request.auth && request.auth.credentials && request.auth.credentials.token && request.auth.credentials.scope) {
           return internals.rateLimiterWhitelisted
         }
 
