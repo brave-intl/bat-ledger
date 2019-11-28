@@ -82,7 +82,7 @@ module.exports = (runtime) => {
     name: pluginName,
     version: '1.0.0',
     register: function (server) {
-      server.ext('onPreAuth', async (request, h) => {
+      server.ext('onPostAuth', async (request, h) => {
         const address = rateLimitKey(request)
         const rateLimiter = chooseRateLimiter(request)
         try {
