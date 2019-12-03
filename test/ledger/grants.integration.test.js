@@ -10,9 +10,7 @@ import tweetnacl from 'tweetnacl'
 import _ from 'underscore'
 import {
   signTxn,
-  balanceAgent,
-  grantAgent,
-  ledgerAgent,
+  agents,
   ok,
   setupCreatePayload,
   createSurveyor,
@@ -77,7 +75,7 @@ test.before(async (t) => {
     }
   })
   t.context.createPromotion = createPromotion
-  t.context.grants = grantAgent
+  t.context.grants = agents.grants.global
   t.context.ledger = agent
 })
 
@@ -441,11 +439,11 @@ test('grants: redeem promotions', async t => {
 test('grants: add expired grant and make sure it does not add to wallet', async t => {
   let body
   const url = '/v4/grants'
-  await ledgerAgent.post(url).send(expired).expect(ok)
+  await agents.ledger.global.post(url).send(expired).expect(ok)
 
   const personaId = uuidV4().toLowerCase()
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  var response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -473,12 +471,12 @@ test('grants: add expired grant and make sure it does not add to wallet', async 
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   const paymentId = response.body.wallet.paymentId
 
   // get available grant
-  await ledgerAgent
+  await agents.ledger.global
     .get('/v4/grants')
     .expect(ok)
 
@@ -496,7 +494,7 @@ test('attestation returns a random value for the same paymentId', async (t) => {
   const paymentId = 'e5d074c7-199f-4a5e-9a81-3460aef128d0'
   const url = `/v1/attestations/${paymentId}`
 
-  const { body } = await ledgerAgent
+  const { body } = await agents.ledger.global
     .get(url)
     .expect(ok)
 
@@ -504,7 +502,7 @@ test('attestation returns a random value for the same paymentId', async (t) => {
 
   const {
     body: second
-  } = await ledgerAgent
+  } = await agents.ledger.global
     .get(url)
     .expect(ok)
 
@@ -530,8 +528,8 @@ test('claim grants with attestations', async (t) => {
       minimumReconcileTimestamp: 1526941400000
     }]
   }
-  await ledgerAgent.post(url).send(adGrants).expect(ok)
-  await ledgerAgent.post(url).send(grants).expect(ok)
+  await agents.ledger.global.post(url).send(adGrants).expect(ok)
+  await agents.ledger.global.post(url).send(grants).expect(ok)
 
   let paymentId = '73b8e65a-2810-4c21-a3f6-74969ba7eaf3'
   const providerId = '6e3824f6-9eec-4f56-9719-8addaffe3ff1'
@@ -540,7 +538,7 @@ test('claim grants with attestations', async (t) => {
   const wallets = ledgerDB.collection('wallets')
   const personaId = uuidV4().toLowerCase()
 
-  var response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  var response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -568,27 +566,27 @@ test('claim grants with attestations', async (t) => {
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   const wrongPaymentId = response.body.wallet.paymentId
 
-  await ledgerAgent
+  await agents.ledger.global
     .get('/v3/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN + 'bad')
     .expect(422)
 
-  await ledgerAgent
+  await agents.ledger.global
     .get('/v3/grants')
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .expect(404)
 
   // ensure desktop can't get android grants
-  await ledgerAgent
+  await agents.ledger.global
     .get('/v4/grants')
     .expect(404)
 
   // get available grant doesn't show others ad grants
-  ;({ body } = await ledgerAgent
+  ;({ body } = await agents.ledger.global
     .get('/v5/grants')
     .query({ paymentId: wrongPaymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
@@ -596,7 +594,7 @@ test('claim grants with attestations', async (t) => {
 
   // try to claim ad grant
   let attestationURL = `/v1/attestations/${wrongPaymentId}`
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .get(attestationURL)
     .expect(ok)
 
@@ -617,7 +615,7 @@ test('claim grants with attestations', async (t) => {
   })
 
   // claim grant should fail (wrong providerId)
-  await ledgerAgent
+  await agents.ledger.global
     .put(`/v3/grants/${wrongPaymentId}`)
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
     .set('Fastly-GeoIP-CountryCode', 'US')
@@ -642,7 +640,7 @@ test('claim grants with attestations', async (t) => {
   })
 
   // get available grant - check for ad precidence
-  const { body: outsideBoundsBody } = await ledgerAgent
+  const { body: outsideBoundsBody } = await agents.ledger.global
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
@@ -650,7 +648,7 @@ test('claim grants with attestations', async (t) => {
     .expect(ok)
 
   // get available grant - check available in ads region (US)
-  ;({ body } = await ledgerAgent
+  ;({ body } = await agents.ledger.global
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
@@ -660,7 +658,7 @@ test('claim grants with attestations', async (t) => {
   t.deepEqual(outsideBoundsBody, body, 'ads are available outside of countries')
   t.is(body.type, 'ads')
 
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .get(`/v1/attestations/${paymentId}`)
     .expect(ok)
 
@@ -680,7 +678,7 @@ test('claim grants with attestations', async (t) => {
   })
 
   // claim ad grant - works in ads region
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .put(`/v3/grants/${paymentId}`)
     .set({
       'Fastly-GeoIP-CountryCode': 'US',
@@ -700,7 +698,7 @@ test('claim grants with attestations', async (t) => {
     probi: '1000000000000000000'
   }])
 
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .get(`/v1/attestations/${paymentId}`)
     .expect(ok)
 
@@ -720,7 +718,7 @@ test('claim grants with attestations', async (t) => {
   })
 
   // get available grant - android ugp grant not available in ads region (US)
-  await ledgerAgent
+  await agents.ledger.global
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
@@ -728,7 +726,7 @@ test('claim grants with attestations', async (t) => {
     .expect(404)
 
   // get available grant - android ugp grant is available in non-ads region (JA)
-  ;({ body } = await ledgerAgent
+  ;({ body } = await agents.ledger.global
     .get('/v5/grants')
     .query({ paymentId, bypassCooldown })
     .set('Safetynet-Token', BAT_CAPTCHA_BRAVE_TOKEN)
@@ -738,7 +736,7 @@ test('claim grants with attestations', async (t) => {
   t.is(body.type, 'android')
 
   // claim ugp grant - fails in ads region
-  await ledgerAgent
+  await agents.ledger.global
     .put(`/v3/grants/${paymentId}`)
     .set({
       'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN,
@@ -748,7 +746,7 @@ test('claim grants with attestations', async (t) => {
     .expect(400)
 
   // claim ugp grant - succeeds in non-ads region
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .put(`/v3/grants/${paymentId}`)
     .set({
       'Safetynet-Token': BAT_CAPTCHA_BRAVE_TOKEN,
@@ -774,7 +772,7 @@ test('claim grants with attestations', async (t) => {
     const desired = donateAmt.toString()
     let response
     do {
-      response = await ledgerAgent
+      response = await agents.ledger.global
         .get(`/v2/wallet/${paymentId}?refresh=true&amount=${desired}&altcurrency=BAT`)
       if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
     } while (response.status === 503)
@@ -802,7 +800,7 @@ test('protocolVersion 4 does not send back ads when none are available', async (
   const ledgerDB = await connectToDb('ledger')
   const wallets = ledgerDB.collection('wallets')
 
-  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -830,7 +828,7 @@ test('protocolVersion 4 does not send back ads when none are available', async (
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   let paymentId = response.body.wallet.paymentId
 
@@ -838,11 +836,11 @@ test('protocolVersion 4 does not send back ads when none are available', async (
 
   const adGrants = { 'promotions': [{ 'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4, 'type': 'ads' }], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1YTdlOTZhOC0wOWE5LTQ1OGUtODNjYS1jMjYzYTFjNTBiZjUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1NjEyMjMyOCwiZXhwaXJ5VGltZSI6MjE2MDkyNTkyOCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.kcBlRGoOFylPOP3cnCaEhNuePvvOQ6z5a1fNogA6rELoHo_i28elzNLZ8X2VoHcD8LMkcgijgviCOypu3_0AAg'] }
 
-  await ledgerAgent.post(url).send(grants).expect(ok)
-  await ledgerAgent.post(url).send(adGrants).expect(ok)
+  await agents.ledger.global.post(url).send(grants).expect(ok)
+  await agents.ledger.global.post(url).send(adGrants).expect(ok)
 
   // get available grant
-  await ledgerAgent
+  await agents.ledger.global
     .get('/v4/grants')
     .query({ paymentId })
     .expect(404)
@@ -851,7 +849,7 @@ test('protocolVersion 4 does not send back ads when none are available', async (
     body: {
       grants: promotions
     }
-  } = await ledgerAgent
+  } = await agents.ledger.global
     .get(`/v4/grants`)
     .query({ paymentId, bypassCooldown })
     .expect(ok)
@@ -895,7 +893,7 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
   const ledgerDB = await connectToDb('ledger')
   const wallets = ledgerDB.collection('wallets')
 
-  response = await ledgerAgent.get('/v2/registrar/persona').expect(ok)
+  response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
 
   const keypair = tweetnacl.sign.keyPair()
@@ -923,7 +921,7 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
     },
     proof: personaCredential.request()
   }
-  response = await ledgerAgent.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
   let paymentId = response.body.wallet.paymentId
 
@@ -953,11 +951,11 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
 
   const adGrants = { 'promotions': [{ 'promotionId': adPromotionId, 'priority': 0, 'active': true, 'minimumReconcileTimestamp': 1550102400000, 'protocolVersion': 4, 'type': 'ads' }], 'grants': ['eyJhbGciOiJFZERTQSIsImtpZCI6IiJ9.eyJhbHRjdXJyZW5jeSI6IkJBVCIsImdyYW50SWQiOiI1YTdlOTZhOC0wOWE5LTQ1OGUtODNjYS1jMjYzYTFjNTBiZjUiLCJwcm9iaSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAiLCJwcm9tb3Rpb25JZCI6ImJhZDQ5MTMyLWRlMzgtNDdlNy04MDAzLTk4NmFmODhlZWIxYyIsIm1hdHVyaXR5VGltZSI6MTU1NjEyMjMyOCwiZXhwaXJ5VGltZSI6MjE2MDkyNTkyOCwidHlwZSI6ImFkcyIsInByb3ZpZGVySWQiOiI2ZTM4MjRmNi05ZWVjLTRmNTYtOTcxOS04YWRkYWZmZTNmZjEifQ.kcBlRGoOFylPOP3cnCaEhNuePvvOQ6z5a1fNogA6rELoHo_i28elzNLZ8X2VoHcD8LMkcgijgviCOypu3_0AAg'] }
 
-  await ledgerAgent.post(url).send(grants).expect(ok)
-  await ledgerAgent.post(url).send(adGrants).expect(ok)
+  await agents.ledger.global.post(url).send(grants).expect(ok)
+  await agents.ledger.global.post(url).send(adGrants).expect(ok)
 
   // get available grant
-  await ledgerAgent
+  await agents.ledger.global
     .get('/v4/grants')
     .query({ paymentId })
     .expect(404)
@@ -965,7 +963,7 @@ test('protocolVersion 4 can claim both ads and ugp grants', async (t) => {
     body: {
       grants: promotions
     }
-  } = await ledgerAgent
+  } = await agents.ledger.global
     .get(`/v4/grants`)
     .query({ paymentId, bypassCooldown })
     .expect(ok)
@@ -1008,7 +1006,7 @@ async function resolveCaptcha (wallets, {
 }) {
   let response
 
-  await ledgerAgent
+  await agents.ledger.global
     .get(`/v4/captchas/${paymentId}`)
     .set('brave-product', 'brave-core')
     .expect(ok)
@@ -1018,7 +1016,7 @@ async function resolveCaptcha (wallets, {
   } = await wallets.findOne({ paymentId })
 
   // request grant
-  response = await ledgerAgent
+  response = await agents.ledger.global
     .put(`/v${version}/grants/${paymentId}`)
     .send({
       promotionId,
@@ -1034,7 +1032,7 @@ async function resolveCaptcha (wallets, {
   const total = (new BigNumber(balance)).plus(desired)
 
   do {
-    response = await ledgerAgent
+    response = await agents.ledger.global
       .get(`/v2/wallet/${paymentId}?refresh=true&amount=${total}&altcurrency=BAT`)
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
@@ -1051,14 +1049,14 @@ async function resolveCaptcha (wallets, {
 }
 
 async function balanceGrants (paymentId) {
-  await balanceAgent
+  await agents.balance.global
     .del(`/v2/wallet/${paymentId}/balance`)
     .expect(ok)
   const {
     body: {
       grants: balanceGrants
     }
-  } = await balanceAgent
+  } = await agents.balance.global
     .get(`/v2/wallet/${paymentId}/balance`)
     .expect(ok)
   return balanceGrants

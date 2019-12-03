@@ -21,6 +21,24 @@ const debug = new SDebug('test')
 const Pool = pg.Pool
 const Server = require('bat-utils/lib/hapi-server')
 const { Runtime } = require('bat-utils')
+
+const {
+  TOKEN_LIST,
+  BAT_EYESHADE_SERVER,
+  BAT_LEDGER_SERVER,
+  BAT_BALANCE_SERVER,
+  BAT_GRANT_SERVER,
+  BAT_REDEEMER_SERVER,
+  ALLOWED_REFERRALS_TOKENS,
+  ALLOWED_STATS_TOKENS,
+  ALLOWED_ADS_TOKENS,
+  ALLOWED_PUBLISHERS_TOKENS,
+  BAT_MONGODB_URI,
+  BAT_REDEEMER_REDIS_URL,
+  GRANT_TOKEN,
+  REDEEMER_TOKEN
+} = process.env
+
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
 
@@ -48,8 +66,8 @@ const ledgerCollections = [
   'restricted'
 ]
 
-const tkn = process.env.TOKEN_LIST.split(',')[0]
-const token = `Bearer ${tkn}`
+const tkn = 'foobarfoobar'
+const token = (tkn) => `Bearer ${tkn}`
 
 const createFormURL = (params) => (pathname, p) => `${pathname}?${stringify(_.extend({}, params, p || {}))}`
 
@@ -63,10 +81,21 @@ const formURL = createFormURL({
 })
 
 const AUTH_KEY = 'Authorization'
-const eyeshadeAgent = agent(process.env.BAT_EYESHADE_SERVER).set(AUTH_KEY, token)
-const ledgerAgent = agent(process.env.BAT_LEDGER_SERVER).set(AUTH_KEY, token)
-const balanceAgent = agent(process.env.BAT_BALANCE_SERVER).set(AUTH_KEY, token)
-const grantAgent = agent(process.env.BAT_GRANT_SERVER).set(AUTH_KEY, token)
+const GLOBAL_TOKEN = TOKEN_LIST.split(',')[0]
+const ledgerGlobalAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+const ledgerStatsAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
+
+const balanceGlobalAgent = agent(BAT_BALANCE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+
+const eyeshadeGlobalAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
+const eyeshadeReferralsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_REFERRALS_TOKENS))
+const eyeshadeStatsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
+const eyeshadeAdsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_ADS_TOKENS))
+const eyeshadePublishersAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_PUBLISHERS_TOKENS))
+
+const grantGlobalAgent = agent(BAT_GRANT_SERVER).set(AUTH_KEY, token(GRANT_TOKEN))
+
+const redeemerGlobalAgent = agent(BAT_REDEEMER_SERVER).set(AUTH_KEY, token(REDEEMER_TOKEN))
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -138,7 +167,8 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
     t.true((v2 - v1) <= tol, msg)
   }
 }
-const dbUri = (db) => `${process.env.BAT_MONGODB_URI}/${db}`
+
+const dbUri = (db) => `${BAT_MONGODB_URI}/${db}`
 const connectToDb = async (key) => {
   const client = await mongodb.MongoClient.connect(dbUri(key), {
     useNewUrlParser: true,
@@ -180,6 +210,7 @@ module.exports = {
   cleanRedeemerRedisDb,
   setupForwardingServer,
   agentAutoAuth,
+  AUTH_KEY,
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
@@ -190,10 +221,28 @@ module.exports = {
   ok,
   debug,
   status,
-  eyeshadeAgent,
-  grantAgent,
-  ledgerAgent,
-  balanceAgent,
+  agents: {
+    grants: {
+      global: grantGlobalAgent
+    },
+    redeemer: {
+      global: redeemerGlobalAgent
+    },
+    eyeshade: {
+      global: eyeshadeGlobalAgent,
+      referrals: eyeshadeReferralsAgent,
+      ads: eyeshadeAdsAgent,
+      publishers: eyeshadePublishersAgent,
+      stats: eyeshadeStatsAgent
+    },
+    ledger: {
+      global: ledgerGlobalAgent,
+      stats: ledgerStatsAgent
+    },
+    balance: {
+      global: balanceGlobalAgent
+    }
+  },
   assertWithinBounds,
   connectToDb,
   dbUri,
@@ -240,7 +289,7 @@ function cleanPgDb (postgres) {
 }
 
 function getSurveyor (id) {
-  return ledgerAgent
+  return ledgerGlobalAgent
     .get(`/v2/surveyor/contribution/${id || 'current'}`)
     .expect(ok)
 }
@@ -261,7 +310,7 @@ function createSurveyor (options = {}) {
       probi: probi || new BigNumber(votes * rate).times('1e18').toString()
     }
   }
-  return ledgerAgent.post(url).send(data).expect(ok)
+  return ledgerGlobalAgent.post(url).send(data).expect(ok)
 }
 
 function setupCreatePayload ({
@@ -442,8 +491,7 @@ function agentAutoAuth (listener, token) {
 }
 
 async function cleanRedeemerRedisDb () {
-  const url = process.env.BAT_REDEEMER_REDIS_URL
-  const client = redis.createClient(url)
+  const client = redis.createClient(BAT_REDEEMER_REDIS_URL)
   await new Promise((resolve, reject) => {
     client.on('ready', () => {
       client.flushdb((err) => {

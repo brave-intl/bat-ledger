@@ -4,7 +4,7 @@ import { serial as test } from 'ava'
 import _ from 'underscore'
 import uuidV4 from 'uuid/v4'
 import {
-  eyeshadeAgent,
+  agents,
   cleanDbs,
   cleanEyeshadeDb,
   braveYoutubeOwner,
@@ -45,7 +45,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
       scope: SCOPE
     }
   }
-  await eyeshadeAgent.put(ownerWalletUrl)
+  await agents.eyeshade.global.put(ownerWalletUrl)
     .send(dataOwnerWalletParams)
     .expect(200)
 
@@ -55,7 +55,7 @@ test('eyeshade PUT /v1/owners/{owner}/wallet with uphold parameters', async t =>
   t.is(_.isObject(owner.parameters), true, 'wallet has uphold parameters')
   t.is(owner.authorized, true, 'owner is authorized')
 
-  const { body } = await eyeshadeAgent.get(ownerWalletUrl)
+  const { body } = await agents.eyeshade.global.get(ownerWalletUrl)
     .send().expect(200)
   const { wallet } = body
   const {
@@ -95,15 +95,15 @@ test('eyeshade: create brave youtube channel and owner, verify with uphold, add 
     provider: 'uphold',
     parameters
   }
-  await eyeshadeAgent.put(walletUrl).send(data).expect(ok)
+  await agents.eyeshade.global.put(walletUrl).send(data).expect(ok)
 
   await createCard(braveYoutubeOwner, 'BAT')
-  const { body: wallet1 } = await eyeshadeAgent.get(walletUrl)
+  const { body: wallet1 } = await agents.eyeshade.global.get(walletUrl)
     .send().expect(200)
   checkRates(wallet1)
 
   await createCard(braveYoutubeOwner, 'XAU')
-  const { body: wallet2 } = await eyeshadeAgent.get(walletUrl)
+  const { body: wallet2 } = await agents.eyeshade.global.get(walletUrl)
     .send().expect(200)
   checkRates(wallet2)
 
@@ -123,7 +123,7 @@ test('eyeshade: missing owners send back proper status', async (t) => {
   const badEncoding = encodeURIComponent(badOwner)
   const badURL = `/v1/owners/${badEncoding}/wallet`
 
-  await eyeshadeAgent
+  await agents.eyeshade.global
     .get(badURL)
     .send()
     .expect(404)
@@ -136,11 +136,11 @@ test('eyeshade: missing owners send back proper status', async (t) => {
       scope: SCOPE
     }
   }
-  await eyeshadeAgent.put(badURL)
+  await agents.eyeshade.global.put(badURL)
     .send(dataOwnerWalletParams)
     .expect(200)
 
-  const { body } = await eyeshadeAgent
+  const { body } = await agents.eyeshade.global
     .get(badURL)
     .send()
     .expect(200)
@@ -163,7 +163,7 @@ test('a card can be created from endpoint', async (t) => {
     currency,
     label
   }
-  await eyeshadeAgent
+  await agents.eyeshade.global
     .post(postURL)
     .send(payload)
     .expect(422)
@@ -176,11 +176,11 @@ test('a card can be created from endpoint', async (t) => {
       scope: SCOPE
     }
   }
-  await eyeshadeAgent.put(badURL)
+  await agents.eyeshade.global.put(badURL)
     .send(dataOwnerWalletParams)
     .expect(200)
 
-  const { body } = await eyeshadeAgent
+  const { body } = await agents.eyeshade.global
     .post(postURL)
     .send(payload)
     .expect(200)
@@ -191,5 +191,5 @@ function createCard (owner, currency) {
   const encodedOwner = encodeURIComponent(owner)
   const createCardData = { currency }
   const cardUrl = `/v3/owners/${encodedOwner}/wallet/card`
-  return eyeshadeAgent.post(cardUrl).send(createCardData).expect(ok)
+  return agents.eyeshade.global.post(cardUrl).send(createCardData).expect(ok)
 }

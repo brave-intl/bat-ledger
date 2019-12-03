@@ -16,14 +16,11 @@ import {
   extras
 } from 'bat-utils'
 import {
-  eyeshadeAgent,
   cleanPgDb,
   cleanGrantDb,
+  agents,
   ok
 } from '../utils'
-import {
-  agent
-} from 'supertest'
 
 const { utils: braveUtils } = extras
 const docId = {
@@ -84,19 +81,11 @@ const referralsBar = {
 test.afterEach.always(cleanPgDb(runtime.postgres))
 test.afterEach.always(cleanGrantDb)
 
-const auth = (agent) => agent.set('Authorization', `Bearer ${process.env.ALLOWED_PUBLISHERS_TOKENS}`)
-
 test('check auth scope', async (t) => {
   t.plan(0)
-  const AUTH = 'Authorization'
-  const KEY = `Bearer fake`
-  const unauthed = agent(process.env.BAT_EYESHADE_SERVER)
-  await unauthed.get('/v1/accounts/settlements/referrals/total').expect(401)
-  await unauthed.get('/v1/accounts/earnings/referral/total').expect(401)
-  await unauthed.get('/v1/accounts/owner/transactions').expect(401)
-  await unauthed.get('/v1/accounts/settlements/referrals/total').set(AUTH, KEY).expect(401)
-  await unauthed.get('/v1/accounts/earnings/referral/total').set(AUTH, KEY).expect(401)
-  await unauthed.get('/v1/accounts/owner/transactions').set(AUTH, KEY).expect(401)
+  await agents.eyeshade.global.get('/v1/accounts/settlements/referrals/total').expect(403)
+  await agents.eyeshade.global.get('/v1/accounts/earnings/referral/total').expect(403)
+  await agents.eyeshade.global.get('/v1/accounts/owner/transactions').expect(403)
 })
 
 test('check settlement totals', async t => {
@@ -114,7 +103,10 @@ test('check settlement totals', async t => {
     let body
 
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/settlements/${type}/total`).use(auth).send().expect(ok))
+    ;({ body } = await agents.eyeshade.publishers
+      .get(`/v1/accounts/settlements/${type}/total`)
+      .send()
+      .expect(ok))
     t.deepEqual(body, [{
       channel: 'bar.com',
       paid: '12.000000000000000000',
@@ -131,21 +123,21 @@ test('check settlement totals', async t => {
     const referralMonthChangedISO = braveUtils.changeMonth(referralMonth).toISOString()
     const encodedMonthChanged = encodeURIComponent(referralMonthChangedISO)
 
-    const { body: referralMonthChangedData } = await eyeshadeAgent
+    const { body: referralMonthChangedData } = await agents.eyeshade.publishers
       .get(`/v1/accounts/settlements/${type}/total?start=${encodedMonthChanged}&order=asc`)
-      .use(auth)
+
       .send()
       .expect(ok)
     t.deepEqual([], referralMonthChangedData)
 
-    const { body: referralMonthData } = await eyeshadeAgent
+    const { body: referralMonthData } = await agents.eyeshade.publishers
       .get(`/v1/accounts/settlements/${type}/total?start=${encodedMonth}&order=asc`)
-      .use(auth)
+
       .send()
       .expect(ok)
 
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/settlements/${type}/total?order=asc`).use(auth).send().expect(ok))
+    ;({ body } = await agents.eyeshade.publishers.get(`/v1/accounts/settlements/${type}/total?order=asc`).send().expect(ok))
     t.deepEqual(referralMonthData, body)
     t.deepEqual(body, [{
       channel: 'foo.com',
@@ -174,7 +166,7 @@ test('check earnings total', async t => {
     let body
 
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/earnings/${type}/total`).use(auth).send().expect(ok))
+    ;({ body } = await agents.eyeshade.publishers.get(`/v1/accounts/earnings/${type}/total`).send().expect(ok))
     t.deepEqual(body, [{
       channel: 'bar.com',
       earnings: '12.000000000000000000',
@@ -186,7 +178,7 @@ test('check earnings total', async t => {
     }])
 
     type = 'referrals'
-    ;({ body } = await eyeshadeAgent.get(`/v1/accounts/earnings/${type}/total?order=asc`).use(auth).send().expect(ok))
+    ;({ body } = await agents.eyeshade.publishers.get(`/v1/accounts/earnings/${type}/total?order=asc`).send().expect(ok))
     t.deepEqual(body, [{
       channel: 'foo.com',
       earnings: '10.000000000000000000',
@@ -202,7 +194,7 @@ test('check earnings total', async t => {
   }
 
   try {
-    const { body } = await eyeshadeAgent.get(`/v1/accounts/${encodeURIComponent(ownerId)}/transactions`)
+    const { body } = await agents.eyeshade.publishers.get(`/v1/accounts/${encodeURIComponent(ownerId)}/transactions`)
     t.true(body.length >= 1)
     const count = body.reduce((memo, transaction) => _.keys(transaction).reduce((memo, key) => {
       return memo + (transaction[key] == null ? 1 : 0)
@@ -220,17 +212,17 @@ test('create ads payment fails if bad values are given', async (t) => {
   const transactionId = uuidV4().toLowerCase()
   const url = `/v1/accounts/${paymentId}/transactions/ads/${transactionId}`
 
-  await eyeshadeAgent
+  await agents.eyeshade.ads
     .put(url)
     .send({})
     .expect(400)
 
-  await eyeshadeAgent
+  await agents.eyeshade.ads
     .put(url)
     .send({ amount: 0 })
     .expect(400)
 
-  await eyeshadeAgent
+  await agents.eyeshade.ads
     .put(url)
     .send({ amount: 5 })
     .expect(400)
@@ -246,12 +238,12 @@ test('ads payment api inserts a transaction into the table and errs on subsequen
     amount: '1'
   }
 
-  await eyeshadeAgent
+  await agents.eyeshade.ads
     .put(url)
     .send(payload)
     .expect(ok)
 
-  await eyeshadeAgent
+  await agents.eyeshade.ads
     .put(url)
     .send(payload)
     .expect(409)
@@ -263,7 +255,7 @@ test('a uuid can be sent as an account id', async (t) => {
 
   const uuid = uuidV4()
   const url = `/v1/accounts/${uuid}/transactions`
-  response = await eyeshadeAgent.get(url).send().expect(ok)
+  response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   t.deepEqual(response.body, [], 'no txs matched')
 
   const transaction = {
@@ -279,7 +271,7 @@ test('a uuid can be sent as an account id', async (t) => {
     amount: 1
   }
   await insertTransaction(runtime.postgres, transaction)
-  response = await eyeshadeAgent.get(url).send().expect(ok)
+  response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   const { body } = response
   t.is(body.length, 1, 'one tx is matched')
 })
@@ -289,7 +281,7 @@ test('an empty channel can exist', async (t) => {
   let response
 
   const url = `/v1/accounts/${encodeURIComponent(ownerId)}/transactions`
-  response = await eyeshadeAgent.get(url).send().expect(ok)
+  response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   t.deepEqual(response.body, [], 'no tx matched')
 
   const transaction = {
@@ -305,7 +297,7 @@ test('an empty channel can exist', async (t) => {
     amount: 1
   }
   await insertTransaction(runtime.postgres, transaction)
-  response = await eyeshadeAgent.get(url).send().expect(ok)
+  response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   const { body } = response
   const tx = body[0]
   t.is(body.length, 1, 'only one tx')

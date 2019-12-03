@@ -30,6 +30,8 @@ module.exports = async (options, runtime) => {
 const pushScopedTokens = pushTokens({
   TOKEN_LIST: 'global',
   // env var       // scope key
+  ALLOWED_STATS_TOKENS: 'stats',
+  ALLOWED_REFERRALS_TOKENS: 'referrals',
   ALLOWED_ADS_TOKENS: 'ads',
   ALLOWED_PUBLISHERS_TOKENS: 'publishers'
 })

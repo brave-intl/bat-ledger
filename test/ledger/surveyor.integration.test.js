@@ -11,10 +11,10 @@ import {
   addSurveyorChoices
 } from '../../ledger/controllers/surveyor'
 import {
+  agents,
   getSurveyor,
   connectToDb,
   createSurveyor,
-  ledgerAgent,
   cleanDbs,
   cleanPgDb,
   ok
@@ -39,11 +39,11 @@ test('verify voting batching endpoint does not error', async t => {
   const url = `/v2/batch/surveyor/${surveyorType}`
   const data = [ { surveyorId: '...', proof: '...' } ]
 
-  await ledgerAgent.post(url).send(data).expect(ok)
+  await agents.ledger.global.post(url).send(data).expect(ok)
 
   const getURL = `/v2/batch/surveyor/16457ddb9913cd7928d3205ab455ecd`
 
-  await ledgerAgent.get(getURL).expect(ok)
+  await agents.ledger.global.get(getURL).expect(ok)
 })
 
 test('verify surveyor sends back choices', async t => {
@@ -98,7 +98,7 @@ test('check votes ratio', async (t) => {
     const url = `/v1/surveyor/voterate/contribution/${encodedId}`
     const {
       body
-    } = await ledgerAgent
+    } = await agents.ledger.global
       .get(url)
       .expect(ok)
 
@@ -129,7 +129,7 @@ test('required cohorts are added to surveyors', async (t) => {
   } = privateSurveyor
   const url = `/v2/surveyor/${surveyorType}/${encodedSurveyorId}`
 
-  await ledgerAgent
+  await agents.ledger.global
     .get(url)
     .expect(ok)
 
