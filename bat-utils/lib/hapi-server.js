@@ -103,7 +103,6 @@ async function Server (options, runtime) {
 
   debug('extensions registered')
 
-  console.log(runtime.login)
   if (runtime.login) {
     if (runtime.login.github) {
       const { github } = runtime.login
