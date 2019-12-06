@@ -68,7 +68,7 @@ const groupedReferralValidator = Joi.object().keys({
   publisher: publisherValidator,
   groupId: groupIdValidator.required().description('group id'),
   amount: amountValidator.description('the amount to be paid out in BAT'),
-  referralCode: referralCodeValidator,
+  referralCode: referralCodeValidator.allow(''),
   payoutRate: amountValidator.description('the rate of BAT per USD')
 })
 
