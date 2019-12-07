@@ -16,7 +16,8 @@ const settlementDestinationTypes = ['uphold']
 const accountTypes = ['channel', 'owner'].concat(settlementDestinationTypes)
 const transactionTypes = ['contribution', 'referral', 'contribution_settlement', 'referral_settlement', 'fees', 'scaleup', 'manual', 'user_deposit', 'manual_settlement']
 
-const accountTypeValidation = Joi.string().valid(accountTypes)
+const stringValidator = Joi.string()
+const accountTypeValidation = stringValidator.valid.apply(stringValidator, accountTypes)
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
 const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
 const joiBAT = braveJoi.string().numeric()
@@ -84,12 +85,12 @@ description: 'Used by publishers for retrieving a list of transactions for use i
 tags: [ 'api', 'publishers' ],
 
 validate: {
-  params: {
+  params: Joi.object().keys({
     account: Joi.alternatives().try(
       braveJoi.string().owner(),
       Joi.string().guid()
     ).required().description('the owner identity')
-  }
+  }).unknown(true)
 },
 
 response: {
@@ -98,14 +99,14 @@ response: {
     description: Joi.string().required().description('description of the transaction'),
     channel: Joi.alternatives().try(
       braveJoi.string().publisher().required().description('channel transaction is for'),
-      Joi.string().default('').allow(['']).description('empty string returned')
+      Joi.string().default('').allow('').description('empty string returned')
     ),
     amount: braveJoi.string().numeric().required().description('amount in BAT'),
     settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
     settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
-    settlement_destination_type: Joi.string().optional().valid(settlementDestinationTypes).description('type of address settlement was paid to'),
+    settlement_destination_type: stringValidator.valid.apply(stringValidator, settlementDestinationTypes).optional().description('type of address settlement was paid to'),
     settlement_destination: Joi.string().optional().description('destination address of the settlement'),
-    transaction_type: Joi.string().valid(transactionTypes).required().description('type of the transaction')
+    transaction_type: stringValidator.valid.apply(stringValidator, transactionTypes).required().description('type of the transaction')
   }))
 }
 }
@@ -145,9 +146,9 @@ validate: {
   params: Joi.object().keys({
     type: accountTypeValidation.required().description('balance types to retrieve')
   }),
-  query: {
+  query: Joi.object().keys({
     limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
-  }
+  }).unknown(true)
 },
 
 response: {
@@ -213,20 +214,20 @@ v1.getBalances = {
   tags: [ 'api', 'publishers' ],
 
   validate: {
-    query: {
+    query: Joi.object().keys({
       pending: Joi.boolean().default(false).description('whether or not a query should be done for outstanding votes'),
       account: Joi.alternatives().try(
         Joi.string().description('account (channel or owner)'),
         Joi.array().items(Joi.string().required().description('account (channel or owner)'))
       ).required()
-    }
+    }).unknown(true)
   },
 
   response: {
     schema: Joi.array().items(
       Joi.object().keys({
         account_id: Joi.string(),
-        account_type: Joi.string().valid(accountTypes),
+        account_type: stringValidator.valid.apply(stringValidator, accountTypes),
         balance: joiBAT.description('balance in BAT')
       })
     )
@@ -298,13 +299,13 @@ description: 'Used by publishers for retrieving a list of top channel earnings',
 tags: [ 'api', 'publishers' ],
 
 validate: {
-  params: {
+  params: Joi.object().keys({
     type: Joi.string().valid('contributions', 'referrals').required().description('type of earnings')
-  },
-  query: {
+  }).unknown(true),
+  query: Joi.object().keys({
     limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
     order: orderParam
-  }
+  }).unknown(true)
 },
 
 response: {
@@ -372,15 +373,15 @@ description: 'Used by publishers for retrieving a list of top channels paid out'
 tags: [ 'api', 'publishers' ],
 
 validate: {
-  params: {
+  params: Joi.object().keys({
     type: Joi.string().valid('contributions', 'referrals').required().description('type of payout')
-  },
-  query: {
+  }).unknown(true),
+  query: Joi.object().keys({
     start: Joi.date().iso().optional().default('').description('query for the top payout in a single month beginning at this time'),
     until: Joi.date().iso().optional().default('').description('query for the top payout in a single month ending at this time'),
     limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
     order: orderParam
-  }
+  }).unknown(true)
 },
 
 response: {
@@ -434,10 +435,10 @@ v1.adTransactions = {
   tags: [ 'api', 'ads' ],
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       payment_id: Joi.string().required().description('The payment id to hold the transaction under'),
       token_id: Joi.string().required().description('A unique token id')
-    },
+    }).unknown(true),
     payload: Joi.object().keys({
       amount: braveJoi.string().numeric().required().description('Amount of bat to pay for the ad')
     }).required()

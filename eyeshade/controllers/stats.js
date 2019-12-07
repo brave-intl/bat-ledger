@@ -7,8 +7,8 @@ const extrasUtils = require('bat-utils/lib/extras-utils')
 const transactionsLib = require('../lib/transaction')
 const grantsLib = require('../lib/grants')
 
-const grantTypeValidator = Joi.string().valid(['ads'])
-const settlementTypeValidator = Joi.string().valid(['contribution', 'referral'])
+const grantTypeValidator = Joi.string().valid('ads')
+const settlementTypeValidator = Joi.string().valid('contribution', 'referral')
 const numeric = braveJoi.string().numeric()
 const dateRangeParams = Joi.object().keys({
   start: Joi.date().iso().required().description('the date to start the query'),

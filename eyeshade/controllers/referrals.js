@@ -114,9 +114,9 @@ v1.findReferrals = {
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: {
+    params: Joi.object().keys({
       transactionId: Joi.string().guid().required().description('the transaction identity')
-    }
+    }).unknown(true)
   },
 
   response:
@@ -354,9 +354,9 @@ v1.createReferrals = {
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: {
+    params: Joi.object().keys({
       transactionId: Joi.string().guid().required().description('the transaction identity')
-    },
+    }).unknown(true),
     payload: anyReferralVersion
   },
 

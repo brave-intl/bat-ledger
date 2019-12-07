@@ -127,8 +127,8 @@ Wallet.prototype.validateTxSignature = function (info, signature, options = {}) 
       throw new Error('octets are not canonical')
     }
 
-    const tmp = Joi.validate(txn, upholdTxnSchema).error
-    if (tmp !== null) throw new Error('the signed transaction failed to validate')
+    const tmp = upholdTxnSchema.validate(txn)
+    if (tmp.error) throw new Error('the signed transaction failed to validate')
 
     const { amount } = txn.denomination
     if (bigMinimum.greaterThan(amount)) {
@@ -394,7 +394,7 @@ Wallet.providers.uphold = {
     }
 
     const altScale = this.currency.alt2scale(info.altcurrency)
-    const { error } = Joi.validate(cardInfo, cardInfoSchema)
+    const { error } = cardInfoSchema.validate(cardInfo)
     if (error) {
       this.runtime.captureException(error, {
         extra: {

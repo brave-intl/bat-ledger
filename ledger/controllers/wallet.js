@@ -62,9 +62,9 @@ description: 'Returns information about the wallet associated with the user',
 tags: [ 'api' ],
 
 validate: {
-  params: {
+  params: Joi.object().keys({
     paymentId: Joi.string().guid().required().description('identity of the wallet')
-  }
+  }).unknown(true)
 },
 
 response: {
@@ -262,17 +262,17 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
   tags: [ 'api' ],
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       paymentId: Joi.string().guid().required().description('identity of the wallet')
-    },
-    query: {
+    }).unknown(true),
+    query: Joi.object().keys({
       // FIXME since this amount is not in native probi - need some kind of sig fig limit
       amount: Joi.number().positive().optional().description('the payment amount in fiat currency if provied, otherwise the altcurrency'),
       balance: Joi.boolean().optional().default(false).description('return balance information'),
       currency: braveJoi.string().currencyCode().optional().description('the fiat currency'),
       altcurrency: braveJoi.string().altcurrencyCode().optional().description('the altcurrency of the requested transaction'),
       refresh: Joi.boolean().optional().default(false).description('return balance and transaction information')
-    }
+    }).unknown(true)
   },
 
   response: {
@@ -294,7 +294,7 @@ v2.read = { handler: (runtime) => { return read(runtime, 2) },
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
       }),
       grants: Joi.array().optional().items(Joi.object().keys({
-        type: Joi.string().allow(['ugp', 'ads', 'android']).default('ugp').description('the type of grant to use'),
+        type: Joi.string().allow('ugp', 'ads', 'android').default('ugp').description('the type of grant to use'),
         probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
         altcurrency: Joi.string().optional().description('the grant currency'),
         expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
@@ -564,13 +564,15 @@ v2.write = { handler: (runtime) => { return write(runtime, 2) },
   tags: [ 'api' ],
 
   validate: {
-    params: { paymentId: Joi.string().guid().required().description('identity of the wallet') },
-    payload: {
+    params: Joi.object().keys({
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    }).unknown(true),
+    payload: Joi.object().keys({
       viewingId: Joi.string().guid().required().description('unique-identifier for voting'),
       surveyorId: Joi.string().required().description('the identity of the surveyor'),
       requestType: Joi.string().valid('httpSignature', 'bitcoinMultisig').required().description('the type of the request'),
       signedTx: Joi.required().description('signed transaction')
-    }
+    }).unknown(true)
   },
 
   response: {
@@ -605,9 +607,9 @@ description: 'Lookup a wallet',
 tags: [ 'api' ],
 
 validate: {
-  query: {
+  query: Joi.object().keys({
     publicKey: Joi.string().hex().optional().description('the publickey of the wallet to lookup')
-  }
+  }).unknown(true)
 },
 
 response: {
@@ -634,10 +636,10 @@ v2.getStats = {
   tags: [ 'api' ],
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       from: Joi.date().iso().required().description('the date to query for'),
       until: Joi.date().iso().optional().description('the non inclusive date to query until')
-    }
+    }).unknown(true)
   },
   response: {
     schema: walletStatsList
@@ -813,7 +815,7 @@ function getStats (getQuery = defaultQuery) {
   }
 }
 
-const grantsTypeEnumValidator = Joi.string().allow(['ugp', 'ads']).description('grant types')
+const grantsTypeEnumValidator = Joi.string().allow('ugp', 'ads').description('grant types')
 const paymentIdValidator = Joi.string().guid().required().description('identity of the wallet')
 const amountBatValidator = braveJoi.string().numeric().description('an amount, in bat')
 v1.walletGrantsInfo = {
@@ -822,10 +824,10 @@ v1.walletGrantsInfo = {
   tags: [ 'api' ],
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       paymentId: paymentIdValidator,
       type: grantsTypeEnumValidator
-    }
+    }).unknown(true)
   },
 
   response: {
