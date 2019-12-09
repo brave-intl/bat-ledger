@@ -242,7 +242,6 @@ function createRedisSizeChecker () {
       }
     }
     const perc = (usedMemory / maxmemory) * 100
-    console.log('perc', perc)
     if (perc > 90) {
       await redis.cache.multi([
         ['flushall']
