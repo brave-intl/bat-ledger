@@ -7,6 +7,8 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const checkRedisSize = createRedisSizeChecker()
+
 const plugins = {
   rateLimit: {
     enabled: true,
@@ -41,6 +43,7 @@ module.exports.configuration = {
 
 v2.walletBalance =
 { handler: (runtime) => {
+  checkRedisSize(runtime.cache)
   return async (request, h) => {
     const paymentId = request.params.paymentId
     let fresh = false
@@ -189,4 +192,61 @@ module.exports.accessCardId = accessCardId
 
 function accessCardId (wallet) {
   return wallet && wallet.addresses && wallet.addresses.CARD_ID
+}
+
+function createRedisSizeChecker () {
+  let shouldContinue = true
+  let id = null
+  return check
+
+  function stop () {
+    clearTimeout(id)
+    shouldContinue = false
+  }
+
+  async function check (redis) {
+    if (id) {
+      return stop
+    }
+    try {
+      await clearIfFull(redis)
+    } catch (e) {
+      console.error(e)
+    }
+    if (shouldContinue) {
+      id = setTimeout(() => {
+        id = null
+        check(redis)
+      }, 6000)
+    }
+    return stop
+  }
+
+  async function clearIfFull (redis) {
+    const results = await redis.cache.multi([
+      ['info']
+    ]).execAsync()
+    const resultLines = results[0].split(/\s+/igm)
+    let maxmemory
+    let usedMemory
+    for (let i = 0; i < resultLines.length; i += 1) {
+      const line = resultLines[i]
+      let split
+      split = line.split('maxmemory:')
+      if (split.length > 1) {
+        maxmemory = +split[1]
+      }
+      split = line.split('used_memory:')
+      if (split.length > 1) {
+        usedMemory = +split[1]
+      }
+    }
+    const perc = (usedMemory / maxmemory) * 100
+    console.log('perc', perc)
+    if (perc > 90) {
+      await redis.cache.multi([
+        ['flushall']
+      ]).execAsync()
+    }
+  }
 }
