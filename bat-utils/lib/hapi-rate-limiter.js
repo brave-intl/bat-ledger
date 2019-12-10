@@ -99,8 +99,6 @@ module.exports = (runtime) => {
             error = boom.internal('Try later')
           } else {
             // Not enough points to consume
-            // name doesn't come back
-            // https://github.com/animir/node-rate-limiter-flexible#ratelimiterres-object
             error = boom.tooManyRequests('Rate limit exceeded: ' + scope)
             error.output.headers['Retry-After'] = Math.round(err.msBeforeNext / 1000) || 1
           }
