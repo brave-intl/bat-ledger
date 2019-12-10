@@ -85,10 +85,11 @@ module.exports = (runtime) => {
       server.ext('onPostAuth', async (request, h) => {
         const address = rateLimitKey(request)
         const rateLimiter = chooseRateLimiter(request)
-        let scoped = true
+        let scope = null
         try {
+          scope = rateLimiter._keyPrefix
           await rateLimiter.consume(address)
-          scoped = false
+          scope = 'global'
           await globalRateLimiter.consume('all')
           return h.continue
         } catch (err) {
@@ -100,7 +101,7 @@ module.exports = (runtime) => {
             // Not enough points to consume
             // name doesn't come back
             // https://github.com/animir/node-rate-limiter-flexible#ratelimiterres-object
-            error = boom.tooManyRequests('Rate limit exceeded: ' + (scoped ? 'scoped' : 'global'))
+            error = boom.tooManyRequests('Rate limit exceeded: ' + scope)
             error.output.headers['Retry-After'] = Math.round(err.msBeforeNext / 1000) || 1
           }
 
