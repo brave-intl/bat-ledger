@@ -89,7 +89,7 @@ module.exports = (runtime) => {
         try {
           scope = rateLimiter._keyPrefix
           await rateLimiter.consume(address)
-          scope = 'global'
+          scope = globalRateLimiter._keyPrefix
           await globalRateLimiter.consume('all')
           return h.continue
         } catch (err) {
