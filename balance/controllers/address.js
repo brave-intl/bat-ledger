@@ -234,7 +234,7 @@ function createRedisSizeChecker () {
       let split
       split = line.split('maxmemory:')
       if (split.length > 1) {
-        maxmemory = +split[1]
+        maxmemory = +split[1] || Infinity
       }
       split = line.split('used_memory:')
       if (split.length > 1) {
