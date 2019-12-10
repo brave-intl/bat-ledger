@@ -11,21 +11,41 @@ module.exports = Joi.extend((joi) => {
     base: joi.string(),
     type: 'string',
     messages: {
-      'string.badAltcurrencyAddress': 'invalid altcurrency address',
-      'string.badAltcurrencyCode': 'invalid alternate currency code',
-      'string.badAnycurrencyCode': 'invalid alternate/fiat currency code',
-      'string.badBase58': 'bad Base58 encoding',
-      'string.badCountryCode': 'invalid country code',
-      'string.badCurrencyCode': 'invalid currency code',
-      'string.badEthAddress': 'invalid Ethereum address',
-      'string.badFormat': 'invalid format'
+      'string.badAltcurrencyAddress': '{{#label}} invalid altcurrency address {{#value}}',
+      'string.badAltcurrencyCode': '{{#label}} invalid alternate currency code {{#value}}',
+      'string.badAnycurrencyCode': '{{#label}} invalid alternate/fiat currency code {{#value}}',
+      'string.badBase58': '{{#label}} bad Base58 encoding {{#value}}',
+      'string.badCountryCode': '{{#label}} invalid country code {{#value}}',
+      'string.badCurrencyCode': '{{#label}} invalid currency code {{#value}}',
+      'string.badEthAddress': '{{#label}} invalid Ethereum address {{#value}}',
+      'string.badFormat': '{{#label}} invalid format {{#value}}'
     },
     rules: {
       altcurrencyAddress: {
+        /*
+          usage of this method requires being inside of an object where the altcurrency code is the key to the value
+        */
         validate (value, helpers, args, options) {
           const { state } = helpers
-          if (!ethereumAddress.isAddress(value)) {
-            return helpers.error('string.badEthAddress', { v: value }, state, options)
+          const parent = state.ancestors[0]
+          const skipKeys = {
+            'CARD_ID': true,
+            'BAT': true
+          }
+          const key = Object.keys(parent).find((key) => {
+            if (skipKeys[key]) return
+            return parent[key] === value
+          })
+          if (key === 'BTC' || key === 'LTC') {
+            try {
+              base58check.decode(value)
+            } catch (err) {
+              return helpers.error('string.badBase58', { value }, state, options)
+            }
+          } else {
+            if (!ethereumAddress.isAddress(value)) {
+              return helpers.error('string.badEthAddress', { value }, state, options)
+            }
           }
           return value
         }
@@ -35,7 +55,7 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const regexp = new RegExp(/^[0-9A-Z]{2,}$/)
           if (!regexp.test(value)) {
-            return helpers.error('string.badAltcurrencyCode', { v: value }, state, options)
+            return helpers.error('string.badAltcurrencyCode', { value }, state, options)
           }
           return value
         }
@@ -46,7 +66,7 @@ module.exports = Joi.extend((joi) => {
           const entry = currencyCodes.code(value)
           const regexp = new RegExp(/^[0-9A-Z]{2,}$/)
           if (!entry && !regexp.test(value)) {
-            return helpers.error('string.badAnycurrencyCode', { v: value }, state, options)
+            return helpers.error('string.badAnycurrencyCode', { value }, state, options)
           }
           return value
         }
@@ -57,7 +77,7 @@ module.exports = Joi.extend((joi) => {
           try {
             base58check.decode(value)
           } catch (err) {
-            return helpers.error('string.badBase58', { v: value }, state, options)
+            return helpers.error('string.badBase58', { value }, state, options)
           }
           return value
         }
@@ -67,7 +87,7 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const entry = countryCodes.getName(value)
           if (!entry) {
-            return helpers.error('string.badCountryCode', { v: value }, state, options)
+            return helpers.error('string.badCountryCode', { value }, state, options)
           }
           return value
         }
@@ -77,7 +97,7 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const entry = currencyCodes.code(value)
           if (!entry) {
-            return helpers.error('string.badCurrencyCode', { v: value }, state, options)
+            return helpers.error('string.badCurrencyCode', { value }, state, options)
           }
           return value
         }
@@ -87,7 +107,7 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const isNumeric = new RegExp(/^-?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i)
           if (!isNumeric.test(value)) {
-            return helpers.error('string.badFormat', { v: value }, state, options)
+            return helpers.error('string.badFormat', { value }, state, options)
           }
           return value
         }
@@ -97,7 +117,7 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const props = batPublisher.getPublisherProps(value)
           if (!props || !props.publisherType) {
-            return helpers.error('string.badFormat', { v: value }, state, options)
+            return helpers.error('string.badFormat', { value }, state, options)
           }
           return value
         }
@@ -106,7 +126,7 @@ module.exports = Joi.extend((joi) => {
         validate (value, helpers, args, options) {
           const { state } = helpers
           if (!batPublisher.isPublisher(value)) {
-            return helpers.error('string.badFormat', { v: value }, state, options)
+            return helpers.error('string.badFormat', { value }, state, options)
           }
           return value
         }
@@ -116,12 +136,12 @@ module.exports = Joi.extend((joi) => {
         validate (value, helpers, args, options) {
           const { state } = helpers
           if (value.substr(0, 4) !== 'xpub') {
-            return helpers.error('string.badFormat', { v: value }, state, options)
+            return helpers.error('string.badFormat', { value }, state, options)
           }
           try {
             bitcoin.HDNode.fromBase58(value)
           } catch (err) {
-            return helpers.error('string.badBase58', { v: value }, state, options)
+            return helpers.error('string.badBase58', { value }, state, options)
           }
           return value
         }
