@@ -217,7 +217,7 @@ function createRedisSizeChecker () {
       id = setTimeout(() => {
         id = null
         check(redis)
-      }, 6000)
+      }, 60000)
     }
     return stop
   }
