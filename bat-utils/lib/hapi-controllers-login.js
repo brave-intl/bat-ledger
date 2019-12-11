@@ -67,11 +67,11 @@ v1.login = {
   tags: [ 'api' ],
 
   validate: {
-    query: {
+    query: Joi.object().keys({
       code: Joi.string().optional().description('an opaque string identifying an oauth flow'),
       refresh: Joi.any(),
       state: Joi.string().optional().description('an opaque string')
-    }
+    }).unknown(true)
   }
 }
 
@@ -108,10 +108,7 @@ v1.logout = {
 
   description: 'Logs the user out',
   notes: 'Used to remove the authenticating session cookie.',
-  tags: [ 'api' ],
-
-  validate:
-    { query: {} }
+  tags: [ 'api' ]
 }
 
 module.exports.routes = [

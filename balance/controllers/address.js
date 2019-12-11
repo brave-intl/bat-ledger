@@ -83,9 +83,9 @@ description: 'Get the balance of a ledger wallet',
 tags: [ 'api' ],
 
 validate: {
-  params: {
+  params: Joi.object().keys({
     paymentId: Joi.string().guid().required().description('identity of the wallet')
-  }
+  }).unknown(true)
 },
 
 response: {
@@ -98,7 +98,7 @@ response: {
     probi: braveJoi.string().numeric().required().description('the wallet balance in probi'),
     parameters: Joi.object().keys().unknown(true).optional().description('global wallet parameters'),
     grants: Joi.array().optional().items(Joi.object().keys({
-      type: Joi.string().allow(['ugp', 'ads']).default('ugp').description('the type of grant to use'),
+      type: Joi.string().allow('ugp', 'ads').default('ugp').description('the type of grant to use'),
       probi: braveJoi.string().numeric().optional().description('the grant value in probi'),
       altcurrency: Joi.string().optional().description('the grant currency'),
       expiryTime: Joi.number().optional().description('unix timestamp when the grant expires')
@@ -131,9 +131,9 @@ description: 'Invalidate the cached balance of a ledger wallet',
 tags: [ 'api' ],
 
 validate: {
-  params: {
+  params: Joi.object().keys({
     paymentId: Joi.string().guid().required().description('identity of the wallet')
-  }
+  }).unknown(true)
 },
 
 response: { schema: Joi.object().length(0) }

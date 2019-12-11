@@ -75,8 +75,12 @@ v1.getWallet = {
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: { owner: braveJoi.string().owner().required().description('the owner identity') },
-    query: { currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency') }
+    params: Joi.object().keys({
+      owner: braveJoi.string().owner().required().description('the owner identity')
+    }).unknown(true),
+    query: Joi.object().keys({
+      currency: braveJoi.string().currencyCode().optional().default('USD').description('the fiat currency')
+    }).unknown(true)
   },
 
   response: {
@@ -96,7 +100,7 @@ v1.getWallet = {
       }).unknown(true).optional().description('publisher wallet information'),
       status: Joi.object().keys({
         provider: Joi.string().required().description('wallet provider'),
-        action: Joi.any().allow([ 'authorize', 're-authorize' ]).required().description('requested action')
+        action: Joi.any().allow('authorize', 're-authorize').required().description('requested action')
       }).unknown(true).optional().description('publisher wallet status')
     })
   }
@@ -157,13 +161,13 @@ v3.createCard = {
   tags: [ 'api' ],
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: {
+    params: Joi.object().keys({
       owner: Joi.string().required().description('owner identifier')
-    },
-    payload: {
+    }).unknown(true),
+    payload: Joi.object().keys({
       label: Joi.string().optional().description('description of the card'),
       currency: Joi.string().default('BAT').optional().description('currency of the card to create')
-    }
+    }).unknown(true)
   },
   response: {
     schema: Joi.object().keys({})
@@ -223,12 +227,12 @@ v1.putWallet = {
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    payload: {
+    payload: Joi.object().keys({
       provider: Joi.string().required().description('wallet provider'),
       parameters: Joi.object().required().description('wallet parameters'),
       defaultCurrency: braveJoi.string().anycurrencyCode().optional().default('USD').description('the default currency to pay a publisher in'),
       show_verification_status: Joi.boolean().optional().default(true).description('authorizes display')
-    }
+    }).unknown(true)
   },
 
   response:
@@ -277,12 +281,12 @@ v1.patchWallet = {
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    payload: {
+    payload: Joi.object().keys({
       provider: Joi.string().optional().description('wallet provider'),
       parameters: Joi.object().optional().description('wallet parameters'),
       defaultCurrency: braveJoi.string().anycurrencyCode().optional().description('the default currency to pay a publisher in'),
       show_verification_status: Joi.boolean().optional().description('authorizes display')
-    }
+    }).unknown(true)
   },
 
   response:

@@ -44,11 +44,12 @@ v2.read =
 description: 'Returns information about the registrar',
 tags: ['api'],
 
-validate:
-  { params: {
+validate: {
+  params: Joi.object().keys({
     registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
     apiV: Joi.string().required().description('the api version')
-  } },
+  }).unknown(true)
+},
 
 response: {
   schema: Joi.object().keys({
@@ -86,7 +87,7 @@ v2.update =
       }).unknown(true) }).required()
     }[registrar.registrarType] || Joi.object().max(0)
 
-    validity = Joi.validate(payload, schema)
+    validity = schema.validate(payload)
     if (validity.error) {
       throw boom.badData(validity.error)
     }
@@ -109,10 +110,10 @@ description: 'Updates a registrar',
 tags: [ 'api' ],
 
 validate: {
-  params: {
+  params: Joi.object().keys({
     registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
     apiV: Joi.string().required().description('the api version')
-  },
+  }).unknown(true),
   payload: Joi.object().optional().description('additional information')
 },
 
@@ -164,7 +165,7 @@ const createPersona = function (runtime) {
         octets: Joi.string().optional().description('octet string that was signed and digested')
       }).required()
     }
-    validity = Joi.validate(request.payload.request, requestSchema)
+    validity = requestSchema.validate(request.payload.request)
     if (validity.error) {
       throw boom.badData(validity.error)
     }
@@ -296,10 +297,10 @@ v2.createViewing =
   tags: ['api'],
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
       apiV: Joi.string().required().description('the api version')
-    },
+    }).unknown(true),
     payload: Joi.object().keys({
       proof: Joi.string().required().description('credential registration request')
     }).unknown(true).required()
@@ -325,9 +326,9 @@ v1.createPersona =
   tags: ['api'],
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
-    },
+    }).unknown(true),
     payload: Joi.object().keys({
       proof: Joi.string().required().description('credential registration request'),
       keychains: Joi.object().keys({ user: keychainSchema.required(), backup: keychainSchema.optional() })
@@ -352,9 +353,9 @@ v2.createPersona =
   tags: ['api'],
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
-    },
+    }).unknown(true),
     payload: Joi.object().keys({
       requestType: Joi.string().valid('httpSignature').required().description('the type of the request'),
       request: Joi.object().required().description('wallet registration request'),
