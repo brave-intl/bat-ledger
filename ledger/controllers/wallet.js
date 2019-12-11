@@ -961,6 +961,10 @@ function claimWalletHandler (runtime) {
     const wallets = runtime.database.get('wallets', debug)
     const members = runtime.database.get('members', debug)
 
+    if (runtime.config.disable.walletClaimToGrants) {
+      throw boom.serverUnavailable('wallet claim is temporarily unavailable')
+    }
+
     const wallet = await wallets.findOne({ paymentId })
     if (!wallet) {
       throw boom.notFound()
@@ -984,57 +988,68 @@ function claimWalletHandler (runtime) {
     if (type !== 'card' || !isMember || !userId) {
       throw boom.forbidden()
     }
-    const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
-    // if wallet has already been claimed, don't tie wallet to member id
-    if (wallet.providerLinkingId) {
-      // Check if the member matches the associated member
-      if (providerLinkingId !== wallet.providerLinkingId) {
-        throw boom.forbidden()
-      }
 
-      if (anonymousAddress && (!wallet.anonymousAddress || anonymousAddress !== wallet.anonymousAddress)) {
-        // allow for updating / setting the anonymous address even if already claimed
+    const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
+    if (runtime.config.forward.walletClaimToGrants) {
+      await runtime.wreck.grants.post(debug, `/v1/wallet/${paymentId}/link`, {
+        useProxyP: true,
+        payload: {
+          providerLinkingId,
+          anonymousAddress
+        }
+      })
+    } else {
+      // if wallet has already been claimed, don't tie wallet to member id
+      if (wallet.providerLinkingId) {
+        // Check if the member matches the associated member
+        if (providerLinkingId !== wallet.providerLinkingId) {
+          throw boom.forbidden()
+        }
+
+        if (anonymousAddress && (!wallet.anonymousAddress || anonymousAddress !== wallet.anonymousAddress)) {
+          // allow for updating / setting the anonymous address even if already claimed
+          await wallets.update({
+            paymentId
+          }, {
+            $set: { anonymousAddress }
+          })
+        }
+      } else {
+        await members.update({ providerLinkingId }, {
+          $set: {
+            providerLinkingId
+          }
+        }, { upsert: true })
+        // Attempt to associate the paymentId with the member, enforcing max associations no more than 3
+        const member = await members.findOneAndUpdate({
+          providerLinkingId,
+          $expr: {
+            $lt: [{
+              $size: {
+                $ifNull: ['$paymentIds', []]
+              }
+            }, 3]
+          }
+        }, {
+          $push: {
+            paymentIds: paymentId
+          }
+        })
+        // If association worked, perform reverse association, providerLinkingId with wallet
+        if (!member) {
+          throw boom.conflict()
+        }
+        const toSet = { providerLinkingId }
+
+        if (anonymousAddress) {
+          underscore.extend(toSet, { anonymousAddress })
+        }
         await wallets.update({
           paymentId
         }, {
-          $set: { anonymousAddress }
+          $set: toSet
         })
       }
-    } else {
-      await members.update({ providerLinkingId }, {
-        $set: {
-          providerLinkingId
-        }
-      }, { upsert: true })
-      // Attempt to associate the paymentId with the member, enforcing max associations no more than 3
-      const member = await members.findOneAndUpdate({
-        providerLinkingId,
-        $expr: {
-          $lt: [{
-            $size: {
-              $ifNull: ['$paymentIds', []]
-            }
-          }, 3]
-        }
-      }, {
-        $push: {
-          paymentIds: paymentId
-        }
-      })
-      // If association worked, perform reverse association, providerLinkingId with wallet
-      if (!member) {
-        throw boom.conflict()
-      }
-      const toSet = { providerLinkingId }
-
-      if (anonymousAddress) {
-        underscore.extend(toSet, { anonymousAddress })
-      }
-      await wallets.update({
-        paymentId
-      }, {
-        $set: toSet
-      })
     }
 
     if (+txn.denomination.amount !== 0) {
@@ -1047,10 +1062,8 @@ function claimWalletHandler (runtime) {
           anonymousAddress: anonymousAddress || txn.destination
         }
 
-        const { grants } = runtime.config.wreck
         try {
-          const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/drain', {
-            headers: grants.headers,
+          const payload = await runtime.wreck.grants.post(debug, '/v1/grants/drain', {
             payload: JSON.stringify(drainPayload),
             useProxyP: true
           })
@@ -1060,14 +1073,9 @@ function claimWalletHandler (runtime) {
             if (runtime.config.balance) {
               // invalidate any cached balance
               try {
-                await braveHapi.wreck.delete(runtime.config.balance.url + '/v2/wallet/' + paymentId + '/balance',
-                  {
-                    headers: {
-                      authorization: 'Bearer ' + runtime.config.balance.access_token,
-                      'content-type': 'application/json'
-                    },
-                    useProxyP: true
-                  })
+                await runtime.wreck.balance.delete(debug, `/v2/wallet/${paymentId}/balance`, {
+                  useProxyP: true
+                })
               } catch (ex) {
                 runtime.captureException(ex, { req: request })
               }

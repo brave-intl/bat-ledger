@@ -136,14 +136,17 @@ test('stats for grants', async (t) => {
     await freezeOldSurveyors(debug, runtime, -1)
 
     let votingStats = {}
-    while (!(+votingStats.amount)) {
+    const expectedAmount = (new BigNumber(0.95)).toPrecision(18).toString()
+    while (votingStats.amount !== expectedAmount) {
       await timeout(2000)
       votingStats = await getStatsFor('grants', cohort, {
         start: now
       })
     }
-    const amount = (new BigNumber(0.95)).toPrecision(18).toString()
-    t.deepEqual({ amount, count: '2' }, votingStats, 'vote amounts are summed')
+    t.deepEqual({
+      amount: expectedAmount,
+      count: '2'
+    }, votingStats, 'vote amounts are summed')
   } finally {
     await client.release()
   }

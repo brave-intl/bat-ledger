@@ -109,16 +109,25 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
 module.exports =
 {
   disable: {
-    grants: process.env.DISABLE_GRANTS || false
+    grants: process.env.DISABLE_GRANTS || false,
+    walletClaimToGrants: process.env.DISABLE_WALLET_CLAIM_TO_GRANTS || false
   },
   forward: {
-    grants: process.env.FORWARD_TO_GRANTS || false
+    grants: process.env.FORWARD_TO_GRANTS || false,
+    walletClaimToGrants: process.env.FORWARD_WALLET_CLAIM_TO_GRANTS || false
   },
   wreck: {
     grants: {
       baseUrl: process.env.GRANT_SERVER,
       headers: {
         'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN  || '00000000-0000-4000-0000-000000000000'),
+        'Content-Type': 'application/json'
+      }
+    },
+    balance: {
+      baseUrl: process.env.BALANCE_URL,
+      headers: {
+        'Authorization': 'Bearer ' + (process.env.BALANCE_TOKEN  || '00000000-0000-4000-0000-000000000000'),
         'Content-Type': 'application/json'
       }
     }
