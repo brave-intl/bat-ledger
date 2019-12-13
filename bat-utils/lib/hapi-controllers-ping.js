@@ -22,9 +22,6 @@ v1.ping = {
   description: 'Returns information about the server',
   tags: [ 'api' ],
 
-  validate:
-    { query: {} },
-
   response:
     { schema: Joi.object().keys().unknown(true).description('static properties of the server') }
 }

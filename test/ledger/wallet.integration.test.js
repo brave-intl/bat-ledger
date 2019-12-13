@@ -10,7 +10,7 @@ import {
   status,
   cleanDbs,
   setupForwardingServer,
-  ledgerAgent
+  agents
 } from '../utils'
 import {
   ObjectID
@@ -73,12 +73,18 @@ test.before(async (t) => {
 
 test('a stats endpoint exists', async (t) => {
   const url = `${statsURL}/${frozenDay.toISOString()}`
+
   const {
-    body
-  } = await ledgerAgent
-    .get(url)
+    body: globalBody
+  } = await agents.ledger.global.get(url)
     .expect(ok)
-  t.deepEqual([], body)
+  t.deepEqual([], globalBody)
+
+  const {
+    body: statsBody
+  } = await agents.ledger.stats.get(url)
+    .expect(ok)
+  t.deepEqual([], statsBody)
 })
 
 test('stats endpoint returns wallet stats', async (t) => {
@@ -86,7 +92,7 @@ test('stats endpoint returns wallet stats', async (t) => {
   const url = `${statsURL}/${frozenDay.toISOString()}`
   const {
     body
-  } = await ledgerAgent
+  } = await agents.ledger.stats
     .get(url)
     .expect(ok)
   t.deepEqual(body, [walletExpectation(frozenDay)])
@@ -99,13 +105,13 @@ test('stats endpoint returns wallet within 24 hr period', async (t) => {
   await insert(prevDay)
   ;({
     body
-  } = await ledgerAgent
+  } = await agents.ledger.stats
     .get(`${statsURL}/${frozenDay.toISOString()}`)
     .expect(ok))
   t.deepEqual(body, [walletExpectation(frozenDay)])
   ;({
     body
-  } = await ledgerAgent
+  } = await agents.ledger.stats
     .get(`${statsURL}/${prevDay.toISOString()}`)
     .expect(ok))
   t.deepEqual(body, [walletExpectation(prevDay)])
@@ -121,7 +127,7 @@ test('can return a [) range', async (t) => {
   const url = `${statsURL}/${prevDay.toISOString()}/${nextDay.toISOString()}`
   const {
     body
-  } = await ledgerAgent
+  } = await agents.ledger.stats
     .get(url)
     .expect(ok)
   t.deepEqual(body, [walletExpectation(truncatedDay), walletExpectation(prevDay)])
@@ -185,7 +191,7 @@ test('compositing wallet grant information', async (t) => {
   // throws if no wallet found
   const emptyOptions = { type: 'ads', paymentId: paymentIdEmpty }
   await t.throwsAsync(compositeGrants(debug, runtime, emptyOptions))
-  await ledgerAgent.get(emptyURL).expect(404)
+  await agents.ledger.stats.get(emptyURL).expect(404)
   await supertest.agent(process.env.BAT_LEDGER_SERVER).get(emptyURL).expect(404)
 
   // end of throwing
@@ -196,7 +202,7 @@ test('compositing wallet grant information', async (t) => {
   // no grants claimed yet
   const {
     body: emptyResponse
-  } = await ledgerAgent.get(emptyURL).expect(status(204))
+  } = await agents.ledger.stats.get(emptyURL).expect(status(204))
   t.deepEqual('', emptyResponse, 'composite matches expected')
 
   // insert a wallet with grant
@@ -212,7 +218,7 @@ test('compositing wallet grant information', async (t) => {
   })
   const {
     body: bodyAds
-  } = await ledgerAgent.get(`/v2/wallet/${paymentId}/grants/ads`).expect(ok)
+  } = await agents.ledger.stats.get(`/v2/wallet/${paymentId}/grants/ads`).expect(ok)
   const expectedAds = createComposite({
     type: 'ads',
     amount: (new BigNumber(2)).plus(14),
@@ -227,7 +233,7 @@ test('compositing wallet grant information', async (t) => {
   })
   const {
     body: bodyUgp
-  } = await ledgerAgent.get(`/v2/wallet/${paymentId}/grants/ugp`).expect(ok)
+  } = await agents.ledger.stats.get(`/v2/wallet/${paymentId}/grants/ugp`).expect(ok)
   const expectedUgp = createComposite({
     type: 'ugp',
     amount: (new BigNumber(2)),
@@ -284,7 +290,7 @@ test('wallet endpoint returns default tip choices', async (t) => {
 
   const {
     body
-  } = await ledgerAgent.get(`/v2/wallet/${paymentId}`).expect(ok)
+  } = await agents.ledger.stats.get(`/v2/wallet/${paymentId}`).expect(ok)
   t.deepEqual(body.parameters.defaultTipChoices, [1, 5, 10])
   t.deepEqual(body.parameters.defaultMonthlyChoices, [1, 5, 10])
 })

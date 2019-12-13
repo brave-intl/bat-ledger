@@ -85,8 +85,11 @@ module.exports = (runtime) => {
       server.ext('onPostAuth', async (request, h) => {
         const address = rateLimitKey(request)
         const rateLimiter = chooseRateLimiter(request)
+        let scope = null
         try {
+          scope = rateLimiter._keyPrefix
           await rateLimiter.consume(address)
+          scope = globalRateLimiter._keyPrefix
           await globalRateLimiter.consume('all')
           return h.continue
         } catch (err) {
@@ -96,7 +99,7 @@ module.exports = (runtime) => {
             error = boom.internal('Try later')
           } else {
             // Not enough points to consume
-            error = boom.tooManyRequests('Rate limit exceeded')
+            error = boom.tooManyRequests('Rate limit exceeded: ' + scope)
             error.output.headers['Retry-After'] = Math.round(err.msBeforeNext / 1000) || 1
           }
 

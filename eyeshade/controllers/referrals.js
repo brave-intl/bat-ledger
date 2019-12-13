@@ -68,7 +68,7 @@ const groupedReferralValidator = Joi.object().keys({
   publisher: publisherValidator,
   groupId: groupIdValidator.required().description('group id'),
   amount: amountValidator.description('the amount to be paid out in BAT'),
-  referralCode: referralCodeValidator,
+  referralCode: referralCodeValidator.allow(''),
   payoutRate: amountValidator.description('the rate of BAT per USD')
 })
 
@@ -114,9 +114,9 @@ v1.findReferrals = {
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: {
+    params: Joi.object().keys({
       transactionId: Joi.string().guid().required().description('the transaction identity')
-    }
+    }).unknown(true)
   },
 
   response:
@@ -354,9 +354,9 @@ v1.createReferrals = {
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: {
+    params: Joi.object().keys({
       transactionId: Joi.string().guid().required().description('the transaction identity')
-    },
+    }).unknown(true),
     payload: anyReferralVersion
   },
 

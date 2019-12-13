@@ -6,7 +6,7 @@ import {
   timeout
 } from 'bat-utils/lib/extras-utils'
 import {
-  eyeshadeAgent,
+  agents,
   cleanPgDb,
   ok
 } from '../utils'
@@ -44,11 +44,11 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const producer = new Kafka(runtime.config, runtime)
   await producer.connect()
 
-  let { body } = await eyeshadeAgent.get(balanceURL)
+  let { body } = await agents.eyeshade.publishers.get(balanceURL)
     .query({
       pending: true,
       account: channel
-    })
+    }).expect(ok)
   t.is(body.length, 0)
 
   await producer.send(process.env.ENV + '.grant.suggestion', suggestionType.toBuffer(example))
@@ -57,7 +57,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     await timeout(2000)
     ;({
       body
-    } = await eyeshadeAgent.get(balanceURL)
+    } = await agents.eyeshade.publishers.get(balanceURL)
       .query({
         pending: true,
         account: channel

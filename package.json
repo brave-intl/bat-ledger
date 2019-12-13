@@ -74,7 +74,7 @@
     "@hapi/cookie": "^10.1.2",
     "@hapi/hapi": "^18.4.0",
     "@hapi/inert": "^5.2.2",
-    "@hapi/joi": "^15.1.1",
+    "@hapi/joi": "^16.1.8",
     "@hapi/vision": "^5.5.4",
     "@octokit/rest": "^16.30.2",
     "@sentry/node": "^5.7.1",

@@ -63,7 +63,7 @@ const rateLimitPlugin = {
 const priorityValidator = Joi.number().integer().min(0).description('the promotion priority (lower is better)')
 const activeValidator = Joi.boolean().optional().default(true).description('the promotion status')
 const protocolVersionValidator = Joi.number().integer().min(2).description('the protocol version that the promotion will follow')
-const grantTypeValidator = Joi.string().allow(['android', 'ugp', 'ads']).default('ugp').description('the type of grant to use')
+const grantTypeValidator = Joi.string().allow('android', 'ugp', 'ads').default('ugp').description('the type of grant to use')
 const paymentIdValidator = Joi.string().guid().description('identity of the wallet')
 const promotionIdValidator = Joi.string().guid().description('the promotion-identifier')
 const altcurrencyValidator = braveJoi.string().altcurrencyCode().description('the grant altcurrency')
@@ -73,7 +73,7 @@ const encodedGrantValidator = Joi.string().description('the jws encoded grant')
 const grantsValidator = Joi.array().min(0).items(encodedGrantValidator).description('grants for bulk upload')
 const expiryTimeValidator = Joi.number().positive().description('the time the grant expires')
 const grantProviderIdValidator = Joi.string().guid().optional()
-const braveProductEnumValidator = Joi.string().valid(['browser-laptop', 'brave-core']).description('the brave product requesting the captcha')
+const braveProductEnumValidator = Joi.string().valid('browser-laptop', 'brave-core').description('the brave product requesting the captcha')
 const captchaResponseValidator = Joi.object().keys({
   x: Joi.number().required(),
   y: Joi.number().required()
@@ -342,10 +342,10 @@ v3.read = {
     headers: Joi.object().keys({
       'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
     }).unknown(true),
-    query: {
+    query: Joi.object().keys({
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
-    }
+    }).unknown(true)
   },
 
   response: {
@@ -364,11 +364,11 @@ v5.read = {
     headers: Joi.object().keys({
       'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
     }).unknown(true),
-    query: {
+    query: Joi.object().keys({
       bypassCooldown: Joi.string().guid().optional().description('a token to bypass the wallet cooldown time'),
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
-    }
+    }).unknown(true)
   },
 
   response: {
@@ -388,11 +388,11 @@ v4.read = {
   tags: [ 'api' ],
 
   validate: {
-    query: {
+    query: Joi.object().keys({
       bypassCooldown: Joi.string().guid().optional().description('a token to bypass the wallet cooldown time'),
       lang: Joi.string().regex(localeRegExp).optional().default('en').description('the l10n language'),
       paymentId: Joi.string().guid().optional().description('identity of the wallet')
-    }
+    }).unknown(true)
   },
 
   response: {
@@ -429,9 +429,9 @@ v3.claimGrant = {
   },
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       paymentId: Joi.string().guid().required().description('identity of the wallet')
-    },
+    }).unknown(true),
     headers: Joi.object().keys({
       'safetynet-token': Joi.string().required().description('the safetynet token created by the android device')
     }).unknown(true),
@@ -783,7 +783,7 @@ v2.cohorts = { handler: (runtime) => {
 
     if (payload.file) {
       payload = payload.file
-      const validity = Joi.validate(payload, cohortsAssignmentSchema)
+      const validity = cohortsAssignmentSchema.validate(payload)
       if (validity.error) {
         throw boom.badData(validity.error)
       }
@@ -898,9 +898,9 @@ v2.getCaptcha = {
   },
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       paymentId: paymentIdValidator.required()
-    },
+    }).unknown(true),
     headers: captchaHeadersValidator
   }
 }
@@ -915,9 +915,9 @@ v4.getCaptcha = {
   },
 
   validate: {
-    params: {
+    params: Joi.object().keys({
       paymentId: paymentIdValidator.required()
-    },
+    }).unknown(true),
     headers: captchaHeadersValidator
   }
 }
@@ -1057,7 +1057,7 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
     const {
       error,
       value
-    } = Joi.validate(payload, uploadSchema)
+    } = uploadSchema.validate(payload)
     if (error) {
       throw boom.badData(error)
     }
@@ -1076,7 +1076,7 @@ function uploadTypedGrants (protocolVersion, uploadSchema, contentSchema) {
       const {
         error,
         value
-      } = Joi.validate(grantContent, contentSchema)
+      } = contentSchema.validate(grantContent)
       if (error) {
         throw boom.badData(error)
       }

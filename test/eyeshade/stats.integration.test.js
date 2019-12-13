@@ -12,7 +12,7 @@ import { workers as walletWorkers } from '../../eyeshade/workers/wallet'
 import { freezeOldSurveyors } from '../../eyeshade/workers/reports'
 import {
   debug,
-  eyeshadeAgent,
+  agents,
   ok,
   cleanPgDb
 } from '../utils'
@@ -80,6 +80,20 @@ const referralSettlement = {
 }
 
 test.afterEach.always(cleanPgDb(runtime.postgres))
+
+test('check auth', async (t) => {
+  const votingStatsEmpty = await getStatsFor('grants', 'ads', {
+    start: new Date(),
+    agent: agents.eyeshade.global
+  })
+  t.deepEqual({ amount: '0', count: '0' }, votingStatsEmpty, 'an empty set of stats should return')
+
+  const goldEmpty = await getStatsFor('settlements', 'referral', {
+    settlementCurrency: 'XAG',
+    agent: agents.eyeshade.global
+  })
+  t.deepEqual({ amount: '0' }, goldEmpty, 'an empty set of stats should return')
+})
 
 test('stats for grants', async (t) => {
   const cohort = 'ads'
@@ -181,13 +195,14 @@ async function getStatsFor (prefix, type, options = {}) {
   const {
     start = today,
     settlementCurrency,
-    expect = ok
+    expect = ok,
+    agent = agents.eyeshade.stats
   } = options
   const begin = start.toISOString()
   const qs = settlementCurrency ? `?settlement_currency=${settlementCurrency}` : ''
   const date = begin.split('T')[0]
   const url = `/v1/stats/${prefix}/${type}/${date}${qs}`
-  const { body } = await eyeshadeAgent
+  const { body } = await agent
     .get(url)
     .expect(expect)
   return body
