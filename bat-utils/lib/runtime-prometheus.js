@@ -127,7 +127,7 @@ Prometheus.prototype.registerMetrics = function () {
     buckets: log2Buckets
   })
 
-  new client.Counter({
+  new client.Counter({ // eslint-disable-line
     registers: [register],
     name: 'funds_received_count',
     help: 'a count of the number of bat added to the settlement wallet'
@@ -168,7 +168,7 @@ Prometheus.prototype.plugin = function () {
         method: 'GET',
         path: '/metrics',
         handler: async (req, h) => {
-          const registry = this.allMetrics()
+          const registry = await this.allMetrics()
           const metrics = registry.metrics()
           return h.response(metrics).type('text/plain')
         }
@@ -177,7 +177,7 @@ Prometheus.prototype.plugin = function () {
       server.route({
         method: 'GET',
         path: '/metrics-internal',
-        handler: (req, h) => h.response(register.metrics()).type('text/plain')
+        handler: (req, h) => h.response(this.register.metrics()).type('text/plain')
       })
 
       server.ext('onRequest', (request, h) => {

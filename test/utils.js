@@ -437,8 +437,7 @@ async function setupForwardingServer ({
     },
     testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
     prometheus: {
-      label: process.env.SERVICE + '.' + (process.env.DYNO || 1),
-      redis: process.env.BAT_REDIS_URL
+      label: process.env.SERVICE + '.' + (process.env.DYNO || 1)
     },
     disable: {
       grants: false

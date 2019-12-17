@@ -18,10 +18,10 @@ import {
 } from '../utils'
 
 const {
+  BAT_REDIS_URL,
   BAT_POSTGRES_URL,
   BAT_RATIOS_URL,
   BAT_RATIOS_TOKEN,
-  BAT_REDIS_URL,
   TESTING_COHORTS
 } = process.env
 
@@ -30,7 +30,6 @@ const runtime = new Runtime({
   testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
   queue: BAT_REDIS_URL,
   prometheus: {
-    redis: BAT_REDIS_URL,
     label: 'eyeshade.worker.1'
   },
   wallet: {
@@ -41,6 +40,11 @@ const runtime = new Runtime({
   currency: {
     url: BAT_RATIOS_URL,
     access_token: BAT_RATIOS_TOKEN
+  },
+  cache: {
+    redis: {
+      url: BAT_REDIS_URL
+    }
   },
   postgres: {
     url: BAT_POSTGRES_URL
