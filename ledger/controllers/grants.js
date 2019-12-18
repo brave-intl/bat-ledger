@@ -74,10 +74,14 @@ const grantsValidator = Joi.array().min(0).items(encodedGrantValidator).descript
 const expiryTimeValidator = Joi.number().positive().description('the time the grant expires')
 const grantProviderIdValidator = Joi.string().guid().optional()
 const braveProductEnumValidator = Joi.string().valid('browser-laptop', 'brave-core').description('the brave product requesting the captcha')
-const captchaResponseValidator = Joi.object().keys({
-  x: Joi.number().required(),
-  y: Joi.number().required()
-})
+const captchaResponseValidator = Joi.alternatives().try(
+  Joi.object().keys({
+    x: Joi.number().required(),
+    y: Joi.number().required()
+  }),
+  Joi.string()
+)
+
 const grantContentValidator = Joi.object().keys({
   grantId: Joi.string().guid().required().description('the grant-identifier'),
   promotionId: promotionIdValidator.required(),
@@ -704,7 +708,7 @@ async function safetynetCheck (debug, runtime, request, promotion, wallet) {
 }
 
 async function captchaCheck (debug, runtime, request, promotion, wallet) {
-  const { captchaResponse } = request.payload
+  let { captchaResponse } = request.payload
   const { paymentId } = wallet
   const wallets = runtime.database.get('wallets', debug)
   const configCaptcha = runtime.config.captcha
@@ -722,7 +726,14 @@ async function captchaCheck (debug, runtime, request, promotion, wallet) {
         return boom.forbidden('must first request correct captcha version')
       }
     }
+    if (typeof captchaResponse === 'string') {
+      captchaResponse = JSON.parse(captchaResponse)
 
+      const validity = captchaResponseValidator.validate(captchaResponse)
+      if (validity.error) {
+        throw boom.badData(validity.error)
+      }
+    }
     if (!(checkBounds(wallet.captcha.x, captchaResponse.x, 5) && checkBounds(wallet.captcha.y, captchaResponse.y, 5))) {
       return boom.forbidden()
     }
