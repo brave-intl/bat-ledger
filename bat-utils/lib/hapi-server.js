@@ -54,7 +54,14 @@ async function Server (options, runtime) {
 
   const serverOpts = {
     port: options.port,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    routes: {
+      validate: {
+        failAction: async (request, h, err) => {
+          throw err
+        }
+      }
+    }
   }
   const server = new hapi.Server(serverOpts)
 
