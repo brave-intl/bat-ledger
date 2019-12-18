@@ -49,9 +49,13 @@ const runtime = new Runtime({
   queue: {
     rsmq: process.env.BAT_REDIS_URL
   },
+  cache: {
+    redis: {
+      url: process.env.BAT_REDIS_URL
+    }
+  },
   prometheus: {
-    label: process.env.SERVICE + '.worker.1',
-    redis: process.env.BAT_REDIS_URL
+    label: process.env.SERVICE + '.worker.1'
   }
 })
 
@@ -214,11 +218,6 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
       account: braveYoutubePublisher
     }))
   t.deepEqual(body, [], 'endpoint defaults pending to false')
-
-  // Create a publisher owner and settle balances to that owner
-  await agents.eyeshade.global.put(`/v1/owners/${encodeURIComponent(braveYoutubeOwner)}/wallet`)
-    .send({ 'provider': 'uphold', 'parameters': {} })
-    .expect(ok)
 
   let amount, entry
   const account = [braveYoutubePublisher]
