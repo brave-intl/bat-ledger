@@ -31,13 +31,17 @@ const {
 const runtime = new Runtime({
   testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
   prometheus: {
-    label: 'eyeshade.workers.1',
-    redis: BAT_REDIS_URL
+    label: 'eyeshade.workers.1'
+  },
+  queue: BAT_REDIS_URL,
+  cache: {
+    redis: {
+      url: BAT_REDIS_URL
+    }
   },
   postgres: {
     url: BAT_POSTGRES_URL
-  },
-  queue: BAT_REDIS_URL
+  }
 })
 test.afterEach.always(cleanPgDb(runtime.postgres))
 

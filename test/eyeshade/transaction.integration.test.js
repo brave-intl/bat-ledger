@@ -38,9 +38,13 @@ const runtime = new Runtime({
   postgres: {
     url: process.env.BAT_POSTGRES_URL
   },
+  cache: {
+    redis: {
+      url: process.env.BAT_REDIS_URL
+    }
+  },
   prometheus: {
-    label: 'eyeshade.worker.1',
-    redis: process.env.BAT_REDIS_URL
+    label: 'eyeshade.worker.1'
   }
 })
 

@@ -49,9 +49,13 @@ const runtime = new Runtime({
   queue: {
     rsmq: process.env.BAT_REDIS_URL
   },
+  cache: {
+    redis: {
+      url: process.env.BAT_REDIS_URL
+    }
+  },
   prometheus: {
-    label: process.env.SERVICE + '.worker.1',
-    redis: process.env.BAT_REDIS_URL
+    label: process.env.SERVICE + '.worker.1'
   }
 })
 
