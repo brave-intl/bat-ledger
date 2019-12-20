@@ -78,7 +78,7 @@ v2.walletBalance =
         runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
       })
     }
-    return underscore.pick(walletInfo, ['altcurrency', 'probi', 'cardBalance', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants'])
+    return underscore.pick(walletInfo, ['altcurrency', 'probi', 'cardBalance', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants', 'userFundsPresent'])
   }
 },
 
