@@ -110,6 +110,7 @@ const read = function (runtime, apiVersion) {
     const subset = currency ? [currency.toUpperCase()] : null
     const rates = await runtime.currency.rates(wallet.altcurrency, subset)
     result = {
+      userFundsPresent: true,
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
       httpSigningPubKey: wallet.httpSigningPubKey,
