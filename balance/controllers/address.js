@@ -93,6 +93,7 @@ validate: {
 
 response: {
   schema: Joi.object().keys({
+    userFundsPresent: Joi.boolean().required().description('whether user funds are present'),
     altcurrency: Joi.string().required().description('the wallet currency'),
     balance: Joi.number().min(0).required().description('the (confirmed) wallet balance'),
     cardBalance: braveJoi.string().numeric().required().description('the wallet balance in probi'),
