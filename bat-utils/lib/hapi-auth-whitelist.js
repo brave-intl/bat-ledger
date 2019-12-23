@@ -3,35 +3,55 @@ const path = require('path')
 const boom = require('boom')
 const Netmask = require('netmask').Netmask
 const underscore = require('underscore')
+const validateIP = require('validate-ip-node')
 const braveHapi = require('./extras-hapi')
 
-let whitelist
-let authorizedAddrs
-let authorizedBlocks
+const { IP_WHITELIST } = process.env
+const whitelisted = parseList(IP_WHITELIST)
 
-exports.parseEnv = () => {
-  whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
+exports.parseList = parseList
+exports.ipInList = ipInList
 
-  authorizedAddrs = whitelist && [ '127.0.0.1' ]
-  authorizedBlocks = whitelist && []
+function parseList (_list) {
+  let list = _list
+  if (list) {
+    if (underscore.isString(list)) {
+      list = list.split(',')
+    } else if (list.parsed) {
+      return list
+    }
+  }
 
-  if (whitelist) {
-    whitelist.forEach((entry) => {
-      if ((entry.indexOf('/') !== -1) || (entry.split('.').length !== 4)) return authorizedBlocks.push(new Netmask(entry))
+  const addrs = list && [ '127.0.0.1' ]
+  const blocks = list && []
 
-      authorizedAddrs.push(entry)
+  if (list) {
+    list.forEach((entry) => {
+      if ((entry.indexOf('/') !== -1) || (entry.split('.').length !== 4)) {
+        return blocks.push(new Netmask(entry))
+      }
+
+      if (!validateIP(entry)) {
+        throw new Error('an invalid ip was found')
+      }
+      addrs.push(entry)
     })
+  }
+  return {
+    parsed: true,
+    list,
+    addrs,
+    blocks
   }
 }
 
-exports.parseEnv()
-
-exports.isWhitelisted = (ipaddr) => {
-  if (!authorizedAddrs) {
+function ipInList (ips, ipaddr) {
+  const { addrs, blocks } = parseList(ips)
+  if (!addrs) {
     return false
   }
-  const exactMatch = authorizedAddrs.indexOf(ipaddr) !== -1
-  if (exactMatch || underscore.find(authorizedBlocks, (block) => block.contains(ipaddr))) {
+  const exactMatch = addrs.indexOf(ipaddr) !== -1
+  if (exactMatch || underscore.find(blocks, (block) => block.contains(ipaddr))) {
     return true
   }
   return false
@@ -42,9 +62,7 @@ const internals = {
 }
 
 exports.authorizedP = (ipaddr) => {
-  if ((authorizedAddrs) &&
-        ((authorizedAddrs.indexOf(ipaddr) !== -1) ||
-         (underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) })))) return true
+  return ipInList(whitelisted, ipaddr)
 }
 
 // NOTE This function trusts the final IP address in X-Forwarded-For
@@ -74,9 +92,9 @@ exports.forwardedIPShift = forwardedIPShift
 exports.authenticate = (request, h) => {
   const ipaddr = exports.ipaddr(request)
 
-  if ((authorizedAddrs) &&
-        (authorizedAddrs.indexOf(ipaddr) === -1) &&
-        (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) return boom.notAcceptable()
+  if (!ipInList(whitelisted, ipaddr)) {
+    return boom.notAcceptable()
+  }
 
   validateHops(request)
 
