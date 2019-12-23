@@ -5,17 +5,36 @@ const Netmask = require('netmask').Netmask
 const underscore = require('underscore')
 const braveHapi = require('./extras-hapi')
 
-const whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
+let whitelist
+let authorizedAddrs
+let authorizedBlocks
 
-const authorizedAddrs = whitelist && ['127.0.0.1']
-const authorizedBlocks = whitelist && []
+exports.parseEnv = () => {
+  whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
 
-if (whitelist) {
-  whitelist.forEach((entry) => {
-    if ((entry.indexOf('/') !== -1) || (entry.split('.').length !== 4)) return authorizedBlocks.push(new Netmask(entry))
+  authorizedAddrs = whitelist && [ '127.0.0.1' ]
+  authorizedBlocks = whitelist && []
 
-    authorizedAddrs.push(entry)
-  })
+  if (whitelist) {
+    whitelist.forEach((entry) => {
+      if ((entry.indexOf('/') !== -1) || (entry.split('.').length !== 4)) return authorizedBlocks.push(new Netmask(entry))
+
+      authorizedAddrs.push(entry)
+    })
+  }
+}
+
+exports.parseEnv()
+
+exports.isWhitelisted = (ipaddr) => {
+  if (!authorizedAddrs) {
+    return false
+  }
+  const exactMatch = authorizedAddrs.indexOf(ipaddr) !== -1
+  if (exactMatch || underscore.find(authorizedBlocks, (block) => block.contains(ipaddr))) {
+    return true
+  }
+  return false
 }
 
 const internals = {
