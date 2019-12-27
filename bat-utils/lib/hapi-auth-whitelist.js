@@ -22,7 +22,7 @@ function parseList (_list) {
     }
   }
 
-  const addrs = list && [ '127.0.0.1' ]
+  const addrs = list && ['127.0.0.1']
   const blocks = list && []
 
   if (list) {
@@ -45,14 +45,16 @@ function parseList (_list) {
   }
 }
 
-function ipInList (ips, ipaddr) {
+function ipInList (ips, ipaddr, needsBoth) {
   const { addrs, blocks } = parseList(ips)
-  if (!addrs) {
-    return false
-  }
-  const exactMatch = addrs.indexOf(ipaddr) !== -1
-  if (exactMatch || underscore.find(blocks, (block) => block.contains(ipaddr))) {
-    return true
+  if (needsBoth) {
+    if (addrs && ((addrs.indexOf(ipaddr) === -1) && !underscore.find(blocks, (block) => block.contains(ipaddr)))) {
+      return true
+    }
+  } else {
+    if (addrs && ((addrs.indexOf(ipaddr) !== -1) || underscore.find(blocks, (block) => block.contains(ipaddr)))) {
+      return true
+    }
   }
   return false
 }
@@ -92,7 +94,7 @@ exports.forwardedIPShift = forwardedIPShift
 exports.authenticate = (request, h) => {
   const ipaddr = exports.ipaddr(request)
 
-  if (!ipInList(whitelisted, ipaddr)) {
+  if (ipInList(whitelisted, ipaddr, true)) {
     return boom.notAcceptable()
   }
 
