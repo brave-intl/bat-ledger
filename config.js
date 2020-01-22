@@ -102,7 +102,9 @@ process.env.PORT = process.env.PORT  || service.portno
 
 const SERVICE = process.env.SERVICE.toUpperCase()
 new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
-  process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
+  process.env[v] = process.env[v] || process.env[SERVICE + '_' + v]
+// because if neither are defined, the value is set to the string "undefined"...
+  if (process.env[v] === "undefined") delete process.env[v]
 })
 
 module.exports =
