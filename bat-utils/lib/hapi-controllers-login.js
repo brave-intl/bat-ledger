@@ -17,9 +17,16 @@ const v1 = {}
 v1.login = {
   handler: (runtime) => {
     return async (request, h) => {
-      if (!request.auth.isAuthenticated) throw boom.forbidden()
-
       const debug = braveHapi.debug(module, request)
+
+      if (!request.auth.isAuthenticated) {
+        runtime.notify(debug, {
+          channel: '#devops-bot',
+          text: 'login not authenticated ' + JSON.stringify(request.auth)
+        })
+        throw boom.forbidden()
+      }
+
       const credentials = request.auth.credentials
       const { organization } = runtime.login.github
 
@@ -42,7 +49,7 @@ v1.login = {
       } catch (e) {
         runtime.notify(debug, {
           channel: '#devops-bot',
-          text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email
+          text: 'login failed ' + credentials.provider + ' ' + credentials.profile.email + ': no membership'
         })
         throw e
       }
