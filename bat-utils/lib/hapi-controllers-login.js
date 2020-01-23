@@ -115,3 +115,8 @@ module.exports.routes = [
   braveHapi.routes.async().method(['GET', 'POST']).path('/v1/login').whitelist().config(v1.login),
   braveHapi.routes.async().path('/v1/logout').config(v1.logout)
 ]
+
+module.exports.initialize = async (debug, runtime) => {
+// skip /log* resource paths if no github login
+  if (!runtime.config.login.github) return []
+}

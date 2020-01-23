@@ -27,3 +27,10 @@ v1.ping = {
 }
 
 module.exports.routes = [ braveHapi.routes.async().path('/v1/ping').config(v1.ping) ]
+
+module.exports.initialize = async (debug, runtime) => {
+// do not require login to do a ping on a development server lacking github login
+  if ((process.env.NODE_ENV === 'development') && (!runtime.config.login.github)) {
+    _.keys(v1).forEach((method) => { delete v1[method].auth })
+  }
+}
