@@ -15,7 +15,7 @@ v1.ping = {
 
   auth: {
     strategy: 'session',
-    scope: [ 'devops' ],
+    scope: [ 'devops', 'readonly' ],
     mode: 'required'
   },
 
