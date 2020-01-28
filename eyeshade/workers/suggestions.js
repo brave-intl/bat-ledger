@@ -7,6 +7,13 @@ const suggestionTopic = process.env.ENV + '.grant.suggestion'
 module.exports = (runtime, callback) => {
   runtime.kafka.on(suggestionTopic, async (messages) => {
     const client = await runtime.postgres.connect()
+    const now = new Date()
+    const date = [
+      now.getFullYear(),
+      ((now.getMonth() + 1) + '').padStart(2, '0'),
+      (now.getDate() + '').padStart(2, '0')
+    ].join('-')
+
     try {
       await client.query('BEGIN')
       try {
@@ -28,7 +35,7 @@ module.exports = (runtime, callback) => {
             // FIXME
             const voteValue = '0.25'
 
-            const surveyorId = source.promotion // abuse promotion id as surveyor id
+            const surveyorId = date + '_' + source.promotion // abuse promotion id as surveyor id
 
             const surveyorUpdate = `
             insert into surveyor_groups (id, price, virtual) values ($1, $2, true)

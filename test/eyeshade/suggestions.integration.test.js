@@ -1,6 +1,7 @@
 'use strict'
 
 const Kafka = require('bat-utils/lib/runtime-kafka')
+const Runtime = require('bat-utils/boot-runtime')
 const test = require('ava')
 const uuidV4 = require('uuid/v4')
 const {
@@ -24,9 +25,12 @@ const balanceURL = '/v1/accounts/balances'
 test('suggestions kafka consumer enters into votes', async (t) => {
   process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
   let body
-  const runtime = {
-    config: require('../../config')
-  }
+  const runtime = new Runtime(Object.assign({}, require('../../config'), {
+    queue: process.env.BAT_REDIS_URL,
+    postgres: {
+      url: process.env.BAT_POSTGRES_URL
+    }
+  }))
   const producer = new Kafka(runtime.config, runtime)
   await producer.connect()
 
