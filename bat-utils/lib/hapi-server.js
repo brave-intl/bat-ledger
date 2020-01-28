@@ -312,6 +312,7 @@ async function Server (options, runtime) {
   server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './documentation/favicon.ico' } })
   server.route({ method: 'GET', path: '/favicon.png', handler: { file: './documentation/favicon.png' } })
   server.route({ method: 'GET', path: '/robots.txt', handler: { file: './documentation/robots.txt' } })
+  if (options.routes.statics) options.routes.statics.forEach((route) => { server.route(route) })
   if (process.env.ACME_CHALLENGE) {
     server.route({
       method: 'GET',
