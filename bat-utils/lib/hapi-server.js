@@ -146,7 +146,7 @@ async function Server (options, runtime) {
         allowMultipleHeaders: false,
         allowChaining: true,
         validate: (request, token, h) => {
-          const scope = process.env.GITHUB_TEAM ? process.env.GITHUB_TEAM.split(',') : ['devops', 'ledger', 'QA']
+          const scope = process.env.GITHUB_TEAMS ? process.env.GITHUB_TEAMS.split(',') : ['devops', 'ledger', 'QA']
           const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
           const isValid = typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)
           return {
