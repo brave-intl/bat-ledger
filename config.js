@@ -199,7 +199,6 @@ if (process.env.KAFKA_BROKERS) {
     , "security.protocol": "SSL"
     , "ssl.certificate.location": process.env.KAFKA_SSL_CERTIFICATE_LOCATION
     , "ssl.key.location": process.env.KAFKA_SSL_KEY_LOCATION
-    , "ssl.key.password": process.env.KAFKA_SSL_KEY_PASSWORD
     },
     tconf:
     { 'request.required.acks': +process.env.KAFKA_REQUIRED_ACKS
@@ -208,6 +207,9 @@ if (process.env.KAFKA_BROKERS) {
   }
   if (process.env.KAFKA_SSL_CA_LOCATION) {
     module.exports.kafka.noptions["ssl.ca.location"] = process.env.KAFKA_SSL_CA_LOCATION
+  }
+  if (process.env.KAFKA_SSL_KEY_PASSWORD) {
+    module.exports.kafka.noptions["ssl.key.password"] = process.env.KAFKA_SSL_KEY_PASSWORD
   }
 }
 
