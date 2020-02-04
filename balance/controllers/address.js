@@ -7,7 +7,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
-const checkRedisSize = createRedisSizeChecker()
+const checkRedisSize = createRedisSizeChecker(1000 * 60 * 10)
 
 const plugins = {
   rateLimit: {
@@ -194,8 +194,9 @@ function accessCardId (wallet) {
   return wallet && wallet.addresses && wallet.addresses.CARD_ID
 }
 
-function createRedisSizeChecker () {
+function createRedisSizeChecker (flushDelay) {
   let shouldContinue = true
+  let firstDetectedFull = null
   let id = null
   return check
 
@@ -209,20 +210,32 @@ function createRedisSizeChecker () {
       return stop
     }
     try {
-      await clearIfFull(redis)
+      const now = new Date()
+      const percentFull = await howFull(redis)
+      if (percentFull > 90) {
+        if (!firstDetectedFull) {
+          firstDetectedFull = now
+        } else if (+firstDetectedFull + flushDelay < +now) {
+          firstDetectedFull = null
+          clear(redis)
+        }
+      } else {
+        firstDetectedFull = null
+      }
     } catch (e) {
       console.error(e)
     }
     if (shouldContinue) {
+      const delay = 60000
       id = setTimeout(() => {
         id = null
         check(redis)
-      }, 60000)
+      }, delay - (+(new Date()) % delay))
     }
     return stop
   }
 
-  async function clearIfFull (redis) {
+  async function howFull (redis) {
     const results = await redis.cache.multi([
       ['info']
     ]).execAsync()
@@ -241,11 +254,12 @@ function createRedisSizeChecker () {
         usedMemory = +split[1]
       }
     }
-    const perc = (usedMemory / maxmemory) * 100
-    if (perc > 90) {
-      await redis.cache.multi([
-        ['flushall']
-      ]).execAsync()
-    }
+    return (usedMemory / maxmemory) * 100
+  }
+
+  async function clear (redis) {
+    await redis.cache.multi([
+      ['flushall']
+    ]).execAsync()
   }
 }
