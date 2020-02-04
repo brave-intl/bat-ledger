@@ -27,21 +27,25 @@ config.postgres.schemaVersion = require('./migrations/current')
 
 const runtime = new Runtime(config)
 
-const kafkaSslCertificate = process.env.KAFKA_SSL_CERTIFICATE
+let kafkaSslCertificate = process.env.KAFKA_SSL_CERTIFICATE
 const kafkaSslCertificateLocation = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+let kafkaSslKey = process.env.KAFKA_SSL_KEY
+const kafkaSslKeyLocation = process.env.KAFKA_SSL_KEY_LOCATION
 
 if (kafkaSslCertificate) {
   if (kafkaSslCertificateLocation && !fs.existsSync(kafkaSslCertificateLocation)) {
+    if (kafkaSslCertificate[0] === '{') {
+      const tmp = JSON.parse(kafkaSslCertificate)
+      kafkaSslCertificate = tmp.certificate
+      kafkaSslKey = tmp.key
+    }
     fs.writeFileSync(kafkaSslCertificateLocation, kafkaSslCertificate)
   }
 }
 
-const kafkaSSlKey = process.env.KAFKA_SSL_KEY
-const kafkaSSlKeyLocation = process.env.KAFKA_SSL_KEY_LOCATION
-
-if (kafkaSSlKey) {
-  if (kafkaSSlKeyLocation && !fs.existsSync(kafkaSSlKeyLocation)) {
-    fs.writeFileSync(kafkaSSlKeyLocation, kafkaSSlKey)
+if (kafkaSslKey) {
+  if (kafkaSslKeyLocation && !fs.existsSync(kafkaSslKeyLocation)) {
+    fs.writeFileSync(kafkaSslKeyLocation, kafkaSslKey)
   }
 }
 
