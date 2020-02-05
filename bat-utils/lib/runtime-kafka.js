@@ -3,7 +3,7 @@ const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
 
 const batchOptions = {
-  batchSize: 1000, // decides on the max size of our "batchOfMessages"
+  batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
   commitEveryNBatch: 1, // will be ignored
   concurrency: 1, // will be ignored
   commitSync: false, // will be ignored
