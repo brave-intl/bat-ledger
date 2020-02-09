@@ -113,7 +113,7 @@ v2.settlement = {
       fee: braveJoi.string().numeric().default('0.00').description('fee in addition to settlement commission'),
       transactionId: Joi.string().guid().required().description('the transactionId'),
       type: Joi.string().valid('contribution', 'referral', 'manual').default('contribution').description('settlement input'),
-      hash: Joi.string().guid().required().description('settlement-identifier')
+      hash: Joi.string().required().description('settlement-identifier')
     }).unknown(true)).required().description('publisher settlement report')
   },
 
