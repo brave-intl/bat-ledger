@@ -103,7 +103,7 @@ v2.settlement = {
       executedAt: braveJoi.date().iso().optional().description('the timestamp the settlement was executed'),
       owner: braveJoi.string().owner().required().description('the owner identity'),
       publisher: braveJoi.string().publisher().when('type', { is: Joi.string().valid('manual'), then: Joi.optional().allow(''), otherwise: Joi.required() }).description('the publisher identity'),
-      address: Joi.string().guid().required().description('settlement address'),
+      address: Joi.string().required().description('settlement address'),
       altcurrency: braveJoi.string().altcurrencyCode().required().description('the altcurrency'),
       probi: braveJoi.string().numeric().required().description('the settlement in probi'),
       fees: braveJoi.string().numeric().default('0.00').description('processing fees'),
