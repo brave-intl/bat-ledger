@@ -240,32 +240,6 @@ exports.workers = {
       await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     },
 
-  /* sent by PUT /v1/grants/{paymentId}
-
-{ queue           : 'grant-report'
-, message         :
-  { grantId       : '...'
-  , promotionId   : '...'
-  , altcurrency   : '...'
-  , probi         : ...
-  , paymentId     : '...'
-  }
-}
- */
-  'grant-report':
-    async (debug, runtime, payload) => {
-      const grantId = payload.grantId
-      const grants = runtime.database.get('grants', debug)
-      let state
-
-      payload.probi = bson.Decimal128.fromString(payload.probi)
-      state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.omit(payload, [ 'grantId' ])
-      }
-      await grants.update({ grantId: grantId }, state, { upsert: true })
-    },
-
   /* sent by PUT /v1/wallet/{paymentId} (if one or more grants are redeemed)
 
 { queue           : 'redeem-report'
