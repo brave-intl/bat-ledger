@@ -54,7 +54,7 @@ v2.readInfo = { handler: (runtime) => {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
 
-    const infoKeys = [ 'addresses', 'altcurrency', 'provider', 'providerId', 'paymentId', 'httpSigningPubKey' ]
+    const infoKeys = [ 'addresses', 'altcurrency', 'provider', 'providerId', 'paymentId', 'httpSigningPubKey', 'anonymousAddress' ]
     return underscore.pick(wallet, infoKeys)
   }
 },
