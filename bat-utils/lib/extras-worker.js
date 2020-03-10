@@ -67,10 +67,14 @@ const Worker = async (options, runtime) => {
     if (typeof module.initialize === 'function') workers = (await module.initialize(debug, runtime)) || workers
     listeners[name] = []
 
-    for (const queue of underscore.keys(workers)) { await register(queue) }
+    const keys = underscore.keys(workers)
+    for (let i = 0; i < keys.length; i += 1) {
+      await register(keys[i])
+    }
   }
 
-  for (const mod of options.parentModules) {
+  for (let i = 0; i < options.parentModules.length; i += 1) {
+    const mod = options.parentModules[i]
     try {
       await router(mod)
     } catch (ex) {

@@ -1,4 +1,4 @@
-const url = require('url')
+const { URL } = require('url')
 const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const braveHapi = require('./extras-hapi')
@@ -79,8 +79,8 @@ Currency.prototype = {
       updateTime,
       failureDebounceTime
     } = config
-    const baseUrl = url.resolve(currencyUrl, '/v1/')
-    const endpoint = url.resolve(baseUrl, path)
+    const baseUrl = new URL('/v1/', currencyUrl)
+    const endpoint = new URL(path, baseUrl)
     const cacheKey = `currency:${endpoint}`
     let data = cache.get(cacheKey)
     if (data) {
@@ -99,7 +99,7 @@ Currency.prototype = {
       }
     }
     try {
-      const body = await context.request(endpoint)
+      const body = await context.request(endpoint.toString())
       data = context.parser(body)
     } catch (err) {
       context.captureException(err)

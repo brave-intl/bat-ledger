@@ -49,8 +49,8 @@ exports.workers = {
       try {
         await client.query('BEGIN')
         try {
-          for (const doc of docs) {
-            await insertFromSettlement(runtime, client, doc)
+          for (let i = 0; i < docs.length; i += 1) {
+            await insertFromSettlement(runtime, client, docs[i])
           }
         } catch (e) {
           await client.query('ROLLBACK')

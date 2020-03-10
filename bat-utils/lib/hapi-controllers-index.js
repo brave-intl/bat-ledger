@@ -31,7 +31,8 @@ exports.routes = async (debug, runtime, options) => {
   if (options.controllers) {
     names = underscore.without(underscore.keys(options.controllers), 'index')
 
-    for (const name of names) {
+    for (let i = 0; i < names.length; i += 1) {
+      const name = names[i]
       try {
         await router(options.controllers[name])
       } catch (ex) {
@@ -42,8 +43,8 @@ exports.routes = async (debug, runtime, options) => {
     }
   }
 
-  for (const mod of options.parentModules) {
-    await router(mod)
+  for (let i = 0; i < options.parentModules.length; i += 1) {
+    await router(options.parentModules[i])
   }
 
   if (errP) process.exit(1)

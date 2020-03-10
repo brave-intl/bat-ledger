@@ -350,7 +350,9 @@ test('can add transactions for different account types', async (t) => {
     amount: '0'
   })
   t.deepEqual([], noValueTransferred, 'when no value is transferred, we skip inserting the tx')
-  for (const ticker in knownChains) {
+  const knownChainKeys = _.keys(knownChains)
+  for (let i = 0; i < knownChainKeys.length; i += 1) {
+    const ticker = knownChainKeys[i]
     const chain = knownChains[ticker]
     const createdAt = new Date()
     const id = uuidV4().toLowerCase()

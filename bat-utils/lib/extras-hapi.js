@@ -135,13 +135,11 @@ AsyncRoute.prototype.config = function (config) {
 exports.routes = { async: AsyncRoute }
 
 const ErrorInspect = (err) => {
-  let i, properties
-
   if (!err) return
 
-  properties = ['message', 'isBoom', 'isServer']
+  const properties = ['message', 'isBoom', 'isServer']
   if (!err.isBoom) properties.push('stack')
-  i = underscore.pick(err, properties)
+  const i = underscore.pick(err, properties)
   if ((err.output) && (err.output.payload)) { underscore.defaults(i, { payload: err.output.payload }) }
 
   return i
@@ -157,8 +155,6 @@ if (npminfo) {
 underscore.keys(process.versions).forEach((version) => { wreckUA += ' ' + version + '/' + process.versions[version] })
 
 const WreckProxy = (server, opts) => {
-  let useProxyP
-
   if (!opts) opts = {}
   if (!opts.headers) opts.headers = {}
   if (!opts.headers['user-agent'] && !opts.headers['User-Agent']) opts.headers['user-agent'] = wreckUA
@@ -169,7 +165,7 @@ const WreckProxy = (server, opts) => {
 
   if (typeof opts.useProxyP === 'undefined') return { server: server, opts: opts }
 
-  useProxyP = opts.useProxyP
+  const useProxyP = opts.useProxyP
   opts = underscore.omit(opts, ['useProxyP'])
   if ((!useProxyP) || (!process.env.FIXIE_URL)) return { server: server, opts: opts }
 

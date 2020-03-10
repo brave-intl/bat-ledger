@@ -188,13 +188,13 @@ Prometheus.prototype.plugin = function () {
       server.events.on('response', (response) => {
         const analysis = response._route._analysis
         const statusCode = response.response.statusCode
-        let cardinality, method, params, path
+        let path
 
         const duration = this.duration(response.prometheus.start)
 
-        method = response.method.toLowerCase()
-        params = _.clone(analysis.params)
-        cardinality = params.length ? 'many' : 'one'
+        const method = response.method.toLowerCase()
+        const params = _.clone(analysis.params)
+        const cardinality = params.length ? 'many' : 'one'
         path = analysis.fingerprint.split('/')
         for (let i = 0; i < path.length; i++) { if (path[i] === '?') path[i] = '{' + (params.shift() || '?') + '}' }
         path = path.join('/')

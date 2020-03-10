@@ -97,9 +97,9 @@ const read = function (runtime, apiVersion) {
     const altcurrency = request.query.altcurrency
 
     let currency = request.query.currency
-    let balances, info, result, state, wallet, wallet2
+    let balances, result, state
 
-    wallet = await wallets.findOne({ paymentId: paymentId })
+    const wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
@@ -217,8 +217,8 @@ const read = function (runtime, apiVersion) {
         }
       }
 
-      info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
-      wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
+      const info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
+      const wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
       if ((wallet2) && (!underscore.isEqual(wallet, wallet2))) {
         if (!state) {
           state = {
@@ -240,7 +240,8 @@ const read = function (runtime, apiVersion) {
 async function sumActiveGrants (runtime, info, wallet, grants) {
   let total = new BigNumber(0)
   const results = []
-  for (const grant of grants) {
+  for (let i = 0; i < grants.length; i += 1) {
+    const grant = grants[i]
     const { token, status } = grant
     if (status !== 'active') {
       continue
@@ -321,18 +322,18 @@ const write = function (runtime, apiVersion) {
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
 
-    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi, grantCohort
-    let totalFee, grantFee, nonGrantFee
-    let totalVotes, grantVotes, nonGrantVotes
+    let result, state, surveyorIds, grantCohort
+    let grantFee, nonGrantFee
+    let grantVotes, nonGrantVotes
 
-    wallet = await wallets.findOne({ paymentId: paymentId })
+    const wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
 
     const txn = JSON.parse(signedTx.octets)
 
-    surveyor = await surveyors.findOne({ surveyorId, surveyorType: 'contribution' })
+    const surveyor = await surveyors.findOne({ surveyorId, surveyorType: 'contribution' })
     if (!surveyor) {
       throw boom.notFound('no such surveyor: ' + surveyorId)
     }
@@ -340,9 +341,9 @@ const write = function (runtime, apiVersion) {
       throw boom.resourceGone('cannot perform a contribution with an inactive surveyor')
     }
 
-    params = surveyor.payload.adFree
-    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
-    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
+    const params = surveyor.payload.adFree
+    const txnProbi = runtime.wallet.getTxProbi(wallet, txn)
+    const totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (totalVotes < 1) {
       throw boom.rangeNotSatisfiable('Too low vote value for transaction. PaymentId: ' + paymentId)
@@ -374,10 +375,11 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    for (const cohort of surveyorsLib.cohorts) {
+    for (let i = 0; i < surveyorsLib.cohorts.length; i += 1) {
+      const cohort = surveyorsLib.cohorts[i]
       const cohortSurveyors = surveyor.cohorts[cohort]
       if (totalVotes > cohortSurveyors.length) {
-        state = { payload: request.payload, result: result, votes: totalVotes, message: 'insufficient surveyors' }
+        const state = { payload: request.payload, result: result, votes: totalVotes, message: 'insufficient surveyors' }
         debug('wallet', state)
 
         const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + totalVotes
@@ -438,7 +440,7 @@ const write = function (runtime, apiVersion) {
         commit: true
       })
     }
-    totalFee = result.fee
+    const totalFee = result.fee
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') {
       throw boom.badData(result.status)
@@ -450,7 +452,7 @@ const write = function (runtime, apiVersion) {
     if (grantIds) { // some grants were redeemed
       if (!runtime.config.forward.grants) {
         await markGrantsAsRedeemed(grantIds)
-        grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
+        grantCohort = getCohort(wallet.grants, grantIds, underscore.keys(surveyor.cohorts))
       } else {
         grantCohort = 'grant'
       }
@@ -484,7 +486,7 @@ const write = function (runtime, apiVersion) {
       surveyorIds = underscore.shuffle(surveyor.cohorts.control).slice(0, totalVotes)
     }
 
-    now = timestamp()
+    const now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
     await wallets.update({ paymentId: paymentId }, state, { upsert: true })
 

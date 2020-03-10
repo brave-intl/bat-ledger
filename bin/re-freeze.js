@@ -15,7 +15,8 @@ async function main () {
     throw new Error('surveyors do not exist')
   }
 
-  for (const surveyor of surveyorQ.rows) {
+  for (let i = 0; i < surveyorQ.rows.length; i += 1) {
+    const surveyor = surveyorQ.rows[i]
     const surveyorId = surveyor.id
     if (surveyorId) {
       await queue.send(debug, 'surveyor-frozen-report', { surveyorId })
