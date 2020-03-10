@@ -40,7 +40,7 @@ const {
 } = process.env
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
-const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
+const braveYoutubePublisher = 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg'
 
 const eyeshadeCollections = [
   'grants',
@@ -323,7 +323,7 @@ function setupCreatePayload ({
     const headers = {
       digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
     }
-    headers['signature'] = sign({
+    headers.signature = sign({
       headers: headers,
       keyId: 'primary',
       secretKey: uint8tohex(keypair.secretKey)
@@ -426,7 +426,7 @@ async function setupForwardingServer ({
       grants: {
         baseUrl: process.env.BAT_GRANT_SERVER,
         headers: {
-          'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN || '00000000-0000-4000-0000-000000000000'),
+          Authorization: 'Bearer ' + (process.env.GRANT_TOKEN || '00000000-0000-4000-0000-000000000000'),
           'Content-Type': 'application/json'
         }
       }
@@ -508,7 +508,7 @@ function signTxn (keypair, body, octets) {
     digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
-  headers['signature'] = sign({
+  headers.signature = sign({
     headers: headers,
     keyId: 'primary',
     secretKey: uint8tohex(keypair.secretKey)

@@ -31,7 +31,7 @@ exports.routes = async (debug, runtime, options) => {
   if (options.controllers) {
     names = underscore.without(underscore.keys(options.controllers), 'index')
 
-    for (let name of names) {
+    for (const name of names) {
       try {
         await router(options.controllers[name])
       } catch (ex) {
@@ -42,7 +42,7 @@ exports.routes = async (debug, runtime, options) => {
     }
   }
 
-  for (let mod of options.parentModules) {
+  for (const mod of options.parentModules) {
     await router(mod)
   }
 

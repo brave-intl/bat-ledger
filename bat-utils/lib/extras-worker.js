@@ -21,14 +21,14 @@ const Worker = async (options, runtime) => {
     process.on('warning', (warning) => {
       if (warning.name === 'DeprecationWarning') return
 
-      debug('warning', underscore.pick(warning, [ 'name', 'message', 'stack' ]))
+      debug('warning', underscore.pick(warning, ['name', 'message', 'stack']))
     })
   }
 
   const entries = {}
   const listeners = {}
   let errP
-  let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
+  const resolvers = underscore.uniq(['8.8.8.8', '8.8.4.4'].concat(dns.getServers()))
 
   const router = async (module) => {
     let {
@@ -67,10 +67,10 @@ const Worker = async (options, runtime) => {
     if (typeof module.initialize === 'function') workers = (await module.initialize(debug, runtime)) || workers
     listeners[name] = []
 
-    for (let queue of underscore.keys(workers)) { await register(queue) }
+    for (const queue of underscore.keys(workers)) { await register(queue) }
   }
 
-  for (let mod of options.parentModules) {
+  for (const mod of options.parentModules) {
     try {
       await router(mod)
     } catch (ex) {
@@ -88,7 +88,7 @@ const Worker = async (options, runtime) => {
   debug('workers started',
     {
       resolvers: resolvers,
-      env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ])
+      env: underscore.pick(process.env, ['DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES'])
     })
   runtime.notify(debug, {
     text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +

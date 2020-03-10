@@ -29,8 +29,8 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const parent = state.ancestors[0]
           const skipKeys = {
-            'CARD_ID': true,
-            'BAT': true
+            CARD_ID: true,
+            BAT: true
           }
           const key = Object.keys(parent).find((key) => {
             if (skipKeys[key]) return

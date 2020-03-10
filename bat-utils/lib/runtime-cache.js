@@ -45,7 +45,7 @@ Cache.prototype = {
   set: async function (key, value, options, prefix) {
     const accessor = this.accessor(key, prefix)
     let args = [accessor, value]
-    for (let key in options) {
+    for (const key in options) {
       args = args.concat([key, options[key]])
     }
     return this.cache.setAsync(args)

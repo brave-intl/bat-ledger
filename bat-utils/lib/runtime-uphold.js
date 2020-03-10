@@ -12,6 +12,7 @@ class AlternativeClient extends Client {
     super()
     this.prometheus = prometheus
   }
+
   path (uri) {
     const parsed = url.parse(uri)
     let { path } = parsed
@@ -30,6 +31,7 @@ class AlternativeClient extends Client {
       cardinality
     }
   }
+
   async request (url, method, body, customHeaders = {}) {
     const { prometheus } = this
     const {

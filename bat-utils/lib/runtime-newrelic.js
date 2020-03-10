@@ -8,7 +8,7 @@ module.exports = createNewrelic
 createNewrelic.setupNewrelic = setup
 
 function Newrelic (config, runtime) {
-  let newrelic = {
+  const newrelic = {
     startBackgroundTransaction: (name, group, cb) => { return ((cb || group)()) },
     getTransaction: () => { return { end: () => {} } },
     noticeError: (ex, params) => {},

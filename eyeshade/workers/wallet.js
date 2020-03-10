@@ -24,8 +24,8 @@ exports.initialize = async (debug, runtime) => {
 
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { paymentId: 1 } ],
-      others: [ { provider: 1 }, { address: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 } ]
+      unique: [{ paymentId: 1 }],
+      others: [{ provider: 1 }, { address: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }]
     },
     {
       category: runtime.database.get('contributions', debug),
@@ -50,10 +50,10 @@ exports.initialize = async (debug, runtime) => {
         hash: '',
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { viewingId: 1 } ],
-      others: [ { paymentId: 1 }, { address: 1 }, { paymentStamp: 1 }, { surveyorId: 1 }, { altcurrency: 1 }, { probi: 1 },
+      unique: [{ viewingId: 1 }],
+      others: [{ paymentId: 1 }, { address: 1 }, { paymentStamp: 1 }, { surveyorId: 1 }, { altcurrency: 1 }, { probi: 1 },
         { fee: 1 }, { votes: 1 }, { hash: 1 }, { timestamp: 1 }, { altcurrency: 1, probi: 1, votes: 1 },
-        { mature: 1 } ]
+        { mature: 1 }]
     },
     {
       category: runtime.database.get('grants', debug),
@@ -70,10 +70,10 @@ exports.initialize = async (debug, runtime) => {
 
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { grantId: 1 } ],
-      others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
+      unique: [{ grantId: 1 }],
+      others: [{ promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
         { paymentId: '' },
-        { timestamp: 1 } ]
+        { timestamp: 1 }]
     }
   ])
 }
@@ -105,7 +105,7 @@ exports.workers = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend({ paymentStamp: 0 }, underscore.omit(payload, [ 'paymentId' ]))
+        $set: underscore.extend({ paymentStamp: 0 }, underscore.omit(payload, ['paymentId']))
       }
       await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     },
@@ -133,7 +133,7 @@ exports.workers = {
       const probi = payload.probi && new BigNumber(payload.probi.toString())
       const price = probi.dividedBy(BATtoProbi).dividedBy(payload.votes)
 
-      await postgres.query('insert into surveyor_groups (id, price) values ($1, $2)', [ surveyorId, price.toString() ])
+      await postgres.query('insert into surveyor_groups (id, price) values ($1, $2)', [surveyorId, price.toString()])
     },
 
   /* sent by PUT /v1/wallet/{paymentId}
@@ -171,7 +171,7 @@ exports.workers = {
       payload.fee = bson.Decimal128.fromString(payload.fee.toString())
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.omit(payload, [ 'viewingId' ])
+        $set: underscore.omit(payload, ['viewingId'])
       }
       await contributions.update({ viewingId: viewingId }, state, { upsert: true })
 
@@ -257,7 +257,7 @@ exports.workers = {
 
       state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.omit(payload, [ 'grantIds' ])
+        $set: underscore.omit(payload, ['grantIds'])
       }
       await grants.update({ grantId: { $in: grantIds } }, state, { upsert: true })
     }

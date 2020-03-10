@@ -34,7 +34,7 @@ exports.workers = {
       try {
         await client.query('BEGIN')
         try {
-          for (let doc of docs) {
+          for (const doc of docs) {
             if (!doc._id.owner) {
               const pub = await publishers.findOne({ publisher: doc._id.publisher })
               if (pub) {

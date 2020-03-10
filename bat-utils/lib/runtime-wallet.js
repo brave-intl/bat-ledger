@@ -66,7 +66,7 @@ Wallet.prototype.createCard = async function () {
   if (this.config.uphold) {
     f = Wallet.providers.uphold.createCard
   }
-  if (!f) throw new Error(`no method defined: createCard`)
+  if (!f) throw new Error('no method defined: createCard')
   return f.apply(this, arguments)
 }
 
@@ -104,7 +104,7 @@ Wallet.prototype.getTxProbi = function (info, txn) {
 Wallet.prototype.validateTxSignature = function (info, signature, options = {}) {
   const {
     minimum = 1,
-    destinationValidator = Joi.string().valid(this.config.settlementAddress['BAT'])
+    destinationValidator = Joi.string().valid(this.config.settlementAddress.BAT)
   } = options
   const bigMinimum = new BigNumber(minimum)
   if (bigMinimum.lessThan(0)) {
@@ -237,12 +237,12 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
     grants: [],
     // TODO might need paymentId later
     wallet,
-    transaction: Buffer.from(JSON.stringify(underscore.pick(signature, [ 'headers', 'octets' ]))).toString('base64')
+    transaction: Buffer.from(JSON.stringify(underscore.pick(signature, ['headers', 'octets']))).toString('base64')
   }
   grantIds = []
   let grantTotal = new BigNumber(0)
 
-  for (let grant of grants) {
+  for (const grant of grants) {
     if (this.isGrantExpired(info, grant)) {
       await this.expireGrant(info, wallet, grant)
       continue
@@ -273,7 +273,7 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
 
   result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
     headers: {
-      'Authorization': 'Bearer ' + this.runtime.config.redeemer.access_token,
+      Authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
       'Content-Type': 'application/json',
       // Only pass "trusted" IP, not previous value of X-Forwarded-For
       'X-Forwarded-For': whitelist.ipaddr(request),
@@ -289,7 +289,7 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
 
 Wallet.prototype.purchaseBAT = async function (info, amount, currency, language) {
   // TBD: if there is more than one provider, use a "real" algorithm to determine which one
-  for (let provider in Wallet.providers) {
+  for (const provider in Wallet.providers) {
     const f = Wallet.providers[provider].purchaseBAT
     let result
 
@@ -365,17 +365,21 @@ Wallet.providers.uphold = {
           })
           throw ex
         }
-        return { 'wallet': { 'addresses': {
-          'BAT': ethAddr.id,
-          'BTC': btcAddr.id,
-          'CARD_ID': wallet.id,
-          'ETH': ethAddr.id,
-          'LTC': ltcAddr.id
-        },
-        'provider': 'uphold',
-        'providerId': wallet.id,
-        'httpSigningPubKey': request.body.publicKey,
-        'altcurrency': 'BAT' } }
+        return {
+          wallet: {
+            addresses: {
+              BAT: ethAddr.id,
+              BTC: btcAddr.id,
+              CARD_ID: wallet.id,
+              ETH: ethAddr.id,
+              LTC: ltcAddr.id
+            },
+            provider: 'uphold',
+            providerId: wallet.id,
+            httpSigningPubKey: request.body.publicKey,
+            altcurrency: 'BAT'
+          }
+        }
       } else {
         throw new Error('wallet uphold create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
       }
@@ -440,9 +444,11 @@ Wallet.providers.uphold = {
 
       desired = desired.dividedBy(this.currency.alt2scale(info.altcurrency)).toString()
 
-      return { 'requestType': 'httpSignature',
-        'unsignedTx': { 'denomination': { 'amount': desired, currency: 'BAT' },
-          'destination': this.config.settlementAddress['BAT']
+      return {
+        requestType: 'httpSignature',
+        unsignedTx: {
+          denomination: { amount: desired, currency: 'BAT' },
+          destination: this.config.settlementAddress.BAT
         }
       }
     } else {
@@ -555,12 +561,16 @@ Wallet.providers.mock = {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
         // TODO generate random addresses?
-        return { 'wallet': { 'addresses': {
-          'BAT': this.config.settlementAddress['BAT']
-        },
-        'provider': 'mockHttpSignature',
-        'httpSigningPubKey': request.body.publicKey,
-        'altcurrency': 'BAT' } }
+        return {
+          wallet: {
+            addresses: {
+              BAT: this.config.settlementAddress.BAT
+            },
+            provider: 'mockHttpSignature',
+            httpSigningPubKey: request.body.publicKey,
+            altcurrency: 'BAT'
+          }
+        }
       } else {
         throw new Error('wallet mock create requestType ' + requestType + ' not supported for altcurrency ' + altcurrency)
       }
@@ -582,9 +592,11 @@ Wallet.providers.mock = {
   },
   unsignedTx: async function (info, amount, currency, balance) {
     if (info.altcurrency === 'BAT' && info.provider === 'mockHttpSignature') {
-      return { 'requestType': 'httpSignature',
-        'unsignedTx': { 'denomination': { 'amount': '24.1235', currency: 'BAT' },
-          'destination': this.config.settlementAddress['BAT']
+      return {
+        requestType: 'httpSignature',
+        unsignedTx: {
+          denomination: { amount: '24.1235', currency: 'BAT' },
+          destination: this.config.settlementAddress.BAT
         }
       }
     } else {
@@ -613,8 +625,8 @@ function selectGrants (grants_ = []) {
 
   // sorting munges grants
   grants.sort((a, b) => {
-    let expiryTimestampA = extractExpiryTime(a)
-    let expiryTimestampB = extractExpiryTime(b)
+    const expiryTimestampA = extractExpiryTime(a)
+    const expiryTimestampB = extractExpiryTime(b)
     return expiryTimestampA > expiryTimestampB ? 1 : -1
   })
 

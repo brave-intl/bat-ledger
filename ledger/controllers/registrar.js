@@ -28,35 +28,36 @@ const server = (request, runtime) => {
  */
 
 v2.read =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    let registrar
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      let registrar
 
-    registrar = server(request, runtime)
-    if (!registrar) {
-      throw boom.notFound('unknown registrar')
+      registrar = server(request, runtime)
+      if (!registrar) {
+        throw boom.notFound('unknown registrar')
+      }
+
+      return underscore.extend({ payload: registrar.payload }, registrar.publicInfo())
     }
+  },
 
-    return underscore.extend({ payload: registrar.payload }, registrar.publicInfo())
+  description: 'Returns information about the registrar',
+  tags: ['api'],
+
+  validate: {
+    params: Joi.object().keys({
+      registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
+      apiV: Joi.string().required().description('the api version')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      registrarVK: Joi.string().required().description('public key'),
+      payload: Joi.object().required().description('additional information')
+    })
   }
-},
-
-description: 'Returns information about the registrar',
-tags: ['api'],
-
-validate: {
-  params: Joi.object().keys({
-    registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-    apiV: Joi.string().required().description('the api version')
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.object().keys({
-    registrarVK: Joi.string().required().description('public key'),
-    payload: Joi.object().required().description('additional information')
-  })
-}
 }
 
 /*
@@ -65,64 +66,67 @@ response: {
  */
 
 v2.update =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const payload = request.payload || {}
-    const registrars = runtime.database.get('registrars', debug)
-    let keys, schema, state, registrar, validity
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const payload = request.payload || {}
+      const registrars = runtime.database.get('registrars', debug)
+      let keys, schema, state, registrar, validity
 
-    registrar = server(request, runtime)
-    if (!registrar) {
-      throw boom.notFound('unknown registrar')
+      registrar = server(request, runtime)
+      if (!registrar) {
+        throw boom.notFound('unknown registrar')
+      }
+
+      keys = {}
+      keys[altcurrency] = Joi.number().min(1).required()
+      schema = {
+        persona: Joi.object().keys({
+          adFree: Joi.object().keys({
+            currency: braveJoi.string().altcurrencyCode().optional(),
+            days: Joi.number().integer().min(1).max(365).required(),
+            fee: Joi.object().keys(keys).unknown(true).required()
+          }).unknown(true)
+        }).required()
+      }[registrar.registrarType] || Joi.object().max(0)
+
+      validity = schema.validate(payload)
+      if (validity.error) {
+        throw boom.badData(validity.error)
+      }
+
+      state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
+      await registrars.update({ registrarId: registrar.registrarId }, state, { upsert: false })
+
+      registrar.payload = payload
+      return underscore.extend({ payload: payload }, registrar.publicInfo())
     }
+  },
 
-    keys = {}
-    keys[altcurrency] = Joi.number().min(1).required()
-    schema = {
-      persona: Joi.object().keys({ adFree: Joi.object().keys({
-        currency: braveJoi.string().altcurrencyCode().optional(),
-        days: Joi.number().integer().min(1).max(365).required(),
-        fee: Joi.object().keys(keys).unknown(true).required()
-      }).unknown(true) }).required()
-    }[registrar.registrarType] || Joi.object().max(0)
+  auth: {
+    strategy: 'session',
+    scope: ['ledger'],
+    mode: 'required'
+  },
 
-    validity = schema.validate(payload)
-    if (validity.error) {
-      throw boom.badData(validity.error)
-    }
+  description: 'Updates a registrar',
+  tags: ['api'],
 
-    state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
-    await registrars.update({ registrarId: registrar.registrarId }, state, { upsert: false })
+  validate: {
+    params: Joi.object().keys({
+      registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
+      apiV: Joi.string().required().description('the api version')
+    }).unknown(true),
+    payload: Joi.object().optional().description('additional information')
+  },
 
-    registrar.payload = payload
-    return underscore.extend({ payload: payload }, registrar.publicInfo())
+  response: {
+    schema: Joi.object().keys({
+      registrarVK: Joi.string().required().description('public key'),
+      payload: Joi.object().required().description('additional information')
+    })
   }
-},
-
-auth: {
-  strategy: 'session',
-  scope: [ 'ledger' ],
-  mode: 'required'
-},
-
-description: 'Updates a registrar',
-tags: [ 'api' ],
-
-validate: {
-  params: Joi.object().keys({
-    registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-    apiV: Joi.string().required().description('the api version')
-  }).unknown(true),
-  payload: Joi.object().optional().description('additional information')
-},
-
-response: {
-  schema: Joi.object().keys({
-    registrarVK: Joi.string().required().description('public key'),
-    payload: Joi.object().required().description('additional information')
-  })
-}
 }
 
 /*
@@ -138,7 +142,7 @@ const createPersona = function (runtime) {
     const credentials = runtime.database.get('credentials', debug)
     let entry, registrar, state, verification, requestSchema, requestType, validity
 
-    registrar = runtime.registrars['persona']
+    registrar = runtime.registrars.persona
     if (!registrar) {
       throw boom.notFound('unknown registrar')
     }
@@ -217,7 +221,7 @@ const createPersona = function (runtime) {
 
     state = {
       $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: underscore.pick(wallet, [ 'addresses', 'provider', 'altcurrency', 'httpSigningPubKey', 'providerId' ])
+      $set: underscore.pick(wallet, ['addresses', 'provider', 'altcurrency', 'httpSigningPubKey', 'providerId'])
     }
     await wallets.update({ paymentId: paymentId }, state, { upsert: true })
 
@@ -248,7 +252,7 @@ const createViewing = function (runtime) {
     const credentials = runtime.database.get('credentials', debug)
     let entry, registrar, state, verification
 
-    registrar = runtime.registrars['viewing']
+    registrar = runtime.registrars.viewing
     if (!registrar) {
       throw boom.notFound('unknown registrar')
     }
@@ -292,7 +296,8 @@ const createViewing = function (runtime) {
 }
 
 v2.createViewing =
-{ handler: (runtime) => createViewing(runtime),
+{
+  handler: (runtime) => createViewing(runtime),
   description: 'Registers a user viewing',
   tags: ['api'],
 
@@ -321,7 +326,8 @@ const keychainSchema = Joi.object().keys({
 })
 
 v1.createPersona =
-{ handler: (runtime) => createPersona(runtime, 1),
+{
+  handler: (runtime) => createPersona(runtime, 1),
   description: 'Registers a user persona',
   tags: ['api'],
 
@@ -348,7 +354,8 @@ v1.createPersona =
 }
 
 v2.createPersona =
-{ handler: (runtime) => createPersona(runtime, 2),
+{
+  handler: (runtime) => createPersona(runtime, 2),
   description: 'Registers a user persona',
   tags: ['api'],
 
@@ -402,16 +409,16 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'registrars',
       property: 'registrarId',
       empty: { registrarId: '', registrarType: '', payload: {}, timestamp: bson.Timestamp.ZERO },
-      unique: [ { registrarId: 1 } ],
-      others: [ { registrarType: 1 }, { timestamp: 1 } ]
+      unique: [{ registrarId: 1 }],
+      others: [{ registrarType: 1 }, { timestamp: 1 }]
     },
     {
       category: runtime.database.get('credentials', debug),
       name: 'credentials',
       property: 'registrarId_1_uId',
       empty: { uId: '', registrarId: 0, timestamp: bson.Timestamp.ZERO },
-      unique: [ { registrarId: 1, uId: 1 } ],
-      others: [ { timestamp: 1 } ]
+      unique: [{ registrarId: 1, uId: 1 }],
+      others: [{ timestamp: 1 }]
     }
   ])
 

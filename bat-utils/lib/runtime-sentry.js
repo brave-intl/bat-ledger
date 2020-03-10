@@ -46,11 +46,11 @@ function Sentry (config, runtime) {
       optional.req = { // If present rewrite the request into sentry format
         method: request.method,
         query_string: request.query,
-        headers: underscore.omit(request.headers, [ 'authorization', 'cookie' ])
+        headers: underscore.omit(request.headers, ['authorization', 'cookie'])
       }
       try {
         const url = new URL(request.path, runtime.config.server)
-        if (url) optional.req['url'] = url
+        if (url) optional.req.url = url
       } catch (ex) {}
       optional.extra = underscore.extend(optional.extra, { timestamp: request.info.received, id: request.id })
     }

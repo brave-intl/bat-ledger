@@ -258,7 +258,7 @@ async function ensureReferrals (runtime, expect) {
   // ensure referral records are created in postgres
   let rows
   do { // wait until referral-report is processed and transactions are entered into postgres
-    rows = (await postgresClient.query(`select * from transactions where transaction_type = 'referral';`)).rows
+    rows = (await postgresClient.query('select * from transactions where transaction_type = \'referral\';')).rows
     await timeout(500)
   } while (rows.length !== expect)
   postgresClient.release()
