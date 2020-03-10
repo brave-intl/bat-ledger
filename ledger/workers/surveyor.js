@@ -34,7 +34,7 @@ const daily = async (debug, runtime) => {
 
     runtime.notify(debug, {
       channel: '#ledger-bot',
-      text: 'created ' + JSON.stringify(underscore.pick(surveyor, [ 'surveyorId', 'payload' ]))
+      text: 'created ' + JSON.stringify(underscore.pick(surveyor, ['surveyorId', 'payload']))
     })
     debug('daily', 'created ' + surveyorType + ' surveyorID=' + surveyor.surveyorId)
   }))

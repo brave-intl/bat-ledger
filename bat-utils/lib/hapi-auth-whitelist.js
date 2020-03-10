@@ -7,8 +7,8 @@ const braveHapi = require('./extras-hapi')
 
 const whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
 
-let authorizedAddrs = whitelist && [ '127.0.0.1' ]
-let authorizedBlocks = whitelist && []
+const authorizedAddrs = whitelist && ['127.0.0.1']
+const authorizedBlocks = whitelist && []
 
 if (whitelist) {
   whitelist.forEach((entry) => {

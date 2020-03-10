@@ -22,6 +22,7 @@ class Kafka {
     this.config = kafka
     this.topicHandlers = {}
   }
+
   async connect () {
     // testing only
     if (process.env.NODE_ENV === 'production') {
@@ -39,13 +40,16 @@ class Kafka {
     })
     await this.producer.connect()
   }
+
   async send (topicName, message, _partition = null, _key = null, _partitionKey = null) {
     // return await producer.send("my-topic", "my-message", 0, "my-key", "my-partition-key")
     return this.producer.send(topicName, message, _partition, _key, _partitionKey)
   }
+
   on (topic, handler) {
     this.topicHandlers[topic] = handler
   }
+
   async consume () {
     const consumer = new NConsumer(Object.keys(this.topicHandlers), this.config)
     await consumer.connect()

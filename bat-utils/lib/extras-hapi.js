@@ -139,7 +139,7 @@ const ErrorInspect = (err) => {
 
   if (!err) return
 
-  properties = [ 'message', 'isBoom', 'isServer' ]
+  properties = ['message', 'isBoom', 'isServer']
   if (!err.isBoom) properties.push('stack')
   i = underscore.pick(err, properties)
   if ((err.output) && (err.output.payload)) { underscore.defaults(i, { payload: err.output.payload }) }
@@ -170,7 +170,7 @@ const WreckProxy = (server, opts) => {
   if (typeof opts.useProxyP === 'undefined') return { server: server, opts: opts }
 
   useProxyP = opts.useProxyP
-  opts = underscore.omit(opts, [ 'useProxyP' ])
+  opts = underscore.omit(opts, ['useProxyP'])
   if ((!useProxyP) || (!process.env.FIXIE_URL)) return { server: server, opts: opts }
 
   return { server: server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }

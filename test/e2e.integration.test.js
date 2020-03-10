@@ -60,8 +60,8 @@ const runtime = new Runtime({
 })
 
 const upholdBaseUrls = {
-  'prod': 'https://api.uphold.com',
-  'sandbox': 'https://api-sandbox.uphold.com'
+  prod: 'https://api.uphold.com',
+  sandbox: 'https://api-sandbox.uphold.com'
 }
 const environment = process.env.UPHOLD_ENVIRONMENT || 'sandbox'
 const uphold = new UpholdSDK({ // eslint-disable-line new-cap
@@ -105,10 +105,10 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   // Create user wallet
   let response, body
-  let [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t)
+  const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t)
 
   // Fund user Uphold wallet
-  let amountFunded = await fundUserWalletAndTestStats(t, personaCredential, paymentId, userCardId)
+  const amountFunded = await fundUserWalletAndTestStats(t, personaCredential, paymentId, userCardId)
 
   // Purchase votes
   await sendUserTransaction(t, paymentId, amountFunded, userCardId, donorCardId, keypair, surveyorId, viewingId)
@@ -124,7 +124,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   }])
 
   // Create voting credentials
-  let [surveyorIds, viewingCredential] = await createVotingCredentials(t, viewingId)
+  const [surveyorIds, viewingCredential] = await createVotingCredentials(t, viewingId)
 
   // look up surveyorIds to ensure that they belong to the correct cohorts
   const ledgerDB = await connectToDb('ledger')
@@ -132,8 +132,8 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   let numControlSurveryors = 0
   let numGrantSurveyors = 0
-  for (let surveyorId of surveyorIds) {
-    let cohort = (await surveyors.findOne({ surveyorId: surveyorId })).payload.cohort
+  for (const surveyorId of surveyorIds) {
+    const cohort = (await surveyors.findOne({ surveyorId: surveyorId })).payload.cohort
     if (cohort === 'control') {
       numControlSurveryors += 1
     } else if (cohort === 'grant') {
@@ -168,7 +168,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     const surveyor = new anonize.Surveyor(response.body)
     response = await agents.ledger.global
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
-      .send({ 'proof': viewingCredential.submit(surveyor, { publisher: channels[i % channels.length] }) })
+      .send({ proof: viewingCredential.submit(surveyor, { publisher: channels[i % channels.length] }) })
       .expect(ok)
   }
 
@@ -371,7 +371,7 @@ test('wallets can be claimed by verified members', async (t) => {
         amount
       }
     }
-    let body = { signedTx: signTxn(anonCard.keypair, txn) }
+    const body = { signedTx: signTxn(anonCard.keypair, txn) }
     if (anonymousAddress) {
       _.extend(body, { anonymousAddress })
     }
@@ -385,7 +385,7 @@ test('wallets can be claimed by verified members', async (t) => {
     // Create user wallet
     const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t) // eslint-disable-line
     // Fund user uphold wallet
-    let amountFunded = await fundUserWallet(t, personaCredential, paymentId, userCardId)
+    const amountFunded = await fundUserWallet(t, personaCredential, paymentId, userCardId)
     return {
       keypair,
       amount: amountFunded,
@@ -404,7 +404,7 @@ async function createUserWallet (t) {
   t.true(response.body.hasOwnProperty('registrarVK'))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
   const keypair = tweetnacl.sign.keyPair()
-  let body = {
+  const body = {
     label: uuidV4().toLowerCase(),
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
@@ -413,12 +413,13 @@ async function createUserWallet (t) {
   headers = {
     digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
-  headers['signature'] = sign({
+  headers.signature = sign({
     headers: headers,
     keyId: 'primary',
     secretKey: uint8tohex(keypair.secretKey)
   }, { algorithm: 'ed25519' })
-  payload = { requestType: 'httpSignature',
+  payload = {
+    requestType: 'httpSignature',
     request: {
       body: body,
       headers: headers,
@@ -530,7 +531,7 @@ async function createCardTransaction (desiredTxAmt, userCardId) {
   uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
 
   await uphold.createCardTransaction(donorCardId,
-    { 'amount': desiredTxAmt, 'currency': 'BAT', 'destination': userCardId },
+    { amount: desiredTxAmt, currency: 'BAT', destination: userCardId },
     true // commit tx in one swoop
   )
 }
@@ -560,7 +561,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
   await t.throwsAsync(uphold.createCardTransaction(userCardId,
-    { 'amount': txAmount, 'currency': 'BAT', 'destination': donorCardId },
+    { amount: txAmount, currency: 'BAT', destination: donorCardId },
     true // commit tx in one swoop
   ))
 

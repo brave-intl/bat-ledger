@@ -50,7 +50,7 @@ exports.workers = {
 
         await client.query('BEGIN')
         try {
-          for (let doc of docs) {
+          for (const doc of docs) {
             await insertFromVoting(runtime, client, Object.assign(doc, { surveyorId }), surveyorCreatedAt)
           }
         } catch (e) {

@@ -79,7 +79,7 @@ async function Server (options, runtime) {
     process.on('warning', (warning) => {
       if (warning.name === 'DeprecationWarning') return
 
-      debug('warning', underscore.pick(warning, [ 'name', 'message', 'stack' ]))
+      debug('warning', underscore.pick(warning, ['name', 'message', 'stack']))
     })
   }
 
@@ -194,11 +194,11 @@ async function Server (options, runtime) {
   server.ext('onRequest', (request, h) => {
     const headers = options.headersP &&
           underscore.omit(request.headers, (value, key, object) => {
-            if ([ 'authorization', 'cookie' ].indexOf(key) !== -1) return true
+            if (['authorization', 'cookie'].indexOf(key) !== -1) return true
             return /^x-forwarded-/i.test(key)
           })
     const query = underscore.omit(request.url.query, (value, key, object) => {
-      return ([ 'publisher' ].indexOf(key) !== -1)
+      return (['publisher'].indexOf(key) !== -1)
     })
     const remote = options.remoteP &&
           { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
@@ -331,7 +331,7 @@ async function Server (options, runtime) {
   }
   debug('started server')
 
-  let resolvers = underscore.uniq([ '8.8.8.8', '8.8.4.4' ].concat(dns.getServers()))
+  const resolvers = underscore.uniq(['8.8.8.8', '8.8.4.4'].concat(dns.getServers()))
 
   dns.setServers(resolvers)
   debug('webserver started',
@@ -339,8 +339,8 @@ async function Server (options, runtime) {
       { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
       server.info,
       {
-        env: underscore.pick(process.env, [ 'DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES' ]),
-        options: underscore.pick(options, [ 'headersP', 'remoteP' ])
+        env: underscore.pick(process.env, ['DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES']),
+        options: underscore.pick(options, ['headersP', 'remoteP'])
       }))
   runtime.notify(debug, {
     text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +

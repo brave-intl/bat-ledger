@@ -81,7 +81,7 @@ function reduction (config) {
 
 function sanity (config) {
   _.keys(config).forEach((key) => {
-    let m = config[key]
+    const m = config[key]
     if (typeof m === 'undefined') {
       return
     }

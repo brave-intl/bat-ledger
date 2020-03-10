@@ -11,19 +11,19 @@ const v1 = {}
  */
 
 v1.ping = {
-  handler: (runtime) => async (request, h) => _.omit(npminfo, [ 'dependencies' ]),
+  handler: (runtime) => async (request, h) => _.omit(npminfo, ['dependencies']),
 
   auth: {
     strategy: 'session',
-    scope: [ 'devops' ],
+    scope: ['devops'],
     mode: 'required'
   },
 
   description: 'Returns information about the server',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   response:
     { schema: Joi.object().keys().unknown(true).description('static properties of the server') }
 }
 
-module.exports.routes = [ braveHapi.routes.async().path('/v1/ping').config(v1.ping) ]
+module.exports.routes = [braveHapi.routes.async().path('/v1/ping').config(v1.ping)]

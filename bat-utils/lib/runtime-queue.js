@@ -139,7 +139,7 @@ Queue.prototype.listen = function (name, callback) {
   const options = {
     host: this.rsmq.redis.options.host,
     port: this.rsmq.redis.options.port,
-    options: underscore.omit(this.rsmq.redis.options, [ 'host', 'port' ])
+    options: underscore.omit(this.rsmq.redis.options, ['host', 'port'])
   }
   const worker = new RsmqWorker(name, options)
 

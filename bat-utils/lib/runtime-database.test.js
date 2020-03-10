@@ -18,13 +18,13 @@ test('database.gather', async t => {
   const entry = {
     name: 'voting',
     property: 'surveyorId_1_publisher_1_cohort',
-    unique: [ { surveyorId: 1, publisher: 1, cohort: 1 } ],
-    others: [ { counts: 1 }, { timestamp: 1 },
+    unique: [{ surveyorId: 1, publisher: 1, cohort: 1 }],
+    others: [{ counts: 1 }, { timestamp: 1 },
       { exclude: 1 }, { hash: 1 }, { counts: 1 },
       { altcurrency: 1, probi: 1 },
       { altcurrency: 1, exclude: 1, probi: 1 },
       { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-      { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+      { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 }]
   }
 
   t.deepEqual(db.gather(entry), [

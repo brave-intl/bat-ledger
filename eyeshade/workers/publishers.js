@@ -49,7 +49,7 @@ exports.workers = {
       try {
         await client.query('BEGIN')
         try {
-          for (let doc of docs) {
+          for (const doc of docs) {
             await insertFromSettlement(runtime, client, doc)
           }
         } catch (e) {

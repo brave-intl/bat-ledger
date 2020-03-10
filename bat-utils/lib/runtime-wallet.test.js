@@ -33,7 +33,7 @@ test('validateTxSignature: works', async t => {
       digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
     }
 
-    headers['signature'] = sign({
+    headers.signature = sign({
       headers: headers,
       keyId: 'primary',
       secretKey: utils.uint8tohex(keypair.secretKey)

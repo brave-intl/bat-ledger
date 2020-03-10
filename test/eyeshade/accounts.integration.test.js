@@ -37,8 +37,8 @@ const runtime = new Runtime({
     access_token: process.env.BAT_RATIOS_TOKEN
   },
   wallet: {
-    settlementAddress: { 'BAT': '0xdeadbeef' },
-    adsPayoutAddress: { 'BAT': '0xdeadbeef' }
+    settlementAddress: { BAT: '0xdeadbeef' },
+    adsPayoutAddress: { BAT: '0xdeadbeef' }
   }
 })
 

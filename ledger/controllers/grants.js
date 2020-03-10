@@ -99,10 +99,10 @@ module.exports.initialize = async (debug, runtime) => {
         batchId: '',
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { grantId: 1 } ],
-      others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
+      unique: [{ grantId: 1 }],
+      others: [{ promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
         { status: 1 },
-        { batchId: 1 }, { timestamp: 1 } ]
+        { batchId: 1 }, { timestamp: 1 }]
     },
     {
       category: runtime.database.get('promotions', debug),
@@ -120,10 +120,10 @@ module.exports.initialize = async (debug, runtime) => {
 
         protocolVersion: 2
       },
-      unique: [ { promotionId: 1 } ],
-      others: [ { active: 1 }, { count: 1 },
+      unique: [{ promotionId: 1 }],
+      others: [{ active: 1 }, { count: 1 },
         { batchId: 1 }, { timestamp: 1 },
-        { protocolVersion: 2 } ]
+        { protocolVersion: 2 }]
     }
   ])
 

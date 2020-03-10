@@ -10,7 +10,7 @@ const oneMin = 1000 * 60
 const ms5min = 5 * oneMin
 const failureDebounceTime = oneMin
 
-const knownRateKeys = [ 'AED', 'ARS', 'AUD', 'BAT', 'BCH', 'BRL', 'BTC', 'BTG', 'CAD', 'CHF', 'CNY', 'DASH', 'DKK', 'ETH', 'EUR', 'GBP', 'HKD', 'ILS', 'INR', 'JPY', 'KES', 'LBA', 'LTC', 'MXN', 'NOK', 'NZD', 'PHP', 'PLN', 'SEK', 'SGD', 'USD', 'XAG', 'XAU', 'XPD', 'XPT', 'XRP' ]
+const knownRateKeys = ['AED', 'ARS', 'AUD', 'BAT', 'BCH', 'BRL', 'BTC', 'BTG', 'CAD', 'CHF', 'CNY', 'DASH', 'DKK', 'ETH', 'EUR', 'GBP', 'HKD', 'ILS', 'INR', 'JPY', 'KES', 'LBA', 'LTC', 'MXN', 'NOK', 'NZD', 'PHP', 'PLN', 'SEK', 'SGD', 'USD', 'XAG', 'XAU', 'XPD', 'XPT', 'XRP']
 // satoshis, wei, etc.
 const decimals = {
   BAT: 18,
@@ -74,7 +74,7 @@ Currency.prototype = {
       config,
       cache
     } = context
-    let {
+    const {
       url: currencyUrl,
       updateTime,
       failureDebounceTime
@@ -149,7 +149,7 @@ Currency.prototype = {
   },
 
   alt2fiat: async function (altcurrency, probi, currency, floatP) {
-    let rate = await singleton.ratio(altcurrency, currency)
+    const rate = await singleton.ratio(altcurrency, currency)
     if (!rate) {
       return
     }
@@ -186,7 +186,7 @@ Currency.prototype = {
       return
     }
 
-    let rate = await singleton.ratio(altcurrency, currency)
+    const rate = await singleton.ratio(altcurrency, currency)
     if (!rate) {
       return
     }
