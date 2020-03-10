@@ -101,7 +101,7 @@
     "hapi-auth-bearer-token": "^6.1.1",
     "hapi-require-https": "^4.0.0",
     "hapi-swagger": "^11.0.1",
-    "http-request-signature": "0.0.2",
+    "http-request-signature": "0.0.3",
     "moment": "^2.22.1",
     "mongodb": "^3.3.3",
     "monk": "^7.1.1",
@@ -138,7 +138,7 @@
     "eslint": "^6.4.0",
     "eslint-plugin-node": "^10.0.0",
     "parse-prometheus-text-format": "^1.1.1",
-    "standard": "^12.0.1",
+    "standard": "^14.0.1",
     "supertest": "^4.0.2"
   },
   "standard": {
