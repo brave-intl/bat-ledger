@@ -101,9 +101,8 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const paymentId = payload.paymentId
       const wallets = runtime.database.get('wallets', debug)
-      let state
 
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend({ paymentStamp: 0 }, underscore.omit(payload, ['paymentId']))
       }
@@ -161,7 +160,6 @@ exports.workers = {
       const viewingId = payload.viewingId
       const contributions = runtime.database.get('contributions', debug)
       const wallets = runtime.database.get('wallets', debug)
-      let state
 
       if (cohort && runtime.config.testingCohorts.includes(cohort)) {
         payload.probi = bson.Decimal128.fromString('0')
@@ -169,7 +167,7 @@ exports.workers = {
         payload.probi = bson.Decimal128.fromString(payload.probi.toString())
       }
       payload.fee = bson.Decimal128.fromString(payload.fee.toString())
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.omit(payload, ['viewingId'])
       }
@@ -228,12 +226,11 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const paymentId = payload.paymentId
       const wallets = runtime.database.get('wallets', debug)
-      let state
 
       underscore.keys(payload.balances).forEach((key) => {
         payload.balances[key] = bson.Decimal128.fromString(payload.balances[key])
       })
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: { balances: payload.balances }
       }
@@ -253,9 +250,8 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const grantIds = payload.grantIds
       const grants = runtime.database.get('grants', debug)
-      let state
 
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.omit(payload, ['grantIds'])
       }

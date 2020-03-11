@@ -57,8 +57,8 @@ test('verify surveyor sends back choices', async t => {
   console.log('choices', choices) // eslint-disable-line
   checkResponse(response, choices)
   t.plan(2 + choices.USD.length)
-  for (const number of choices.USD) {
-    t.true(_.isNumber(number), 'each item is a number')
+  for (let i = 0; i < choices.USD.length; i += 1) {
+    t.true(_.isNumber(choices.USD[i]), 'each item is a number')
   }
   /*
   {
@@ -88,7 +88,8 @@ test('check votes ratio', async (t) => {
   }]
   t.plan(list.length)
 
-  for (const context of list) {
+  for (let i = 0; i < list.length; i += 1) {
+    const context = list[i]
     const {
       options,
       rate

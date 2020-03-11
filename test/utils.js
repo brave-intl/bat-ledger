@@ -381,7 +381,8 @@ async function insertReferralInfos (client) {
   }, {
     path: filePath('0010_geo_referral', 'seeds', 'countries.sql')
   }]
-  for (const { path } of ratesPaths) {
+  for (let i = 0; i < ratesPaths.length; i += 1) {
+    const { path } = ratesPaths[i]
     await client.query(fs.readFileSync(path).toString())
   }
 

@@ -47,12 +47,11 @@ test.afterEach.always(cleanPgDb(runtime.postgres))
 
 test('verify frozen occurs when daily is run', async t => {
   t.plan(15)
-  let body
 
   // FIXME sometimes hangs
   await createSurveyor()
   // just made value
-  ;({ body } = await getSurveyor())
+  const { body } = await getSurveyor()
   const { surveyorId } = body
   await waitUntilPropagated(querySurveyor, surveyorId)
   // does not freeze if midnight is before creation date

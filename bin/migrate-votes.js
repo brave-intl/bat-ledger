@@ -52,7 +52,8 @@ async function main () {
   const surveyorC = database.get('surveyors', debug)
   const surveyors = await surveyorC.find()
 
-  for (const surveyor of surveyors) {
+  for (let i = 0; i < surveyors.length; i += 1) {
+    const surveyor = surveyors[i]
     const { surveyorId } = surveyor
     const created = createdTimestamp(surveyor._id)
 

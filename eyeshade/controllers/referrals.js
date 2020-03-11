@@ -89,9 +89,8 @@ v1.findReferrals = {
       const transactionId = request.params.transactionId
       const debug = braveHapi.debug(module, request)
       const transactions = runtime.database.get('referrals', debug)
-      let entries
 
-      entries = await transactions.find({ transactionId: transactionId })
+      const entries = await transactions.find({ transactionId: transactionId })
       if (entries.length === 0) {
         throw boom.notFound('no such transaction-identifier: ' + transactionId)
       }
@@ -263,7 +262,8 @@ v1.createReferrals = {
       } = await postgres.query(getActiveGroups)
       referralGroups.sort((a) => a.activeAt)
 
-      for (const referral of payload) {
+      for (let i = 0; i < payload.length; i += 1) {
+        const referral = payload[i]
         const {
           platform,
           finalized,

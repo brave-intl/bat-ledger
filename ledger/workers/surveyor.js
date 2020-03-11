@@ -9,21 +9,20 @@ let interval
 const daily = async (debug, runtime) => {
   const surveyorType = 'contribution'
   const surveyors = runtime.database.get('surveyors', debug)
-  let entries, next
 
   debug('daily', 'running')
 
-  entries = await surveyors.find({ surveyorType: surveyorType, active: true }, { limit: 100, sort: { timestamp: -1 } })
+  const entries = await surveyors.find({ surveyorType: surveyorType, active: true }, { limit: 100, sort: { timestamp: -1 } })
   await Promise.all(entries.map(async (entry) => {
-    let payload, surveyor, validity
+    let surveyor
 
     try {
       // FIXME capture these events w/ sentry
-      validity = utilities.validate(surveyorType, entry.payload)
+      const validity = utilities.validate(surveyorType, entry.payload)
       if (validity.error) return debug('daily', 'unable to create surveyorType=' + surveyorType + ': ' + validity.error)
 
       delete entry.payload.probi
-      payload = await utilities.enumerate(runtime, surveyorType, entry.payload)
+      const payload = await utilities.enumerate(runtime, surveyorType, entry.payload)
       if (!payload) return debug('daily', 'no available currencies' + JSON.stringify(entry.payload))
 
       surveyor = await utilities.create(debug, runtime, surveyorType, payload)
@@ -39,15 +38,13 @@ const daily = async (debug, runtime) => {
     debug('daily', 'created ' + surveyorType + ' surveyorID=' + surveyor.surveyorId)
   }))
 
-  next = interval.next().getTime()
+  const next = interval.next().getTime()
   setTimeout(() => { daily(debug, runtime) }, next - underscore.now())
   debug('daily', 'running again ' + moment(next).fromNow())
 }
 
 exports.name = 'surveyor'
 exports.initialize = async (debug, runtime) => {
-  let next, schedule
-
   if ((typeof process.env.DYNO !== 'undefined') && (process.env.DYNO !== 'worker.1')) return
 
   await require('../controllers/registrar.js').initialize(debug, runtime)
@@ -67,10 +64,10 @@ exports.initialize = async (debug, runtime) => {
 
  */
 
-  schedule = process.env.SURVEYOR_CRON_SCHEDULE || '0 0 0 * * 0,3,5'
+  const schedule = process.env.SURVEYOR_CRON_SCHEDULE || '0 0 0 * * 0,3,5'
 
   interval = cron.parseExpression(schedule, {})
-  next = interval.next().getTime()
+  const next = interval.next().getTime()
   setTimeout(() => { daily(debug, runtime) }, next - underscore.now())
   debug('daily', 'running ' + moment(next).fromNow())
 }

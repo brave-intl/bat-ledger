@@ -252,11 +252,9 @@ async function Server (options, runtime) {
   }).on('request', (request, event, tags) => {
     debug(event.data, { tags: tags }, { sdebug: { request: { id: event.request, internal: event.internal } } })
   }).on({ name: 'request', channels: 'internal' }, (request, event, tags) => {
-    let params
-
     if ((!tags) || (!tags.received)) return
 
-    params = {
+    const params = {
       request: {
         id: request.id,
         method: request.method.toUpperCase(),

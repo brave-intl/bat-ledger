@@ -216,7 +216,7 @@ Wallet.prototype.expireGrant = async function (info, wallet, grant) {
 Wallet.selectGrants = selectGrants
 
 Wallet.prototype.redeem = async function (info, txn, signature, request) {
-  let balance, desired, grants, grantIds, payload, result
+  let balance, grants, result
 
   if (!this.runtime.config.redeemer) return
 
@@ -227,22 +227,23 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
 
   if (!info.balances) info.balances = await this.balances(info)
   balance = new BigNumber(info.balances.confirmed)
-  desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
+  const desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
 
   const infoKeys = [
     'altcurrency', 'provider', 'providerId', 'paymentId'
   ]
   const wallet = underscore.extend(underscore.pick(info, infoKeys), { publicKey: info.httpSigningPubKey })
-  payload = {
+  const payload = {
     grants: [],
     // TODO might need paymentId later
     wallet,
     transaction: Buffer.from(JSON.stringify(underscore.pick(signature, ['headers', 'octets']))).toString('base64')
   }
-  grantIds = []
+  const grantIds = []
   let grantTotal = new BigNumber(0)
 
-  for (const grant of grants) {
+  for (let i = 0; i < grants.length; i += 1) {
+    const grant = grants[i]
     if (this.isGrantExpired(info, grant)) {
       await this.expireGrant(info, wallet, grant)
       continue
@@ -289,14 +290,15 @@ Wallet.prototype.redeem = async function (info, txn, signature, request) {
 
 Wallet.prototype.purchaseBAT = async function (info, amount, currency, language) {
   // TBD: if there is more than one provider, use a "real" algorithm to determine which one
-  for (const provider in Wallet.providers) {
+  const providerKeys = underscore.keys(Wallet.providers)
+  for (let i = 0; i < providerKeys.length; i += 1) {
+    const provider = providerKeys[i]
     const f = Wallet.providers[provider].purchaseBAT
-    let result
 
     if (!f) continue
 
     try {
-      result = await f.bind(this)(info, amount, currency, language)
+      const result = await f.bind(this)(info, amount, currency, language)
       if (result) return result
     } catch (ex) {
       debug('error in ' + provider + '.purchaseBAT: ' + ex.toString())
@@ -518,9 +520,9 @@ Wallet.providers.uphold = {
     }
   },
   status: async function (info) {
-    let result, uphold, user, desiredCard, desiredCardCurrency, possibleCurrencies, availableCurrencies
+    let uphold, user, desiredCard
 
-    desiredCardCurrency = info.defaultCurrency // Set by Publishers
+    const desiredCardCurrency = info.defaultCurrency // Set by Publishers
 
     try {
       uphold = this.createUpholdSDK(info.parameters.access_token)
@@ -534,10 +536,10 @@ Wallet.providers.uphold = {
       throw ex
     }
 
-    availableCurrencies = underscore.keys(user.balances.currencies) || [] // TODO remove available currencies when https://github.com/brave-intl/publishers/issues/1725 is complete
-    possibleCurrencies = user.currencies
+    const availableCurrencies = underscore.keys(user.balances.currencies) || [] // TODO remove available currencies when https://github.com/brave-intl/publishers/issues/1725 is complete
+    const possibleCurrencies = user.currencies
 
-    result = {
+    const result = {
       id: user.id,
       provider: info.provider,
       authorized: user.status === 'ok',

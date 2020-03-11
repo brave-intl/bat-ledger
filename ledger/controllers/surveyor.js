@@ -102,9 +102,7 @@ v2.read =
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
       const surveyorType = request.params.surveyorType
-      let surveyor
-
-      surveyor = await server(request, h, runtime)
+      const surveyor = await server(request, h, runtime)
       if (!surveyor) return
 
       const response = h.response(underscore.extend({ payload: surveyor.payload }, surveyor.publicInfo()))
@@ -146,7 +144,6 @@ v2.create =
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
       const surveyorType = request.params.surveyorType
-      let surveyor
       let payload = request.payload || {}
 
       const validity = validateV2(surveyorType, payload)
@@ -160,7 +157,7 @@ v2.create =
         throw boom.badData('no available currencies')
       }
 
-      surveyor = await create(debug, runtime, surveyorType, payload)
+      const surveyor = await create(debug, runtime, surveyorType, payload)
       if (!surveyor) {
         throw boom.notFound('invalid surveyorType: ' + surveyorType)
       }
@@ -208,24 +205,22 @@ v2.update =
       const surveyorType = request.params.surveyorType
       const debug = braveHapi.debug(module, request)
       const surveyors = runtime.database.get('surveyors', debug)
-      let state, surveyor, validity
-      let payload = request.payload
 
-      surveyor = await server(request, h, runtime)
+      const surveyor = await server(request, h, runtime)
       if (!surveyor) return
 
-      validity = validateV2(surveyorType, payload)
+      const validity = validateV2(surveyorType, request.payload)
 
       if (validity.error) {
         throw boom.badData(validity.error)
       }
 
-      payload = await enumerate(runtime, surveyorType, payload)
+      const payload = await enumerate(runtime, surveyorType, request.payload)
       if (!payload) {
         throw boom.badData('no available currencies')
       }
 
-      state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
+      const state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
       await surveyors.update({ surveyorId: surveyor.surveyorId }, state, { upsert: false })
 
       if (surveyorType === 'contribution') {
@@ -287,19 +282,18 @@ v2.phase1 =
       const surveyorType = request.params.surveyorType
       const uId = request.params.uId.toLowerCase()
       const credentials = runtime.database.get('credentials', debug)
-      let entry, f, registrar, signature, surveyor
 
-      surveyor = await server(request, h, runtime)
+      const surveyor = await server(request, h, runtime)
       if (!surveyor) return
 
-      registrar = runtime.registrars[registrarType(surveyorType)]
+      const registrar = runtime.registrars[registrarType(surveyorType)]
       if (!registrar) {
         throw boom.badImplementation('unable to find registrar for ' + surveyorType)
       }
 
-      entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
+      const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
 
-      f = {
+      const f = {
         contribution:
             async () => {
               if (!entry) {
@@ -310,13 +304,12 @@ v2.phase1 =
         voting:
             async () => {
               const viewings = runtime.database.get('viewings', debug)
-              let viewing
 
               if (!entry) {
                 throw boom.notFound('viewingId not valid(1): ' + uId)
               }
 
-              viewing = await viewings.findOne({ uId: uId })
+              const viewing = await viewings.findOne({ uId: uId })
               if (!viewing) {
                 throw boom.notFound('viewingId not valid(2): ' + uId)
               }
@@ -329,7 +322,7 @@ v2.phase1 =
       if ((!!f) && (await f())) return
 
       const now = underscore.now()
-      signature = surveyor.sign(uId)
+      const signature = surveyor.sign(uId)
       runtime.newrelic.recordCustomEvent('sign', {
         surveyorId: surveyor.surveyorId,
         surveyorType: surveyor.surveyorType,
@@ -376,9 +369,9 @@ v2.phase2 =
       const debug = braveHapi.debug(module, request)
       const proof = request.payload.proof
       const submissions = runtime.database.get('submissions', debug)
-      let data, entry, f, response, result, state, submissionId, surveyor
+      let data, result
 
-      surveyor = await server(request, h, runtime)
+      const surveyor = await server(request, h, runtime)
       if (!surveyor) return
 
       const verifyEnd = runtime.prometheus.timedRequest('anonizeVerify_request_buckets_milliseconds')
@@ -396,16 +389,16 @@ v2.phase2 =
         verifyEnd({ erred: true })
         throw boom.badData('invalid surveyor proof: ' + JSON.stringify(proof))
       }
-      submissionId = result.token
+      const submissionId = result.token
 
-      entry = await submissions.findOne({ submissionId: submissionId })
+      const entry = await submissions.findOne({ submissionId: submissionId })
       if (entry) {
       // NB: in case of a network error on the response (or a premature Heroku 503, etc.)
         return entry.response
       }
 
-      response = { submissionId: submissionId }
-      f = {
+      const response = { submissionId: submissionId }
+      const f = {
         contribution:
             async () => {
               const schema = Joi.object().keys({ viewingId: Joi.string().guid().required() })
@@ -430,7 +423,7 @@ v2.phase2 =
       }[surveyor.surveyorType]
       if ((!!f) && (await f())) return
 
-      state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { response: response } }
+      const state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { response: response } }
       await submissions.update({ submissionId: submissionId }, state, { upsert: true })
 
       return response
@@ -485,12 +478,12 @@ v1.getVoteRate = {
 
 const create = async (debug, runtime, surveyorType, payload, parentId) => {
   const surveyors = runtime.database.get('surveyors', debug)
-  let registrar, state, surveyor
+  let state
 
-  registrar = runtime.registrars[registrarType(surveyorType)]
+  const registrar = runtime.registrars[registrarType(surveyorType)]
   if (!registrar) return
 
-  surveyor = new anonize.Surveyor().initialize(registrar.publicInfo().registrarVK)
+  const surveyor = new anonize.Surveyor().initialize(registrar.publicInfo().registrarVK)
   surveyor.surveyorId = surveyor.parameters.surveyorId
   surveyor.surveyorType = surveyorType
   surveyor.payload = payload
@@ -544,18 +537,17 @@ const provision = async (debug, runtime, surveyorId, bump) => {
   const { VOTING_COHORTS } = process.env
   const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : surveyorsLib.cohorts
   await Promise.all(contributionSurveyors.map(async (cSurveyor) => {
-    let count, vSurveyor
-
     if (!cSurveyor.cohorts) cSurveyor.cohorts = {}
 
     const desiredCount = ((cSurveyor.payload.adFree.votes * 4) + bump + slop)
 
-    for (const cohort of cohorts) {
+    for (let i = 0; i < cohorts.length; i += 1) {
+      const cohort = cohorts[i]
       if (!cSurveyor.cohorts[cohort]) cSurveyor.cohorts[cohort] = []
 
-      count = desiredCount - cSurveyor.cohorts[cohort].length
+      let count = desiredCount - cSurveyor.cohorts[cohort].length
       while (count > 0) {
-        vSurveyor = await create(debug, runtime, 'voting', { cohort: cohort }, cSurveyor.surveyorId)
+        const vSurveyor = await create(debug, runtime, 'voting', { cohort: cohort }, cSurveyor.surveyorId)
         if (!vSurveyor) {
           debug('surveyor', 'unable to create ' + count + ' voting surveyors')
           return
@@ -585,8 +577,9 @@ v2.batchVote =
       const payload = request.payload
       const results = []
 
-      for (const item of payload) {
-      // only these three properties are needed...
+      for (let i = 0; i < payload.length; i += 1) {
+        const item = payload[i]
+        // only these three properties are needed...
         const { surveyorId, proof } = item
         let response
         try {
@@ -660,14 +653,13 @@ v2.batchSurveyor =
       const surveyorType = 'voting'
       const uId = request.params.uId.toLowerCase()
       const credentials = runtime.database.get('credentials', debug)
-      let entry, registrar, signature
 
-      registrar = runtime.registrars[registrarType(surveyorType)]
+      const registrar = runtime.registrars[registrarType(surveyorType)]
       if (!registrar) {
         throw boom.badImplementation('unable to find registrar for ' + surveyorType)
       }
 
-      entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
+      const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
 
       if (!entry) {
         throw boom.notFound('viewingId not valid(1): ' + uId)
@@ -693,7 +685,7 @@ v2.batchSurveyor =
       const now = underscore.now()
 
       return surveyors.map(surveyor => {
-        signature = surveyor.sign(uId)
+        const signature = surveyor.sign(uId)
         runtime.newrelic.recordCustomEvent('sign', {
           surveyorId: surveyor.surveyorId,
           surveyorType: surveyor.surveyorType,
@@ -748,7 +740,6 @@ module.exports.routes = [
 module.exports.initialize = async (debug, runtime) => {
   const configurations = process.env.SURVEYORS || 'contribution,voting'
   const surveyors = runtime.database.get('surveyors', debug)
-  let entry, i, service, services, surveyor, surveyorType
 
   await runtime.database.checkIndices(debug, [
     {
@@ -772,14 +763,14 @@ module.exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('surveyor-report')
   await runtime.queue.create('voting-report')
 
-  services = configurations.split(',')
-  for (i = services.length - 1; i >= 0; i--) {
-    service = services[i].split(':')
-    surveyorType = service[0]
+  const services = configurations.split(',')
+  for (let i = services.length - 1; i >= 0; i--) {
+    const service = services[i].split(':')
+    const surveyorType = service[0]
 
-    entry = await surveyors.findOne({ surveyorType: surveyorType, active: true })
+    const entry = await surveyors.findOne({ surveyorType: surveyorType, active: true })
     if (entry) {
-      surveyor = new anonize.Surveyor(entry.parameters)
+      const surveyor = new anonize.Surveyor(entry.parameters)
       surveyor.surveyorId = entry.surveyorId
       surveyor.surveyorType = surveyorType
       surveyor.payload = entry.payload

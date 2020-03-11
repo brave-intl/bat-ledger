@@ -80,7 +80,8 @@ async function getGroups (query = {}) {
 
 function normalizeGroups (_body) {
   const body = _body.slice(0).sort((a, b) => a.id > b.id ? 1 : -1)
-  for (const group of body) {
+  for (let i = 0; i < body.length; i += 1) {
+    const group = body[i]
     const { codes } = group
     if (codes) {
       group.codes = codes.slice(0).sort()

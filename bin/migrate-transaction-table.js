@@ -14,7 +14,8 @@ async function main () {
   const settlements = database.get('settlements', debug)
   const settlementIds = await settlements.distinct('settlementId')
 
-  for (const settlementId of settlementIds) {
+  for (let i = 0; i < settlementIds.length; i += 1) {
+    const settlementId = settlementIds[i]
     if (settlementId) {
       await queue.send(debug, 'settlement-report', { settlementId })
     }
@@ -25,7 +26,8 @@ async function main () {
   const referrals = database.get('referrals', debug)
   const transactionIds = await referrals.distinct('transactionId')
 
-  for (const transactionId of transactionIds) {
+  for (let i = 0; i < transactionIds.length; i += 1) {
+    const transactionId = transactionIds[i]
     if (transactionId) {
       await queue.send(debug, 'referral-report', { transactionId })
     }
@@ -36,7 +38,8 @@ async function main () {
   const surveyorsC = database.get('surveyors', debug)
   const surveyors = await surveyorsC.find({ surveyorType: 'contribution', frozen: true })
 
-  for (const surveyor of surveyors) {
+  for (let i = 0; i < surveyors.length; i += 1) {
+    const surveyor = surveyors[i]
     const { surveyorId } = surveyor
     if (surveyorId) {
       await queue.send(debug, 'surveyor-frozen-report', { surveyorId })

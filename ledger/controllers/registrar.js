@@ -31,9 +31,7 @@ v2.read =
 {
   handler: (runtime) => {
     return async (request, h) => {
-      let registrar
-
-      registrar = server(request, runtime)
+      const registrar = server(request, runtime)
       if (!registrar) {
         throw boom.notFound('unknown registrar')
       }
@@ -72,16 +70,15 @@ v2.update =
       const debug = braveHapi.debug(module, request)
       const payload = request.payload || {}
       const registrars = runtime.database.get('registrars', debug)
-      let keys, schema, state, registrar, validity
 
-      registrar = server(request, runtime)
+      const registrar = server(request, runtime)
       if (!registrar) {
         throw boom.notFound('unknown registrar')
       }
 
-      keys = {}
+      const keys = {}
       keys[altcurrency] = Joi.number().min(1).required()
-      schema = {
+      const schema = {
         persona: Joi.object().keys({
           adFree: Joi.object().keys({
             currency: braveJoi.string().altcurrencyCode().optional(),
@@ -91,12 +88,12 @@ v2.update =
         }).required()
       }[registrar.registrarType] || Joi.object().max(0)
 
-      validity = schema.validate(payload)
+      const validity = schema.validate(payload)
       if (validity.error) {
         throw boom.badData(validity.error)
       }
 
-      state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
+      const state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
       await registrars.update({ registrarId: registrar.registrarId }, state, { upsert: false })
 
       registrar.payload = payload
@@ -140,19 +137,19 @@ const createPersona = function (runtime) {
     const proof = request.payload.proof
     const response = {}
     const credentials = runtime.database.get('credentials', debug)
-    let entry, registrar, state, verification, requestSchema, requestType, validity
+    let state, verification, requestSchema
 
-    registrar = runtime.registrars.persona
+    const registrar = runtime.registrars.persona
     if (!registrar) {
       throw boom.notFound('unknown registrar')
     }
 
-    entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
+    const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
     if (entry) {
       throw boom.badData('persona credential exists: ' + uId)
     }
 
-    requestType = request.payload.requestType
+    const requestType = request.payload.requestType
 
     if (requestType === 'httpSignature') {
       // TODO consider moving this to a custom joi validator along with signature verif below
@@ -169,7 +166,7 @@ const createPersona = function (runtime) {
         octets: Joi.string().optional().description('octet string that was signed and digested')
       }).required()
     }
-    validity = requestSchema.validate(request.payload.request)
+    const validity = requestSchema.validate(request.payload.request)
     if (validity.error) {
       throw boom.badData(validity.error)
     }
@@ -206,9 +203,9 @@ const createPersona = function (runtime) {
 
     const paymentId = uuidV4().toLowerCase()
     const wallets = runtime.database.get('wallets', debug)
-    let result, wallet, requestBody
+    let result, wallet
 
-    requestBody = request.payload.request
+    const requestBody = request.payload.request
 
     try {
       result = await runtime.wallet.create(requestType, requestBody)
@@ -250,29 +247,28 @@ const createViewing = function (runtime) {
     const proof = request.payload.proof
     const response = {}
     const credentials = runtime.database.get('credentials', debug)
-    let entry, registrar, state, verification
+    let verification
 
-    registrar = runtime.registrars.viewing
+    const registrar = runtime.registrars.viewing
     if (!registrar) {
       throw boom.notFound('unknown registrar')
     }
 
-    entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
+    const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
     if (entry) {
       throw boom.badData('viewing credential exists: ' + uId)
     }
 
     const viewings = runtime.database.get('viewings', debug)
-    let diagnostic, surveyorIds, viewing
 
-    viewing = await viewings.findOne({ uId: uId })
+    const viewing = await viewings.findOne({ uId: uId })
     if (!viewing) {
       throw boom.notFound('viewingId not valid: ' + uId)
     }
 
-    surveyorIds = viewing.surveyorIds || []
+    const surveyorIds = viewing.surveyorIds || []
     if (surveyorIds.length !== viewing.count) {
-      diagnostic = 'surveyorIds invalid found ' + surveyorIds.length + ', expecting ' + viewing.count +
+      const diagnostic = 'surveyorIds invalid found ' + surveyorIds.length + ', expecting ' + viewing.count +
                    ', surveyorId=' + viewing.surveyorId
       runtime.captureException(diagnostic, { req: request, extra: { viewing: uId } })
 
@@ -288,7 +284,7 @@ const createViewing = function (runtime) {
       throw boom.badData('invalid registrar proof: ' + JSON.stringify(proof))
     }
 
-    state = { $currentDate: { timestamp: { $type: 'timestamp' } } }
+    const state = { $currentDate: { timestamp: { $type: 'timestamp' } } }
     await credentials.update({ uId: uId, registrarId: registrar.registrarId }, state, { upsert: true })
 
     return underscore.extend(response, { verification })
@@ -399,7 +395,6 @@ module.exports.routes = [
 module.exports.initialize = async (debug, runtime) => {
   const configurations = process.env.REGISTRARS || 'persona:1,viewing:2'
   const registrars = runtime.database.get('registrars', debug)
-  let entry, i, payload, registrar, registrarId, registrarType, service, services, state
 
   altcurrency = runtime.config.altcurrency || 'BAT'
 
@@ -426,13 +421,14 @@ module.exports.initialize = async (debug, runtime) => {
 
   runtime.registrars = []
 
-  services = configurations.split(',')
-  for (i = services.length - 1; i >= 0; i--) {
-    service = services[i].split(':')
-    registrarType = service[0]
-    registrarId = parseInt(service[1], 10)
+  const services = configurations.split(',')
+  for (let i = services.length - 1; i >= 0; i--) {
+    let payload, registrar
+    const service = services[i].split(':')
+    const registrarType = service[0]
+    const registrarId = parseInt(service[1], 10)
 
-    entry = await registrars.findOne({ registrarId: registrarId })
+    const entry = await registrars.findOne({ registrarId: registrarId })
     if (entry) {
       if (entry.registrarType !== registrarType) {
         throw new Error('registrar #' + registrarId + ': mismatch, expecting ' + registrarType + ', found ' +
@@ -443,7 +439,7 @@ module.exports.initialize = async (debug, runtime) => {
     } else {
       registrar = new anonize.Registrar()
       payload = (registrarType === 'persona') ? { adFree: { fee: { USD: 5.00 }, days: 30 } } : {}
-      state = {
+      const state = {
         $currentDate: { timestamp: { $type: 'timestamp' } },
         $set: underscore.extend({ registrarType: registrarType, payload: payload }, registrar)
       }

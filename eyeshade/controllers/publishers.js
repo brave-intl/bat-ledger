@@ -41,7 +41,8 @@ v2.settlement = {
       const $currentDate = { timestamp: { $type: 'timestamp' } }
       const executedTime = new Date()
       const settlementGroups = {}
-      for (const entry of payload) {
+      for (let i = 0; i < payload.length; i += 1) {
+        const entry = payload[i]
         const {
           commission,
           fee,
@@ -126,9 +127,12 @@ v2.submitSettlement = {
   handler: (runtime) => async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const { payload: settlementGroups } = request
-    for (const type in settlementGroups) {
+    const settlementGroupKeys = underscore.keys(settlementGroups)
+    for (let i = 0; i < settlementGroupKeys.length; i += 1) {
+      const type = settlementGroupKeys[i]
       const settlementIds = underscore.uniq(settlementGroups[type])
-      for (const settlementId of settlementIds) {
+      for (let j = 0; j < settlementIds.length; j += 1) {
+        const settlementId = settlementIds[j]
         await runtime.queue.send(debug, 'settlement-report', {
           type,
           settlementId,
