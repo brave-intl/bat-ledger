@@ -52,7 +52,8 @@ async function main () {
   const surveyorC = database.get('surveyors', debug)
   const surveyors = await surveyorC.find()
 
-  for (let surveyor of surveyors) {
+  for (let i = 0; i < surveyors.length; i += 1) {
+    const surveyor = surveyors[i]
     const { surveyorId } = surveyor
     const created = createdTimestamp(surveyor._id)
 
@@ -74,7 +75,7 @@ async function main () {
   }
 
   const surveyorIds = surveyors.map((surveyor) => surveyor.surveyorId)
-  const votings = await votingC.find({ 'surveyorId': { '$nin': surveyorIds } })
+  const votings = await votingC.find({ surveyorId: { $nin: surveyorIds } })
   await consume(pg, votings)
 
   const backfillTransacted = `

@@ -1,4 +1,4 @@
-const url = require('url')
+const { URL } = require('url')
 const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const braveHapi = require('./extras-hapi')
@@ -10,7 +10,7 @@ const oneMin = 1000 * 60
 const ms5min = 5 * oneMin
 const failureDebounceTime = oneMin
 
-const knownRateKeys = [ 'AED', 'ARS', 'AUD', 'BAT', 'BCH', 'BRL', 'BTC', 'BTG', 'CAD', 'CHF', 'CNY', 'DASH', 'DKK', 'ETH', 'EUR', 'GBP', 'HKD', 'ILS', 'INR', 'JPY', 'KES', 'LBA', 'LTC', 'MXN', 'NOK', 'NZD', 'PHP', 'PLN', 'SEK', 'SGD', 'USD', 'XAG', 'XAU', 'XPD', 'XPT', 'XRP' ]
+const knownRateKeys = ['AED', 'ARS', 'AUD', 'BAT', 'BCH', 'BRL', 'BTC', 'BTG', 'CAD', 'CHF', 'CNY', 'DASH', 'DKK', 'ETH', 'EUR', 'GBP', 'HKD', 'ILS', 'INR', 'JPY', 'KES', 'LBA', 'LTC', 'MXN', 'NOK', 'NZD', 'PHP', 'PLN', 'SEK', 'SGD', 'USD', 'XAG', 'XAU', 'XPD', 'XPT', 'XRP']
 // satoshis, wei, etc.
 const decimals = {
   BAT: 18,
@@ -74,13 +74,13 @@ Currency.prototype = {
       config,
       cache
     } = context
-    let {
+    const {
       url: currencyUrl,
       updateTime,
       failureDebounceTime
     } = config
-    const baseUrl = url.resolve(currencyUrl, '/v1/')
-    const endpoint = url.resolve(baseUrl, path)
+    const baseUrl = new URL('/v1/', currencyUrl)
+    const endpoint = new URL(path, baseUrl)
     const cacheKey = `currency:${endpoint}`
     let data = cache.get(cacheKey)
     if (data) {
@@ -99,7 +99,7 @@ Currency.prototype = {
       }
     }
     try {
-      const body = await context.request(endpoint)
+      const body = await context.request(endpoint.toString())
       data = context.parser(body)
     } catch (err) {
       context.captureException(err)
@@ -149,7 +149,7 @@ Currency.prototype = {
   },
 
   alt2fiat: async function (altcurrency, probi, currency, floatP) {
-    let rate = await singleton.ratio(altcurrency, currency)
+    const rate = await singleton.ratio(altcurrency, currency)
     if (!rate) {
       return
     }
@@ -186,7 +186,7 @@ Currency.prototype = {
       return
     }
 
-    let rate = await singleton.ratio(altcurrency, currency)
+    const rate = await singleton.ratio(altcurrency, currency)
     if (!rate) {
       return
     }

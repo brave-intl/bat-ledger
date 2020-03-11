@@ -74,13 +74,11 @@ Database.prototype.file = async function (filename, mode, options) {
 
   return new Promise((resolve, reject) => {
     GridStore.exist(this.db._db, filename, (err, result) => {
-      let gridStore
-
       if (err) return reject(err)
 
       if (!result) return resolve(null)
 
-      gridStore = new GridStore(this.db._db, filename, mode, options)
+      const gridStore = new GridStore(this.db._db, filename, mode, options)
       gridStore.open((err, result) => {
         if (err) return reject(err)
 
@@ -92,18 +90,16 @@ Database.prototype.file = async function (filename, mode, options) {
 
 Database.prototype.purgeSince = async function (debug, runtime, timestamp) {
   const reports = this.get('fs.files', debug)
-  let entries, names
-
   await reports.createIndex({ uploadDate: 1 }, { unique: false })
 
-  entries = await reports.find({
+  const entries = await reports.find({
     _id: { $lte: bson.ObjectId(Math.floor(timestamp / 1000.0).toString(16) + '0000000000000000') }
   })
   debug('purgeSince', { count: entries.length })
 
   if (entries.length === 0) return
 
-  names = underscore.map(entries, (entry) => { return entry._id })
+  const names = underscore.map(entries, (entry) => { return entry._id })
   return new Promise((resolve, reject) => {
     GridStore.unlink(this.db._db, names, (err) => {
       if (err) return debug('purgeSince', err)

@@ -10,7 +10,8 @@ module.exports = (runtime, callback) => {
     try {
       await client.query('BEGIN')
       try {
-        for (let message of messages) {
+        for (let i = 0; i < messages.length; i += 1) {
+          const message = messages[i]
           const buf = Buffer.from(message.value, 'binary')
           let suggestion
           try {
@@ -22,7 +23,8 @@ module.exports = (runtime, callback) => {
           }
 
           const publisher = suggestion.channel
-          for (let source of suggestion.funding) {
+          for (let j = 0; j < suggestion.funding.length; j += 1) {
+            const source = suggestion.funding[j]
             // FIXME
             const voteValue = '0.25'
 

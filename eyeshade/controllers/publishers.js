@@ -31,8 +31,8 @@ v2.settlement = {
       const { fromString } = bson.Decimal128
       const debug = braveHapi.debug(module, request)
       const settlements = runtime.database.get('settlements', debug)
-      const numberFields = [ 'probi', 'amount', 'fee', 'fees', 'commission' ]
-      const mappedFields = [ 'address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId' ]
+      const numberFields = ['probi', 'amount', 'fee', 'fees', 'commission']
+      const mappedFields = ['address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId']
 
       if (payload.find((entry) => entry.altcurrency !== altcurrency)) {
         throw boom.badData('altcurrency should be ' + altcurrency)
@@ -41,7 +41,8 @@ v2.settlement = {
       const $currentDate = { timestamp: { $type: 'timestamp' } }
       const executedTime = new Date()
       const settlementGroups = {}
-      for (let entry of payload) {
+      for (let i = 0; i < payload.length; i += 1) {
+        const entry = payload[i]
         const {
           commission,
           fee,
@@ -55,7 +56,7 @@ v2.settlement = {
         const bigCom = new BigNumber(commission)
         const bigComPlusFee = bigCom.plus(bigFee)
 
-        let picked = underscore.pick(entry, mappedFields)
+        const picked = underscore.pick(entry, mappedFields)
         picked.commission = fromString(bigComPlusFee.toString())
         picked.executedAt = new Date(executedAt || executedTime)
         const $set = numberFields.reduce((memo, field) => {
@@ -96,7 +97,7 @@ v2.settlement = {
     maxBytes: 1024 * 1024 * 20 // 20 MB
   },
   description: 'Posts a settlement for one or more publishers',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     payload: Joi.array().min(1).items(Joi.object().keys({
@@ -126,9 +127,12 @@ v2.submitSettlement = {
   handler: (runtime) => async (request, h) => {
     const debug = braveHapi.debug(module, request)
     const { payload: settlementGroups } = request
-    for (let type in settlementGroups) {
+    const settlementGroupKeys = underscore.keys(settlementGroups)
+    for (let i = 0; i < settlementGroupKeys.length; i += 1) {
+      const type = settlementGroupKeys[i]
       const settlementIds = underscore.uniq(settlementGroups[type])
-      for (let settlementId of settlementIds) {
+      for (let j = 0; j < settlementIds.length; j += 1) {
+        const settlementId = settlementIds[j]
         await runtime.queue.send(debug, 'settlement-report', {
           type,
           settlementId,
@@ -149,7 +153,7 @@ v2.submitSettlement = {
     maxBytes: 1024 * 1024 * 20 // 20 MB
   },
   description: 'Posts a list of settlement ids and types to trigger the worker',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     payload: settlementGroupsValidator
@@ -200,13 +204,13 @@ module.exports.initialize = async (debug, runtime) => {
 
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { publisher: 1 } ],
-      others: [ { authority: 1 },
+      unique: [{ publisher: 1 }],
+      others: [{ authority: 1 },
         { owner: 1 },
         { providerName: 1 }, { providerSuffix: 1 }, { providerValue: 1 },
         { authorizerEmail: 1 }, { authorizerName: 1 },
         { altcurrency: 1 },
-        { timestamp: 1 } ]
+        { timestamp: 1 }]
     },
     {
       category: runtime.database.get('settlements', debug),
@@ -234,18 +238,18 @@ module.exports.initialize = async (debug, runtime) => {
         executedAt: new Date(0), // When the settlement was executed
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 } ],
-      others: [ { address: 1 },
+      unique: [{ settlementId: 1, publisher: 1 }, { hash: 1, publisher: 1 }],
+      others: [{ address: 1 },
         { owner: 1 }, { altcurrency: 1 }, { probi: 1 }, { fees: 1 }, { currency: 1 }, { amount: 1 }, { commission: 1 },
-        { fee: 1 }, { type: 1 }, { timestamp: 1 }, { executedAt: 1 } ]
+        { fee: 1 }, { type: 1 }, { timestamp: 1 }, { executedAt: 1 }]
     },
     {
       category: runtime.database.get('publishersV2', debug),
       name: 'publishersV2',
       property: 'publisher',
       empty: { publisher: '', facet: '', exclude: false, tags: [], timestamp: bson.Timestamp.ZERO },
-      unique: [ { publisher: 1 } ],
-      others: [ { facet: 1 }, { exclude: 1 }, { timestamp: 1 } ]
+      unique: [{ publisher: 1 }],
+      others: [{ facet: 1 }, { exclude: 1 }, { timestamp: 1 }]
     }
   ])
 }

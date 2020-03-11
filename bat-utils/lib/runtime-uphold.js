@@ -2,7 +2,7 @@ const {
   default: SDK,
   RequestClient: Client
 } = require('@uphold/uphold-sdk-javascript')
-const url = require('url')
+const { URL } = require('url')
 const {
   isUUID
 } = require('./extras-utils')
@@ -12,9 +12,9 @@ class AlternativeClient extends Client {
     super()
     this.prometheus = prometheus
   }
+
   path (uri) {
-    const parsed = url.parse(uri)
-    let { path } = parsed
+    let { pathname: path } = new URL(uri)
     const split = path.split('/')
     let cardinality = 'one'
     path = split.map((step) => {
@@ -30,6 +30,7 @@ class AlternativeClient extends Client {
       cardinality
     }
   }
+
   async request (url, method, body, customHeaders = {}) {
     const { prometheus } = this
     const {

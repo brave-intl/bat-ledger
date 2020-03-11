@@ -43,7 +43,7 @@ v1.grantsStats = {
     mode: 'required'
   },
   description: 'Retrieves information about grants',
-  tags: [ 'api' ],
+  tags: ['api'],
   validate: {
     params: dateRangeParams.keys({
       type: grantTypeValidator.description('grant type to query for')
@@ -91,7 +91,7 @@ v1.settlementsStats = {
     mode: 'required'
   },
   description: 'Retrieves information about bat paid out in referrals',
-  tags: [ 'api' ],
+  tags: ['api'],
   validate: {
     query: Joi.object().keys({
       settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the settlement currency to query for')

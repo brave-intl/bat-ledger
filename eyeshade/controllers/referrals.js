@@ -89,16 +89,15 @@ v1.findReferrals = {
       const transactionId = request.params.transactionId
       const debug = braveHapi.debug(module, request)
       const transactions = runtime.database.get('referrals', debug)
-      let entries
 
-      entries = await transactions.find({ transactionId: transactionId })
+      const entries = await transactions.find({ transactionId: transactionId })
       if (entries.length === 0) {
         throw boom.notFound('no such transaction-identifier: ' + transactionId)
       }
 
       return entries.map((entry) => {
         return underscore.extend({ channelId: entry.publisher },
-          underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ]))
+          underscore.pick(entry, ['downloadId', 'platform', 'finalized']))
       })
     }
   },
@@ -110,7 +109,7 @@ v1.findReferrals = {
   },
 
   description: 'Returns referral transactions for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -148,7 +147,7 @@ v1.getReferralGroups = {
   },
 
   description: 'Records referral transactions for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({
@@ -227,7 +226,7 @@ v1.getReferralsStatement = {
   },
 
   description: 'Get the referral details for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({
@@ -263,7 +262,8 @@ v1.createReferrals = {
       } = await postgres.query(getActiveGroups)
       referralGroups.sort((a) => a.activeAt)
 
-      for (const referral of payload) {
+      for (let i = 0; i < payload.length; i += 1) {
+        const referral = payload[i]
         const {
           platform,
           finalized,
@@ -350,7 +350,7 @@ v1.createReferrals = {
   },
 
   description: 'Records referral transactions for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -398,13 +398,13 @@ module.exports.initialize = async (debug, runtime) => {
 
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { downloadId: 1 } ],
-      others: [ { transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
+      unique: [{ downloadId: 1 }],
+      others: [{ transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
         { altcurrency: 1 }, { probi: 1 }, { exclude: 1 }, { hash: 1 }, { timestamp: 1 },
         { altcurrency: 1, probi: 1 },
         { altcurrency: 1, exclude: 1, probi: 1 },
         { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-        { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+        { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 }]
     }
   ])
 }

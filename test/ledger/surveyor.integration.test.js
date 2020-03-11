@@ -37,11 +37,11 @@ test('verify voting batching endpoint does not error', async t => {
   t.plan(0)
   const surveyorType = 'voting'
   const url = `/v2/batch/surveyor/${surveyorType}`
-  const data = [ { surveyorId: '...', proof: '...' } ]
+  const data = [{ surveyorId: '...', proof: '...' }]
 
   await agents.ledger.global.post(url).send(data).expect(ok)
 
-  const getURL = `/v2/batch/surveyor/16457ddb9913cd7928d3205ab455ecd`
+  const getURL = '/v2/batch/surveyor/16457ddb9913cd7928d3205ab455ecd'
 
   await agents.ledger.global.get(getURL).expect(ok)
 })
@@ -57,8 +57,8 @@ test('verify surveyor sends back choices', async t => {
   console.log('choices', choices) // eslint-disable-line
   checkResponse(response, choices)
   t.plan(2 + choices.USD.length)
-  for (let number of choices.USD) {
-    t.true(_.isNumber(number), 'each item is a number')
+  for (let i = 0; i < choices.USD.length; i += 1) {
+    t.true(_.isNumber(choices.USD[i]), 'each item is a number')
   }
   /*
   {
@@ -88,7 +88,8 @@ test('check votes ratio', async (t) => {
   }]
   t.plan(list.length)
 
-  for (let context of list) {
+  for (let i = 0; i < list.length; i += 1) {
+    const context = list[i]
     const {
       options,
       rate
@@ -146,7 +147,7 @@ test('required cohorts are added to surveyors', async (t) => {
   await surveyors.remove({
     surveyorId
   })
-  await runtime.postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [surveyorId])
+  await runtime.postgres.query('DELETE FROM surveyor_groups WHERE id = $1::text;', [surveyorId])
 
   function findOneSurveyor () {
     return surveyors.findOne({

@@ -43,42 +43,43 @@ const walletStatsList = Joi.array().items(
 /*
    GET /v2/wallet/{paymentId}/info
  */
-v2.readInfo = { handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const wallets = runtime.database.get('wallets', debug)
-    const paymentId = request.params.paymentId.toLowerCase()
+v2.readInfo = {
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const wallets = runtime.database.get('wallets', debug)
+      const paymentId = request.params.paymentId.toLowerCase()
 
-    const wallet = await wallets.findOne({ paymentId: paymentId })
-    if (!wallet) {
-      throw boom.notFound('no such wallet: ' + paymentId)
+      const wallet = await wallets.findOne({ paymentId: paymentId })
+      if (!wallet) {
+        throw boom.notFound('no such wallet: ' + paymentId)
+      }
+
+      const infoKeys = ['addresses', 'altcurrency', 'provider', 'providerId', 'paymentId', 'httpSigningPubKey', 'anonymousAddress']
+      return underscore.pick(wallet, infoKeys)
     }
+  },
+  description: 'Returns information about the wallet associated with the user',
+  tags: ['api'],
 
-    const infoKeys = [ 'addresses', 'altcurrency', 'provider', 'providerId', 'paymentId', 'httpSigningPubKey', 'anonymousAddress' ]
-    return underscore.pick(wallet, infoKeys)
+  validate: {
+    params: Joi.object().keys({
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      altcurrency: Joi.string().optional().description('the wallet balance currency'),
+      addresses: Joi.object().keys({
+        BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
+        BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
+        CARD_ID: Joi.string().guid().optional().description('Card id'),
+        ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
+        LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
+      })
+    }).unknown(true)
   }
-},
-description: 'Returns information about the wallet associated with the user',
-tags: [ 'api' ],
-
-validate: {
-  params: Joi.object().keys({
-    paymentId: Joi.string().guid().required().description('identity of the wallet')
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.object().keys({
-    altcurrency: Joi.string().optional().description('the wallet balance currency'),
-    addresses: Joi.object().keys({
-      BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
-      BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
-      CARD_ID: Joi.string().guid().optional().description('Card id'),
-      ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
-      LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
-    })
-  }).unknown(true)
-}
 }
 
 /*
@@ -96,9 +97,9 @@ const read = function (runtime, apiVersion) {
     const altcurrency = request.query.altcurrency
 
     let currency = request.query.currency
-    let balances, info, result, state, wallet, wallet2
+    let balances, result, state
 
-    wallet = await wallets.findOne({ paymentId: paymentId })
+    const wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
@@ -163,9 +164,9 @@ const read = function (runtime, apiVersion) {
         }
         // when we are using the grant server compatibility layer, include the ad grant balance in the "cardBalance"
       } else {
-        let { grants } = wallet
+        const { grants } = wallet
         if (grants) {
-          let [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
+          const [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
           balances.confirmed = new BigNumber(balances.confirmed).plus(total)
           result.grants = results
         }
@@ -216,8 +217,8 @@ const read = function (runtime, apiVersion) {
         }
       }
 
-      info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
-      wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
+      const info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
+      const wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
       if ((wallet2) && (!underscore.isEqual(wallet, wallet2))) {
         if (!state) {
           state = {
@@ -227,7 +228,7 @@ const read = function (runtime, apiVersion) {
         }
         underscore.extend(state.$set, info.quotes)
       }
-      underscore.extend(result, underscore.omit(info, [ 'quotes' ]))
+      underscore.extend(result, underscore.omit(info, ['quotes']))
 
       if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     }
@@ -239,15 +240,16 @@ const read = function (runtime, apiVersion) {
 async function sumActiveGrants (runtime, info, wallet, grants) {
   let total = new BigNumber(0)
   const results = []
-  for (let grant of grants) {
-    let { token, status } = grant
+  for (let i = 0; i < grants.length; i += 1) {
+    const grant = grants[i]
+    const { token, status } = grant
     if (status !== 'active') {
       continue
     }
     if (await runtime.wallet.isGrantExpired(info, grant)) {
       await runtime.wallet.expireGrant(info, wallet, grant)
     } else {
-      let content = braveUtils.extractJws(token)
+      const content = braveUtils.extractJws(token)
       total = total.plus(content.probi)
       const exposedContent = underscore.pick(content, ['altcurrency', 'expiryTime', 'probi'])
       exposedContent.type = grant.type || 'ugp'
@@ -257,9 +259,10 @@ async function sumActiveGrants (runtime, info, wallet, grants) {
   return [total, results]
 }
 
-v2.read = { handler: (runtime) => { return read(runtime, 2) },
+v2.read = {
+  handler: (runtime) => { return read(runtime, 2) },
   description: 'Returns information about the wallet associated with the user',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     params: Joi.object().keys({
@@ -319,18 +322,18 @@ const write = function (runtime, apiVersion) {
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
 
-    let now, params, result, state, surveyor, surveyorIds, wallet, txnProbi, grantCohort
-    let totalFee, grantFee, nonGrantFee
-    let totalVotes, grantVotes, nonGrantVotes
+    let result, state, surveyorIds, grantCohort
+    let grantFee, nonGrantFee
+    let grantVotes, nonGrantVotes
 
-    wallet = await wallets.findOne({ paymentId: paymentId })
+    const wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
 
     const txn = JSON.parse(signedTx.octets)
 
-    surveyor = await surveyors.findOne({ surveyorId, surveyorType: 'contribution' })
+    const surveyor = await surveyors.findOne({ surveyorId, surveyorType: 'contribution' })
     if (!surveyor) {
       throw boom.notFound('no such surveyor: ' + surveyorId)
     }
@@ -338,9 +341,9 @@ const write = function (runtime, apiVersion) {
       throw boom.resourceGone('cannot perform a contribution with an inactive surveyor')
     }
 
-    params = surveyor.payload.adFree
-    txnProbi = runtime.wallet.getTxProbi(wallet, txn)
-    totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
+    const params = surveyor.payload.adFree
+    const txnProbi = runtime.wallet.getTxProbi(wallet, txn)
+    const totalVotes = txnProbi.dividedBy(params.probi).times(params.votes).round().toNumber()
 
     if (totalVotes < 1) {
       throw boom.rangeNotSatisfiable('Too low vote value for transaction. PaymentId: ' + paymentId)
@@ -372,10 +375,11 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    for (let cohort of surveyorsLib.cohorts) {
+    for (let i = 0; i < surveyorsLib.cohorts.length; i += 1) {
+      const cohort = surveyorsLib.cohorts[i]
       const cohortSurveyors = surveyor.cohorts[cohort]
       if (totalVotes > cohortSurveyors.length) {
-        state = { payload: request.payload, result: result, votes: totalVotes, message: 'insufficient surveyors' }
+        const state = { payload: request.payload, result: result, votes: totalVotes, message: 'insufficient surveyors' }
         debug('wallet', state)
 
         const errMsg = 'surveyor ' + surveyor.surveyorId + ' has ' + cohortSurveyors.length + ' ' + cohort + ' surveyors, but needed ' + totalVotes
@@ -390,10 +394,10 @@ const write = function (runtime, apiVersion) {
     if (!runtime.config.disable.grants) {
       try {
         if (runtime.config.forward.grants) {
-          const infoKeys = [ 'altcurrency', 'provider', 'providerId', 'paymentId' ]
+          const infoKeys = ['altcurrency', 'provider', 'providerId', 'paymentId']
           const redeemPayload = {
             wallet: underscore.extend(underscore.pick(wallet, infoKeys), { publicKey: wallet.httpSigningPubKey }),
-            transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, [ 'headers', 'octets' ]))).toString('base64')
+            transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, ['headers', 'octets']))).toString('base64')
           }
           try {
             const { grants } = runtime.config.wreck
@@ -420,7 +424,7 @@ const write = function (runtime, apiVersion) {
             payload = payload.toString()
             if (payload[0] === '{') {
               payload = JSON.parse(payload)
-              let payloadData = payload.data
+              const payloadData = payload.data
               if (payloadData) {
                 await markGrantsAsRedeemed(payloadData.redeemedIDs)
               }
@@ -436,7 +440,7 @@ const write = function (runtime, apiVersion) {
         commit: true
       })
     }
-    totalFee = result.fee
+    const totalFee = result.fee
 
     if (result.status !== 'accepted' && result.status !== 'pending' && result.status !== 'completed') {
       throw boom.badData(result.status)
@@ -448,12 +452,12 @@ const write = function (runtime, apiVersion) {
     if (grantIds) { // some grants were redeemed
       if (!runtime.config.forward.grants) {
         await markGrantsAsRedeemed(grantIds)
-        grantCohort = getCohort(wallet.grants, grantIds, Object.keys(surveyor.cohorts))
+        grantCohort = getCohort(wallet.grants, grantIds, underscore.keys(surveyor.cohorts))
       } else {
         grantCohort = 'grant'
       }
 
-      let grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
+      const grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
 
       if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
         nonGrantVotes = 0
@@ -465,12 +469,12 @@ const write = function (runtime, apiVersion) {
         grantVotes = grantVotesAvailable
         nonGrantVotes = totalVotes - grantVotes
 
-        let grantProbiRate = grantTotal / txnProbi
+        const grantProbiRate = grantTotal / txnProbi
         grantFee = totalFee * grantProbiRate
         nonGrantFee = totalFee - grantFee
 
-        let grantSurveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
-        let nonGrantSurveyorIds = surveyor.cohorts['control'].slice(0, nonGrantVotes)
+        const grantSurveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
+        const nonGrantSurveyorIds = surveyor.cohorts.control.slice(0, nonGrantVotes)
         surveyorIds = underscore.shuffle(grantSurveyorIds.concat(nonGrantSurveyorIds))
         result = underscore.omit(result, ['grantIds'])
       }
@@ -479,10 +483,10 @@ const write = function (runtime, apiVersion) {
       grantFee = 0
       nonGrantVotes = totalVotes
       nonGrantFee = totalFee
-      surveyorIds = underscore.shuffle(surveyor.cohorts['control']).slice(0, totalVotes)
+      surveyorIds = underscore.shuffle(surveyor.cohorts.control).slice(0, totalVotes)
     }
 
-    now = timestamp()
+    const now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
     await wallets.update({ paymentId: paymentId }, state, { upsert: true })
 
@@ -559,9 +563,10 @@ function countVote (runtime, votes, labels) {
   runtime.prometheus.getMetric('votes_issued_counter').inc(labels, votes)
 }
 
-v2.write = { handler: (runtime) => { return write(runtime, 2) },
+v2.write = {
+  handler: (runtime) => { return write(runtime, 2) },
   description: 'Makes a contribution using the wallet associated with the user',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     params: Joi.object().keys({
@@ -589,34 +594,35 @@ v2.write = { handler: (runtime) => { return write(runtime, 2) },
 /*
    GET /v2/wallet
  */
-v2.lookup = { handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const wallets = runtime.database.get('wallets', debug)
-    const publicKey = request.query.publicKey
-    const wallet = await wallets.findOne({ httpSigningPubKey: publicKey })
-    if (!wallet) {
-      throw boom.notFound('no such wallet with publicKey: ' + publicKey)
+v2.lookup = {
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const wallets = runtime.database.get('wallets', debug)
+      const publicKey = request.query.publicKey
+      const wallet = await wallets.findOne({ httpSigningPubKey: publicKey })
+      if (!wallet) {
+        throw boom.notFound('no such wallet with publicKey: ' + publicKey)
+      }
+      return {
+        paymentId: wallet.paymentId
+      }
     }
-    return {
-      paymentId: wallet.paymentId
-    }
+  },
+  description: 'Lookup a wallet',
+  tags: ['api'],
+
+  validate: {
+    query: Joi.object().keys({
+      publicKey: Joi.string().hex().optional().description('the publickey of the wallet to lookup')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      paymentId: Joi.string().guid().required().description('identity of the requested wallet')
+    })
   }
-},
-description: 'Lookup a wallet',
-tags: [ 'api' ],
-
-validate: {
-  query: Joi.object().keys({
-    publicKey: Joi.string().hex().optional().description('the publickey of the wallet to lookup')
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.object().keys({
-    paymentId: Joi.string().guid().required().description('identity of the requested wallet')
-  })
-}
 }
 
 /*
@@ -633,7 +639,7 @@ v2.getStats = {
   },
 
   description: 'Retrieves information about wallets',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     params: Joi.object().keys({
@@ -682,7 +688,7 @@ function getStats (getQuery = defaultQuery) {
       const debug = braveHapi.debug(module, request)
       const wallets = runtime.database.get('wallets', debug)
 
-      let values = await wallets.aggregate([{
+      const values = await wallets.aggregate([{
         $match: getQuery(request)
       }, {
         $project: {
@@ -821,7 +827,7 @@ const amountBatValidator = braveJoi.string().numeric().description('an amount, i
 v1.walletGrantsInfo = {
   handler: walletGrantsInfoHandler,
   description: 'Returns information about the wallet\'s grants',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     params: Joi.object().keys({
@@ -903,8 +909,8 @@ module.exports.initialize = async (debug, runtime) => {
         timestamp: bson.Timestamp.ZERO,
         grants: []
       },
-      unique: [ { paymentId: 1 } ],
-      others: [ { provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 },
+      unique: [{ paymentId: 1 }],
+      others: [{ provider: 1 }, { altcurrency: 1 }, { paymentStamp: 1 }, { timestamp: 1 }, { httpSigningPubKey: 1 },
         { providerId: 1, 'grants.promotionId': 1 }
       ]
     },
@@ -916,8 +922,8 @@ module.exports.initialize = async (debug, runtime) => {
         providerLinkingId: '',
         paymentIds: []
       },
-      unique: [ { providerLinkingId: 1 } ],
-      others: [ { paymentIds: 1 } ]
+      unique: [{ providerLinkingId: 1 }],
+      others: [{ paymentIds: 1 }]
     },
     {
       category: runtime.database.get('viewings', debug),
@@ -937,8 +943,8 @@ module.exports.initialize = async (debug, runtime) => {
         surveyorIds: [],
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { viewingId: 1 }, { uId: 1 } ],
-      others: [ { altcurrency: 1 }, { probi: 1 }, { count: 1 }, { timestamp: 1 } ]
+      unique: [{ viewingId: 1 }, { uId: 1 }],
+      others: [{ altcurrency: 1 }, { probi: 1 }, { count: 1 }, { timestamp: 1 }]
     }
   ])
 
@@ -1019,7 +1025,7 @@ function claimWalletHandler (runtime) {
       if (!member) {
         throw boom.conflict()
       }
-      let toSet = { providerLinkingId }
+      const toSet = { providerLinkingId }
 
       if (anonymousAddress) {
         underscore.extend(toSet, { anonymousAddress })

@@ -2,6 +2,7 @@ const bluebird = require('bluebird')
 const redis = require('redis')
 const SDebug = require('sdebug')
 const debug = new SDebug('cache')
+const _ = require('underscore')
 const ONE_HOUR = 1000 * 60 * 60
 const MAX_RECONNECT_TIMEOUT = 10000
 const MAX_RECONNECT_ATTEMPTS = 100
@@ -45,7 +46,9 @@ Cache.prototype = {
   set: async function (key, value, options, prefix) {
     const accessor = this.accessor(key, prefix)
     let args = [accessor, value]
-    for (let key in options) {
+    const optKeys = _.keys(options)
+    for (let i = 0; i < optKeys.length; i += 1) {
+      const key = optKeys[i]
       args = args.concat([key, options[key]])
     }
     return this.cache.setAsync(args)

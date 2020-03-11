@@ -34,7 +34,7 @@ const runtime = new Runtime({
   },
   wallet: {
     settlementAddress: {
-      'BAT': '0xdeadbeef'
+      BAT: '0xdeadbeef'
     }
   },
   currency: {

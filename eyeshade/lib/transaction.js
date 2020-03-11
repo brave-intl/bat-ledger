@@ -12,9 +12,9 @@ const knownChains = {
   LTC: 'litecoin'
 }
 const SETTLEMENT_NAMESPACE = {
-  'contribution': '4208cdfc-26f3-44a2-9f9d-1f6657001706',
-  'referral': '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a',
-  'manual': 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
+  contribution: '4208cdfc-26f3-44a2-9f9d-1f6657001706',
+  referral: '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a',
+  manual: 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
 module.exports = {
   allSettlementStats,
@@ -56,7 +56,7 @@ async function insertTransaction (client, options = {}) {
   }
   amount = amount.toString()
 
-  const args = [ id, createdAt, description, transactionType, documentId, fromAccount, fromAccountType, toAccount, toAccountType, amount, settlementCurrency, settlementAmount, channel ]
+  const args = [id, createdAt, description, transactionType, documentId, fromAccount, fromAccountType, toAccount, toAccountType, amount, settlementCurrency, settlementAmount, channel]
   const query = `
 INSERT INTO transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, settlement_currency, settlement_amount, channel )
 VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 )
@@ -83,7 +83,7 @@ async function insertUserDepositFromChain (runtime, client, chainDoc = {}) {
     id: uuidv5(`${chain}-${id}`, 'f7a8b983-2383-48f2-9e4f-717f6fe3225d'),
     createdAt: createdAt / 1000,
     description: `deposits from ${chain} chain`,
-    transactionType: `user_deposit`,
+    transactionType: 'user_deposit',
     documentId: id,
     fromAccount: address,
     fromAccountType: chain,
@@ -223,7 +223,7 @@ async function insertFromSettlement (runtime, client, settlement) {
 async function insertManual (runtime, client, settlementId, created, documentId, toAccount, probi) {
   const description = 'handshake agreement with business developement'
   const transactionType = 'manual'
-  const fromAccount = runtime.config.wallet.settlementAddress['BAT']
+  const fromAccount = runtime.config.wallet.settlementAddress.BAT
   const fromAccountType = 'uphold'
   const toAccountType = 'owner'
 
@@ -255,7 +255,7 @@ async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
     const fees = new BigNumber(voteDoc.fees.toString())
 
     if (amount.greaterThan(new BigNumber(0))) {
-      let normalizedChannel = normalizeChannel(voteDoc.channel)
+      const normalizedChannel = normalizeChannel(voteDoc.channel)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
         // skip for now
@@ -273,7 +273,7 @@ async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
         `votes from ${voteDoc.surveyorId}`,
         'contribution',
         voteDoc.surveyorId,
-        runtime.config.wallet.settlementAddress['BAT'],
+        runtime.config.wallet.settlementAddress.BAT,
         'uphold',
         normalizedChannel,
         'channel',

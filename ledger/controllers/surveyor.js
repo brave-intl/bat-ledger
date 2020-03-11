@@ -61,7 +61,7 @@ module.exports.validate = validateV2
 
 const enumerate = async (runtime, surveyorType, payload) => {
   payload.adFree.altcurrency = payload.adFree.altcurrency || 'BTC'
-  let params = (payload || {}).adFree
+  const params = (payload || {}).adFree
 
   if ((surveyorType !== 'contribution') || underscore.isUndefined(params)) {
     return payload
@@ -97,42 +97,41 @@ module.exports.enumerate = enumerate
  */
 
 v2.read =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const surveyorType = request.params.surveyorType
-    let surveyor
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const surveyorType = request.params.surveyorType
+      const surveyor = await server(request, h, runtime)
+      if (!surveyor) return
 
-    surveyor = await server(request, h, runtime)
-    if (!surveyor) return
+      const response = h.response(underscore.extend({ payload: surveyor.payload }, surveyor.publicInfo()))
 
-    const response = h.response(underscore.extend({ payload: surveyor.payload }, surveyor.publicInfo()))
+      if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId)
 
-    if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId)
+      return response
+    }
+  },
 
-    return response
+  description: 'Returns information about a surveyor',
+  tags: ['api'],
+
+  validate: {
+    params: Joi.object().keys({
+      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      apiV: Joi.string().required().description('the api version')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      surveyorId: Joi.string().required().description('identifier for the surveyor'),
+      surveyVK: Joi.string().required().description('public key for the surveyor'),
+      registrarVK: Joi.string().required().description('public key for the associated registrar'),
+      payload: Joi.object().required().description('additional information')
+    })
   }
-},
-
-description: 'Returns information about a surveyor',
-tags: [ 'api' ],
-
-validate: {
-  params: Joi.object().keys({
-    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-    surveyorId: Joi.string().required().description('the identity of the surveyor'),
-    apiV: Joi.string().required().description('the api version')
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.object().keys({
-    surveyorId: Joi.string().required().description('identifier for the surveyor'),
-    surveyVK: Joi.string().required().description('public key for the surveyor'),
-    registrarVK: Joi.string().required().description('public key for the associated registrar'),
-    payload: Joi.object().required().description('additional information')
-  })
-}
 }
 
 /*
@@ -140,58 +139,58 @@ response: {
  */
 
 v2.create =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const surveyorType = request.params.surveyorType
-    let surveyor
-    let payload = request.payload || {}
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const surveyorType = request.params.surveyorType
+      let payload = request.payload || {}
 
-    const validity = validateV2(surveyorType, payload)
+      const validity = validateV2(surveyorType, payload)
 
-    if (validity.error) {
-      throw boom.badData(validity.error)
+      if (validity.error) {
+        throw boom.badData(validity.error)
+      }
+
+      payload = await enumerate(runtime, surveyorType, payload)
+      if (!payload) {
+        throw boom.badData('no available currencies')
+      }
+
+      const surveyor = await create(debug, runtime, surveyorType, payload)
+      if (!surveyor) {
+        throw boom.notFound('invalid surveyorType: ' + surveyorType)
+      }
+
+      return underscore.extend({ payload: payload }, surveyor.publicInfo())
     }
+  },
 
-    payload = await enumerate(runtime, surveyorType, payload)
-    if (!payload) {
-      throw boom.badData('no available currencies')
-    }
+  auth: {
+    strategy: 'session',
+    scope: ['ledger'],
+    mode: 'required'
+  },
 
-    surveyor = await create(debug, runtime, surveyorType, payload)
-    if (!surveyor) {
-      throw boom.notFound('invalid surveyorType: ' + surveyorType)
-    }
+  description: 'Creates a new surveyor',
+  tags: ['api'],
 
-    return underscore.extend({ payload: payload }, surveyor.publicInfo())
-  }
-},
-
-auth: {
-  strategy: 'session',
-  scope: [ 'ledger' ],
-  mode: 'required'
-},
-
-description: 'Creates a new surveyor',
-tags: [ 'api' ],
-
-validate: {
-  params: Joi.object().keys({
-    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-    apiV: Joi.string().required().description('the api version')
-  }).unknown(true),
-  payload: Joi.object().optional().description('additional information')
-},
-
-response: {
-  schema: Joi.object().keys({
-    surveyorId: Joi.string().required().description('identifier for the surveyor'),
-    surveyVK: Joi.string().required().description('public key for the surveyor'),
-    registrarVK: Joi.string().required().description('public key for the associated registrar'),
+  validate: {
+    params: Joi.object().keys({
+      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+      apiV: Joi.string().required().description('the api version')
+    }).unknown(true),
     payload: Joi.object().optional().description('additional information')
-  })
-}
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      surveyorId: Joi.string().required().description('identifier for the surveyor'),
+      surveyVK: Joi.string().required().description('public key for the surveyor'),
+      registrarVK: Joi.string().required().description('public key for the associated registrar'),
+      payload: Joi.object().optional().description('additional information')
+    })
+  }
 }
 
 /*
@@ -199,76 +198,75 @@ response: {
  */
 
 v2.update =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const bump = request.query.bump
-    const surveyorType = request.params.surveyorType
-    const debug = braveHapi.debug(module, request)
-    const surveyors = runtime.database.get('surveyors', debug)
-    let state, surveyor, validity
-    let payload = request.payload
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const bump = request.query.bump
+      const surveyorType = request.params.surveyorType
+      const debug = braveHapi.debug(module, request)
+      const surveyors = runtime.database.get('surveyors', debug)
 
-    surveyor = await server(request, h, runtime)
-    if (!surveyor) return
+      const surveyor = await server(request, h, runtime)
+      if (!surveyor) return
 
-    validity = validateV2(surveyorType, payload)
+      const validity = validateV2(surveyorType, request.payload)
 
-    if (validity.error) {
-      throw boom.badData(validity.error)
+      if (validity.error) {
+        throw boom.badData(validity.error)
+      }
+
+      const payload = await enumerate(runtime, surveyorType, request.payload)
+      if (!payload) {
+        throw boom.badData('no available currencies')
+      }
+
+      const state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
+      await surveyors.update({ surveyorId: surveyor.surveyorId }, state, { upsert: false })
+
+      if (surveyorType === 'contribution') {
+        await runtime.queue.send(debug, 'surveyor-report',
+          underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
+            underscore.pick(payload.adFree, ['altcurrency', 'probi', 'votes'])))
+      }
+
+      surveyor.payload = payload
+      const response = h.response(underscore.extend({ payload: payload }, surveyor.publicInfo()))
+
+      if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId, bump)
+
+      return response
     }
+  },
 
-    payload = await enumerate(runtime, surveyorType, payload)
-    if (!payload) {
-      throw boom.badData('no available currencies')
-    }
+  auth: {
+    strategy: 'session',
+    scope: ['ledger'],
+    mode: 'required'
+  },
 
-    state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
-    await surveyors.update({ surveyorId: surveyor.surveyorId }, state, { upsert: false })
+  description: 'Updates a surveyor',
+  tags: ['api'],
 
-    if (surveyorType === 'contribution') {
-      await runtime.queue.send(debug, 'surveyor-report',
-        underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
-          underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
-    }
-
-    surveyor.payload = payload
-    const response = h.response(underscore.extend({ payload: payload }, surveyor.publicInfo()))
-
-    if (surveyorType === 'contribution') provision(debug, runtime, surveyor.surveyorId, bump)
-
-    return response
-  }
-},
-
-auth: {
-  strategy: 'session',
-  scope: [ 'ledger' ],
-  mode: 'required'
-},
-
-description: 'Updates a surveyor',
-tags: [ 'api' ],
-
-validate: {
-  query: Joi.object().keys({
-    bump: Joi.number().integer().min(1).max(100).optional().description('number of additional requested surveyors')
-  }).unknown(true),
-  params: Joi.object().keys({
-    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-    surveyorId: Joi.string().required().description('the identity of the surveyor'),
-    apiV: Joi.string().required().description('the api version')
-  }).unknown(true),
-  payload: Joi.object().optional().description('additional information')
-},
-
-response: {
-  schema: Joi.object().keys({
-    surveyorId: Joi.string().required().description('identifier for the surveyor'),
-    surveyVK: Joi.string().required().description('public key for the surveyor'),
-    registrarVK: Joi.string().required().description('public key for the associated registrar'),
+  validate: {
+    query: Joi.object().keys({
+      bump: Joi.number().integer().min(1).max(100).optional().description('number of additional requested surveyors')
+    }).unknown(true),
+    params: Joi.object().keys({
+      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      apiV: Joi.string().required().description('the api version')
+    }).unknown(true),
     payload: Joi.object().optional().description('additional information')
-  })
-}
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      surveyorId: Joi.string().required().description('identifier for the surveyor'),
+      surveyVK: Joi.string().required().description('public key for the surveyor'),
+      registrarVK: Joi.string().required().description('public key for the associated registrar'),
+      payload: Joi.object().optional().description('additional information')
+    })
+  }
 }
 
 /*
@@ -276,43 +274,42 @@ response: {
  */
 
 v2.phase1 =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const surveyorId = request.params.surveyorId
-    const surveyorType = request.params.surveyorType
-    const uId = request.params.uId.toLowerCase()
-    const credentials = runtime.database.get('credentials', debug)
-    let entry, f, registrar, signature, surveyor
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const surveyorId = request.params.surveyorId
+      const surveyorType = request.params.surveyorType
+      const uId = request.params.uId.toLowerCase()
+      const credentials = runtime.database.get('credentials', debug)
 
-    surveyor = await server(request, h, runtime)
-    if (!surveyor) return
+      const surveyor = await server(request, h, runtime)
+      if (!surveyor) return
 
-    registrar = runtime.registrars[registrarType(surveyorType)]
-    if (!registrar) {
-      throw boom.badImplementation('unable to find registrar for ' + surveyorType)
-    }
+      const registrar = runtime.registrars[registrarType(surveyorType)]
+      if (!registrar) {
+        throw boom.badImplementation('unable to find registrar for ' + surveyorType)
+      }
 
-    entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
+      const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
 
-    f = {
-      contribution:
+      const f = {
+        contribution:
             async () => {
               if (!entry) {
                 throw boom.notFound('personaId not valid: ' + uId)
               }
             },
 
-      voting:
+        voting:
             async () => {
               const viewings = runtime.database.get('viewings', debug)
-              let viewing
 
               if (!entry) {
                 throw boom.notFound('viewingId not valid(1): ' + uId)
               }
 
-              viewing = await viewings.findOne({ uId: uId })
+              const viewing = await viewings.findOne({ uId: uId })
               if (!viewing) {
                 throw boom.notFound('viewingId not valid(2): ' + uId)
               }
@@ -321,44 +318,44 @@ v2.phase1 =
                 throw boom.notFound('viewingId not valid(3): ' + uId)
               }
             }
-    }[surveyor.surveyorType]
-    if ((!!f) && (await f())) return
+      }[surveyor.surveyorType]
+      if ((!!f) && (await f())) return
 
-    const now = underscore.now()
-    signature = surveyor.sign(uId)
-    runtime.newrelic.recordCustomEvent('sign', {
-      surveyorId: surveyor.surveyorId,
-      surveyorType: surveyor.surveyorType,
-      duration: underscore.now() - now
+      const now = underscore.now()
+      const signature = surveyor.sign(uId)
+      runtime.newrelic.recordCustomEvent('sign', {
+        surveyorId: surveyor.surveyorId,
+        surveyorType: surveyor.surveyorType,
+        duration: underscore.now() - now
+      })
+
+      const payload = surveyor.payload
+
+      return underscore.extend({ signature, payload }, surveyor.publicInfo())
+    }
+  },
+
+  description: 'Generates an initialization response for a surveyor',
+  tags: ['api'],
+
+  validate: {
+    params: Joi.object().keys({
+      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
+      apiV: Joi.string().required().description('the api version')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.object().keys({
+      surveyorId: Joi.string().required().description('identifier for the surveyor'),
+      surveyVK: Joi.string().required().description('public key for the surveyor'),
+      registrarVK: Joi.string().required().description('public key for the associated registrar'),
+      signature: Joi.string().required().description('initialization response for the surveyor'),
+      payload: Joi.object().optional().description('additional information')
     })
-
-    const payload = surveyor.payload
-
-    return underscore.extend({ signature, payload }, surveyor.publicInfo())
   }
-},
-
-description: 'Generates an initialization response for a surveyor',
-tags: [ 'api' ],
-
-validate: {
-  params: Joi.object().keys({
-    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-    surveyorId: Joi.string().required().description('the identity of the surveyor'),
-    uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
-    apiV: Joi.string().required().description('the api version')
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.object().keys({
-    surveyorId: Joi.string().required().description('identifier for the surveyor'),
-    surveyVK: Joi.string().required().description('public key for the surveyor'),
-    registrarVK: Joi.string().required().description('public key for the associated registrar'),
-    signature: Joi.string().required().description('initialization response for the surveyor'),
-    payload: Joi.object().optional().description('additional information')
-  })
-}
 }
 
 /*
@@ -366,42 +363,43 @@ response: {
  */
 
 v2.phase2 =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const proof = request.payload.proof
-    const submissions = runtime.database.get('submissions', debug)
-    let data, entry, f, response, result, state, submissionId, surveyor
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const proof = request.payload.proof
+      const submissions = runtime.database.get('submissions', debug)
+      let data, result
 
-    surveyor = await server(request, h, runtime)
-    if (!surveyor) return
+      const surveyor = await server(request, h, runtime)
+      if (!surveyor) return
 
-    const verifyEnd = runtime.prometheus.timedRequest('anonizeVerify_request_buckets_milliseconds')
-    try {
-      const now = underscore.now()
-      result = surveyor.verify(proof)
-      runtime.newrelic.recordCustomEvent('verify', {
-        surveyorId: surveyor.surveyorId,
-        surveyorType: surveyor.surveyorType,
-        duration: underscore.now() - now
-      })
-      data = JSON.parse(result.data)
-      verifyEnd({ erred: false })
-    } catch (ex) {
-      verifyEnd({ erred: true })
-      throw boom.badData('invalid surveyor proof: ' + JSON.stringify(proof))
-    }
-    submissionId = result.token
+      const verifyEnd = runtime.prometheus.timedRequest('anonizeVerify_request_buckets_milliseconds')
+      try {
+        const now = underscore.now()
+        result = surveyor.verify(proof)
+        runtime.newrelic.recordCustomEvent('verify', {
+          surveyorId: surveyor.surveyorId,
+          surveyorType: surveyor.surveyorType,
+          duration: underscore.now() - now
+        })
+        data = JSON.parse(result.data)
+        verifyEnd({ erred: false })
+      } catch (ex) {
+        verifyEnd({ erred: true })
+        throw boom.badData('invalid surveyor proof: ' + JSON.stringify(proof))
+      }
+      const submissionId = result.token
 
-    entry = await submissions.findOne({ submissionId: submissionId })
-    if (entry) {
+      const entry = await submissions.findOne({ submissionId: submissionId })
+      if (entry) {
       // NB: in case of a network error on the response (or a premature Heroku 503, etc.)
-      return entry.response
-    }
+        return entry.response
+      }
 
-    response = { submissionId: submissionId }
-    f = {
-      contribution:
+      const response = { submissionId: submissionId }
+      const f = {
+        contribution:
             async () => {
               const schema = Joi.object().keys({ viewingId: Joi.string().guid().required() })
               const validity = schema.validate(data.report)
@@ -411,7 +409,7 @@ v2.phase2 =
               }
             },
 
-      voting:
+        voting:
             async () => {
               const schema = Joi.object().keys({ publisher: braveJoi.string().publisher().required() })
               const validity = schema.validate(data)
@@ -422,30 +420,30 @@ v2.phase2 =
 
               await runtime.queue.send(debug, 'voting-report', underscore.extend({ surveyorId: surveyor.parentId, cohort: surveyor.payload.cohort || 'control' }, data))
             }
-    }[surveyor.surveyorType]
-    if ((!!f) && (await f())) return
+      }[surveyor.surveyorType]
+      if ((!!f) && (await f())) return
 
-    state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { response: response } }
-    await submissions.update({ submissionId: submissionId }, state, { upsert: true })
+      const state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { response: response } }
+      await submissions.update({ submissionId: submissionId }, state, { upsert: true })
 
-    return response
-  }
-},
+      return response
+    }
+  },
 
-description: 'Submits a completed report',
-tags: [ 'api' ],
+  description: 'Submits a completed report',
+  tags: ['api'],
 
-validate: {
-  params: Joi.object().keys({
-    surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
-    surveyorId: Joi.string().required().description('the identity of the surveyor'),
-    apiV: Joi.string().required().description('the api version')
-  }).unknown(true),
+  validate: {
+    params: Joi.object().keys({
+      surveyorType: Joi.string().valid('contribution', 'voting').required().description('the type of the surveyor'),
+      surveyorId: Joi.string().required().description('the identity of the surveyor'),
+      apiV: Joi.string().required().description('the api version')
+    }).unknown(true),
 
-  payload: Joi.object().keys({ proof: Joi.string().required().description('report information and proof') }).unknown(true)
-},
+    payload: Joi.object().keys({ proof: Joi.string().required().description('report information and proof') }).unknown(true)
+  },
 
-response:
+  response:
     { schema: Joi.object().keys({ submissionId: Joi.string().required().description('verification submissionId') }) }
 }
 
@@ -462,7 +460,7 @@ v1.getVoteRate = {
   },
 
   description: 'Retrieves vote rate about surveyor',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     params: Joi.object().keys({
@@ -480,12 +478,12 @@ v1.getVoteRate = {
 
 const create = async (debug, runtime, surveyorType, payload, parentId) => {
   const surveyors = runtime.database.get('surveyors', debug)
-  let registrar, state, surveyor
+  let state
 
-  registrar = runtime.registrars[registrarType(surveyorType)]
+  const registrar = runtime.registrars[registrarType(surveyorType)]
   if (!registrar) return
 
-  surveyor = new anonize.Surveyor().initialize(registrar.publicInfo().registrarVK)
+  const surveyor = new anonize.Surveyor().initialize(registrar.publicInfo().registrarVK)
   surveyor.surveyorId = surveyor.parameters.surveyorId
   surveyor.surveyorType = surveyorType
   surveyor.payload = payload
@@ -514,7 +512,7 @@ const create = async (debug, runtime, surveyorType, payload, parentId) => {
 
   await runtime.queue.send(debug, 'surveyor-report',
     underscore.extend({ surveyorId: surveyor.surveyorId, surveyorType: surveyorType },
-      underscore.pick(payload.adFree, [ 'altcurrency', 'probi', 'votes' ])))
+      underscore.pick(payload.adFree, ['altcurrency', 'probi', 'votes'])))
 
   return surveyor
 }
@@ -539,18 +537,17 @@ const provision = async (debug, runtime, surveyorId, bump) => {
   const { VOTING_COHORTS } = process.env
   const cohorts = VOTING_COHORTS ? VOTING_COHORTS.split(',') : surveyorsLib.cohorts
   await Promise.all(contributionSurveyors.map(async (cSurveyor) => {
-    let count, vSurveyor
-
     if (!cSurveyor.cohorts) cSurveyor.cohorts = {}
 
     const desiredCount = ((cSurveyor.payload.adFree.votes * 4) + bump + slop)
 
-    for (let cohort of cohorts) {
+    for (let i = 0; i < cohorts.length; i += 1) {
+      const cohort = cohorts[i]
       if (!cSurveyor.cohorts[cohort]) cSurveyor.cohorts[cohort] = []
 
-      count = desiredCount - cSurveyor.cohorts[cohort].length
+      let count = desiredCount - cSurveyor.cohorts[cohort].length
       while (count > 0) {
-        vSurveyor = await create(debug, runtime, 'voting', { cohort: cohort }, cSurveyor.surveyorId)
+        const vSurveyor = await create(debug, runtime, 'voting', { cohort: cohort }, cSurveyor.surveyorId)
         if (!vSurveyor) {
           debug('surveyor', 'unable to create ' + count + ' voting surveyors')
           return
@@ -571,75 +568,77 @@ const provision = async (debug, runtime, surveyorId, bump) => {
  */
 
 v2.batchVote =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const f = v2.phase2.handler(runtime)
-    const id = request.id
-    const params = request.params
-    const payload = request.payload
-    const results = []
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const f = v2.phase2.handler(runtime)
+      const id = request.id
+      const params = request.params
+      const payload = request.payload
+      const results = []
 
-    for (let item of payload) {
-      // only these three properties are needed...
-      const { surveyorId, proof } = item
-      let response
-      try {
-        response = await f({
-          id,
-          params: underscore.extend({ surveyorType: 'voting', surveyorId }, params),
-          payload: { proof }
-        })
-      } catch (e) {
-        const { isBoom, output } = e
-        if (isBoom && output) {
-          response = output.payload
-        } else {
-          throw boom.boomify(e)
+      for (let i = 0; i < payload.length; i += 1) {
+        const item = payload[i]
+        // only these three properties are needed...
+        const { surveyorId, proof } = item
+        let response
+        try {
+          response = await f({
+            id,
+            params: underscore.extend({ surveyorType: 'voting', surveyorId }, params),
+            payload: { proof }
+          })
+        } catch (e) {
+          const { isBoom, output } = e
+          if (isBoom && output) {
+            response = output.payload
+          } else {
+            throw boom.boomify(e)
+          }
         }
+        results.push({
+          surveyorId,
+          response
+        })
       }
-      results.push({
-        surveyorId,
-        response
-      })
+
+      return results
     }
+  },
 
-    return results
+  description: 'Submits a completed report',
+  tags: ['api'],
+
+  validate: {
+    params: Joi.object().keys({ apiV: Joi.string().valid('v2').required().description('the api version') }).unknown(true),
+
+    payload: Joi.array().min(1).items(
+      Joi.object().keys({
+        surveyorId: Joi.string().required().description('the identity of the surveyor'),
+        proof: Joi.string().required().description('report information and proof')
+      })
+    )
+  },
+
+  response: {
+    schema: Joi.array().min(1).items(
+      Joi.object().keys({
+        surveyorId: Joi.string().required().description('the identity of the surveyor'),
+
+        response: Joi.alternatives().try(
+          Joi.object().keys({
+            submissionId: Joi.string().required().description('verification submissionId')
+          }),
+
+          Joi.object().keys({
+            statusCode: Joi.number().min(400).max(599).required(),
+            error: Joi.string().optional(),
+            message: Joi.string().optional()
+          }).description('boom result')
+        )
+      })
+    )
   }
-},
-
-description: 'Submits a completed report',
-tags: [ 'api' ],
-
-validate: {
-  params: Joi.object().keys({ apiV: Joi.string().valid('v2').required().description('the api version') }).unknown(true),
-
-  payload: Joi.array().min(1).items(
-    Joi.object().keys({
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-      proof: Joi.string().required().description('report information and proof')
-    })
-  )
-},
-
-response: {
-  schema: Joi.array().min(1).items(
-    Joi.object().keys({
-      surveyorId: Joi.string().required().description('the identity of the surveyor'),
-
-      response: Joi.alternatives().try(
-        Joi.object().keys({
-          submissionId: Joi.string().required().description('verification submissionId')
-        }),
-
-        Joi.object().keys({
-          statusCode: Joi.number().min(400).max(599).required(),
-          error: Joi.string().optional(),
-          message: Joi.string().optional()
-        }).description('boom result')
-      )
-    })
-  )
-}
 }
 
 /*
@@ -647,84 +646,84 @@ response: {
  */
 
 v2.batchSurveyor =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const surveyorType = 'voting'
-    const uId = request.params.uId.toLowerCase()
-    const credentials = runtime.database.get('credentials', debug)
-    let entry, registrar, signature
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const surveyorType = 'voting'
+      const uId = request.params.uId.toLowerCase()
+      const credentials = runtime.database.get('credentials', debug)
 
-    registrar = runtime.registrars[registrarType(surveyorType)]
-    if (!registrar) {
-      throw boom.badImplementation('unable to find registrar for ' + surveyorType)
-    }
-
-    entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
-
-    if (!entry) {
-      throw boom.notFound('viewingId not valid(1): ' + uId)
-    }
-
-    const viewings = runtime.database.get('viewings', debug)
-    const viewing = await viewings.findOne({ uId: uId })
-
-    if (!viewing) {
-      throw boom.notFound('viewingId not valid(2): ' + uId)
-    }
-
-    let surveyors = await Promise.all(viewing.surveyorIds.map((surveyorId) => {
-      const request = {
-        params: {
-          surveyorId,
-          surveyorType
-        }
+      const registrar = runtime.registrars[registrarType(surveyorType)]
+      if (!registrar) {
+        throw boom.badImplementation('unable to find registrar for ' + surveyorType)
       }
-      return server(request, h, runtime)
-    }))
 
-    const now = underscore.now()
+      const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
 
-    return surveyors.map(surveyor => {
-      signature = surveyor.sign(uId)
-      runtime.newrelic.recordCustomEvent('sign', {
-        surveyorId: surveyor.surveyorId,
-        surveyorType: surveyor.surveyorType,
-        duration: underscore.now() - now
+      if (!entry) {
+        throw boom.notFound('viewingId not valid(1): ' + uId)
+      }
+
+      const viewings = runtime.database.get('viewings', debug)
+      const viewing = await viewings.findOne({ uId: uId })
+
+      if (!viewing) {
+        throw boom.notFound('viewingId not valid(2): ' + uId)
+      }
+
+      const surveyors = await Promise.all(viewing.surveyorIds.map((surveyorId) => {
+        const request = {
+          params: {
+            surveyorId,
+            surveyorType
+          }
+        }
+        return server(request, h, runtime)
+      }))
+
+      const now = underscore.now()
+
+      return surveyors.map(surveyor => {
+        const signature = surveyor.sign(uId)
+        runtime.newrelic.recordCustomEvent('sign', {
+          surveyorId: surveyor.surveyorId,
+          surveyorType: surveyor.surveyorType,
+          duration: underscore.now() - now
+        })
+        return underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo())
       })
-      return underscore.extend({ signature, payload: surveyor.payload }, surveyor.publicInfo())
-    })
-  }
-},
+    }
+  },
 
-description: 'Batch for initialization response for a surveyors',
-tags: [ 'api' ],
+  description: 'Batch for initialization response for a surveyors',
+  tags: ['api'],
 
-validate: {
-  params: Joi.object().keys({
-    apiV: Joi.string().required().description('the api version'),
-    uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
-  }).unknown(true)
-},
+  validate: {
+    params: Joi.object().keys({
+      apiV: Joi.string().required().description('the api version'),
+      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier')
+    }).unknown(true)
+  },
 
-response: {
-  schema: Joi.alternatives().try(
-    Joi.array().items(
+  response: {
+    schema: Joi.alternatives().try(
+      Joi.array().items(
+        Joi.object().keys({
+          surveyorId: Joi.string().required().description('identifier for the surveyor'),
+          surveyVK: Joi.string().required().description('public key for the surveyor'),
+          registrarVK: Joi.string().required().description('public key for the associated registrar'),
+          signature: Joi.string().required().description('initialization response for the surveyor'),
+          payload: Joi.object().optional().description('additional information')
+        })
+      ),
       Joi.object().keys({
-        surveyorId: Joi.string().required().description('identifier for the surveyor'),
-        surveyVK: Joi.string().required().description('public key for the surveyor'),
-        registrarVK: Joi.string().required().description('public key for the associated registrar'),
-        signature: Joi.string().required().description('initialization response for the surveyor'),
-        payload: Joi.object().optional().description('additional information')
-      })
-    ),
-    Joi.object().keys({
-      statusCode: Joi.number().min(400).max(599).required(),
-      error: Joi.string().optional(),
-      message: Joi.string().optional()
-    }).description('boom result')
-  )
-}
+        statusCode: Joi.number().min(400).max(599).required(),
+        error: Joi.string().optional(),
+        message: Joi.string().optional()
+      }).description('boom result')
+    )
+  }
 }
 
 module.exports.routes = [
@@ -741,7 +740,6 @@ module.exports.routes = [
 module.exports.initialize = async (debug, runtime) => {
   const configurations = process.env.SURVEYORS || 'contribution,voting'
   const surveyors = runtime.database.get('surveyors', debug)
-  let entry, i, service, services, surveyor, surveyorType
 
   await runtime.database.checkIndices(debug, [
     {
@@ -749,30 +747,30 @@ module.exports.initialize = async (debug, runtime) => {
       name: 'surveyors',
       property: 'surveyorId',
       empty: { surveyorId: '', surveyorType: '', active: false, available: false, payload: {}, timestamp: bson.Timestamp.ZERO },
-      unique: [ { surveyorId: 1 } ],
-      others: [ { surveyorType: 1 }, { active: 1 }, { available: 1 }, { timestamp: 1 } ]
+      unique: [{ surveyorId: 1 }],
+      others: [{ surveyorType: 1 }, { active: 1 }, { available: 1 }, { timestamp: 1 }]
     },
     {
       category: runtime.database.get('submissions', debug),
       name: 'submissions',
       property: 'submissionId',
       empty: { submissionId: '', surveyorId: '', timestamp: bson.Timestamp.ZERO },
-      unique: [ { submissionId: 1 } ],
-      others: [ { surveyorId: 1 }, { timestamp: 1 } ]
+      unique: [{ submissionId: 1 }],
+      others: [{ surveyorId: 1 }, { timestamp: 1 }]
     }
   ])
 
   await runtime.queue.create('surveyor-report')
   await runtime.queue.create('voting-report')
 
-  services = configurations.split(',')
-  for (i = services.length - 1; i >= 0; i--) {
-    service = services[i].split(':')
-    surveyorType = service[0]
+  const services = configurations.split(',')
+  for (let i = services.length - 1; i >= 0; i--) {
+    const service = services[i].split(':')
+    const surveyorType = service[0]
 
-    entry = await surveyors.findOne({ surveyorType: surveyorType, active: true })
+    const entry = await surveyors.findOne({ surveyorType: surveyorType, active: true })
     if (entry) {
-      surveyor = new anonize.Surveyor(entry.parameters)
+      const surveyor = new anonize.Surveyor(entry.parameters)
       surveyor.surveyorId = entry.surveyorId
       surveyor.surveyorType = surveyorType
       surveyor.payload = entry.payload

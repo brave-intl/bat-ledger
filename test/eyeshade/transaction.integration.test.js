@@ -28,7 +28,7 @@ import {
 const runtime = new Runtime({
   wallet: {
     settlementAddress: {
-      'BAT': '0xdeadbeef'
+      BAT: '0xdeadbeef'
     }
   },
   currency: {
@@ -106,19 +106,19 @@ test('contribution settlement transaction', async t => {
 
     await updateBalances(runtime, client)
 
-    const upholdBalance = await client.query(`select * from account_balances where account_type = 'uphold';`)
+    const upholdBalance = await client.query('select * from account_balances where account_type = \'uphold\';')
     t.true(upholdBalance.rows.length === 1)
     t.true(Number(upholdBalance.rows[0].balance) === 9.5)
 
-    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    const ownerBalance = await client.query('select * from account_balances where account_type = \'owner\';')
     t.true(ownerBalance.rows.length === 1)
     t.true(Number(ownerBalance.rows[0].balance) === 0.0)
 
-    const channelBalance = await client.query(`select * from account_balances where account_type = 'channel';`)
+    const channelBalance = await client.query('select * from account_balances where account_type = \'channel\';')
     t.true(channelBalance.rows.length === 1)
     t.true(Number(channelBalance.rows[0].balance) === -10.0)
 
-    const feesBalance = await client.query(`select * from account_balances where account_type = 'internal';`)
+    const feesBalance = await client.query('select * from account_balances where account_type = \'internal\';')
     t.true(feesBalance.rows.length === 1)
     t.true(Number(feesBalance.rows[0].balance) === 0.5)
   } finally {
@@ -143,11 +143,11 @@ test('referral settlement transaction', async t => {
 
     await updateBalances(runtime, client)
 
-    const upholdBalance = await client.query(`select * from account_balances where account_type = 'uphold';`)
+    const upholdBalance = await client.query('select * from account_balances where account_type = \'uphold\';')
     t.true(upholdBalance.rows.length === 1)
     t.true(Number(upholdBalance.rows[0].balance) === 10.0)
 
-    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    const ownerBalance = await client.query('select * from account_balances where account_type = \'owner\';')
     t.true(ownerBalance.rows.length === 1)
     t.true(Number(ownerBalance.rows[0].balance) === -10.0)
   } finally {
@@ -239,11 +239,11 @@ test('voting transaction', async t => {
 
     await updateBalances(runtime, client)
 
-    const settlementBalance = await client.query(`select * from account_balances where account_type = 'uphold';`)
+    const settlementBalance = await client.query('select * from account_balances where account_type = \'uphold\';')
     t.true(settlementBalance.rows.length === 1)
     t.true(Number(settlementBalance.rows[0].balance) === -10.0)
 
-    const channelBalance = await client.query(`select * from account_balances where account_type = 'channel';`)
+    const channelBalance = await client.query('select * from account_balances where account_type = \'channel\';')
     t.true(channelBalance.rows.length === 1)
     t.true(Number(channelBalance.rows[0].balance) === 10.0)
   } finally {
@@ -266,11 +266,11 @@ test('voting and contribution settlement transaction', async t => {
 
     await updateBalances(runtime, client)
 
-    const channelBalance = await client.query(`select * from account_balances where account_type = 'channel';`)
+    const channelBalance = await client.query('select * from account_balances where account_type = \'channel\';')
     t.true(channelBalance.rows.length === 1)
     t.true(Number(channelBalance.rows[0].balance) === 0.0)
 
-    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    const ownerBalance = await client.query('select * from account_balances where account_type = \'owner\';')
     t.true(ownerBalance.rows.length === 1)
     t.true(Number(ownerBalance.rows[0].balance) === 0.0)
   } finally {
@@ -306,7 +306,7 @@ test('referral transaction', async t => {
 
     await updateBalances(runtime, client)
 
-    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    const ownerBalance = await client.query('select * from account_balances where account_type = \'owner\';')
     t.true(ownerBalance.rows.length === 1)
     t.true(Number(ownerBalance.rows[0].balance) === 10.0)
   } finally {
@@ -329,7 +329,7 @@ test('referral and referral settlement transaction', async t => {
 
     await updateBalances(runtime, client)
 
-    const ownerBalance = await client.query(`select * from account_balances where account_type = 'owner';`)
+    const ownerBalance = await client.query('select * from account_balances where account_type = \'owner\';')
     t.true(ownerBalance.rows.length === 1)
     t.true(Number(ownerBalance.rows[0].balance) === 0.0)
   } finally {
@@ -350,7 +350,9 @@ test('can add transactions for different account types', async (t) => {
     amount: '0'
   })
   t.deepEqual([], noValueTransferred, 'when no value is transferred, we skip inserting the tx')
-  for (let ticker in knownChains) {
+  const knownChainKeys = _.keys(knownChains)
+  for (let i = 0; i < knownChainKeys.length; i += 1) {
+    const ticker = knownChainKeys[i]
     const chain = knownChains[ticker]
     const createdAt = new Date()
     const id = uuidV4().toLowerCase()
@@ -370,7 +372,7 @@ test('can add transactions for different account types', async (t) => {
     const expectedResults = [{
       created_at: createdAt,
       description: `deposits from ${chain} chain`,
-      transaction_type: `user_deposit`,
+      transaction_type: 'user_deposit',
       document_id: id,
       from_account: fakeAddress,
       from_account_type: chain,
@@ -434,7 +436,7 @@ test('common insertion fn', async (t) => {
     settlement_amount: null,
     settlement_currency: null
   }]
-  t.deepEqual(expectedResults, txs, `transactions are inserted`)
+  t.deepEqual(expectedResults, txs, 'transactions are inserted')
   await client.release()
 })
 

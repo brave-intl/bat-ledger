@@ -80,7 +80,8 @@ async function getGroups (query = {}) {
 
 function normalizeGroups (_body) {
   const body = _body.slice(0).sort((a, b) => a.id > b.id ? 1 : -1)
-  for (const group of body) {
+  for (let i = 0; i < body.length; i += 1) {
+    const group = body[i]
     const { codes } = group
     if (codes) {
       group.codes = codes.slice(0).sort()
@@ -258,7 +259,7 @@ async function ensureReferrals (runtime, expect) {
   // ensure referral records are created in postgres
   let rows
   do { // wait until referral-report is processed and transactions are entered into postgres
-    rows = (await postgresClient.query(`select * from transactions where transaction_type = 'referral';`)).rows
+    rows = (await postgresClient.query('select * from transactions where transaction_type = \'referral\';')).rows
     await timeout(500)
   } while (rows.length !== expect)
   postgresClient.release()
