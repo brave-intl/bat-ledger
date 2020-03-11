@@ -18,7 +18,7 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
 
   const url = captcha.url + endpoint
   const headers = {
-    'Authorization': 'Bearer ' + captcha.access_token,
+    Authorization: 'Bearer ' + captcha.access_token,
     'Content-Type': 'application/json'
   }
   const body = JSON.stringify({
