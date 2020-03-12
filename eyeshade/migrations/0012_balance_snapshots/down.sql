@@ -1,7 +1,8 @@
 select execute($$
 
-alter table surveyor_groups drop column virtual;
+drop table balance_snapshots;
+drop table balance_snapshot_accounts;
 
-delete from migrations where id = '0011';
+delete from migrations where id = '0012';
 
-$$) where exists (select * from migrations where id = '0011');
+$$) where exists (select * from migrations where id = '0012');

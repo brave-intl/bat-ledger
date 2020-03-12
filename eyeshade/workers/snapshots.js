@@ -22,110 +22,73 @@ returning *;
 const updateBalanceSnapshotWithTotals = `
 update balance_snapshots
   set
-    completed = $2
+    completed = $2,
     total = $3,
     updated_at = $4
 where id = $1
 `
 
 exports.workers = {
-
   /* sent by POST /v1/snapshots/
-
-{ queue           : 'update-snapshot-accounts'
-, message         :
-  { snapshotId    : 'uuid'
-  }
-}
- */
-  'update-snapshot-accounts': async (debug, runtime, payload) => {
-    const { snapshotId } = payload
-    const client = await runtime.postgres.connect()
-    const cursor = client.query(new Cursor(getAllAccountBalances))
-    const iterator = forEachCursor(cursor)
-    let total = new BigNumber(0)
-    let count = new BigNumber(0)
-    let iterated
-    while ((iterated = iterator.next())) {
-      const { done, value: promise } = iterated
-      const rows = await promise
-      if (done) {
-        break
+    { queue           : 'update-snapshot-accounts'
+    , message         :
+      { snapshotId    : 'uuid'
       }
-      await Promise.all(rows.map(async ({
-        account_id: accountId,
-        account_type: accountType,
-        balance
-      }) => { // parallelizing is ok
-        const id = uuidV5(`${accountType}-${accountId}`, snapshotId)
-        await client.query(upsertBalanceSnapshotAccounts, [
-          id,
-          snapshotId,
-          accountId,
-          accountType,
+    }
+  */
+  'update-snapshot-accounts': async (debug, runtime, payload) => {
+    try {
+      const { snapshotId } = payload
+      const client = await runtime.postgres.connect()
+      const cursor = client.query(new Cursor(getAllAccountBalances))
+      let total = new BigNumber(0)
+      let count = new BigNumber(0)
+      let rows = [{}]
+      while (rows.length) {
+        rows = await pullAccountBalances(cursor, 100)
+        await Promise.all(rows.map(async ({
+          account_id: accountId,
+          account_type: accountType,
           balance
-        ])
-        count = count.plus(1)
-        total = total.plus(balance)
-      }))
+        }) => {
+          const id = uuidV5(`${accountType}-${accountId}`, snapshotId)
+          await client.query(upsertBalanceSnapshotAccounts, [
+            id,
+            snapshotId,
+            accountId,
+            accountType,
+            balance
+          ])
+          count = count.plus(1)
+          total = total.plus(balance)
+        }))
+      }
+      await cursor.close()
+      const now = (new Date()).toISOString()
+      debug('update-snapshot-accounts-complete', {
+        count: count.toString(),
+        total: total.toString()
+      })
+      await client.query(updateBalanceSnapshotWithTotals, [
+        snapshotId,
+        true,
+        total.toString(),
+        now
+      ])
+    } catch (e) {
+      console.log(e)
     }
-    // await updateSnapshotAccounts(cursor, (row) => {
-    //   const id = uuidV5(`${row.account_type}-${row.account_id}`, snapshotId)
-    //   await client.query(upsertBalanceSnapshotAccounts, [
-    //     id,
-    //     snapshotId,
-    //     row.account_id,
-    //     row.account_type,
-    //     row.balance
-    //   ])
-    //   count = count.plus(1)
-    //   total = total.plus(balance)
-    // })
-    const now = (new Date()).toISOString()
-    debug('update-snapshot-accounts-complete', {
-      count: count.toString(),
-      total: total.toString()
-    })
-    await client.query(updateBalanceSnapshotWithTotals, [
-      snapshotId,
-      true,
-      total.toString(),
-      now
-    ])
   }
 }
 
-async function * forEachCursor (cursor) {
-  let promise = Promise.resolve([])
-  while ((promise = read(cursor, 100))) {
-    const rows = await promise
-    if (!rows.length) {
-      break
-    }
-    yield rows
-  }
-}
-
-function read (cursor, count) {
+async function pullAccountBalances (cursor, maxResults) {
+  // iterator not supported yet
   return new Promise((resolve, reject) =>
-    cursor.read(count, (err, rows) => {
+    cursor.read(maxResults, async (err, rows) => {
       if (err) {
-        reject(err)
+        return reject(err)
       }
       resolve(rows)
     })
   )
 }
-
-// async function updateSnapshotAccounts(cursor, handler) {
-//   return new Promise((resolve, reject) =>
-//     cursor.read(100, async (err, rows) => {
-//       if (err) {
-//         return reject(err)
-//       }
-//       await Promise.all(rows.map(handler))
-//       await updateSnapshotAccounts(cursor, handler)
-//       resolve()
-//     })
-//   )
-// }

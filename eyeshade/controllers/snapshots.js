@@ -2,6 +2,7 @@ const Joi = require('@hapi/joi')
 const utils = require('bat-utils')
 const boom = require('boom')
 const braveHapi = utils.extras.hapi
+const braveUtils = utils.extras.utils
 const braveJoi = utils.extras.joi
 
 const v1 = {}
@@ -11,8 +12,9 @@ const createdAtValidator = Joi.date().iso().required().description('The time whe
 const updatedAtValidator = Joi.date().iso().required().description('The time when the snapshot was last updated')
 const totalValidator = braveJoi.string().numeric().required().description('The total value in the snapshot')
 const balanceValidator = braveJoi.string().numeric().required().description('The value of the account in the snapshot')
-const accountTypeValidator = Joi.string().string().required().description('The type of account')
-const accountIdValidator = Joi.string().string().required().description('The id of the account')
+const completedValidator = Joi.bool().required().description('whether or not the snapshot is complete')
+const accountTypeValidator = Joi.string().required().description('The type of account')
+const accountIdValidator = Joi.string().required().description('The id of the account')
 const accountBalanceValidator = Joi.object().keys({
   balance: balanceValidator,
   account_type: accountTypeValidator,
@@ -22,6 +24,7 @@ const accountBalancesListValidator = Joi.array().items(accountBalanceValidator).
 
 const fullSnapshotValidator = Joi.object().keys({
   id: snapshotIdValidator,
+  completed: completedValidator,
   createdAt: createdAtValidator,
   updatedAt: updatedAtValidator,
   total: totalValidator,
@@ -36,6 +39,7 @@ returning *;
 const getOneSnapshotBalance = `
 select
   id,
+  completed,
   created_at as "createdAt",
   updated_at as "updatedAt",
   total
@@ -70,7 +74,9 @@ v1.createSnapshot = {
     }).unknown(true)
   },
   response: {
-    schema: Joi.object().length(0)
+    schema: Joi.object().keys({
+      snapshotId: snapshotIdValidator
+    })
   }
 }
 
@@ -105,16 +111,14 @@ function createSnapshotHandler (runtime) {
     try {
       await runtime.postgres.query(upsertBalanceSnapshot, [snapshotId])
     } catch (e) {
-      if (e && e.code === '23505') { // Unique constraint violation
-        throw boom.conflict('Transaction with that id exists, updates are not allowed')
-      } else {
-        throw boom.boomify(e)
-      }
+      throw braveUtils.postgresToBoom(e)
     }
     await runtime.queue.send(debug, 'update-snapshot-accounts', {
       snapshotId
     })
-    return {}
+    return {
+      snapshotId
+    }
   }
 }
 
@@ -122,25 +126,25 @@ function getFullSnapshotHandler (runtime) {
   return async (request, h) => {
     const { snapshotId } = request.params
     const client = await runtime.postgres.connect()
-    try {
-      await client.query('BEGIN')
-      // this can probably done in one query
-      const { rows: snapshots, rowCount } = await client.query(getOneSnapshotBalance, [snapshotId])
-      if (!rowCount) {
-        throw boom.notFound()
-      }
-      const snapshot = snapshots[0]
-      snapshot.items = []
-      if (!snapshot.completed) {
-        return h.response(snapshot).code(202)
-      }
-      const { rows: accountBalances } = await client.query(getSnapshotBalanceAccounts, [snapshotId])
-      snapshot.items = accountBalances
-      await client.query('COMMIT')
-      return snapshot
-    } catch (e) {
-      await client.query('ROLLBACK')
-      throw boom.boomify(e)
+    // try {
+    //   await client.query('BEGIN')
+    // this can probably done in one query
+    const { rows: snapshots, rowCount } = await client.query(getOneSnapshotBalance, [snapshotId])
+    if (!rowCount) {
+      throw boom.notFound()
     }
+    const snapshot = snapshots[0]
+    snapshot.items = []
+    if (!snapshot.completed) {
+      return h.response(snapshot).code(202)
+    }
+    const { rows: accountBalances } = await client.query(getSnapshotBalanceAccounts, [snapshotId])
+    snapshot.items = accountBalances
+    // await client.query('COMMIT')
+    return snapshot
+    // } catch (e) {
+    //   await client.query('ROLLBACK')
+    //   throw boom.boomify(e)
+    // }
   }
 }
