@@ -135,48 +135,6 @@ exports.workers = {
       await postgres.query('insert into surveyor_groups (id, price) values ($1, $2)', [surveyorId, price.toString()])
     },
 
-  /* sent by PUT /v1/wallet/{paymentId}
-
-    { queue              : 'contribution-report'
-    , message            :
-      { viewingId        : '...'
-      , paymentId        : '...'
-      , address          : '...'
-      , paymentStamp     : ...
-      , surveyorId       : '...'
-      , altcurrency      : '...'
-      , probi            : ...
-      , fee              : ...
-      , votes            : ...
-      , hash             : '...'
-      , cohort           : '...'
-      }
-    }
- */
-  'contribution-report':
-    async (debug, runtime, payload) => {
-      const cohort = payload.cohort
-      const paymentId = payload.paymentId
-      const viewingId = payload.viewingId
-      const contributions = runtime.database.get('contributions', debug)
-      const wallets = runtime.database.get('wallets', debug)
-
-      if (cohort && runtime.config.testingCohorts.includes(cohort)) {
-        payload.probi = bson.Decimal128.fromString('0')
-      } else {
-        payload.probi = bson.Decimal128.fromString(payload.probi.toString())
-      }
-      payload.fee = bson.Decimal128.fromString(payload.fee.toString())
-      const state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.omit(payload, ['viewingId'])
-      }
-      await contributions.update({ viewingId: viewingId }, state, { upsert: true })
-
-      state.$set = { paymentStamp: payload.paymentStamp }
-      await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-    },
-
   /* sent by PUT /v1/surveyor/viewing/{surveyorId}
 
 { queue           : 'voting-report'
@@ -211,30 +169,6 @@ exports.workers = {
           surveyorId
         ])
       }
-    },
-
-  /* sent when the wallet balance updates
-
-    { queue            : 'wallet-report'
-    , message          :
-      { paymentId      : '...'
-      , balances       : { ... }
-      }
-    }
- */
-  'wallet-report':
-    async (debug, runtime, payload) => {
-      const paymentId = payload.paymentId
-      const wallets = runtime.database.get('wallets', debug)
-
-      underscore.keys(payload.balances).forEach((key) => {
-        payload.balances[key] = bson.Decimal128.fromString(payload.balances[key])
-      })
-      const state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: { balances: payload.balances }
-      }
-      await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     },
 
   /* sent by PUT /v1/wallet/{paymentId} (if one or more grants are redeemed)

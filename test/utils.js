@@ -420,9 +420,6 @@ async function setupForwardingServer ({
     login: {
       github: false
     },
-    forward: {
-      grants: '1'
-    },
     wreck: {
       grants: {
         baseUrl: process.env.BAT_GRANT_SERVER,

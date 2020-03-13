@@ -107,12 +107,6 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
 
 module.exports =
 {
-  disable: {
-    grants: process.env.DISABLE_GRANTS || false
-  },
-  forward: {
-    grants: process.env.FORWARD_TO_GRANTS || false
-  },
   wreck: {
     grants: {
       baseUrl: process.env.GRANT_SERVER,
