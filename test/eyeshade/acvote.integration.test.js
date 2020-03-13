@@ -20,13 +20,13 @@ test.afterEach.always(async t => {
 
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 const example = {
-  'id': 'e2874d25-14a9-4859-9729-78459af02a6f',
-  'type': 'oneoff-tip',
-  'channel': channel,
-  'createdAt': (new Date()).toISOString(),
-  'baseVoteValue': 0.25,
-  'voteTally': '10',
-  'fundingSource': 'uphold'
+  id: 'e2874d25-14a9-4859-9729-78459af02a6f',
+  type: 'oneoff-tip',
+  channel: channel,
+  createdAt: (new Date()).toISOString(),
+  baseVoteValue: 0.25,
+  voteTally: '10',
+  fundingSource: 'uphold'
 }
 const balanceURL = '/v1/accounts/balances'
 
