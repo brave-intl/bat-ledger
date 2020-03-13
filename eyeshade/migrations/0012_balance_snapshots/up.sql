@@ -2,11 +2,12 @@ select execute($$
 insert into migrations (id, description) values ('0012', 'balance_snapshots');
 
 create table balance_snapshots(
-  id         uuid primary key,
-  total      numeric(28, 18) default 0.0 check (total >= 0.0),
-  created_at timestamp with time zone not null default current_timestamp,
-  updated_at timestamp with time zone not null default current_timestamp,
-  completed  boolean default false
+  id                 uuid primary key,
+  total              numeric(28, 18) default 0.0 check (total >= 0.0),
+  created_at         timestamp with time zone not null default current_timestamp,
+  updated_at         timestamp with time zone not null default current_timestamp,
+  latest_transaction timestamp with time zone not null,
+  completed          boolean default false
 );
 
 create table balance_snapshot_accounts(

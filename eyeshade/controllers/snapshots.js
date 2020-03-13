@@ -7,7 +7,10 @@ const braveJoi = utils.extras.joi
 
 const v1 = {}
 
-const snapshotIdValidator = Joi.string().guid().description('The id that should be tied to a snapshot')
+const snapshotIdValidator = Joi.alternatives().try(
+  Joi.date().iso().description('The date that filtered a snapshot'),
+  Joi.string().guid().description('The id that should be tied to a snapshot')
+)
 const createdAtValidator = Joi.date().iso().required().description('The time when the snapshot was created')
 const updatedAtValidator = Joi.date().iso().required().description('The time when the snapshot was last updated')
 const totalValidator = braveJoi.string().numeric().required().description('The total value in the snapshot')
@@ -126,8 +129,6 @@ function getFullSnapshotHandler (runtime) {
   return async (request, h) => {
     const { snapshotId } = request.params
     const client = await runtime.postgres.connect()
-    // try {
-    //   await client.query('BEGIN')
     // this can probably done in one query
     const { rows: snapshots, rowCount } = await client.query(getOneSnapshotBalance, [snapshotId])
     if (!rowCount) {
@@ -140,11 +141,6 @@ function getFullSnapshotHandler (runtime) {
     }
     const { rows: accountBalances } = await client.query(getSnapshotBalanceAccounts, [snapshotId])
     snapshot.items = accountBalances
-    // await client.query('COMMIT')
     return snapshot
-    // } catch (e) {
-    //   await client.query('ROLLBACK')
-    //   throw boom.boomify(e)
-    // }
   }
 }
