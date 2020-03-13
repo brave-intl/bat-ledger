@@ -11,7 +11,7 @@ import {
   ok
 } from '../utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
-import { voteType } from '../../eyeshade/lib/votes'
+import { voteType } from '../../eyeshade/lib/vote'
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.afterEach.always(async t => {
