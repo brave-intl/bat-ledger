@@ -55,7 +55,6 @@ module.exports = (runtime, callback) => {
               publisher,
               surveyorId
             ])
-          }
         }
       } catch (e) {
         await client.query('ROLLBACK')
