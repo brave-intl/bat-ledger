@@ -1,47 +1,36 @@
 const uuidV5 = require('uuid/v5')
 const cron = require('cron-parser')
 const _ = require('underscore')
-const { BigNumber, justDate } = require('bat-utils/lib/extras-utils')
+const { justDate } = require('bat-utils/lib/extras-utils')
 
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('update-snapshot-accounts')
 }
 
-// select * from account_balances
-const getAllAccountBalancesBefore = `
-select
-  account_transactions.account_type,
-  account_transactions.account_id,
-  coalesce(sum(account_transactions.amount), 0.0)
-from account_transactions
-  where created_at < $1
-group by (account_transactions.account_type, account_transactions.account_id);
+const writeAccountBalancesBefore = `
+insert into balance_snapshots (snapshot_id, account_id, account_type, balance)
+  select
+    $1 as snapshot_id,
+    account_transactions.account_id,
+    account_transactions.account_type,
+    coalesce(sum(account_transactions.amount), 0.0) as "balance"
+  from account_transactions
+    where created_at < $2
+  group by (account_transactions.account_type, account_transactions.account_id);
 `
 
-const getAllAccountBalances = `
-select * from account_balances
-`
-
-const upsertBalanceSnapshotAccounts = `
-insert into balance_snapshot_accounts (id, created_at, snapshot_id, account_id, account_type, balance)
-values ($1, $2, $3, $4, $5, $6)
-on conflict (id)
-do update
-  set balance = $5
-returning *;
-`
-
-const updateBalanceSnapshotWithTotals = `
-update balance_snapshots
+const updatePayoutReportWithTotals = `
+update payout_reports
   set
     completed = $2,
-    total = $3,
-    updated_at = $4
+    updated_at = $3,
+    latest_transaction_at = $4
 where id = $1
 returning *;
 `
 
 exports.createDailySnapshot = createDailySnapshot
+exports.updateSnapshotAccounts = updateSnapshotAccounts
 
 exports.initialize = async (debug, runtime) => {
   if ((typeof process.env.DYNO !== 'undefined') && (process.env.DYNO !== 'worker.1')) return
@@ -50,7 +39,7 @@ exports.initialize = async (debug, runtime) => {
 }
 
 function daily (debug, runtime) {
-  const interval = cron.parseExpression('* * * 0 *', {
+  const interval = cron.parseExpression('* 0 * * *', {
     utc: true
   })
   const date = interval.next().getTime()
@@ -59,8 +48,9 @@ function daily (debug, runtime) {
 
 async function createDailySnapshot (debug, runtime, date, next) {
   const until = justDate(new Date(date))
+  const snapshotId = uuidV5(until, 'dc0befa2-37a4-4235-a5ce-dfc7d5408a78').toLowerCase()
   const result = await updateSnapshotAccounts(debug, runtime, {
-    snapshotId: uuidV5(until, 'dc0befa2-37a4-4235-a5ce-dfc7d5408a78').toLowerCase(),
+    snapshotId,
     until
   })
   next && next(debug, runtime)
@@ -79,65 +69,30 @@ exports.workers = {
   'update-snapshot-accounts': updateSnapshotAccounts
 }
 
-function setupQuery (until = 'current') {
-  let query = getAllAccountBalances
-  const args = []
-  const d = new Date(until || new Date())
-  if (until !== 'current' && +d) {
-    query = getAllAccountBalancesBefore
-    args.push(d.toISOString())
-  }
-  return {
-    query,
-    args
-  }
-}
-
 async function updateSnapshotAccounts (debug, runtime, payload) {
   const {
     snapshotId,
-    until
+    until = new Date()
   } = payload
   const client = await runtime.postgres.connect()
-  const {
-    query,
-    args
-  } = setupQuery(until)
-  let total = new BigNumber(0)
-  let count = new BigNumber(0)
-  const { rows } = await client.query(query, args)
+  const now = new Date()
+  const maxTime = until === 'current' ? now : new Date(until)
+  const args = [snapshotId, maxTime]
   try {
-    const now = new Date()
     await client.query('BEGIN')
-    for (let i = 0; i < rows.length; i += 1) {
-      const { accountId, accountType, balance } = rows[i]
-      const id = uuidV5(`${accountType}-${accountId}`, snapshotId)
-      await client.query(upsertBalanceSnapshotAccounts, [
-        id,
-        now.toISOString(),
-        snapshotId,
-        accountId,
-        accountType,
-        balance
-      ])
-      count = count.plus(1)
-      total = total.plus(balance)
-    }
-    const { rows: snapshots } = await client.query(updateBalanceSnapshotWithTotals, [
+    await client.query(writeAccountBalancesBefore, args)
+    const {
+      rows: snapshots
+    } = await client.query(updatePayoutReportWithTotals, [
       snapshotId,
       true,
-      total.toString(),
-      now.toISOString()
+      now.toISOString(),
+      maxTime.toISOString()
     ])
     await client.query('COMMIT')
-    debug('update-snapshot-accounts-complete', {
-      count: count.toString(),
-      total: total.toString()
-    })
-    return snapshots
+    return snapshots[0]
   } catch (e) {
     await client.query('ROLLBACK')
-    throw e
   } finally {
     client.release()
   }

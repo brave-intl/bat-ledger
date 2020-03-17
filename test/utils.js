@@ -279,8 +279,8 @@ function cleanPgDb (postgres) {
         client.query('DELETE from geo_referral_countries;'),
         client.query('DELETE from geo_referral_groups;'),
         client.query('DELETE from votes;'),
-        client.query('DELETE from balance_snapshot_accounts;'),
-        client.query('DELETE from balance_snapshots;')
+        client.query('DELETE from balance_snapshots;'),
+        client.query('DELETE from payout_reports;')
       ])
       await client.query('REFRESH MATERIALIZED VIEW account_balances;')
       await insertReferralInfos(client)

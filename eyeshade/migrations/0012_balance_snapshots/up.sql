@@ -1,24 +1,26 @@
 select execute($$
 insert into migrations (id, description) values ('0012', 'balance_snapshots');
 
-create table balance_snapshots(
-  id                 uuid primary key,
-  total              numeric(28, 18) default 0.0 check (total >= 0.0),
-  created_at         timestamp with time zone not null default current_timestamp,
-  updated_at         timestamp with time zone not null default current_timestamp,
-  latest_transaction timestamp with time zone not null,
-  completed          boolean default false
+create table payout_reports(
+  id                    uuid primary key,
+  created_at            timestamp with time zone not null default current_timestamp,
+  updated_at            timestamp with time zone not null default current_timestamp,
+  latest_transaction_at timestamp with time zone,
+  completed             boolean default false
 );
 
-create table balance_snapshot_accounts(
-  id           uuid primary key,
+create table balance_snapshots(
+  id           uuid primary key default uuid_generate_v4(),
   created_at   timestamp with time zone not null default current_timestamp,
-  snapshot_id  uuid not null references balance_snapshots(id),
+  snapshot_id  uuid not null references payout_reports(id) on delete cascade,
   account_id   text not null,
   account_type text not null,
-  balance      numeric(28, 18) not null check (balance > 0.0)
+  balance      numeric(28, 18) not null
 );
 
-create index on balance_snapshot_accounts(snapshot_id, account_id, account_type);
+create index payout_report_accounts_idx on balance_snapshots(snapshot_id, account_id);
+create index payout_report_id_idx on balance_snapshots(snapshot_id);
+cluster balance_snapshots using payout_report_id_idx;
+cluster balance_snapshots using payout_report_accounts_idx;
 
 $$) where not exists (select * from migrations where id = '0012');

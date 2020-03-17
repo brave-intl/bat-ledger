@@ -13,15 +13,14 @@ const snapshotIdValidator = Joi.alternatives().try(
 )
 const createdAtValidator = Joi.date().iso().required().description('The time when the snapshot was created')
 const updatedAtValidator = Joi.date().iso().required().description('The time when the snapshot was last updated')
-const totalValidator = braveJoi.string().numeric().required().description('The total value in the snapshot')
 const balanceValidator = braveJoi.string().numeric().required().description('The value of the account in the snapshot')
 const completedValidator = Joi.bool().required().description('whether or not the snapshot is complete')
 const accountTypeValidator = Joi.string().required().description('The type of account')
 const accountIdValidator = Joi.string().required().description('The id of the account')
 const accountBalanceValidator = Joi.object().keys({
   balance: balanceValidator,
-  account_type: accountTypeValidator,
-  account_id: accountIdValidator
+  accountType: accountTypeValidator,
+  accountId: accountIdValidator
 })
 const accountBalancesListValidator = Joi.array().items(accountBalanceValidator).required().description('The list of account balances')
 
@@ -30,34 +29,31 @@ const fullSnapshotValidator = Joi.object().keys({
   completed: completedValidator,
   createdAt: createdAtValidator,
   updatedAt: updatedAtValidator,
-  total: totalValidator,
   items: accountBalancesListValidator
 })
 
-const upsertBalanceSnapshot = `
-insert into balance_snapshots (id)
+const upsertPayoutReport = `
+insert into payout_reports (id)
 values ($1)
-returning *;
+returning *
 `
-const getOneSnapshotBalance = `
+const getOnePayoutReport = `
 select
   id,
   completed,
   created_at as "createdAt",
-  updated_at as "updatedAt",
-  total
-from balance_snapshots
+  updated_at as "updatedAt"
+from payout_reports
 where
   id = $1
 limit 1
 `
-const getSnapshotBalanceAccounts = `
+const getBalanceSnapshots = `
 select
   account_id as "accountId",
   account_type as "accountType",
   balance
-from
-  balance_snapshot_accounts
+from balance_snapshots
 where
   snapshot_id = $1
 `
@@ -93,6 +89,12 @@ v1.getFullSnapshot = {
   description: 'Used by antifraud service for generating payload snapshots',
   tags: ['api', 'publishers', 'antifraud'],
   validate: {
+    query: Joi.object().keys({
+      account: Joi.alternatives().try(
+        Joi.string().description('account (channel or owner)'),
+        Joi.array().items(Joi.string().required().description('account (channel or owner)'))
+      ).optional()
+    }).unknown(true),
     params: Joi.object().keys({
       snapshotId: snapshotIdValidator
     }).unknown(true)
@@ -112,7 +114,7 @@ function createSnapshotHandler (runtime) {
     const debug = braveHapi.debug(module, request)
     const { snapshotId } = request.payload
     try {
-      await runtime.postgres.query(upsertBalanceSnapshot, [snapshotId])
+      await runtime.postgres.query(upsertPayoutReport, [snapshotId])
     } catch (e) {
       throw braveUtils.postgresToBoom(e)
     }
@@ -128,19 +130,33 @@ function createSnapshotHandler (runtime) {
 function getFullSnapshotHandler (runtime) {
   return async (request, h) => {
     const { snapshotId } = request.params
-    const client = await runtime.postgres.connect()
+    let { account: accounts = [] } = request.query
+    const roClient = await runtime.postgres.roConnect()
     // this can probably done in one query
-    const { rows: snapshots, rowCount } = await client.query(getOneSnapshotBalance, [snapshotId])
+    const { rows: snapshots, rowCount } = await roClient.query(getOnePayoutReport, [snapshotId])
     if (!rowCount) {
+      roClient.release()
       throw boom.notFound()
     }
     const snapshot = snapshots[0]
     snapshot.items = []
     if (!snapshot.completed) {
+      roClient.release()
       return h.response(snapshot).code(202)
     }
-    const { rows: accountBalances } = await client.query(getSnapshotBalanceAccounts, [snapshotId])
+    let query = getBalanceSnapshots
+    const args = [snapshotId]
+    if (!Array.isArray(accounts)) {
+      accounts = [accounts]
+    }
+    if (accounts.length) {
+      accounts = accounts.map((account) => braveUtils.normalizeChannel(account))
+      query += 'and account_id = any($2::text[])'
+      args.push(accounts)
+    }
+    const { rows: accountBalances } = await roClient.query(query, args)
     snapshot.items = accountBalances
+    roClient.release()
     return snapshot
   }
 }
