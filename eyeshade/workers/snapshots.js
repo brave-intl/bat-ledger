@@ -1,4 +1,3 @@
-const Cursor = require('pg-cursor')
 const uuidV5 = require('uuid/v5')
 const cron = require('cron-parser')
 const _ = require('underscore')
@@ -24,8 +23,8 @@ select * from account_balances
 `
 
 const upsertBalanceSnapshotAccounts = `
-insert into balance_snapshot_accounts (id, snapshot_id, account_id, account_type, balance)
-values ($1, $2, $3, $4, $5)
+insert into balance_snapshot_accounts (id, created_at, snapshot_id, account_id, account_type, balance)
+values ($1, $2, $3, $4, $5, $6)
 on conflict (id)
 do update
   set balance = $5
@@ -104,20 +103,18 @@ async function updateSnapshotAccounts (debug, runtime, payload) {
     query,
     args
   } = setupQuery(until)
-  const cursor = client.query(new Cursor(query), args)
   let total = new BigNumber(0)
   let count = new BigNumber(0)
-  let accounts = []
-  do {
-    accounts = await pullAccountBalances(cursor, 100)
-    await Promise.all(accounts.map(async ({
-      account_id: accountId,
-      account_type: accountType,
-      balance
-    }) => {
+  const { rows } = await client.query(query, args)
+  try {
+    const now = new Date()
+    await client.query('BEGIN')
+    for (let i = 0; i < rows.length; i += 1) {
+      const { accountId, accountType, balance } = rows[i]
       const id = uuidV5(`${accountType}-${accountId}`, snapshotId)
       await client.query(upsertBalanceSnapshotAccounts, [
         id,
+        now.toISOString(),
         snapshotId,
         accountId,
         accountType,
@@ -125,31 +122,23 @@ async function updateSnapshotAccounts (debug, runtime, payload) {
       ])
       count = count.plus(1)
       total = total.plus(balance)
-    }))
-  } while (accounts.length)
-  await cursor.close()
-  const now = (new Date()).toISOString()
-  debug('update-snapshot-accounts-complete', {
-    count: count.toString(),
-    total: total.toString()
-  })
-  const { rows: snapshots } = await client.query(updateBalanceSnapshotWithTotals, [
-    snapshotId,
-    true,
-    total.toString(),
-    now
-  ])
-  return snapshots
-}
-
-async function pullAccountBalances (cursor, maxResults) {
-  // iterator not supported yet
-  return new Promise((resolve, reject) =>
-    cursor.read(maxResults, async (err, rows) => {
-      if (err) {
-        return reject(err)
-      }
-      resolve(rows)
+    }
+    const { rows: snapshots } = await client.query(updateBalanceSnapshotWithTotals, [
+      snapshotId,
+      true,
+      total.toString(),
+      now.toISOString()
+    ])
+    await client.query('COMMIT')
+    debug('update-snapshot-accounts-complete', {
+      count: count.toString(),
+      total: total.toString()
     })
-  )
+    return snapshots
+  } catch (e) {
+    await client.query('ROLLBACK')
+    throw e
+  } finally {
+    client.release()
+  }
 }
