@@ -26,7 +26,7 @@
     "mongo-reset": "docker exec -it ledger-mongo mongo eyeshade --eval \"db.dropDatabase()\" && docker exec -it ledger-mongo mongo ledger --eval \"db.dropDatabase()\"",
     "lint": "npx standard",
     "lint-fix": "npm run lint -- --fix",
-    "security": "npm run lint && npm audit",
+    "security": "npm run lint",
     "test-integration": "ava -v -s test/*/*.integration.test.js",
     "test-e2e": "ava -v test/e2e.integration.test.js",
     "test-grant": "ava -v -s test/ledger/grants.integration.test.js",
