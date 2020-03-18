@@ -111,6 +111,43 @@ test('referrals are inserted into mongo then eventually postgres', async t => {
   await ensureReferrals(runtime, 1)
 })
 
+test('peer to peer referrals are inserted into mongo then eventually postgres', async t => {
+  const eyeshadeMongo = await connectToDb('eyeshade')
+
+  const txId = uuidV4().toLowerCase()
+  const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
+  const referral1 = {
+    downloadId: uuidV4().toLowerCase(),
+    // no channelId value
+    channelId: null,
+    platform: 'ios',
+    finalized: new Date(),
+    ownerId
+  }
+  const referral2 = {
+    downloadId: uuidV4().toLowerCase(),
+    // no channel id key
+    platform: 'android',
+    finalized: new Date(),
+    ownerId
+  }
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`).send([referral1, referral2]).expect(200)
+
+  // ensure referral docs are created in mongo
+  const referralCollection = await eyeshadeMongo.collection('referrals')
+  const referralDocs = await referralCollection.find({ transactionId: txId }).toArray()
+  const mongoAmount = (new BigNumber(referralDocs[0].probi)).times(2).dividedBy(1e18).toFixed(18)
+  t.is(referralDocs.length, 2)
+  t.true(mongoAmount > 0, 'an amount is held for each referral')
+
+  const rows = await ensureReferrals(runtime, 1)
+  const row = rows[0]
+  const postgresAmount = (new BigNumber(row.amount)).toFixed(18)
+  t.is(1, rows.length, 'only one transaction is added')
+  t.is(mongoAmount, postgresAmount, 'summed amounts match')
+  t.is(null, row.channel, 'the channel id should not be set')
+})
+
 test('duplicate referrals will not be inserted into mongo', async t => {
   const eyeshadeMongo = await connectToDb('eyeshade')
   const txId = uuidV4().toLowerCase()
