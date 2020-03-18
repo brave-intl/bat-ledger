@@ -28,7 +28,7 @@ const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 
 const amountValidator = braveJoi.string().numeric()
 const groupNameValidator = Joi.string().optional().description('the name given to the group')
-const publisherValidator = braveJoi.string().publisher().allow(null, '').optional().description('the publisher identity')
+const publisherValidator = braveJoi.string().publisher().allow(null, '').optional().description('the publisher identity. e.g. youtube#VALUE, twitter#VALUE, reddit#value, etc., or null.  owner aka publishers#VALUE should not go here')
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
 const groupIdValidator = Joi.string().guid().description('the region from which this referral came')
 const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
