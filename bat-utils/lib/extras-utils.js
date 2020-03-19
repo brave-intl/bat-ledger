@@ -1,4 +1,4 @@
-const getPublisherProps = require('bat-publisher').getPublisherProps
+const { getPublisherProps } = require('./extras-publisher')
 // this can be abstracted elsewhere as soon as we finish #274
 const BigNumber = require('bignumber.js')
 const dotenv = require('dotenv')

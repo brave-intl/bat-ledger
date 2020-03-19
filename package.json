@@ -81,7 +81,6 @@
     "@uphold/uphold-sdk-javascript": "github:brave-intl/uphold-sdk-javascript#bump-lodash-merge",
     "accept-language-parser": "1.4.1",
     "avro-js": "1.9.1",
-    "bat-publisher": "^2.0.24",
     "bat-utils": "file:./bat-utils",
     "bignumber.js": "^4.1.0",
     "bitcoinjs-lib": "^3.2.0",
@@ -110,7 +109,7 @@
     "newrelic": "^4.1.1",
     "node-anonize2-relic": "github:brave/node-anonize2-relic#388f15c6e5acb12336765713351817dfbee80129",
     "node-slack": "0.0.7",
-    "nyc": "^14.1.1",
+    "nyc": "^15.0.0",
     "pg": "^7.18.2",
     "prom-client": "11.5.3",
     "proxy-agent": "^2.3.1",
@@ -132,11 +131,8 @@
     "npm": "5.10.0"
   },
   "devDependencies": {
-    "ava": "^1.4.1",
-    "babel-eslint": "^8.2.3",
+    "ava": "^3.5.0",
     "coveralls": "^3.0.6",
-    "eslint": "^6.8.0",
-    "eslint-plugin-node": "^10.0.0",
     "parse-prometheus-text-format": "^1.1.1",
     "standard": "^14.0.1",
     "supertest": "^4.0.2"
@@ -145,8 +141,7 @@
     "ignore": [
       "config.js",
       "bat-utils/config/config.*"
-    ],
-    "parser": "babel-eslint"
+    ]
   },
   "nyc": {
     "per-file": true,
