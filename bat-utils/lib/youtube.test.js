@@ -1,6 +1,6 @@
 'use strict'
-import test from 'ava'
-import getYoutubeChannelId from './youtube'
+const test = require('ava')
+const getYoutubeChannelId = require('./youtube')
 
 test.skip('retrieves the youtube channel id for a youtube username', async t => {
   const youtubeUsername = 'SaturdayNightLive'

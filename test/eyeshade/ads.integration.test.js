@@ -1,17 +1,17 @@
 'use strict'
 
-import {
-  serial as test
-} from 'ava'
-import uuidV4 from 'uuid/v4'
-import {
+const {
+  serial: test
+} = require('ava')
+const uuidV4 = require('uuid/v4')
+const {
   cleanPgDb,
   cleanDbs,
   dbUri
-} from '../utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import { monthly } from '../../eyeshade/workers/ads'
-import { Runtime } from 'bat-utils'
+} = require('../utils')
+const Postgres = require('bat-utils/lib/runtime-postgres')
+const { monthly } = require('../../eyeshade/workers/ads')
+const { Runtime } = require('bat-utils')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 const runtime = new Runtime({

@@ -1,13 +1,13 @@
 'use strict'
 
-import Currency from './runtime-currency'
-import BigNumber from 'bignumber.js'
-import test from 'ava'
-import _ from 'underscore'
-import dotenv from 'dotenv'
-import {
+const Currency = require('./runtime-currency')
+const BigNumber = require('bignumber.js')
+const test = require('ava')
+const _ = require('underscore')
+const dotenv = require('dotenv')
+const {
   timeout
-} from './extras-utils'
+} = require('./extras-utils')
 dotenv.config()
 
 const currency = make(Currency)

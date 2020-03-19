@@ -1,16 +1,16 @@
-import { serial as test } from 'ava'
-import {
+const { serial: test } = require('ava')
+const {
   Runtime
-} from 'bat-utils'
-import _ from 'underscore'
-import {
+} = require('bat-utils')
+const _ = require('underscore')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import BigNumber from 'bignumber.js'
-import {
+} = require('bat-utils/lib/extras-utils')
+const BigNumber = require('bignumber.js')
+const {
   addSurveyorChoices
-} from '../../ledger/controllers/surveyor'
-import {
+} = require('../../ledger/controllers/surveyor')
+const {
   agents,
   getSurveyor,
   connectToDb,
@@ -18,7 +18,7 @@ import {
   cleanDbs,
   cleanPgDb,
   ok
-} from '../utils'
+} = require('../utils')
 
 const runtime = new Runtime({
   postgres: {

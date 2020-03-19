@@ -1,15 +1,15 @@
-import {
-  serial as test
-} from 'ava'
+const {
+  serial: test
+} = require('ava')
 
-import uuidV4 from 'uuid/v4'
+const uuidV4 = require('uuid/v4')
 
-import {
+const {
   adsGrantsAvailable,
   getCohort,
   defaultCooldownHrs,
   cooldownOffset
-} from './grants'
+} = require('./grants')
 
 test('default cooldown hrs', async (t) => {
   t.is(defaultCooldownHrs(), defaultCooldownHrs(process.env.WALLET_COOLDOWN_HRS), 'uses env var for default')
