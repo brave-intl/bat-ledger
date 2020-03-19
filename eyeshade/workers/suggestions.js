@@ -1,10 +1,11 @@
 const { votesId } = require('../lib/queries.js')
-const { suggestionType } = require('../lib/suggestions.js')
+const suggestions = require('../lib/suggestions.js')
 const BigNumber = require('bignumber.js')
 
 const suggestionTopic = process.env.ENV + '.grant.suggestion'
 
 module.exports = (runtime, callback) => {
+  runtime.kafka.debug(suggestionTopic, 'setup')
   runtime.kafka.on(suggestionTopic, async (messages) => {
     const client = await runtime.postgres.connect()
     try {
@@ -15,9 +16,10 @@ module.exports = (runtime, callback) => {
           const buf = Buffer.from(message.value, 'binary')
           let suggestion
           try {
-            suggestion = suggestionType.fromBuffer(buf)
+            ;({ suggestion } = suggestions.decode(buf))
           } catch (e) {
             // If the event is not well formed, capture the error and continue
+            runtime.kafka.debug(e, suggestionTopic, message, buf)
             runtime.captureException(e, { extra: { topic: suggestionTopic, message: message } })
             continue
           }

@@ -21,6 +21,7 @@ class Kafka {
     this.runtime = runtime
     this.config = kafka
     this.topicHandlers = {}
+    this.debug = debug
   }
 
   async connect () {
