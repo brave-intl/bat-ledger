@@ -99,7 +99,6 @@
     "gridfs-stream": "1.1.1",
     "hapi-auth-bearer-token": "^6.1.4",
     "hapi-require-https": "^4.0.0",
-    "hapi-swagger": "^11.0.1",
     "http-request-signature": "0.0.3",
     "moment": "^2.22.1",
     "mongodb": "^3.5.4",
@@ -131,7 +130,7 @@
     "npm": "5.10.0"
   },
   "devDependencies": {
-    "ava": "^3.5.0",
+    "ava": "^2.0.0",
     "coveralls": "^3.0.6",
     "parse-prometheus-text-format": "^1.1.1",
     "standard": "^14.0.1",
