@@ -1,9 +1,9 @@
-import {
-  serial as test
-} from 'ava'
-import uuidV4 from 'uuid/v4'
-import supertest from 'supertest'
-import {
+const {
+  serial: test
+} = require('ava')
+const uuidV4 = require('uuid/v4')
+const supertest = require('supertest')
+const {
   ok,
   dbUri,
   debug,
@@ -11,31 +11,31 @@ import {
   cleanDbs,
   setupForwardingServer,
   agents
-} from '../utils'
-import {
+} = require('../utils')
+const {
   ObjectID
-} from 'bson'
-import {
+} = require('bson')
+const {
   Runtime
-} from 'bat-utils'
-import BigNumber from 'bignumber.js'
-import {
+} = require('bat-utils')
+const BigNumber = require('bignumber.js')
+const {
   createComposite
-} from '../../ledger/lib/wallet'
+} = require('../../ledger/lib/wallet')
 
-import {
-  routes as grantsRoutes,
-  initialize as grantsInitializer
-} from '../../ledger/controllers/grants'
-import {
-  routes as registrarRoutes,
-  initialize as registrarInitializer
-} from '../../ledger/controllers/registrar'
-import {
+const {
+  routes: grantsRoutes,
+  initialize: grantsInitializer
+} = require('../../ledger/controllers/grants')
+const {
+  routes: registrarRoutes,
+  initialize: registrarInitializer
+} = require('../../ledger/controllers/registrar')
+const {
   compositeGrants,
-  routes as walletRoutes,
-  initialize as walletInitializer
-} from '../../ledger/controllers/wallet'
+  routes: walletRoutes,
+  initialize: walletInitializer
+} = require('../../ledger/controllers/wallet')
 
 const statsURL = '/v2/wallet/stats'
 const frozenDay = today()

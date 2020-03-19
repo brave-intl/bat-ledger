@@ -1,15 +1,15 @@
 'use strict'
-import _ from 'underscore'
-import {
+const _ = require('underscore')
+const {
   validateHops,
   forwardedIPShift,
   ipaddr
-} from './hapi-auth-whitelist.js'
-import {
-  serial as test
-} from 'ava'
+} = require('./hapi-auth-whitelist.js')
+const {
+  serial: test
+} = require('ava')
 
-import dotenv from 'dotenv'
+const dotenv = require('dotenv')
 dotenv.config()
 
 const validFastlyToken = process.env.FASTLY_TOKEN_LIST

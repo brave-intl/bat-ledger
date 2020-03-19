@@ -1,9 +1,9 @@
 'use strict'
-import { serial as test } from 'ava'
-import _ from 'underscore'
-import uuidV4 from 'uuid/v4'
-import BigNumber from 'bignumber.js'
-import {
+const { serial: test } = require('ava')
+const _ = require('underscore')
+const uuidV4 = require('uuid/v4')
+const BigNumber = require('bignumber.js')
+const {
   ok,
   cleanDbs,
   cleanPgDb,
@@ -11,11 +11,11 @@ import {
   readJSONFile,
   connectToDb,
   braveYoutubePublisher
-} from '../utils'
-import {
+} = require('../utils')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import { Runtime } from 'bat-utils'
+} = require('bat-utils/lib/extras-utils')
+const { Runtime } = require('bat-utils')
 
 const originalGroupId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 const sept = new Date('2019-09-30')

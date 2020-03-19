@@ -1,8 +1,8 @@
 'use strict'
 
-import braveHapi from './extras-hapi.js'
-import test from 'ava'
-import dotenv from 'dotenv'
+const braveHapi = require('./extras-hapi.js')
+const test = require('ava')
+const dotenv = require('dotenv')
 dotenv.config()
 
 test('isSimpleTokenValid', async t => {

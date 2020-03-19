@@ -1,23 +1,25 @@
 'use strict'
-import parsePrometheusText from 'parse-prometheus-text-format'
-import BigNumber from 'bignumber.js'
-import UpholdSDK from '@uphold/uphold-sdk-javascript'
-import anonize from 'node-anonize2-relic'
-import crypto from 'crypto'
-import { serial as test } from 'ava'
-import tweetnacl from 'tweetnacl'
-import uuidV4 from 'uuid/v4'
-import { sign } from 'http-request-signature'
-import _ from 'underscore'
-import dotenv from 'dotenv'
-import { agent } from 'supertest'
-import {
+const parsePrometheusText = require('parse-prometheus-text-format')
+const BigNumber = require('bignumber.js')
+const {
+  default: UpholdSDK
+} = require('@uphold/uphold-sdk-javascript')
+const anonize = require('node-anonize2-relic')
+const crypto = require('crypto')
+const { serial: test } = require('ava')
+const tweetnacl = require('tweetnacl')
+const uuidV4 = require('uuid/v4')
+const { sign } = require('http-request-signature')
+const _ = require('underscore')
+const dotenv = require('dotenv')
+const { agent } = require('supertest')
+const {
   timeout,
   uint8tohex,
   justDate
-} from 'bat-utils/lib/extras-utils'
-import { Runtime } from 'bat-utils'
-import {
+} = require('bat-utils/lib/extras-utils')
+const { Runtime } = require('bat-utils')
+const {
   signTxn,
   makeSettlement,
   cleanDbs,
@@ -32,13 +34,13 @@ import {
   debug,
   statsUrl,
   connectToDb
-} from './utils'
-import {
+} = require('./utils')
+const {
   freezeOldSurveyors
-} from '../eyeshade/workers/reports'
-import {
+} = require('../eyeshade/workers/reports')
+const {
   updateBalances
-} from '../eyeshade/lib/transaction'
+} = require('../eyeshade/lib/transaction')
 
 dotenv.config()
 

@@ -1,8 +1,8 @@
 'use strict'
 
-import database from './runtime-database.js'
-import test from 'ava'
-import dotenv from 'dotenv'
+const database = require('./runtime-database.js')
+const test = require('ava')
+const dotenv = require('dotenv')
 dotenv.config()
 
 test('database.form', async t => {

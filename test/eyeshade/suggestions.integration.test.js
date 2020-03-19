@@ -1,17 +1,17 @@
 'use strict'
 
-import Kafka from 'bat-utils/lib/runtime-kafka'
-import test from 'ava'
-import {
+const Kafka = require('bat-utils/lib/runtime-kafka')
+const test = require('ava')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import {
+} = require('bat-utils/lib/extras-utils')
+const {
   agents,
   cleanPgDb,
   ok
-} from '../utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import { suggestionType } from '../../eyeshade/lib/suggestions'
+} = require('../utils')
+const Postgres = require('bat-utils/lib/runtime-postgres')
+const { suggestionType } = require('../../eyeshade/lib/suggestions')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.afterEach.always(async t => {

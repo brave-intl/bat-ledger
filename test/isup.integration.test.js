@@ -1,8 +1,8 @@
-import { serial as test } from 'ava'
-import { agent } from 'supertest'
-import {
+const { serial: test } = require('ava')
+const { agent } = require('supertest')
+const {
   ok
-} from './utils'
+} = require('./utils')
 
 test('check endpoint is up with no authorization', async (t) => {
   const {
