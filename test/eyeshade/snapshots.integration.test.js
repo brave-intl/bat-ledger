@@ -20,7 +20,6 @@ const {
   BAT_POSTGRES_URL,
   TESTING_COHORTS
 } = process.env
-
 const runtime = new Runtime({
   testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
   queue: BAT_REDIS_URL,
@@ -36,13 +35,11 @@ const runtime = new Runtime({
     url: BAT_POSTGRES_URL
   }
 })
-
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
 }
 docId.toHexString = docId.toString
 const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
-
 const contributionSettlement = (extras) => Object.assign({
   probi: '9500000000000000000',
   fees: '500000000000000000',
@@ -56,7 +53,6 @@ const contributionSettlement = (extras) => Object.assign({
   amount: '9.5',
   currency: 'BAT'
 }, extras)
-
 const referralSettlement = (extras) => Object.assign({
   probi: '10000000000000000000',
   fees: '0',
@@ -72,7 +68,6 @@ const referralSettlement = (extras) => Object.assign({
 }, extras)
 
 test.afterEach.always(cleanPgDb(runtime.postgres))
-
 test('check snapshots auth', async (t) => {
   t.plan(0)
   await createSnapshot({

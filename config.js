@@ -46,11 +46,9 @@ const services = {
         { currency              : process.env.REFERRALS_CURRENCY || 'USD'
         , amount                : process.env.REFERRALS_AMOUNT || 5
         }
-      // remove once off of heroku
-      const roURL = process.env[process.env.READ_ONLY_DATABASE_ENV]
       module.exports.postgres =
         { url                   : process.env.DATABASE_URL || 'postgres://localhost/test'
-        , roURL                 : roURL || process.env.DATABASE_URL || 'postgres://localhost/test'
+        , roURL                 : process.env[process.env.READ_ONLY_DATABASE_ENV]
         , schemaVersionCheck    : true
         }
 
