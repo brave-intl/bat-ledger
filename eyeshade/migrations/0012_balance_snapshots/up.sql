@@ -20,7 +20,5 @@ create table balance_snapshots(
 
 create index payout_report_accounts_idx on balance_snapshots(snapshot_id, account_id);
 create index payout_report_id_idx on balance_snapshots(snapshot_id);
-cluster balance_snapshots using payout_report_id_idx;
-cluster balance_snapshots using payout_report_accounts_idx;
 
 $$) where not exists (select * from migrations where id = '0012');
