@@ -1,8 +1,3 @@
-const uuidV5 = require('uuid/v5')
-const cron = require('cron-parser')
-const _ = require('underscore')
-const { justDate } = require('bat-utils/lib/extras-utils')
-
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('update-snapshot-accounts')
 }
@@ -28,34 +23,6 @@ update payout_reports
 where id = $1
 returning *;
 `
-
-exports.createDailySnapshot = createDailySnapshot
-exports.updateSnapshotAccounts = updateSnapshotAccounts
-
-exports.initialize = async (debug, runtime) => {
-  if ((typeof process.env.DYNO !== 'undefined') && (process.env.DYNO !== 'worker.1')) return
-
-  daily(debug, runtime)
-}
-
-function daily (debug, runtime) {
-  const interval = cron.parseExpression('* 0 * * *', {
-    utc: true
-  })
-  const date = interval.next().getTime()
-  setTimeout(() => createDailySnapshot(debug, runtime, date, daily), date - _.now())
-}
-
-async function createDailySnapshot (debug, runtime, date, next) {
-  const until = justDate(new Date(date))
-  const snapshotId = uuidV5(until, 'dc0befa2-37a4-4235-a5ce-dfc7d5408a78').toLowerCase()
-  const result = await updateSnapshotAccounts(debug, runtime, {
-    snapshotId,
-    until
-  })
-  next && next(debug, runtime)
-  return result
-}
 
 exports.workers = {
   /* sent by POST /v1/snapshots/

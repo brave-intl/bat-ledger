@@ -6,7 +6,7 @@ import {
   timeout
 } from 'bat-utils/lib/extras-utils'
 import { Runtime } from 'bat-utils'
-import { updateSnapshotAccounts } from '../../eyeshade/workers/snapshots'
+import { workers } from '../../eyeshade/workers/snapshots'
 import { insertFromSettlement } from '../../eyeshade/lib/transaction'
 import {
   debug,
@@ -15,6 +15,7 @@ import {
   cleanPgDb
 } from '../utils'
 
+const updateSnapshotAccounts = workers['update-snapshot-accounts']
 const {
   BAT_REDIS_URL,
   BAT_POSTGRES_URL,
