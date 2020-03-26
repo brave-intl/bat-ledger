@@ -13,9 +13,6 @@ const {
   promotionIdExclusions,
   promotionIdBonuses
 } = require('../lib/wallet')
-const {
-  getCohort
-} = require('../lib/grants')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -139,14 +136,6 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       balances.cardBalance = balances.confirmed
-
-      const { grants } = wallet
-      if (grants) {
-        const [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
-        balances.confirmed = new BigNumber(balances.confirmed).plus(total)
-        result.grants = results
-      }
-
       underscore.extend(result, {
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
         cardBalance: new BigNumber(balances.cardBalance).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toString(),
@@ -212,28 +201,6 @@ const read = function (runtime, apiVersion) {
   }
 }
 
-async function sumActiveGrants (runtime, info, wallet, grants) {
-  let total = new BigNumber(0)
-  const results = []
-  for (let i = 0; i < grants.length; i += 1) {
-    const grant = grants[i]
-    const { token, status } = grant
-    if (status !== 'active') {
-      continue
-    }
-    if (await runtime.wallet.isGrantExpired(info, grant)) {
-      await runtime.wallet.expireGrant(info, wallet, grant)
-    } else {
-      const content = braveUtils.extractJws(token)
-      total = total.plus(content.probi)
-      const exposedContent = underscore.pick(content, ['altcurrency', 'expiryTime', 'probi'])
-      exposedContent.type = grant.type || 'ugp'
-      results.push(exposedContent)
-    }
-  }
-  return [total, results]
-}
-
 v2.read = {
   handler: (runtime) => { return read(runtime, 2) },
   description: 'Returns information about the wallet associated with the user',
@@ -297,9 +264,7 @@ const write = function (runtime, apiVersion) {
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
 
-    let result, state, surveyorIds, grantCohort
-    let grantFee, nonGrantFee
-    let grantVotes, nonGrantVotes
+    let result, state
 
     const wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) {
@@ -350,8 +315,6 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
-
     for (let i = 0; i < surveyorsLib.cohorts.length; i += 1) {
       const cohort = surveyorsLib.cohorts[i]
       const cohortSurveyors = surveyor.cohorts[cohort]
@@ -379,41 +342,9 @@ const write = function (runtime, apiVersion) {
       throw boom.badData(result.status)
     }
 
-    const grantIds = result.grantIds
-    const grantTotal = result.grantTotal
-
-    if (grantIds) { // some grants were redeemed
-      await markGrantsAsRedeemed(grantIds)
-      grantCohort = getCohort(wallet.grants, grantIds, underscore.keys(surveyor.cohorts))
-
-      const grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
-
-      if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
-        nonGrantVotes = 0
-        nonGrantFee = 0
-        grantVotes = totalVotes
-        grantFee = totalFee
-        surveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
-      } else { // some of the transaction value will be covered by grant
-        grantVotes = grantVotesAvailable
-        nonGrantVotes = totalVotes - grantVotes
-
-        const grantProbiRate = grantTotal / txnProbi
-        grantFee = totalFee * grantProbiRate
-        nonGrantFee = totalFee - grantFee
-
-        const grantSurveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
-        const nonGrantSurveyorIds = surveyor.cohorts.control.slice(0, nonGrantVotes)
-        surveyorIds = underscore.shuffle(grantSurveyorIds.concat(nonGrantSurveyorIds))
-        result = underscore.omit(result, ['grantIds'])
-      }
-    } else { // no grants were used in the transaction
-      grantVotes = 0
-      grantFee = 0
-      nonGrantVotes = totalVotes
-      nonGrantFee = totalFee
-      surveyorIds = underscore.shuffle(surveyor.cohorts.control).slice(0, totalVotes)
-    }
+    const nonGrantVotes = totalVotes
+    const nonGrantFee = totalFee
+    const surveyorIds = underscore.shuffle(surveyor.cohorts.control).slice(0, totalVotes)
 
     const now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
@@ -437,21 +368,6 @@ const write = function (runtime, apiVersion) {
 
     const response = h.response(result)
 
-    if (grantVotes > 0) {
-      await runtime.queue.send(debug, 'contribution-report', underscore.extend({
-        paymentId: paymentId,
-        address: wallet.addresses[result.altcurrency],
-        surveyorId: surveyorId,
-        viewingId: viewingId,
-        fee: grantFee,
-        votes: grantVotes,
-        cohort: grantCohort
-      }, result))
-      countVote(runtime, nonGrantVotes, {
-        cohort: grantCohort
-      })
-    }
-
     if (nonGrantVotes > 0) {
       const cohort = 'control'
       await runtime.queue.send(debug, 'contribution-report', underscore.extend({
@@ -468,23 +384,6 @@ const write = function (runtime, apiVersion) {
       })
     }
     return response
-
-    async function markGrantsAsRedeemed (grantIds) {
-      await Promise.all(grantIds.map((grantId) => {
-        const data = {
-          $set: { 'grants.$.status': 'completed' }
-        }
-        const query = {
-          paymentId,
-          'grants.grantId': grantId
-        }
-        return wallets.update(query, data)
-      }))
-      await runtime.queue.send(debug, 'redeem-report', {
-        grantIds,
-        redeemed: true
-      })
-    }
   }
 }
 
