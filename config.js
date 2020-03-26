@@ -48,6 +48,7 @@ const services = {
         }
       module.exports.postgres =
         { url                   : process.env.DATABASE_URL || 'postgres://localhost/test'
+        , roURL                 : process.env[process.env.READ_ONLY_DATABASE_ENV] || false
         , schemaVersionCheck    : true
         }
 

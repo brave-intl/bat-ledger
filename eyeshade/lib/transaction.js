@@ -130,7 +130,6 @@ async function insertFromSettlement (runtime, client, settlement) {
     throw new Error('Only altcurrency === BAT transactions are supported')
   }
   const BATtoProbi = runtime.currency.alt2scale(settlement.altcurrency)
-
   if (settlement.probi && settlement.owner) {
     const probi = new BigNumber(settlement.probi.toString())
     const fees = new BigNumber(settlement.fees.toString())
