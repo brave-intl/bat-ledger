@@ -13,7 +13,6 @@ const hapiRequireHTTPS = require('hapi-require-https')
 const SDebug = require('sdebug')
 
 const rateLimiter = require('./hapi-rate-limiter')
-const swagger = require('./hapi-swagger')
 const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
 const npminfo = require('../npminfo')
@@ -97,8 +96,7 @@ async function Server (options, runtime) {
       },
       inert,
       vision,
-      rateLimiter(runtime),
-      swagger()
+      rateLimiter(runtime)
     ], process.env.NODE_ENV === 'production' ? [
       {
         plugin: hapiRequireHTTPS,

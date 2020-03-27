@@ -1,18 +1,18 @@
 'use strict'
-import _ from 'underscore'
-import { serial as test } from 'ava'
-import uuidV4 from 'uuid/v4'
-import {
+const _ = require('underscore')
+const { serial: test } = require('ava')
+const uuidV4 = require('uuid/v4')
+const {
   ok,
   cleanDbs,
   cleanPgDb,
   agents,
   connectToDb
-} from '../utils'
-import {
+} = require('../utils')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
+} = require('bat-utils/lib/extras-utils')
+const Postgres = require('bat-utils/lib/runtime-postgres')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 

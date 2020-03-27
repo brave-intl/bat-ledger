@@ -10,6 +10,14 @@ const Postgres = function (config, runtime) {
   if (!config.postgres) return
   this.pool = new Pool({ connectionString: config.postgres.url, ssl: process.env.NODE_ENV === 'production' })
 
+  if (!config.postgres) return
+  if (config.postgres.roURL) {
+    this.roPool = new Pool({
+      connectionString: config.postgres.roURL,
+      ssl: process.env.NODE_ENV === 'production'
+    })
+  }
+
   this.pool.on('error', (err, client) => {
     debug('postgres', { message: err })
     throw err
@@ -30,6 +38,12 @@ const Postgres = function (config, runtime) {
 }
 
 Postgres.prototype = {
+  roConnect: function () {
+    if (this.roPool) {
+      return this.roPool.connect()
+    }
+    return this.connect()
+  },
   connect: function () {
     return this.pool.connect()
   },

@@ -1,7 +1,7 @@
 'use strict'
 
-import Kafka from './runtime-kafka'
-import test from 'ava'
+const Kafka = require('./runtime-kafka')
+const test = require('ava')
 
 test('can create kafka consumer', async (t) => {
   process.env.KAFKA_CONSUMER_GROUP = 'test-consumer'

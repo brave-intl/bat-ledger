@@ -1,24 +1,22 @@
-import {
-  serial as test
-} from 'ava'
-// import Postgres from 'bat-utils/lib/runtime-postgres'
-// import Queue from 'bat-utils/lib/runtime-queue'
-import { Runtime } from 'bat-utils'
-import SDebug from 'sdebug'
-import {
+const {
+  serial: test
+} = require('ava')
+const { Runtime } = require('bat-utils')
+const SDebug = require('sdebug')
+const {
   workers
-} from '../../eyeshade/workers/wallet'
-import {
+} = require('../../eyeshade/workers/wallet')
+const {
   freezeOldSurveyors
-} from '../../eyeshade/workers/reports'
-import {
+} = require('../../eyeshade/workers/reports')
+const {
   createSurveyor,
   getSurveyor,
   cleanPgDb
-} from '../utils'
-import {
+} = require('../utils')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
+} = require('bat-utils/lib/extras-utils')
 
 const votingReportWorker = workers['voting-report']
 const debug = new SDebug('surveyor-test')

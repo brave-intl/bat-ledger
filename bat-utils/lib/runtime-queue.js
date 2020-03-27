@@ -42,7 +42,7 @@ Queue.prototype.create = async function (name) {
       if (rsp.indexOf(name) !== -1) return resolve(false)
 
       self.rsmq.createQueue({ qname: name }, (err, rsp) => {
-        if (err) {
+        if (err && err.message !== 'Queue exists') {
           debug('createQueue ' + name + ' failed')
           return reject(err)
         }
