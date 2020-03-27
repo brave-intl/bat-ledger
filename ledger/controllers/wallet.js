@@ -13,9 +13,6 @@ const {
   promotionIdExclusions,
   promotionIdBonuses
 } = require('../lib/wallet')
-const {
-  getCohort
-} = require('../lib/grants')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -139,39 +136,6 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       balances.cardBalance = balances.confirmed
-
-      if (runtime.config.forward.grants) {
-        const { grants: grantsConfig } = runtime.config.wreck
-        const payload = await braveHapi.wreck.get(grantsConfig.baseUrl + '/v1/grants/active?paymentId=' + paymentId, {
-          headers: grantsConfig.headers,
-          useProxyP: true
-        })
-        const { grants } = JSON.parse(payload.toString())
-        if (grants.length > 0) {
-          const total = grants.reduce((total, grant) => {
-            return total.plus(grant.probi)
-          }, new BigNumber(0))
-          balances.confirmed = new BigNumber(balances.confirmed).plus(total)
-
-          const adsTotal = grants.filter((grant) => grant.type === 'ads').reduce((adsTotal, grant) => {
-            return adsTotal.plus(grant.probi)
-          }, new BigNumber(0))
-          balances.cardBalance = new BigNumber(balances.cardBalance).plus(adsTotal)
-
-          result.grants = grants.map((grant) => {
-            return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
-          })
-        }
-        // when we are using the grant server compatibility layer, include the ad grant balance in the "cardBalance"
-      } else {
-        const { grants } = wallet
-        if (grants) {
-          const [total, results] = await sumActiveGrants(runtime, null, wallet, grants)
-          balances.confirmed = new BigNumber(balances.confirmed).plus(total)
-          result.grants = results
-        }
-      }
-
       underscore.extend(result, {
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
         cardBalance: new BigNumber(balances.cardBalance).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toString(),
@@ -237,28 +201,6 @@ const read = function (runtime, apiVersion) {
   }
 }
 
-async function sumActiveGrants (runtime, info, wallet, grants) {
-  let total = new BigNumber(0)
-  const results = []
-  for (let i = 0; i < grants.length; i += 1) {
-    const grant = grants[i]
-    const { token, status } = grant
-    if (status !== 'active') {
-      continue
-    }
-    if (await runtime.wallet.isGrantExpired(info, grant)) {
-      await runtime.wallet.expireGrant(info, wallet, grant)
-    } else {
-      const content = braveUtils.extractJws(token)
-      total = total.plus(content.probi)
-      const exposedContent = underscore.pick(content, ['altcurrency', 'expiryTime', 'probi'])
-      exposedContent.type = grant.type || 'ugp'
-      results.push(exposedContent)
-    }
-  }
-  return [total, results]
-}
-
 v2.read = {
   handler: (runtime) => { return read(runtime, 2) },
   description: 'Returns information about the wallet associated with the user',
@@ -322,9 +264,7 @@ const write = function (runtime, apiVersion) {
     const viewings = runtime.database.get('viewings', debug)
     const wallets = runtime.database.get('wallets', debug)
 
-    let result, state, surveyorIds, grantCohort
-    let grantFee, nonGrantFee
-    let grantVotes, nonGrantVotes
+    let result, state
 
     const wallet = await wallets.findOne({ paymentId: paymentId })
     if (!wallet) {
@@ -391,50 +331,6 @@ const write = function (runtime, apiVersion) {
       }
     }
 
-    if (!runtime.config.disable.grants) {
-      try {
-        if (runtime.config.forward.grants) {
-          const infoKeys = ['altcurrency', 'provider', 'providerId', 'paymentId']
-          const redeemPayload = {
-            wallet: underscore.extend(underscore.pick(wallet, infoKeys), { publicKey: wallet.httpSigningPubKey }),
-            transaction: Buffer.from(JSON.stringify(underscore.pick(signedTx, ['headers', 'octets']))).toString('base64')
-          }
-          try {
-            const { grants } = runtime.config.wreck
-            const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants', {
-              headers: grants.headers,
-              payload: JSON.stringify(redeemPayload),
-              useProxyP: true
-            })
-            result = JSON.parse(payload.toString())
-            // FIXME if return code is 204 then set this to false
-            result.grantIds = true
-          } catch (ex) {
-            // console.log(ex.data.payload.toString())
-            // FIXME throw when above is resolved
-          }
-        } else {
-          result = await runtime.wallet.redeem(wallet, txn, signedTx, request)
-        }
-      } catch (err) {
-        if (!runtime.config.forward.grants) {
-          const { data } = err
-          if (data) {
-            let { payload } = data
-            payload = payload.toString()
-            if (payload[0] === '{') {
-              payload = JSON.parse(payload)
-              const payloadData = payload.data
-              if (payloadData) {
-                await markGrantsAsRedeemed(payloadData.redeemedIDs)
-              }
-            }
-          }
-        }
-        throw boom.boomify(err)
-      }
-    }
-
     if (!result) {
       result = await runtime.wallet.submitTx(wallet, txn, signedTx, {
         commit: true
@@ -446,45 +342,9 @@ const write = function (runtime, apiVersion) {
       throw boom.badData(result.status)
     }
 
-    const grantIds = result.grantIds
-    const grantTotal = result.grantTotal
-
-    if (grantIds) { // some grants were redeemed
-      if (!runtime.config.forward.grants) {
-        await markGrantsAsRedeemed(grantIds)
-        grantCohort = getCohort(wallet.grants, grantIds, underscore.keys(surveyor.cohorts))
-      } else {
-        grantCohort = 'grant'
-      }
-
-      const grantVotesAvailable = new BigNumber(grantTotal).dividedBy(params.probi).times(params.votes).round().toNumber()
-
-      if (grantVotesAvailable >= totalVotes) { // more grant value was redeemed than the transaction value, all votes will be grant
-        nonGrantVotes = 0
-        nonGrantFee = 0
-        grantVotes = totalVotes
-        grantFee = totalFee
-        surveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
-      } else { // some of the transaction value will be covered by grant
-        grantVotes = grantVotesAvailable
-        nonGrantVotes = totalVotes - grantVotes
-
-        const grantProbiRate = grantTotal / txnProbi
-        grantFee = totalFee * grantProbiRate
-        nonGrantFee = totalFee - grantFee
-
-        const grantSurveyorIds = surveyor.cohorts[grantCohort].slice(0, grantVotes)
-        const nonGrantSurveyorIds = surveyor.cohorts.control.slice(0, nonGrantVotes)
-        surveyorIds = underscore.shuffle(grantSurveyorIds.concat(nonGrantSurveyorIds))
-        result = underscore.omit(result, ['grantIds'])
-      }
-    } else { // no grants were used in the transaction
-      grantVotes = 0
-      grantFee = 0
-      nonGrantVotes = totalVotes
-      nonGrantFee = totalFee
-      surveyorIds = underscore.shuffle(surveyor.cohorts.control).slice(0, totalVotes)
-    }
+    const nonGrantVotes = totalVotes
+    const nonGrantFee = totalFee
+    const surveyorIds = underscore.shuffle(surveyor.cohorts.control).slice(0, totalVotes)
 
     const now = timestamp()
     state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { paymentStamp: now } }
@@ -508,21 +368,6 @@ const write = function (runtime, apiVersion) {
 
     const response = h.response(result)
 
-    if (grantVotes > 0) {
-      await runtime.queue.send(debug, 'contribution-report', underscore.extend({
-        paymentId: paymentId,
-        address: wallet.addresses[result.altcurrency],
-        surveyorId: surveyorId,
-        viewingId: viewingId,
-        fee: grantFee,
-        votes: grantVotes,
-        cohort: grantCohort
-      }, result))
-      countVote(runtime, nonGrantVotes, {
-        cohort: grantCohort
-      })
-    }
-
     if (nonGrantVotes > 0) {
       const cohort = 'control'
       await runtime.queue.send(debug, 'contribution-report', underscore.extend({
@@ -539,23 +384,6 @@ const write = function (runtime, apiVersion) {
       })
     }
     return response
-
-    async function markGrantsAsRedeemed (grantIds) {
-      await Promise.all(grantIds.map((grantId) => {
-        const data = {
-          $set: { 'grants.$.status': 'completed' }
-        }
-        const query = {
-          paymentId,
-          'grants.grantId': grantId
-        }
-        return wallets.update(query, data)
-      }))
-      await runtime.queue.send(debug, 'redeem-report', {
-        grantIds,
-        redeemed: true
-      })
-    }
   }
 }
 
@@ -1038,49 +866,6 @@ function claimWalletHandler (runtime) {
     }
 
     if (+txn.denomination.amount !== 0) {
-      if (runtime.config.forward.grants) {
-        const drainPayload = {
-          wallet: underscore.extend(
-            underscore.pick(wallet, ['paymentId', 'altcurrency', 'provider', 'providerId']),
-            { publicKey: wallet.httpSigningPubKey }
-          ),
-          anonymousAddress: anonymousAddress || txn.destination
-        }
-
-        const { grants } = runtime.config.wreck
-        try {
-          const payload = await braveHapi.wreck.post(grants.baseUrl + '/v1/grants/drain', {
-            headers: grants.headers,
-            payload: JSON.stringify(drainPayload),
-            useProxyP: true
-          })
-          const result = JSON.parse(payload.toString())
-
-          if (result.grantTotal > 0) {
-            if (runtime.config.balance) {
-              // invalidate any cached balance
-              try {
-                await braveHapi.wreck.delete(runtime.config.balance.url + '/v2/wallet/' + paymentId + '/balance',
-                  {
-                    headers: {
-                      authorization: 'Bearer ' + runtime.config.balance.access_token,
-                      'content-type': 'application/json'
-                    },
-                    useProxyP: true
-                  })
-              } catch (ex) {
-                runtime.captureException(ex, { req: request })
-              }
-            }
-
-            return {}
-          }
-        } catch (ex) {
-          console.log(ex.data.payload.toString())
-          throw ex
-        }
-      }
-
       await runtime.wallet.submitTx(wallet, txn, signedTx, {
         commit: true
       })
@@ -1133,7 +918,6 @@ async function compositeGrantsFWD (debug, runtime, {
     }
   })
 }
-
 /*
   GET /v2/wallet/{paymentId}/grants/{type}
 */
