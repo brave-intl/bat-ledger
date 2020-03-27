@@ -15,7 +15,7 @@ module.exports = (runtime, callback) => {
           const buf = Buffer.from(message.value, 'binary')
           let suggestion
           try {
-            suggestion = suggestionType.fromBuffer(buf)
+            suggestion = suggestionType.fromBuffer(buf, null, true)
           } catch (e) {
             // If the event is not well formed, capture the error and continue
             runtime.captureException(e, { extra: { topic: suggestionTopic, message: message } })
