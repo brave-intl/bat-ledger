@@ -4,6 +4,7 @@ node_js:
 branches:
   only:
   - master
+  - prod
 env:
   global:
     - "BAT_ADS_PAYOUT_ADDRESS=fb599883-c30c-4428-91be-ba901e69a0b2"
