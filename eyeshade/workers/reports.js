@@ -49,10 +49,23 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
   `
 
   const {
-    rows
+    rows: nonVirtualSurveyors
   } = await runtime.postgres.query(query, [olderThanDays])
 
-  await Promise.all(rows.map(async (row) => {
+  const virtualQuery = `
+  update surveyor_groups set frozen = true, updated_at = current_timestamp
+  where not frozen
+  and virtual
+  and created_at < current_date - 1 * interval '1d'
+  returning id;
+  `
+
+  const {
+    rows: virtualSurveyors
+  } = await runtime.postgres.query(virtualQuery)
+
+  const toFreeze = nonVirtualSurveyors.concat(virtualSurveyors)
+  await Promise.all(toFreeze.map(async (row) => {
     const surveyorId = row.id
     await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true, shouldUpdateBalances: true })
   }))
