@@ -31,19 +31,17 @@ const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
       payload: body
     })
   } catch (e) {
+    let errPayload = e
     try {
-      const errPayload = JSON.parse(e.data.payload.toString())
-      throw boom.badData(errPayload.message)
-    } catch (ex) {
-      runtime.captureException(ex, {
-        req: request,
-        extra: {
-          data: e.data,
-          message: e.message
-        }
-      })
+      if (e && e.data && e.data.payload && e.data.payload.toString) {
+        const parsed = JSON.parse(e.data.payload.toString())
+        errPayload = parsed.message
+      }
+    } catch (err) {}
+    if (errPayload.isBoom) {
+      throw errPayload
     }
-    throw boom.badData()
+    throw boom.badData(errPayload)
   }
   const curried = handler(runtime)
   return curried(request, h)
