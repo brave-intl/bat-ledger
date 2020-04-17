@@ -136,6 +136,24 @@ const read = function (runtime, apiVersion) {
     }
     if (balances) {
       balances.cardBalance = balances.confirmed
+
+      const { grants: grantsConfig } = runtime.config.wreck
+      const payload = await braveHapi.wreck.get(grantsConfig.baseUrl + '/v1/grants/active?paymentId=' + paymentId, {
+        headers: grantsConfig.headers,
+        useProxyP: true
+      })
+      const { grants } = JSON.parse(payload.toString())
+      if (grants.length > 0) {
+        const total = grants.reduce((total, grant) => {
+          return total.plus(grant.probi)
+        }, new BigNumber(0))
+        balances.confirmed = new BigNumber(balances.confirmed).plus(total)
+
+        result.grants = grants.map((grant) => {
+          return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
+        })
+      }
+
       underscore.extend(result, {
         balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
         cardBalance: new BigNumber(balances.cardBalance).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toString(),
