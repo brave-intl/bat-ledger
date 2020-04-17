@@ -1,17 +1,17 @@
-import { serial as test } from 'ava'
-import _ from 'underscore'
-import uuidV4 from 'uuid/v4'
-import {
+const { serial: test } = require('ava')
+const _ = require('underscore')
+const uuidV4 = require('uuid/v4')
+const {
   justDate,
   timeout
-} from 'bat-utils/lib/extras-utils'
-import { Runtime } from 'bat-utils'
-import { insertFromSettlement } from '../../eyeshade/lib/transaction'
-import {
+} = require('bat-utils/lib/extras-utils')
+const { Runtime } = require('bat-utils')
+const { insertFromSettlement } = require('../../eyeshade/lib/transaction')
+const {
   agents,
   ok,
   cleanPgDb
-} from '../utils'
+} = require('../utils')
 
 const {
   BAT_REDIS_URL,
