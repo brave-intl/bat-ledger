@@ -84,5 +84,6 @@ FROM geo_referral_groups, (
   GROUP BY group_id
 ) AS countries
 WHERE
-    countries.group_id = geo_referral_groups.id;`
+    geo_referral_groups.active_at <= $1
+AND countries.group_id = geo_referral_groups.id;`
 }
