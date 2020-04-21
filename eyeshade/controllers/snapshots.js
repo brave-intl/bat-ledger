@@ -13,6 +13,7 @@ const snapshotIdValidator = Joi.alternatives().try(
 )
 const createdAtValidator = Joi.date().iso().required().description('The time when the snapshot was created')
 const updatedAtValidator = Joi.date().iso().required().description('The time when the snapshot was last updated')
+const untilValidator = Joi.date().iso().optional().description('The time when the snapshot should consider transactions until')
 const balanceValidator = braveJoi.string().numeric().required().description('The value of the account in the snapshot')
 const completedValidator = Joi.bool().required().description('whether or not the snapshot is complete')
 const accountTypeValidator = Joi.string().required().description('The type of account')
@@ -68,7 +69,11 @@ v1.createSnapshot = {
   description: 'Used by antifraud service for generating payload snapshots',
   tags: ['api', 'publishers'],
   validate: {
+    headers: Joi.object().keys({
+      'content-type': Joi.string().allow('application/json')
+    }).unknown(true),
     payload: Joi.object().keys({
+      until: untilValidator,
       snapshotId: snapshotIdValidator
     }).unknown(true)
   },
@@ -112,18 +117,19 @@ module.exports.routes = [
 function createSnapshotHandler (runtime) {
   return async (request, h) => {
     const debug = braveHapi.debug(module, request)
-    const { snapshotId } = request.payload
+    const { snapshotId, until } = request.payload
     try {
       await runtime.postgres.query(upsertPayoutReport, [snapshotId])
     } catch (e) {
       throw braveUtils.postgresToBoom(e)
     }
     await runtime.queue.send(debug, 'update-snapshot-accounts', {
-      snapshotId
+      snapshotId,
+      until
     })
-    return {
+    return h.response({
       snapshotId
-    }
+    }).code(201)
   }
 }
 

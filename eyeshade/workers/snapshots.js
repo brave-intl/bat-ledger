@@ -39,11 +39,11 @@ exports.workers = {
 async function updateSnapshotAccounts (debug, runtime, payload) {
   const {
     snapshotId,
-    until = new Date()
+    until
   } = payload
+  const maxTime = new Date(until || new Date())
   const client = await runtime.postgres.connect()
   const now = new Date()
-  const maxTime = until === 'current' ? now : new Date(until)
   const args = [snapshotId, maxTime]
   try {
     await client.query('BEGIN')
