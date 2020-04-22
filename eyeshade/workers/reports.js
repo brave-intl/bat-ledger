@@ -1,5 +1,8 @@
 const moment = require('moment')
 const {
+  timeout
+} = require('bat-utils/lib/extras-utils')
+const {
   updateBalances
 } = require('../lib/transaction')
 
@@ -56,7 +59,7 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
   update surveyor_groups set frozen = true, updated_at = current_timestamp
   where not frozen
   and virtual
-  and created_at < current_date - 1 * interval '1d'
+  and created_at < current_date
   returning id;
   `
 
@@ -65,10 +68,37 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
   } = await runtime.postgres.query(virtualQuery)
 
   const toFreeze = nonVirtualSurveyors.concat(virtualSurveyors)
-  await Promise.all(toFreeze.map(async (row) => {
-    const surveyorId = row.id
-    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true, shouldUpdateBalances: true })
-  }))
+  for (let i = 0; i < toFreeze.length; i += 1) {
+    const surveyorId = toFreeze[i].id
+    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
+    await waitForTransacted(runtime, surveyorId)
+  }
+  await updateBalances(runtime)
+}
+
+async function waitForTransacted (runtime, surveyorId) {
+  let row
+  const start = new Date()
+  do {
+    await timeout(60 * 1000)
+    const statement = `
+    select *
+    from votes
+    where
+        surveyor_id = $1
+    and not transacted
+    limit 1`
+    const { rows } = await runtime.postgres.query(statement, [surveyorId])
+    row = rows[0]
+    if (new Date() - (1000 * 60 * 60) > start) {
+      runtime.captureException(new Error('unable to finish freezing process'), {
+        extra: {
+          surveyorId
+        }
+      })
+      return
+    }
+  } while (row) // when no row is returned, all votes have been transacted
 }
 
 const mixer = async (debug, runtime, filter, qid) => {
