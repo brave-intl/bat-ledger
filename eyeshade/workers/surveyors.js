@@ -77,6 +77,13 @@ exports.workers = {
         if (shouldUpdateBalances) {
           await updateBalances(runtime)
         }
+      } catch (e) {
+        runtime.captureException(e, {
+          extra: {
+            surveyorId
+          }
+        })
+        throw e
       } finally {
         client.release()
       }

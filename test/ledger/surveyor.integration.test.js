@@ -60,11 +60,6 @@ test('verify surveyor sends back choices', async t => {
   for (let i = 0; i < choices.USD.length; i += 1) {
     t.true(_.isNumber(choices.USD[i]), 'each item is a number')
   }
-  /*
-  {
-    USD: [20, 35, 50, 85]
-  }
-  */
 
   function checkResponse (response, expectation) {
     const { body } = response
