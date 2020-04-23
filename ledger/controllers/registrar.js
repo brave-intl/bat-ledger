@@ -417,7 +417,13 @@ module.exports.initialize = async (debug, runtime) => {
     }
   ])
 
-  await runtime.queue.create('persona-report')
+  try {
+    await runtime.queue.create('persona-report')
+  } catch (e) {
+    if (e.name !== 'queueExists') {
+      throw e
+    }
+  }
 
   runtime.registrars = []
 

@@ -66,7 +66,7 @@ where account_id = $1
 ORDER BY created_at
 `
 
-      const result = await runtime.postgres.query(query1, [account])
+      const result = await runtime.postgres.query(query1, [account], true)
       const transactions = result.rows
 
       return _.map(transactions, (tx) => {
@@ -129,7 +129,7 @@ v1.getTopBalances =
     ORDER BY balance DESC
     LIMIT $2;`
 
-      const { rows } = await runtime.postgres.query(query1, [type, limit])
+      const { rows } = await runtime.postgres.query(query1, [type, limit], true)
       return rows
     }
   },
@@ -191,10 +191,10 @@ v1.getBalances = {
         return props.providerName !== 'publishers'
       }))
 
-    const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args) : {
+    const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args, true) : {
       rows: []
     }
-    const balancePromise = runtime.postgres.query(selectAccountBalances, args)
+    const balancePromise = runtime.postgres.query(selectAccountBalances, args, true)
     const promises = [votesPromise, balancePromise]
     const results = await Promise.all(promises)
 
@@ -286,7 +286,7 @@ v1.getEarningsTotals =
         asc: order === 'asc'
       })
 
-      const { rows } = await runtime.postgres.query(query1, [type, limit])
+      const { rows } = await runtime.postgres.query(query1, [type, limit], true)
       return rows
     }
   },
@@ -357,10 +357,10 @@ v1.getPaidTotals =
         const startDate = dates.start.toISOString()
         const untilDate = dates.until.toISOString()
         const query = queries.timeConstraintSettlements(options)
-      ;({ rows } = await postgres.query(query, [type, limit, startDate, untilDate]))
+        ;({ rows } = await postgres.query(query, [type, limit, startDate, untilDate], true))
       } else {
         const query = queries.allSettlements(options)
-      ;({ rows } = await postgres.query(query, [type, limit]))
+        ;({ rows } = await postgres.query(query, [type, limit], true))
       }
       return rows
     }
@@ -408,7 +408,6 @@ v1.adTransactions = {
       params,
       payload
     } = request
-    const { postgres } = runtime
     const { amount } = payload
 
     if (typeof process.env.ENABLE_ADS_PAYOUT === 'undefined') {
@@ -419,14 +418,10 @@ v1.adTransactions = {
     }
 
     try {
-      await transactions.insertFromAd(runtime, postgres, Object.assign({}, params, { amount }))
+      await transactions.insertFromAd(runtime, null, Object.assign({}, params, { amount }))
       return {}
     } catch (e) {
-      if (e.code && e.code === '23505') { // Unique constraint violation
-        throw boom.conflict('Transaction with that id exists, updates are not allowed')
-      } else {
-        throw boom.boomify(e)
-      }
+      throw extrasUtils.postgresToBoom(e)
     }
   },
   auth: {

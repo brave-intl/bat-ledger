@@ -29,7 +29,7 @@ module.exports = {
   insertFromAd
 }
 
-async function insertTransaction (client, options = {}) {
+async function insertTransaction (runtime, client, options = {}) {
   let {
     id,
     createdAt,
@@ -62,7 +62,8 @@ INSERT INTO transactions ( id, created_at, description, transaction_type, docume
 VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 )
 RETURNING *;
 `
-  const { rows } = await client.query(query, args)
+  console.log(runtime.postgres)
+  const { rows } = await runtime.postgres.query(query, args, client)
   return rows
 }
 
@@ -79,7 +80,7 @@ async function insertUserDepositFromChain (runtime, client, chainDoc = {}) {
   // using this so that we can pass in ticker / full name for now
   chain = knownChains[chain] || chain
 
-  return insertTransaction(client, {
+  return insertTransaction(runtime, client, {
     id: uuidv5(`${chain}-${id}`, 'f7a8b983-2383-48f2-9e4f-717f6fe3225d'),
     createdAt: createdAt / 1000,
     description: `deposits from ${chain} chain`,
@@ -114,7 +115,7 @@ async function insertFromAd (runtime, client, {
     toAccountType: 'payment_id',
     amount
   }
-  return insertTransaction(client, options)
+  return insertTransaction(runtime, client, options)
 }
 
 function monthsFromSeconds (created) {
@@ -149,7 +150,7 @@ async function insertFromSettlement (runtime, client, settlement) {
           insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
           VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11 )
           `
-        await client.query(query1, [
+        await runtime.postgres.query(query1, [
           // settlementId and channel pair should be unique per settlement type
           uuidv5(settlement.settlementId + normalizedChannel, 'eb296f6d-ab2a-489f-bc75-a34f1ff70acb'),
           (created / 1000) - 2,
@@ -162,7 +163,7 @@ async function insertFromSettlement (runtime, client, settlement) {
           'owner',
           probi.plus(fees).dividedBy(BATtoProbi).toString(),
           normalizedChannel
-        ])
+        ], client)
 
         // owner -> brave for fees, only applies to contributions
         if (fees.greaterThan(new BigNumber(0))) {
@@ -170,7 +171,7 @@ async function insertFromSettlement (runtime, client, settlement) {
           insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
           VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11 )
           `
-          await client.query(query2, [
+          await runtime.postgres.query(query2, [
             // settlementId and channel pair should be unique per settlement type
             uuidv5(settlement.settlementId + normalizedChannel, '1d295e60-e511-41f5-8ae0-46b6b5d33333'),
             (created / 1000) - 1,
@@ -183,7 +184,7 @@ async function insertFromSettlement (runtime, client, settlement) {
             'internal',
             fees.dividedBy(BATtoProbi).toString(),
             normalizedChannel
-          ])
+          ], client)
         }
       } else if (settlement.type === 'manual') {
         // first insert the brave -> owner transaction
@@ -195,7 +196,7 @@ async function insertFromSettlement (runtime, client, settlement) {
         insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, settlement_currency, settlement_amount, channel )
         VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 )
         `
-      await client.query(query3, [
+      await runtime.postgres.query(query3, [
         // settlementId and channel pair should be unique per settlement type
         uuidv5(settlement.settlementId + normalizedChannel, SETTLEMENT_NAMESPACE[settlement.type]),
         (created / 1000),
@@ -210,7 +211,7 @@ async function insertFromSettlement (runtime, client, settlement) {
         settlement.currency,
         settlement.amount.toString(),
         normalizedChannel
-      ])
+      ], client)
     } else {
       throw new Error('Settlement probi must be greater than 0')
     }
@@ -234,7 +235,7 @@ async function insertManual (runtime, client, settlementId, created, documentId,
     VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10 )
     RETURNING *;
   `
-  await client.query(insertTransactionQuery, [
+  await runtime.postgres.query(insertTransactionQuery, [
     uuidv5(settlementId + toAccount, '734a27cd-0834-49a5-8d4c-77da38cdfb22'),
     created / 1000,
     description,
@@ -245,7 +246,7 @@ async function insertManual (runtime, client, settlementId, created, documentId,
     toAccount,
     toAccountType,
     amountBAT
-  ])
+  ], client)
 }
 
 async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
@@ -265,7 +266,7 @@ async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
       insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
       VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 )
       `
-      await client.query(query, [
+      await runtime.postgres.query(query, [
         // surveyorId and channel pair should be unique
         uuidv5(voteDoc.surveyorId + normalizedChannel, 'be90c1a8-20a3-4f32-be29-ed3329ca8630'),
         surveyorCreatedAt,
@@ -278,7 +279,7 @@ async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
         'channel',
         amount.plus(fees).toString(),
         normalizedChannel
-      ])
+      ], client)
     }
   } else {
     throw new Error('Missing amount field')
@@ -307,7 +308,7 @@ async function insertFromReferrals (runtime, client, referrals) {
       insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
       values ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11 )
       `
-      await client.query(query, [
+      await runtime.postgres.query(query, [
         // transactionId and channel pair should be unique
         uuidv5(referrals.transactionId + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536'),
         created / 1000,
@@ -320,7 +321,7 @@ async function insertFromReferrals (runtime, client, referrals) {
         'owner',
         probi.dividedBy(BATtoProbi).toString(),
         normalizedChannel
-      ])
+      ], client)
     }
   }
 }
@@ -337,7 +338,7 @@ async function updateBalances (runtime) {
   end({ erred: false })
 }
 
-async function allSettlementStats (runtime, client, options) {
+async function allSettlementStats (runtime, options) {
   const {
     type,
     start,
@@ -353,11 +354,11 @@ AND created_at >= to_timestamp($2)
 AND created_at < to_timestamp($3);
 `
   const args = [type, start / 1000, until / 1000]
-  const { rows } = await client.query(statsQuery, args)
+  const { rows } = await runtime.postgres.query(statsQuery, args, true)
   return rows[0]
 }
 
-async function settlementStatsByCurrency (runtime, client, options) {
+async function settlementStatsByCurrency (runtime, options) {
   const {
     type,
     settlementCurrency,
@@ -375,6 +376,6 @@ AND created_at >= to_timestamp($3)
 AND created_at < to_timestamp($4);
 `
   const args = [type, settlementCurrency, start / 1000, until / 1000]
-  const { rows } = await client.query(statsQuery, args)
+  const { rows } = await runtime.postgres.query(statsQuery, args, true)
   return rows[0]
 }

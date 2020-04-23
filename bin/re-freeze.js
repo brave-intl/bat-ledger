@@ -10,7 +10,7 @@ async function main () {
   const queue = new Queue({ queue: process.env.REDIS_URL })
   const pg = new Postgres({ postgres: { url: process.env.DATABASE_URL } })
 
-  const surveyorQ = await pg.query('select id from surveyor_groups where frozen;', [])
+  const surveyorQ = await pg.query('select id from surveyor_groups where frozen')
   if (surveyorQ.rowCount === 0) {
     throw new Error('surveyors do not exist')
   }

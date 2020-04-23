@@ -13,8 +13,8 @@ module.exports = {
   stats
 }
 
-async function stats (runtime, client, options = {}) {
+async function stats (runtime, options = {}) {
   const { type, start, until } = options
-  const { rows } = await client.query(grantStatsQuery, [type, start / 1000, until / 1000])
+  const { rows } = await runtime.postgres.query(grantStatsQuery, [type, start / 1000, until / 1000], true)
   return rows[0]
 }

@@ -137,17 +137,17 @@ function getFullSnapshotHandler (runtime) {
   return async (request, h) => {
     const { snapshotId } = request.params
     let { account: accounts = [] } = request.query
-    const roClient = await runtime.postgres.roConnect()
     // this can probably done in one query
-    const { rows: snapshots, rowCount } = await roClient.query(getOnePayoutReport, [snapshotId])
+    const {
+      rows: snapshots,
+      rowCount
+    } = await runtime.postgres.query(getOnePayoutReport, [snapshotId], true)
     if (!rowCount) {
-      roClient.release()
       throw boom.notFound()
     }
     const snapshot = snapshots[0]
     snapshot.items = []
     if (!snapshot.completed) {
-      roClient.release()
       return h.response(snapshot).code(202)
     }
     let query = getBalanceSnapshots
@@ -160,9 +160,8 @@ function getFullSnapshotHandler (runtime) {
       query += 'and account_id = any($2::text[])'
       args.push(accounts)
     }
-    const { rows: accountBalances } = await roClient.query(query, args)
+    const { rows: accountBalances } = await runtime.postgres.query(query, args, true)
     snapshot.items = accountBalances
-    roClient.release()
     return snapshot
   }
 }
