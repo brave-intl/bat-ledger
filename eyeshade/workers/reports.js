@@ -20,7 +20,7 @@ const daily = async (debug, runtime) => {
     midnight.setHours(0, 0, 0, 0)
     await database.purgeSince(debug, runtime, midnight)
 
-    // await freezeOldSurveyors(debug, runtime)
+    await freezeOldSurveyors(debug, runtime)
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
