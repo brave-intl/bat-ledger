@@ -62,7 +62,6 @@ INSERT INTO transactions ( id, created_at, description, transaction_type, docume
 VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 )
 RETURNING *;
 `
-  console.log(runtime.postgres)
   const { rows } = await runtime.postgres.query(query, args, client)
   return rows
 }
