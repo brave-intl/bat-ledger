@@ -34,15 +34,15 @@ const monthly = async (debug, runtime) => {
   try {
     await client.query('BEGIN')
     // First create the payout report
-    await client.query(createPayoutReportQuery, [payoutReportId])
+    await runtime.postgres.query(createPayoutReportQuery, [payoutReportId], client)
     // Next get all the payment_id, balance pairs for all the wallets
-    const walletBalances = (await client.query(selectWalletBalancesQuery, [])).rows
+    const walletBalances = (await runtime.postgres.query(selectWalletBalancesQuery, [], client)).rows
     // Now insert the balance snapshots as potential ads payments
     for (let i = 0; i < walletBalances.length; i += 1) {
       const walletBalance = walletBalances[i]
       const wallet = await walletsCollection.findOne({ paymentId: walletBalance.account_id })
       const providerId = wallet.providerId
-      client.query(createPotentialPaymentsQuery, [payoutReportId, walletBalance.account_id, providerId, walletBalance.balance])
+      runtime.postgres.query(createPotentialPaymentsQuery, [payoutReportId, walletBalance.account_id, providerId, walletBalance.balance], client)
     }
     await client.query('COMMIT')
   } catch (e) {

@@ -194,7 +194,7 @@ exports.workers = {
 
       if (!publisher) throw new Error('no publisher specified')
 
-      const surveyorQ = await postgres.query('select frozen from surveyor_groups where id = $1 limit 1;', [surveyorId])
+      const surveyorQ = await postgres.query('select frozen from surveyor_groups where id = $1 limit 1;', [surveyorId], true)
       if (surveyorQ.rowCount !== 1) {
         throw new Error('surveyor does not exist')
       }

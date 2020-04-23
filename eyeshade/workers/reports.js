@@ -88,7 +88,7 @@ async function waitForTransacted (runtime, surveyorId) {
         surveyor_id = $1
     and not transacted
     limit 1`
-    const { rows } = await runtime.postgres.query(statement, [surveyorId])
+    const { rows } = await runtime.postgres.query(statement, [surveyorId], true)
     row = rows[0]
     if (new Date() - (1000 * 60 * 60) > start) {
       runtime.captureException(new Error('unable to finish freezing process'), {

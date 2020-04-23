@@ -135,8 +135,7 @@ v1.getReferralGroups = {
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
     const allFields = ['id'].concat(fields)
 
-    const { rows } = await runtime.postgres.query(statement)
-
+    const { rows } = await runtime.postgres.query(statement, [], true)
     return rows.map((row) => _.pick(row, allFields))
   },
 
@@ -259,7 +258,7 @@ v1.createReferrals = {
       // get rates once at beginning (uses cache too)
       const {
         rows: referralGroups
-      } = await postgres.query(getActiveGroups)
+      } = await postgres.query(getActiveGroups, [], true)
       referralGroups.sort((a) => a.activeAt)
 
       for (let i = 0; i < payload.length; i += 1) {
