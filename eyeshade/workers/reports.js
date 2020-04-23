@@ -44,32 +44,32 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
   }
 
   const query = `
-  update surveyor_groups set frozen = true, updated_at = current_timestamp
+  select id from surveyor_groups
   where not frozen
   and not virtual
   and created_at < current_date - $1 * interval '1d'
-  returning id;
   `
 
   const {
     rows: nonVirtualSurveyors
-  } = await runtime.postgres.query(query, [olderThanDays])
+  } = await runtime.postgres.query(query, [olderThanDays], true)
 
   const virtualQuery = `
-  update surveyor_groups set frozen = true, updated_at = current_timestamp
+  select id from surveyor_groups
   where not frozen
   and virtual
   and created_at < current_date
-  returning id;
   `
 
   const {
     rows: virtualSurveyors
-  } = await runtime.postgres.query(virtualQuery)
+  } = await runtime.postgres.query(virtualQuery, [], true)
 
+  const updateSurveyorsStatement = 'update surveyor_groups set frozen = true, updated_at = current_timestamp where id = $1'
   const toFreeze = nonVirtualSurveyors.concat(virtualSurveyors)
   for (let i = 0; i < toFreeze.length; i += 1) {
     const surveyorId = toFreeze[i].id
+    await runtime.postgres.query(updateSurveyorsStatement, [surveyorId])
     await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
     await waitForTransacted(runtime, surveyorId)
   }
