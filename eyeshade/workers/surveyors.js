@@ -42,7 +42,7 @@ exports.workers = {
         from votes where surveyor_id = $1 and not excluded and not transacted and amount is not null
         group by votes.channel;
         `
-        const votingQ = await client.query(query1, [surveyorId])
+        const votingQ = await runtime.postgres.query(query1, [surveyorId], client)
         if (!votingQ.rowCount) {
           throw new Error('no votes for this surveyor!')
         }
@@ -53,26 +53,25 @@ exports.workers = {
           for (let i = 0; i < docs.length; i += 1) {
             await insertFromVoting(runtime, client, Object.assign(docs[i], { surveyorId }), surveyorCreatedAt)
           }
+          const query2 = `
+          update votes
+            set transacted = true
+          from
+          (select votes.id
+            from votes join transactions
+            on (transactions.document_id = votes.surveyor_id and transactions.to_account = votes.channel)
+            where not votes.excluded and votes.surveyor_id = $1
+          ) o
+          where votes.id = o.id
+          `
+          await runtime.postgres.query(query2, [surveyorId], client)
+
+          await client.query('COMMIT')
         } catch (e) {
           await client.query('ROLLBACK')
           runtime.captureException(e, { extra: { report: 'surveyor-frozen-report', surveyorId } })
           throw e
         }
-
-        const query2 = `
-        update votes
-          set transacted = true
-        from
-        (select votes.id
-          from votes join transactions
-          on (transactions.document_id = votes.surveyor_id and transactions.to_account = votes.channel)
-          where not votes.excluded and votes.surveyor_id = $1
-        ) o
-        where votes.id = o.id
-        `
-        await client.query(query2, [surveyorId])
-
-        await client.query('COMMIT')
 
         if (shouldUpdateBalances) {
           await updateBalances(runtime)

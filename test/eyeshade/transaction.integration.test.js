@@ -48,7 +48,7 @@ const runtime = new Runtime({
   }
 })
 
-test.afterEach.always(cleanPgDb(runtime.postgres))
+test.beforeEach(cleanPgDb(runtime.postgres))
 
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
@@ -91,7 +91,7 @@ test('contribution settlement transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromSettlement(runtime, client, contributionSettlement)
+    await insertFromSettlement(runtime, null, contributionSettlement)
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -413,14 +413,14 @@ test('common insertion fn', async (t) => {
     toAccountType,
     amount
   }
-  const client = await runtime.postgres.connect()
-  const txs = await insertTransaction(client, inputs)
+  // const client = await runtime.postgres.connect()
+  const txs = await insertTransaction(runtime, null, inputs)
   const zeroAmount = Object.assign({}, inputs, { amount: '0' })
-  await insertTransaction(client, zeroAmount)
+  await insertTransaction(runtime, null, zeroAmount)
   const negativeAmount = Object.assign({}, inputs, { amount: '-1' })
-  await insertTransaction(client, negativeAmount)
+  await insertTransaction(runtime, null, negativeAmount)
   const noAmount = Object.assign({}, inputs, { amount: null })
-  await t.throwsAsync(() => insertTransaction(client, noAmount))
+  await t.throwsAsync(() => insertTransaction(runtime, null, noAmount))
   const expectedResults = [{
     id,
     amount,
@@ -437,7 +437,6 @@ test('common insertion fn', async (t) => {
     settlement_currency: null
   }]
   t.deepEqual(expectedResults, txs, 'transactions are inserted')
-  await client.release()
 })
 
 test('transaction stats', async (t) => {
@@ -449,7 +448,7 @@ test('transaction stats', async (t) => {
     await insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
       settlementId: uuidV4()
     }))
-    const contributionStats = await settlementStatsByCurrency(runtime, client, {
+    const contributionStats = await settlementStatsByCurrency(runtime, {
       type: 'contribution_settlement',
       settlementCurrency: 'BAT',
       start: today,
@@ -463,7 +462,7 @@ test('transaction stats', async (t) => {
       settlementId: uuidV4()
     }))
     let referralStats = null
-    referralStats = await settlementStatsByCurrency(runtime, client, {
+    referralStats = await settlementStatsByCurrency(runtime, {
       type: 'referral_settlement',
       settlementCurrency: 'BAT',
       start: today,
@@ -478,7 +477,7 @@ test('transaction stats', async (t) => {
       currency: 'BTC',
       amount: '0.000125'
     }))
-    referralStats = await allSettlementStats(runtime, client, {
+    referralStats = await allSettlementStats(runtime, {
       type: 'referral_settlement',
       start: today,
       until: tomorrow
@@ -486,7 +485,7 @@ test('transaction stats', async (t) => {
     const threeReferrals = referralAmount.times(3).toNumber() // 30
     t.is(threeReferrals, +referralStats.amount, 'referrals are summed')
 
-    referralStats = await settlementStatsByCurrency(runtime, client, {
+    referralStats = await settlementStatsByCurrency(runtime, {
       type: 'referral_settlement',
       settlementCurrency: 'BTC',
       start: today,
