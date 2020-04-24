@@ -21,7 +21,6 @@ update payout_reports
     updated_at = $3,
     latest_transaction_at = $4
 where id = $1
-returning *;
 `
 
 exports.workers = {
@@ -48,16 +47,13 @@ async function updateSnapshotAccounts (debug, runtime, payload) {
   try {
     await client.query('BEGIN')
     await client.query(writeAccountBalancesBefore, args)
-    const {
-      rows: snapshots
-    } = await client.query(updatePayoutReportWithTotals, [
+    await client.query(updatePayoutReportWithTotals, [
       snapshotId,
       true,
       now.toISOString(),
       maxTime.toISOString()
     ])
     await client.query('COMMIT')
-    return snapshots[0]
   } catch (e) {
     await client.query('ROLLBACK')
   } finally {

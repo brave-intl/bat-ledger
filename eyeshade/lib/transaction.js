@@ -60,10 +60,8 @@ async function insertTransaction (runtime, client, options = {}) {
   const query = `
 INSERT INTO transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, settlement_currency, settlement_amount, channel )
 VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 )
-RETURNING *;
 `
-  const { rows } = await runtime.postgres.query(query, args, client)
-  return rows
+  await runtime.postgres.query(query, args, client)
 }
 
 async function insertUserDepositFromChain (runtime, client, chainDoc = {}) {
@@ -232,7 +230,6 @@ async function insertManual (runtime, client, settlementId, created, documentId,
   const insertTransactionQuery = `
     insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount )
     VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10 )
-    RETURNING *;
   `
   await runtime.postgres.query(insertTransactionQuery, [
     uuidv5(settlementId + toAccount, '734a27cd-0834-49a5-8d4c-77da38cdfb22'),
