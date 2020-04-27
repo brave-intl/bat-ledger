@@ -6,10 +6,8 @@ const { verify } = require('http-request-signature')
 const Joi = require('@hapi/joi')
 
 const UpholdSDK = require('./runtime-uphold')
-const braveHapi = require('./extras-hapi')
 const braveJoi = require('./extras-joi')
 const braveUtils = require('./extras-utils')
-const whitelist = require('./hapi-auth-whitelist')
 
 const Currency = require('./runtime-currency')
 
@@ -214,79 +212,6 @@ Wallet.prototype.expireGrant = async function (info, wallet, grant) {
 }
 
 Wallet.selectGrants = selectGrants
-
-Wallet.prototype.redeem = async function (info, txn, signature, request) {
-  let balance, grants, result
-
-  if (!this.runtime.config.redeemer) return
-
-  grants = info.grants
-  if (!grants) return
-  grants = selectGrants(grants)
-  if (grants.length === 0) return
-
-  if (!info.balances) info.balances = await this.balances(info)
-  balance = new BigNumber(info.balances.confirmed)
-  const desired = new BigNumber(txn.denomination.amount).times(this.currency.alt2scale(info.altcurrency))
-
-  const infoKeys = [
-    'altcurrency', 'provider', 'providerId', 'paymentId'
-  ]
-  const wallet = underscore.extend(underscore.pick(info, infoKeys), { publicKey: info.httpSigningPubKey })
-  const payload = {
-    grants: [],
-    // TODO might need paymentId later
-    wallet,
-    transaction: Buffer.from(JSON.stringify(underscore.pick(signature, ['headers', 'octets']))).toString('base64')
-  }
-  const grantIds = []
-  let grantTotal = new BigNumber(0)
-
-  for (let i = 0; i < grants.length; i += 1) {
-    const grant = grants[i]
-    if (this.isGrantExpired(info, grant)) {
-      await this.expireGrant(info, wallet, grant)
-      continue
-    }
-    payload.grants.push(grant.token)
-    grantIds.push(grant.grantId)
-
-    const grantContent = braveUtils.extractJws(grant.token)
-    const probi = new BigNumber(grantContent.probi)
-    balance = balance.plus(probi)
-    grantTotal = grantTotal.plus(probi)
-    if (grantTotal.greaterThanOrEqualTo(desired)) break
-  }
-
-  if (balance.lessThan(desired)) return
-
-  if (info.cohort && this.runtime.config.testingCohorts.includes(info.cohort)) {
-    return {
-      probi: desired.toString(),
-      altcurrency: info.altcurrency,
-      address: txn.destination,
-      fee: 0,
-      status: 'accepted',
-      grantIds: grantIds,
-      grantTotal: new BigNumber(0)
-    }
-  }
-
-  result = await braveHapi.wreck.post(this.runtime.config.redeemer.url + '/v1/grants', {
-    headers: {
-      Authorization: 'Bearer ' + this.runtime.config.redeemer.access_token,
-      'Content-Type': 'application/json',
-      // Only pass "trusted" IP, not previous value of X-Forwarded-For
-      'X-Forwarded-For': whitelist.ipaddr(request),
-      'User-Agent': request.headers['user-agent']
-    },
-    payload: JSON.stringify(payload),
-    useProxyP: true
-  })
-  if (Buffer.isBuffer(result)) try { result = JSON.parse(result) } catch (ex) { result = result.toString() }
-
-  return underscore.extend(result, { grantIds: grantIds, grantTotal: grantTotal })
-}
 
 Wallet.prototype.purchaseBAT = async function (info, amount, currency, language) {
   // TBD: if there is more than one provider, use a "real" algorithm to determine which one
