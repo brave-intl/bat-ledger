@@ -80,6 +80,63 @@ v2.readInfo = {
 }
 
 /*
+   GET /v2/wallet/{paymentId}/members
+ */
+v2.readInfo = {
+  handler: (runtime) => {
+    return async (request, h) => {
+      const debug = braveHapi.debug(module, request)
+      const wallets = runtime.database.get('wallets', debug)
+      const members = runtime.database.get('members', debug)
+      const paymentId = request.params.paymentId.toLowerCase()
+
+      const wallet = await wallets.findOne({ paymentId })
+      if (!wallet) {
+        throw boom.notFound('no such wallet: ' + paymentId)
+      }
+
+      let walletsBelongingToUser
+      if (wallet.providerLinkingId) {
+        const clusteredInfo = await members.findOne({
+          providerLinkingId: wallet.providerLinkingId
+        })
+        walletsBelongingToUser = await wallets.find({
+          paymentId: {
+            $in: clusteredInfo.paymentIds
+          }
+        })
+      } else {
+        walletsBelongingToUser = [wallet]
+      }
+
+      const infoKeys = ['addresses', 'altcurrency', 'provider', 'providerId', 'paymentId', 'httpSigningPubKey', 'anonymousAddress']
+      return walletsBelongingToUser.map((wallet) => underscore.pick(wallet, infoKeys))
+    }
+  },
+  description: 'Returns information about the wallets associated with the user',
+  tags: ['api'],
+
+  validate: {
+    params: Joi.object().keys({
+      paymentId: Joi.string().guid().required().description('identity of the wallet')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.array().items(Joi.object().keys({
+      altcurrency: Joi.string().optional().description('the wallet balance currency'),
+      addresses: Joi.object().keys({
+        BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
+        BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
+        CARD_ID: Joi.string().guid().optional().description('Card id'),
+        ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
+        LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
+      })
+    }).unknown(true)).min(1)
+  }
+}
+
+/*
    GET /v2/wallet/{paymentId}
  */
 
