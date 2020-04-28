@@ -32,6 +32,8 @@ const Cache = (cache = {}) => ({
   }
 })
 
+let requestsInFlight = 0
+
 generateGlobal.Cache = Cache
 generateGlobal.knownRateKeys = knownRateKeys
 generateGlobal.decimals = decimals
@@ -50,22 +52,30 @@ Currency.prototype = {
   },
 
   request: async function (endpoint) {
-    const context = this
-    const {
-      config
-    } = context
-    const {
-      access_token: accessToken = 'foobarfoobar'
-    } = config
-    const authorization = `Bearer ${accessToken}`
-    const options = {
-      useProxyP: true,
-      headers: {
-        authorization,
-        'content-type': 'application/json'
-      }
+    if requestsInFlight > +process.env.RATIOS_CIRCUIT_BREAKER_LIMIT || 1 {
+      throw new Error('Circuit breaker triggered, skipping ratios request')
     }
-    return braveHapi.wreck.get(endpoint, options)
+    try {
+      requestsInFlight++
+      const context = this
+      const {
+        config
+      } = context
+      const {
+        access_token: accessToken = 'foobarfoobar'
+      } = config
+      const authorization = `Bearer ${accessToken}`
+      const options = {
+        useProxyP: true,
+        headers: {
+          authorization,
+          'content-type': 'application/json'
+        }
+      }
+      return braveHapi.wreck.get(endpoint, options)
+    } finally {
+      requestsInFlight--
+    }
   },
 
   access: async function (path) {
