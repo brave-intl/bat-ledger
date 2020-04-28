@@ -52,7 +52,7 @@ Currency.prototype = {
   },
 
   request: async function (endpoint) {
-    if requestsInFlight > +process.env.RATIOS_CIRCUIT_BREAKER_LIMIT || 1 {
+    if (requestsInFlight > (+process.env.RATIOS_CIRCUIT_BREAKER_LIMIT || 1)) {
       throw new Error('Circuit breaker triggered, skipping ratios request')
     }
     try {
