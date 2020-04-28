@@ -105,13 +105,17 @@ const read = function (runtime, apiVersion) {
       throw boom.badData('the altcurrency of the transaction must match that of the wallet')
     }
 
-    const subset = currency ? [currency.toUpperCase()] : null
-    const rates = await runtime.currency.rates(wallet.altcurrency, subset)
     result = {
       altcurrency: wallet.altcurrency,
       paymentStamp: wallet.paymentStamp || 0,
       httpSigningPubKey: wallet.httpSigningPubKey,
-      rates: underscore.mapObject(rates, (value) => +value)
+      rates: {
+        ETH: 0.000907665364640725,
+        LTC: 0.0040291989968,
+        BTC: 0.0000229300464,
+        USD: 0.176824933144232058,
+        EUR: 0.1630551664
+      }
     }
 
     result = underscore.extend(result, { addresses: wallet.addresses })
