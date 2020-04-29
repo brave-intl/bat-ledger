@@ -7,8 +7,6 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
-const checkRedisSize = createRedisSizeChecker(1000 * 60 * 10)
-
 const plugins = {
   rateLimit: {
     enabled: true,
@@ -44,7 +42,6 @@ module.exports.configuration = {
 v2.walletBalance =
 {
   handler: (runtime) => {
-    checkRedisSize(runtime.cache)
     return async (request, h) => {
       const paymentId = request.params.paymentId
       let fresh = false
@@ -53,6 +50,11 @@ v2.walletBalance =
       let walletInfo = await runtime.cache.get(paymentId, wallet)
       if (walletInfo) {
         walletInfo = JSON.parse(walletInfo)
+        // issue-864: set the timeout on the mapping of cardId to wallet id inorder for use to
+        // remove the flushall logic in cache. 
+        setTimeout(() => {
+          runtime.cache.set(accessCardID(walletInfo), paymentId, expireSettings, link)
+        })
       } else {
         try {
           const headers = {}
@@ -75,7 +77,7 @@ v2.walletBalance =
       if (fresh) {
         setTimeout(() => {
           const cardId = accessCardId(walletInfo)
-          runtime.cache.set(cardId, paymentId, {}, link)
+          runtime.cache.set(cardId, paymentId, expireSettings, link)
           runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
         })
       }
@@ -197,72 +199,3 @@ function accessCardId (wallet) {
   return wallet && wallet.addresses && wallet.addresses.CARD_ID
 }
 
-function createRedisSizeChecker (flushDelay) {
-  let shouldContinue = true
-  let firstDetectedFull = null
-  let id = null
-  return check
-
-  function stop () {
-    clearTimeout(id)
-    shouldContinue = false
-  }
-
-  async function check (redis) {
-    if (id) {
-      return stop
-    }
-    try {
-      const now = new Date()
-      const percentFull = await howFull(redis)
-      if (percentFull > 90) {
-        if (!firstDetectedFull) {
-          firstDetectedFull = now
-        } else if (+firstDetectedFull + flushDelay < +now) {
-          firstDetectedFull = null
-          clear(redis)
-        }
-      } else {
-        firstDetectedFull = null
-      }
-    } catch (e) {
-      console.error(e)
-    }
-    if (shouldContinue) {
-      const delay = 60000
-      id = setTimeout(() => {
-        id = null
-        check(redis)
-      }, delay - (+(new Date()) % delay))
-    }
-    return stop
-  }
-
-  async function howFull (redis) {
-    const results = await redis.cache.multi([
-      ['info']
-    ]).execAsync()
-    const resultLines = results[0].split(/\s+/igm)
-    let maxmemory
-    let usedMemory
-    for (let i = 0; i < resultLines.length; i += 1) {
-      const line = resultLines[i]
-      let split
-      split = line.split('maxmemory:')
-      if (split.length > 1) {
-        maxmemory = +split[1] || Infinity
-      }
-      split = line.split('used_memory:')
-      if (split.length > 1) {
-        usedMemory = +split[1]
-      }
-    }
-    return (usedMemory / maxmemory) * 100
-  }
-
-  async function clear (redis) {
-    await redis.cache.multi([
-      ['flushall']
-    ]).execAsync()
-  }
-}
