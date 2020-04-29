@@ -51,9 +51,9 @@ v2.walletBalance =
       if (walletInfo) {
         walletInfo = JSON.parse(walletInfo)
         // issue-864: set the timeout on the mapping of cardId to wallet id inorder for use to
-        // remove the flushall logic in cache. 
+        // remove the flushall logic in cache.
         setTimeout(() => {
-          runtime.cache.set(accessCardID(walletInfo), paymentId, expireSettings, link)
+          runtime.cache.set(accessCardId(walletInfo), paymentId, expireSettings, link)
         })
       } else {
         try {
@@ -76,8 +76,7 @@ v2.walletBalance =
 
       if (fresh) {
         setTimeout(() => {
-          const cardId = accessCardId(walletInfo)
-          runtime.cache.set(cardId, paymentId, expireSettings, link)
+          runtime.cache.set(accessCardId(walletInfo), paymentId, expireSettings, link)
           runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
         })
       }
@@ -198,4 +197,3 @@ module.exports.accessCardId = accessCardId
 function accessCardId (wallet) {
   return wallet && wallet.addresses && wallet.addresses.CARD_ID
 }
-
