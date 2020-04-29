@@ -50,11 +50,6 @@ v2.walletBalance =
       let walletInfo = await runtime.cache.get(paymentId, wallet)
       if (walletInfo) {
         walletInfo = JSON.parse(walletInfo)
-        // issue-864: set the timeout on the mapping of cardId to wallet id inorder for use to
-        // remove the flushall logic in cache.
-        setTimeout(() => {
-          runtime.cache.set(accessCardId(walletInfo), paymentId, expireSettings, link)
-        })
       } else {
         try {
           const headers = {}
@@ -74,12 +69,14 @@ v2.walletBalance =
         fresh = true
       }
 
-      if (fresh) {
-        setTimeout(() => {
-          runtime.cache.set(accessCardId(walletInfo), paymentId, expireSettings, link)
+      setTimeout(() => {
+        // issue-864: set the timeout on the mapping of cardId to wallet id inorder for use to
+        // remove the flushall logic in cache.  Always (hit or miss) update expire on mapping
+        runtime.cache.set(accessCardId(walletInfo), paymentId, expireSettings, link)
+        if (fresh) {
           runtime.cache.set(paymentId, JSON.stringify(walletInfo), expireSettings, wallet)
-        })
-      }
+        }
+      })
       return underscore.pick(walletInfo, ['altcurrency', 'probi', 'cardBalance', 'balance', 'unconfirmed', 'rates', 'parameters', 'grants'])
     }
   },
