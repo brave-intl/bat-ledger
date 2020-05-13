@@ -25,7 +25,7 @@ const example = {
   channel: channel,
   createdAt: (new Date()).toISOString(),
   baseVoteValue: '0.25',
-  voteTally: '10',
+  voteTally: 10,
   fundingSource: 'uphold'
 }
 const balanceURL = '/v1/accounts/balances'
