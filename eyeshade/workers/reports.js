@@ -1,5 +1,8 @@
 const moment = require('moment')
 const {
+  timeout
+} = require('bat-utils/lib/extras-utils')
+const {
   updateBalances
 } = require('../lib/transaction')
 
@@ -41,21 +44,61 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
   }
 
   const query = `
-  update surveyor_groups set frozen = true, updated_at = current_timestamp
+  select id from surveyor_groups
   where not frozen
   and not virtual
   and created_at < current_date - $1 * interval '1d'
-  returning id;
   `
 
   const {
-    rows
-  } = await runtime.postgres.query(query, [olderThanDays])
+    rows: nonVirtualSurveyors
+  } = await runtime.postgres.query(query, [olderThanDays], true)
 
-  await Promise.all(rows.map(async (row) => {
-    const surveyorId = row.id
-    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true, shouldUpdateBalances: true })
-  }))
+  const virtualQuery = `
+  select id from surveyor_groups
+  where not frozen
+  and virtual
+  and created_at < current_date
+  `
+
+  const {
+    rows: virtualSurveyors
+  } = await runtime.postgres.query(virtualQuery, [], true)
+
+  const updateSurveyorsStatement = 'update surveyor_groups set frozen = true, updated_at = current_timestamp where id = $1'
+  const toFreeze = nonVirtualSurveyors.concat(virtualSurveyors)
+  for (let i = 0; i < toFreeze.length; i += 1) {
+    const surveyorId = toFreeze[i].id
+    await runtime.postgres.query(updateSurveyorsStatement, [surveyorId])
+    await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
+    await waitForTransacted(runtime, surveyorId)
+  }
+  await updateBalances(runtime)
+}
+
+async function waitForTransacted (runtime, surveyorId) {
+  let row
+  const start = new Date()
+  do {
+    await timeout(60 * 1000)
+    const statement = `
+    select *
+    from votes
+    where
+        surveyor_id = $1
+    and not transacted
+    limit 1`
+    const { rows } = await runtime.postgres.query(statement, [surveyorId], true)
+    row = rows[0]
+    if (new Date() - (1000 * 60 * 60) > start) {
+      runtime.captureException(new Error('unable to finish freezing process'), {
+        extra: {
+          surveyorId
+        }
+      })
+      return
+    }
+  } while (row) // when no row is returned, all votes have been transacted
 }
 
 const mixer = async (debug, runtime, filter, qid) => {

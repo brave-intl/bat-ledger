@@ -1,7 +1,8 @@
-const getPublisherProps = require('bat-publisher').getPublisherProps
+const { getPublisherProps } = require('./extras-publisher')
 // this can be abstracted elsewhere as soon as we finish #274
 const BigNumber = require('bignumber.js')
 const dotenv = require('dotenv')
+const boom = require('boom')
 const _ = require('underscore')
 dotenv.config()
 BigNumber.config({
@@ -12,6 +13,7 @@ const PROBI_FACTOR = 1e18
 
 module.exports = {
   PROBI_FACTOR,
+  postgresToBoom,
   backfillDateRange,
   changeMonth,
   isUUID,
@@ -32,6 +34,14 @@ const DAY_MS = 60 * 60 * 24 * 1000
 // courtesy of https://stackoverflow.com/questions/33289726/combination-of-async-function-await-settimeout#33292942
 function timeout (msec) {
   return new Promise((resolve) => setTimeout(resolve, msec))
+}
+
+function postgresToBoom (e) {
+  if (e && e.code === '23505') { // Unique constraint violation
+    return boom.conflict('Row with that id exists, updates are not allowed')
+  } else {
+    return boom.boomify(e)
+  }
 }
 
 function backfillDateRange ({

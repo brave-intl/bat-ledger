@@ -1,5 +1,5 @@
 const Joi = require('@hapi/joi')
-const { getPublisherProps } = require('bat-publisher')
+const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
 const boom = require('boom')
 const utils = require('bat-utils')
 const BigNumber = require('bignumber.js')
@@ -47,10 +47,11 @@ GROUP BY channel;
 */
 
 v1.getTransactions =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const account = request.params.account
-    const query1 = `select
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const account = request.params.account
+      const query1 = `select
   created_at,
   description,
   channel,
@@ -65,50 +66,50 @@ where account_id = $1
 ORDER BY created_at
 `
 
-    const result = await runtime.postgres.query(query1, [ account ])
-    const transactions = result.rows
+      const result = await runtime.postgres.query(query1, [account], true)
+      const transactions = result.rows
 
-    return _.map(transactions, (tx) => {
-      const omitted = _.omit(tx, (value) => value == null)
-      return Object.assign({ channel: '' }, omitted)
-    })
+      return _.map(transactions, (tx) => {
+        const omitted = _.omit(tx, (value) => value == null)
+        return Object.assign({ channel: '' }, omitted)
+      })
+    }
+  },
+
+  auth: {
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
+    mode: 'required'
+  },
+
+  description: 'Used by publishers for retrieving a list of transactions for use in statement generation, graphical dashboarding and filtering, etc.',
+  tags: ['api', 'publishers'],
+
+  validate: {
+    params: Joi.object().keys({
+      account: Joi.alternatives().try(
+        braveJoi.string().owner(),
+        Joi.string().guid()
+      ).required().description('the owner identity')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.array().items(Joi.object().keys({
+      created_at: Joi.date().iso().required().description('when the transaction was created'),
+      description: Joi.string().required().description('description of the transaction'),
+      channel: Joi.alternatives().try(
+        braveJoi.string().publisher().required().description('channel transaction is for'),
+        Joi.string().default('').allow('').description('empty string returned')
+      ),
+      amount: braveJoi.string().numeric().required().description('amount in BAT'),
+      settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
+      settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
+      settlement_destination_type: stringValidator.valid.apply(stringValidator, settlementDestinationTypes).optional().description('type of address settlement was paid to'),
+      settlement_destination: Joi.string().optional().description('destination address of the settlement'),
+      transaction_type: stringValidator.valid.apply(stringValidator, transactionTypes).required().description('type of the transaction')
+    }))
   }
-},
-
-auth: {
-  strategy: 'simple-scoped-token',
-  scope: ['publishers'],
-  mode: 'required'
-},
-
-description: 'Used by publishers for retrieving a list of transactions for use in statement generation, graphical dashboarding and filtering, etc.',
-tags: [ 'api', 'publishers' ],
-
-validate: {
-  params: Joi.object().keys({
-    account: Joi.alternatives().try(
-      braveJoi.string().owner(),
-      Joi.string().guid()
-    ).required().description('the owner identity')
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.array().items(Joi.object().keys({
-    created_at: Joi.date().iso().required().description('when the transaction was created'),
-    description: Joi.string().required().description('description of the transaction'),
-    channel: Joi.alternatives().try(
-      braveJoi.string().publisher().required().description('channel transaction is for'),
-      Joi.string().default('').allow('').description('empty string returned')
-    ),
-    amount: braveJoi.string().numeric().required().description('amount in BAT'),
-    settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
-    settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
-    settlement_destination_type: stringValidator.valid.apply(stringValidator, settlementDestinationTypes).optional().description('type of address settlement was paid to'),
-    settlement_destination: Joi.string().optional().description('destination address of the settlement'),
-    transaction_type: stringValidator.valid.apply(stringValidator, transactionTypes).required().description('type of the transaction')
-  }))
-}
 }
 
 /*
@@ -116,50 +117,51 @@ response: {
 */
 
 v1.getTopBalances =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    let { limit } = request.query
-    const { type } = request.params
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const { limit } = request.query
+      const { type } = request.params
 
-    const query1 = `SELECT *
+      const query1 = `SELECT *
     FROM account_balances
     WHERE account_type = $1::text
     ORDER BY balance DESC
     LIMIT $2;`
 
-    const { rows } = await runtime.postgres.query(query1, [ type, limit ])
-    return rows
+      const { rows } = await runtime.postgres.query(query1, [type, limit], true)
+      return rows
+    }
+  },
+
+  auth: {
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
+    mode: 'required'
+  },
+
+  description: 'Used by publishers for retrieving a list of balances e.g. for an owner and their channels',
+
+  tags: ['api', 'publishers'],
+
+  validate: {
+    params: Joi.object().keys({
+      type: accountTypeValidation.required().description('balance types to retrieve')
+    }),
+    query: Joi.object().keys({
+      limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.array().items(
+      Joi.object().keys({
+        account_id: Joi.string(),
+        account_type: accountTypeValidation,
+        balance: joiBAT.description('balance in BAT')
+      })
+    )
   }
-},
-
-auth: {
-  strategy: 'simple-scoped-token',
-  scope: ['publishers'],
-  mode: 'required'
-},
-
-description: 'Used by publishers for retrieving a list of balances e.g. for an owner and their channels',
-
-tags: [ 'api', 'publishers' ],
-
-validate: {
-  params: Joi.object().keys({
-    type: accountTypeValidation.required().description('balance types to retrieve')
-  }),
-  query: Joi.object().keys({
-    limit: Joi.number().min(1).default(10).description('the top balances to retrieve')
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.array().items(
-    Joi.object().keys({
-      account_id: Joi.string(),
-      account_type: accountTypeValidation,
-      balance: joiBAT.description('balance in BAT')
-    })
-  )
-}
 }
 
 /*
@@ -189,10 +191,10 @@ v1.getBalances = {
         return props.providerName !== 'publishers'
       }))
 
-    const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args) : {
+    const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args, true) : {
       rows: []
     }
-    const balancePromise = runtime.postgres.query(selectAccountBalances, args)
+    const balancePromise = runtime.postgres.query(selectAccountBalances, args, true)
     const promises = [votesPromise, balancePromise]
     const results = await Promise.all(promises)
 
@@ -211,7 +213,7 @@ v1.getBalances = {
 
   description: 'Used by publishers for retrieving a list of balances e.g. for an owner and their channels',
 
-  tags: [ 'api', 'publishers' ],
+  tags: ['api', 'publishers'],
 
   validate: {
     query: Joi.object().keys({
@@ -263,60 +265,61 @@ function mergeVotes (_memo, {
 */
 
 v1.getEarningsTotals =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    let { type } = request.params
-    let {
-      order,
-      limit
-    } = request.query
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      let { type } = request.params
+      const {
+        order,
+        limit
+      } = request.query
 
-    if (type === 'contributions') {
-      type = 'contribution'
-    } else if (type === 'referrals') {
-      type = 'referral'
-    } else {
-      throw boom.badData('type must be contributions or referrals')
+      if (type === 'contributions') {
+        type = 'contribution'
+      } else if (type === 'referrals') {
+        type = 'referral'
+      } else {
+        throw boom.badData('type must be contributions or referrals')
+      }
+
+      const query1 = queries.earnings({
+        asc: order === 'asc'
+      })
+
+      const { rows } = await runtime.postgres.query(query1, [type, limit], true)
+      return rows
     }
+  },
 
-    const query1 = queries.earnings({
-      asc: order === 'asc'
-    })
+  auth: {
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
+    mode: 'required'
+  },
 
-    const { rows } = await runtime.postgres.query(query1, [type, limit])
-    return rows
+  description: 'Used by publishers for retrieving a list of top channel earnings',
+
+  tags: ['api', 'publishers'],
+
+  validate: {
+    params: Joi.object().keys({
+      type: Joi.string().valid('contributions', 'referrals').required().description('type of earnings')
+    }).unknown(true),
+    query: Joi.object().keys({
+      limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
+      order: orderParam
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.array().items(
+      Joi.object().keys({
+        channel: Joi.string(),
+        earnings: joiBAT.description('earnings in BAT'),
+        account_id: Joi.string()
+      })
+    )
   }
-},
-
-auth: {
-  strategy: 'simple-scoped-token',
-  scope: ['publishers'],
-  mode: 'required'
-},
-
-description: 'Used by publishers for retrieving a list of top channel earnings',
-
-tags: [ 'api', 'publishers' ],
-
-validate: {
-  params: Joi.object().keys({
-    type: Joi.string().valid('contributions', 'referrals').required().description('type of earnings')
-  }).unknown(true),
-  query: Joi.object().keys({
-    limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
-    order: orderParam
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.array().items(
-    Joi.object().keys({
-      channel: Joi.string(),
-      earnings: joiBAT.description('earnings in BAT'),
-      account_id: Joi.string()
-    })
-  )
-}
 }
 
 /*
@@ -324,75 +327,76 @@ response: {
 */
 
 v1.getPaidTotals =
-{ handler: (runtime) => {
-  return async (request, h) => {
-    const { params, query } = request
-    const { postgres } = runtime
-    let { type } = params
-    let {
-      start,
-      until,
-      order,
-      limit
-    } = query
-
-    if (type === 'contributions') {
-      type = 'contribution_settlement'
-    } else if (type === 'referrals') {
-      type = 'referral_settlement'
-    }
-    let rows = []
-    const options = {
-      asc: order === 'asc'
-    }
-    if (start) {
-      const dates = extrasUtils.backfillDateRange({
+{
+  handler: (runtime) => {
+    return async (request, h) => {
+      const { params, query } = request
+      const { postgres } = runtime
+      let { type } = params
+      const {
         start,
-        until
-      })
-      const startDate = dates.start.toISOString()
-      const untilDate = dates.until.toISOString()
-      const query = queries.timeConstraintSettlements(options)
-      ;({ rows } = await postgres.query(query, [type, limit, startDate, untilDate]))
-    } else {
-      const query = queries.allSettlements(options)
-      ;({ rows } = await postgres.query(query, [type, limit]))
+        until,
+        order,
+        limit
+      } = query
+
+      if (type === 'contributions') {
+        type = 'contribution_settlement'
+      } else if (type === 'referrals') {
+        type = 'referral_settlement'
+      }
+      let rows = []
+      const options = {
+        asc: order === 'asc'
+      }
+      if (start) {
+        const dates = extrasUtils.backfillDateRange({
+          start,
+          until
+        })
+        const startDate = dates.start.toISOString()
+        const untilDate = dates.until.toISOString()
+        const query = queries.timeConstraintSettlements(options)
+        ;({ rows } = await postgres.query(query, [type, limit, startDate, untilDate], true))
+      } else {
+        const query = queries.allSettlements(options)
+        ;({ rows } = await postgres.query(query, [type, limit], true))
+      }
+      return rows
     }
-    return rows
+  },
+
+  auth: {
+    strategy: 'simple-scoped-token',
+    scope: ['publishers'],
+    mode: 'required'
+  },
+
+  description: 'Used by publishers for retrieving a list of top channels paid out',
+
+  tags: ['api', 'publishers'],
+
+  validate: {
+    params: Joi.object().keys({
+      type: Joi.string().valid('contributions', 'referrals').required().description('type of payout')
+    }).unknown(true),
+    query: Joi.object().keys({
+      start: Joi.date().iso().optional().default('').description('query for the top payout in a single month beginning at this time'),
+      until: Joi.date().iso().optional().default('').description('query for the top payout in a single month ending at this time'),
+      limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
+      order: orderParam
+    }).unknown(true)
+  },
+
+  response: {
+    schema: Joi.array().items(
+      Joi.object().keys({
+        channel: joiChannel.required(),
+        paid: joiBAT.required().description('amount paid out in BAT'),
+        account_id: Joi.string()
+      })
+    )
   }
-},
-
-auth: {
-  strategy: 'simple-scoped-token',
-  scope: ['publishers'],
-  mode: 'required'
-},
-
-description: 'Used by publishers for retrieving a list of top channels paid out',
-
-tags: [ 'api', 'publishers' ],
-
-validate: {
-  params: Joi.object().keys({
-    type: Joi.string().valid('contributions', 'referrals').required().description('type of payout')
-  }).unknown(true),
-  query: Joi.object().keys({
-    start: Joi.date().iso().optional().default('').description('query for the top payout in a single month beginning at this time'),
-    until: Joi.date().iso().optional().default('').description('query for the top payout in a single month ending at this time'),
-    limit: Joi.number().positive().optional().default(100).description('limit the number of entries returned'),
-    order: orderParam
-  }).unknown(true)
-},
-
-response: {
-  schema: Joi.array().items(
-    Joi.object().keys({
-      channel: joiChannel.required(),
-      paid: joiBAT.required().description('amount paid out in BAT'),
-      account_id: Joi.string()
-    })
-  )
-}
 }
 
 /*
@@ -404,7 +408,6 @@ v1.adTransactions = {
       params,
       payload
     } = request
-    const { postgres } = runtime
     const { amount } = payload
 
     if (typeof process.env.ENABLE_ADS_PAYOUT === 'undefined') {
@@ -415,14 +418,10 @@ v1.adTransactions = {
     }
 
     try {
-      await transactions.insertFromAd(runtime, postgres, Object.assign({}, params, { amount }))
+      await transactions.insertFromAd(runtime, null, Object.assign({}, params, { amount }))
       return {}
     } catch (e) {
-      if (e.code && e.code === '23505') { // Unique constraint violation
-        throw boom.conflict('Transaction with that id exists, updates are not allowed')
-      } else {
-        throw boom.boomify(e)
-      }
+      throw extrasUtils.postgresToBoom(e)
     }
   },
   auth: {
@@ -432,7 +431,7 @@ v1.adTransactions = {
   },
 
   description: 'Used by ads serve for scheduling an ad viewing payout',
-  tags: [ 'api', 'ads' ],
+  tags: ['api', 'ads'],
 
   validate: {
     params: Joi.object().keys({

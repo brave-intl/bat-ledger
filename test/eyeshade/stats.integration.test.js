@@ -1,21 +1,21 @@
-import { serial as test } from 'ava'
-import uuidV4 from 'uuid/v4'
-import {
+const { serial: test } = require('ava')
+const uuidV4 = require('uuid/v4')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import { Runtime } from 'bat-utils'
-import BigNumber from 'bignumber.js'
-import {
+} = require('bat-utils/lib/extras-utils')
+const { Runtime } = require('bat-utils')
+const BigNumber = require('bignumber.js')
+const {
   insertFromSettlement
-} from '../../eyeshade/lib/transaction'
-import { workers as walletWorkers } from '../../eyeshade/workers/wallet'
-import { freezeOldSurveyors } from '../../eyeshade/workers/reports'
-import {
+} = require('../../eyeshade/lib/transaction')
+const { workers: walletWorkers } = require('../../eyeshade/workers/wallet')
+const { freezeOldSurveyors } = require('../../eyeshade/workers/reports')
+const {
   debug,
   agents,
   ok,
   cleanPgDb
-} from '../utils'
+} = require('../utils')
 
 const {
   BAT_REDIS_URL,
@@ -34,7 +34,7 @@ const runtime = new Runtime({
   },
   wallet: {
     settlementAddress: {
-      'BAT': '0xdeadbeef'
+      BAT: '0xdeadbeef'
     }
   },
   currency: {

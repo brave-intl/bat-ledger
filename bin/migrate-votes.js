@@ -23,7 +23,7 @@ async function consume (pg, votings) {
       const probi = voting.probi && new BigNumber(voting.probi.toString())
       const fees = voting.probi && new BigNumber(voting.fees.toString())
 
-      await pg.pool.query('insert into votes (id, created_at, updated_at, cohort, amount, fees, tally, excluded, transacted, channel, surveyor_id) values ($1, to_timestamp($2), to_timestamp($3), $4, $5, $6, $7, $8, $9, $10, $11)', [
+      await pg.query('insert into votes (id, created_at, updated_at, cohort, amount, fees, tally, excluded, transacted, channel, surveyor_id) values ($1, to_timestamp($2), to_timestamp($3), $4, $5, $6, $7, $8, $9, $10, $11)', [
         // channel, cohort and surveyor group id should be unique per
         uuidv5(normalizedChannel + voting.cohort + voting.surveyorId, 'f0ca8ff9-8399-493a-b2c2-6d4a49e5223a'),
         created / 1000,
@@ -52,14 +52,15 @@ async function main () {
   const surveyorC = database.get('surveyors', debug)
   const surveyors = await surveyorC.find()
 
-  for (let surveyor of surveyors) {
+  for (let i = 0; i < surveyors.length; i += 1) {
+    const surveyor = surveyors[i]
     const { surveyorId } = surveyor
     const created = createdTimestamp(surveyor._id)
 
     const probi = surveyor.probi && new BigNumber(surveyor.probi.toString())
     const price = probi.dividedBy('1e18').dividedBy(surveyor.votes)
 
-    await pg.pool.query('insert into surveyor_groups (id, created_at, updated_at, price, ballots, frozen) values ($1, to_timestamp($2), to_timestamp($3), $4, $5, $6)', [
+    await pg.query('insert into surveyor_groups (id, created_at, updated_at, price, ballots, frozen) values ($1, to_timestamp($2), to_timestamp($3), $4, $5, $6)', [
       surveyorId,
       created / 1000,
       surveyor.timestamp.high_,
@@ -74,7 +75,7 @@ async function main () {
   }
 
   const surveyorIds = surveyors.map((surveyor) => surveyor.surveyorId)
-  const votings = await votingC.find({ 'surveyorId': { '$nin': surveyorIds } })
+  const votings = await votingC.find({ surveyorId: { $nin: surveyorIds } })
   await consume(pg, votings)
 
   const backfillTransacted = `
@@ -90,7 +91,7 @@ where votes.id = o.id
 ;
  `
 
-  await pg.pool.query(backfillTransacted, [])
+  await pg.pool().query(backfillTransacted, [])
 
   await database.db.close()
 }

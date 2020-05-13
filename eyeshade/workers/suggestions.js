@@ -1,5 +1,5 @@
 const { votesId } = require('../lib/queries.js')
-const { suggestionType } = require('../lib/suggestions.js')
+const suggestions = require('../lib/suggestions.js')
 const BigNumber = require('bignumber.js')
 
 const suggestionTopic = process.env.ENV + '.grant.suggestion'
@@ -7,14 +7,22 @@ const suggestionTopic = process.env.ENV + '.grant.suggestion'
 module.exports = (runtime, callback) => {
   runtime.kafka.on(suggestionTopic, async (messages) => {
     const client = await runtime.postgres.connect()
+    const now = new Date()
+    const date = [
+      now.getFullYear(),
+      ((now.getMonth() + 1) + '').padStart(2, '0'),
+      (now.getDate() + '').padStart(2, '0')
+    ].join('-')
+
     try {
       await client.query('BEGIN')
       try {
-        for (let message of messages) {
+        for (let i = 0; i < messages.length; i += 1) {
+          const message = messages[i]
           const buf = Buffer.from(message.value, 'binary')
           let suggestion
           try {
-            suggestion = suggestionType.fromBuffer(buf)
+            ;({ suggestion } = suggestions.decode(buf))
           } catch (e) {
             // If the event is not well formed, capture the error and continue
             runtime.captureException(e, { extra: { topic: suggestionTopic, message: message } })
@@ -22,11 +30,12 @@ module.exports = (runtime, callback) => {
           }
 
           const publisher = suggestion.channel
-          for (let source of suggestion.funding) {
+          for (let j = 0; j < suggestion.funding.length; j += 1) {
+            const source = suggestion.funding[j]
             // FIXME
             const voteValue = '0.25'
 
-            const surveyorId = source.promotion // abuse promotion id as surveyor id
+            const surveyorId = date + '_' + source.promotion // abuse promotion id as surveyor id
 
             const surveyorUpdate = `
             insert into surveyor_groups (id, price, virtual) values ($1, $2, true)

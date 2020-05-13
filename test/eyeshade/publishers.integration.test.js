@@ -1,18 +1,18 @@
 'use strict'
-import _ from 'underscore'
-import { serial as test } from 'ava'
-import uuidV4 from 'uuid/v4'
-import {
+const _ = require('underscore')
+const { serial: test } = require('ava')
+const uuidV4 = require('uuid/v4')
+const {
   ok,
   cleanDbs,
   cleanPgDb,
   agents,
   connectToDb
-} from '../utils'
-import {
+} = require('../utils')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
+} = require('bat-utils/lib/extras-utils')
+const Postgres = require('bat-utils/lib/runtime-postgres')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 
@@ -24,14 +24,14 @@ test.afterEach.always(async t => {
 test('unauthed requests cannot post settlement', async t => {
   t.plan(0)
   await agents.eyeshade.global
-    .post(`/v2/publishers/settlement`)
+    .post('/v2/publishers/settlement')
     .send({})
     .expect(403)
 })
 
 test('cannot post payouts if the publisher field is blank and type is not manual', async t => {
   t.plan(0)
-  const url = `/v2/publishers/settlement`
+  const url = '/v2/publishers/settlement'
   const manualSettlement = {
     owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
     publisher: '',
@@ -52,7 +52,7 @@ test('cannot post payouts if the publisher field is blank and type is not manual
 })
 
 test('can post a manual settlement from publisher app using token auth', async t => {
-  const url = `/v2/publishers/settlement`
+  const url = '/v2/publishers/settlement'
   const eyeshadeMongo = await connectToDb('eyeshade')
   const settlements = eyeshadeMongo.collection('settlements')
   const client = await postgres.connect()
@@ -83,8 +83,8 @@ test('can post a manual settlement from publisher app using token auth', async t
   t.true(settlementDoc.documentId === manualSettlement.documentId)
 
   // ensure both transactions were entered into transactions table
-  const manualTxsQuery = `select * from transactions where transaction_type = 'manual';`
-  const manualSettlementTxQuery = `select * from transactions where transaction_type = 'manual_settlement';`
+  const manualTxsQuery = 'select * from transactions where transaction_type = \'manual\';'
+  const manualSettlementTxQuery = 'select * from transactions where transaction_type = \'manual_settlement\';'
 
   let rows
   do { // wait until settlement-report is processed and transactions are entered into postgres
@@ -152,9 +152,9 @@ test('can post a manual settlement from publisher app using token auth', async t
 })
 
 test('only can post settlement files under to 20mbs', async t => {
-  const url = `/v2/publishers/settlement`
+  const url = '/v2/publishers/settlement'
 
-  let bigSettlement = {
+  const bigSettlement = {
     owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
     publisher: '',
     address: '🌝',
@@ -170,7 +170,7 @@ test('only can post settlement files under to 20mbs', async t => {
     hash: uuidV4().toLowerCase()
   }
 
-  let smallSettlement = {
+  const smallSettlement = {
     owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
     publisher: '',
     address: uuidV4().toLowerCase(),

@@ -11,6 +11,7 @@ const accountsController = require('./controllers/accounts')
 const publishersController = require('./controllers/publishers')
 const referralsController = require('./controllers/referrals')
 const statsController = require('./controllers/stats')
+const snapshotsController = require('./controllers/snapshots')
 
 Runtime.newrelic.setupNewrelic(config, __filename)
 
@@ -18,7 +19,8 @@ const parentModules = [
   accountsController,
   publishersController,
   referralsController,
-  statsController
+  statsController,
+  snapshotsController
 ]
 
 const options = {

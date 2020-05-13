@@ -40,7 +40,7 @@ const {
 } = process.env
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
-const braveYoutubePublisher = `youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg`
+const braveYoutubePublisher = 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg'
 
 const eyeshadeCollections = [
   'grants',
@@ -195,10 +195,10 @@ const cleanGrantDb = async () => {
   const client = await pool.connect()
   try {
     await Promise.all([
-      client.query('DELETE from claim_creds;'),
-      client.query('DELETE from claims;'),
-      client.query('DELETE from wallets;'),
-      client.query('DELETE from promotions;')
+      client.query('DELETE from claim_creds'),
+      client.query('DELETE from claims'),
+      client.query('DELETE from wallets'),
+      client.query('DELETE from promotions')
     ])
   } finally {
     client.release()
@@ -278,7 +278,9 @@ function cleanPgDb (postgres) {
         client.query('DELETE from surveyor_groups;'),
         client.query('DELETE from geo_referral_countries;'),
         client.query('DELETE from geo_referral_groups;'),
-        client.query('DELETE from votes;')
+        client.query('DELETE from votes;'),
+        client.query('DELETE from balance_snapshots;'),
+        client.query('DELETE from payout_reports;')
       ])
       await client.query('REFRESH MATERIALIZED VIEW account_balances;')
       await insertReferralInfos(client)
@@ -323,7 +325,7 @@ function setupCreatePayload ({
     const headers = {
       digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
     }
-    headers['signature'] = sign({
+    headers.signature = sign({
       headers: headers,
       keyId: 'primary',
       secretKey: uint8tohex(keypair.secretKey)
@@ -381,7 +383,8 @@ async function insertReferralInfos (client) {
   }, {
     path: filePath('0010_geo_referral', 'seeds', 'countries.sql')
   }]
-  for (const { path } of ratesPaths) {
+  for (let i = 0; i < ratesPaths.length; i += 1) {
+    const { path } = ratesPaths[i]
     await client.query(fs.readFileSync(path).toString())
   }
 
@@ -426,7 +429,7 @@ async function setupForwardingServer ({
       grants: {
         baseUrl: process.env.BAT_GRANT_SERVER,
         headers: {
-          'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN || '00000000-0000-4000-0000-000000000000'),
+          Authorization: 'Bearer ' + (process.env.GRANT_TOKEN || '00000000-0000-4000-0000-000000000000'),
           'Content-Type': 'application/json'
         }
       }
@@ -508,7 +511,7 @@ function signTxn (keypair, body, octets) {
     digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
 
-  headers['signature'] = sign({
+  headers.signature = sign({
     headers: headers,
     keyId: 'primary',
     secretKey: uint8tohex(keypair.secretKey)

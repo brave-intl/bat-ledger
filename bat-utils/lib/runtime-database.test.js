@@ -1,8 +1,8 @@
 'use strict'
 
-import database from './runtime-database.js'
-import test from 'ava'
-import dotenv from 'dotenv'
+const database = require('./runtime-database.js')
+const test = require('ava')
+const dotenv = require('dotenv')
 dotenv.config()
 
 test('database.form', async t => {
@@ -18,13 +18,13 @@ test('database.gather', async t => {
   const entry = {
     name: 'voting',
     property: 'surveyorId_1_publisher_1_cohort',
-    unique: [ { surveyorId: 1, publisher: 1, cohort: 1 } ],
-    others: [ { counts: 1 }, { timestamp: 1 },
+    unique: [{ surveyorId: 1, publisher: 1, cohort: 1 }],
+    others: [{ counts: 1 }, { timestamp: 1 },
       { exclude: 1 }, { hash: 1 }, { counts: 1 },
       { altcurrency: 1, probi: 1 },
       { altcurrency: 1, exclude: 1, probi: 1 },
       { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-      { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+      { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 }]
   }
 
   t.deepEqual(db.gather(entry), [

@@ -28,7 +28,7 @@ const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 
 const amountValidator = braveJoi.string().numeric()
 const groupNameValidator = Joi.string().optional().description('the name given to the group')
-const publisherValidator = braveJoi.string().publisher().required().description('the publisher identity')
+const publisherValidator = braveJoi.string().publisher().allow(null, '').optional().description('the publisher identity. e.g. youtube#VALUE, twitter#VALUE, reddit#value, etc., or null.  owner aka publishers#VALUE should not go here')
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
 const groupIdValidator = Joi.string().guid().description('the region from which this referral came')
 const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
@@ -89,16 +89,15 @@ v1.findReferrals = {
       const transactionId = request.params.transactionId
       const debug = braveHapi.debug(module, request)
       const transactions = runtime.database.get('referrals', debug)
-      let entries
 
-      entries = await transactions.find({ transactionId: transactionId })
+      const entries = await transactions.find({ transactionId: transactionId })
       if (entries.length === 0) {
         throw boom.notFound('no such transaction-identifier: ' + transactionId)
       }
 
       return entries.map((entry) => {
         return underscore.extend({ channelId: entry.publisher },
-          underscore.pick(entry, [ 'downloadId', 'platform', 'finalized' ]))
+          underscore.pick(entry, ['downloadId', 'platform', 'finalized']))
       })
     }
   },
@@ -110,7 +109,7 @@ v1.findReferrals = {
   },
 
   description: 'Returns referral transactions for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -136,8 +135,7 @@ v1.getReferralGroups = {
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
     const allFields = ['id'].concat(fields)
 
-    const { rows } = await runtime.postgres.query(statement)
-
+    const { rows } = await runtime.postgres.query(statement, [], true)
     return rows.map((row) => _.pick(row, allFields))
   },
 
@@ -148,7 +146,7 @@ v1.getReferralGroups = {
   },
 
   description: 'Records referral transactions for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({
@@ -227,7 +225,7 @@ v1.getReferralsStatement = {
   },
 
   description: 'Get the referral details for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({
@@ -260,10 +258,11 @@ v1.createReferrals = {
       // get rates once at beginning (uses cache too)
       const {
         rows: referralGroups
-      } = await postgres.query(getActiveGroups)
+      } = await postgres.query(getActiveGroups, [], true)
       referralGroups.sort((a) => a.activeAt)
 
-      for (const referral of payload) {
+      for (let i = 0; i < payload.length; i += 1) {
+        const referral = payload[i]
         const {
           platform,
           finalized,
@@ -312,7 +311,7 @@ v1.createReferrals = {
                 altcurrency,
                 finalized: new Date(finalized),
                 owner,
-                publisher,
+                publisher: publisher || null,
                 transactionId,
                 payoutRate,
                 probi,
@@ -326,12 +325,14 @@ v1.createReferrals = {
       const bulkResult = await referrals.bulkWrite(referralsToInsert)
       if (!bulkResult.ok) {
         // insert failed
-        runtime.captureException(new Error('failed to insert'), {
+        const err = new Error('failed to insert')
+        runtime.captureException(err, {
           extra: {
             bulkResult,
             transactionId
           }
         })
+        throw err
       }
 
       await queue.send(debug, 'referral-report', {
@@ -350,7 +351,7 @@ v1.createReferrals = {
   },
 
   description: 'Records referral transactions for a publisher',
-  tags: [ 'api', 'referrals' ],
+  tags: ['api', 'referrals'],
 
   validate: {
     headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
@@ -398,13 +399,13 @@ module.exports.initialize = async (debug, runtime) => {
 
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { downloadId: 1 } ],
-      others: [ { transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
+      unique: [{ downloadId: 1 }],
+      others: [{ transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
         { altcurrency: 1 }, { probi: 1 }, { exclude: 1 }, { hash: 1 }, { timestamp: 1 },
         { altcurrency: 1, probi: 1 },
         { altcurrency: 1, exclude: 1, probi: 1 },
         { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-        { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 } ]
+        { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 }]
     }
   ])
 }

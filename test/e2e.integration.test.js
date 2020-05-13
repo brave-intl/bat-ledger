@@ -1,23 +1,25 @@
 'use strict'
-import parsePrometheusText from 'parse-prometheus-text-format'
-import BigNumber from 'bignumber.js'
-import UpholdSDK from '@uphold/uphold-sdk-javascript'
-import anonize from 'node-anonize2-relic'
-import crypto from 'crypto'
-import { serial as test } from 'ava'
-import tweetnacl from 'tweetnacl'
-import uuidV4 from 'uuid/v4'
-import { sign } from 'http-request-signature'
-import _ from 'underscore'
-import dotenv from 'dotenv'
-import { agent } from 'supertest'
-import {
+const parsePrometheusText = require('parse-prometheus-text-format')
+const BigNumber = require('bignumber.js')
+const {
+  default: UpholdSDK
+} = require('@uphold/uphold-sdk-javascript')
+const anonize = require('node-anonize2-relic')
+const crypto = require('crypto')
+const { serial: test } = require('ava')
+const tweetnacl = require('tweetnacl')
+const uuidV4 = require('uuid/v4')
+const { sign } = require('http-request-signature')
+const _ = require('underscore')
+const dotenv = require('dotenv')
+const { agent } = require('supertest')
+const {
   timeout,
   uint8tohex,
   justDate
-} from 'bat-utils/lib/extras-utils'
-import { Runtime } from 'bat-utils'
-import {
+} = require('bat-utils/lib/extras-utils')
+const { Runtime } = require('bat-utils')
+const {
   signTxn,
   makeSettlement,
   cleanDbs,
@@ -32,13 +34,13 @@ import {
   debug,
   statsUrl,
   connectToDb
-} from './utils'
-import {
+} = require('./utils')
+const {
   freezeOldSurveyors
-} from '../eyeshade/workers/reports'
-import {
+} = require('../eyeshade/workers/reports')
+const {
   updateBalances
-} from '../eyeshade/lib/transaction'
+} = require('../eyeshade/lib/transaction')
 
 dotenv.config()
 
@@ -60,8 +62,8 @@ const runtime = new Runtime({
 })
 
 const upholdBaseUrls = {
-  'prod': 'https://api.uphold.com',
-  'sandbox': 'https://api-sandbox.uphold.com'
+  prod: 'https://api.uphold.com',
+  sandbox: 'https://api-sandbox.uphold.com'
 }
 const environment = process.env.UPHOLD_ENVIRONMENT || 'sandbox'
 const uphold = new UpholdSDK({ // eslint-disable-line new-cap
@@ -105,10 +107,10 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   // Create user wallet
   let response, body
-  let [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t)
+  const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t)
 
   // Fund user Uphold wallet
-  let amountFunded = await fundUserWalletAndTestStats(t, personaCredential, paymentId, userCardId)
+  const amountFunded = await fundUserWalletAndTestStats(t, personaCredential, paymentId, userCardId)
 
   // Purchase votes
   await sendUserTransaction(t, paymentId, amountFunded, userCardId, donorCardId, keypair, surveyorId, viewingId)
@@ -124,7 +126,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   }])
 
   // Create voting credentials
-  let [surveyorIds, viewingCredential] = await createVotingCredentials(t, viewingId)
+  const [surveyorIds, viewingCredential] = await createVotingCredentials(t, viewingId)
 
   // look up surveyorIds to ensure that they belong to the correct cohorts
   const ledgerDB = await connectToDb('ledger')
@@ -132,8 +134,9 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   let numControlSurveryors = 0
   let numGrantSurveyors = 0
-  for (let surveyorId of surveyorIds) {
-    let cohort = (await surveyors.findOne({ surveyorId: surveyorId })).payload.cohort
+  for (let i = 0; i < surveyorIds.length; i += 1) {
+    const surveyorId = surveyorIds[i]
+    const cohort = (await surveyors.findOne({ surveyorId: surveyorId })).payload.cohort
     if (cohort === 'control') {
       numControlSurveryors += 1
     } else if (cohort === 'grant') {
@@ -168,7 +171,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     const surveyor = new anonize.Surveyor(response.body)
     response = await agents.ledger.global
       .put('/v2/surveyor/voting/' + encodeURIComponent(id))
-      .send({ 'proof': viewingCredential.submit(surveyor, { publisher: channels[i % channels.length] }) })
+      .send({ proof: viewingCredential.submit(surveyor, { publisher: channels[i % channels.length] }) })
       .expect(ok)
   }
 
@@ -218,7 +221,6 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
     }))
   t.deepEqual(body, [], 'endpoint defaults pending to false')
 
-  let amount, entry
   const account = [braveYoutubePublisher]
   const query = { account }
 
@@ -232,13 +234,12 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
       .get(balanceURL)
       .query(query)
       .expect(ok))
-    entry = body[0]
-  } while (!entry)
+  } while (!body.length)
 
-  t.true(entry.balance > 0)
+  t.true(body[0].balance > 0)
 
   const newYear = new Date('2019-01-01')
-  const settlement = makeSettlement('contribution', entry.balance, {
+  const settlement = makeSettlement('contribution', body[0].balance, {
     executedAt: newYear.toISOString()
   })
 
@@ -251,10 +252,9 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
       .get(balanceURL)
       .query(query)
       .expect(ok))
-    entry = body[0]
-  } while (+entry.balance)
+  } while (+body[0].balance)
 
-  const { balance } = entry
+  const { balance } = body[0]
   t.true(balance.length > 1)
   t.is(+balance, 0)
 
@@ -310,7 +310,7 @@ WHERE
   } while (!transactions.length)
 
   const [tx] = transactions
-  amount = tx.amount
+  const amount = tx.amount
   t.true(amount.length > 1)
   t.true(amount > 0)
 
@@ -371,7 +371,7 @@ test('wallets can be claimed by verified members', async (t) => {
         amount
       }
     }
-    let body = { signedTx: signTxn(anonCard.keypair, txn) }
+    const body = { signedTx: signTxn(anonCard.keypair, txn) }
     if (anonymousAddress) {
       _.extend(body, { anonymousAddress })
     }
@@ -385,7 +385,7 @@ test('wallets can be claimed by verified members', async (t) => {
     // Create user wallet
     const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t) // eslint-disable-line
     // Fund user uphold wallet
-    let amountFunded = await fundUserWallet(t, personaCredential, paymentId, userCardId)
+    const amountFunded = await fundUserWallet(t, personaCredential, paymentId, userCardId)
     return {
       keypair,
       amount: amountFunded,
@@ -398,27 +398,28 @@ test('wallets can be claimed by verified members', async (t) => {
 async function createUserWallet (t) {
   const personaId = uuidV4().toLowerCase()
   const viewingId = uuidV4().toLowerCase()
-  let response, octets, headers, payload
+  let response
 
   response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
-  t.true(response.body.hasOwnProperty('registrarVK'))
+  t.true(_.isString(response.body.registrarVK))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
   const keypair = tweetnacl.sign.keyPair()
-  let body = {
+  const body = {
     label: uuidV4().toLowerCase(),
     currency: 'BAT',
     publicKey: uint8tohex(keypair.publicKey)
   }
-  octets = JSON.stringify(body)
-  headers = {
+  const octets = JSON.stringify(body)
+  const headers = {
     digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
   }
-  headers['signature'] = sign({
+  headers.signature = sign({
     headers: headers,
     keyId: 'primary',
     secretKey: uint8tohex(keypair.secretKey)
   }, { algorithm: 'ed25519' })
-  payload = { requestType: 'httpSignature',
+  const payload = {
+    requestType: 'httpSignature',
     request: {
       body: body,
       headers: headers,
@@ -430,15 +431,13 @@ async function createUserWallet (t) {
   response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
 
-  t.true(response.body.hasOwnProperty('wallet'))
-  t.true(response.body.wallet.hasOwnProperty('paymentId'))
-  t.true(response.body.wallet.hasOwnProperty('addresses'))
-  t.true(response.body.hasOwnProperty('verification'))
-  t.true(response.body.wallet.addresses.hasOwnProperty('BAT'))
-  t.true(response.body.wallet.addresses.hasOwnProperty('BTC'))
-  t.true(response.body.wallet.addresses.hasOwnProperty('CARD_ID'))
-  t.true(response.body.wallet.addresses.hasOwnProperty('ETH'))
-  t.true(response.body.wallet.addresses.hasOwnProperty('LTC'))
+  t.true(_.isString(response.body.wallet.paymentId))
+  t.true(_.isString(response.body.verification))
+  t.true(_.isString(response.body.wallet.addresses.BAT))
+  t.true(_.isString(response.body.wallet.addresses.BTC))
+  t.true(_.isString(response.body.wallet.addresses.CARD_ID))
+  t.true(_.isString(response.body.wallet.addresses.ETH))
+  t.true(_.isString(response.body.wallet.addresses.LTC))
 
   const paymentId = response.body.wallet.paymentId
   const userCardId = response.body.wallet.addresses.CARD_ID
@@ -454,31 +453,28 @@ async function createUserWallet (t) {
 }
 
 async function getSurveyorContributionAmount (t, personaCredential) {
-  let response
-  response = await agents.ledger.global
+  const response = await agents.ledger.global
     .get('/v2/surveyor/contribution/current/' + personaCredential.parameters.userId)
     .expect(ok)
 
-  t.true(response.body.hasOwnProperty('surveyorId'))
-  t.true(response.body.hasOwnProperty('payload'))
-  t.true(response.body.payload.hasOwnProperty('adFree'))
-  t.true(response.body.payload.adFree.hasOwnProperty('probi'))
+  t.true(_.isString(response.body.surveyorId))
+  t.true(_.isString(response.body.payload.adFree.probi))
 
   const donateAmt = new BigNumber(response.body.payload.adFree.probi).dividedBy('1e18').toNumber()
   return donateAmt
 }
 
 async function waitForContributionAmount (t, paymentId, donateAmt) {
-  let response, err
+  let response
   do { // This depends on currency conversion rates being available, retry until they are available
     response = await agents.ledger.global
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
     if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
   } while (response.status === 503)
-  err = ok(response)
+  const err = ok(response)
   if (err) throw err
 
-  t.true(response.body.hasOwnProperty('balance'))
+  t.true(_.isString(response.body.balance))
   t.true(_.isString(response.body.httpSigningPubKey))
   t.is(response.body.balance, '0.0000')
 
@@ -530,7 +526,7 @@ async function createCardTransaction (desiredTxAmt, userCardId) {
   uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
 
   await uphold.createCardTransaction(donorCardId,
-    { 'amount': desiredTxAmt, 'currency': 'BAT', 'destination': userCardId },
+    { amount: desiredTxAmt, currency: 'BAT', destination: userCardId },
     true // commit tx in one swoop
   )
 }
@@ -560,7 +556,7 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   // ensure that transactions out of the restricted user card require a signature
   // by trying to send back to the donor card
   await t.throwsAsync(uphold.createCardTransaction(userCardId,
-    { 'amount': txAmount, 'currency': 'BAT', 'destination': donorCardId },
+    { amount: txAmount, currency: 'BAT', destination: donorCardId },
     true // commit tx in one swoop
   ))
 
@@ -614,9 +610,9 @@ async function sendUserTransaction (t, paymentId, txAmount, userCardId, donorCar
   t.true(balanceBefore.greaterThan(balanceAfter))
   t.is(0, +balanceAfter.toString())
 
-  t.false(response.body.hasOwnProperty('satoshis'))
-  t.true(response.body.hasOwnProperty('altcurrency'))
-  t.true(response.body.hasOwnProperty('probi'))
+  t.false(_.isString(response.body.satoshis))
+  t.true(_.isString(response.body.altcurrency))
+  t.true(_.isString(response.body.probi))
 
   return justRightPayload
 }
@@ -632,12 +628,12 @@ async function getLedgerBalance (paymentId) {
 }
 
 async function createVotingCredentials (t, viewingId) {
-  let response, err
+  let response
   response = await agents.ledger.global
     .get('/v2/registrar/viewing')
     .expect(ok)
 
-  t.true(response.body.hasOwnProperty('registrarVK'))
+  t.true(_.isString(response.body.registrarVK))
   const viewingCredential = new anonize.Credential(viewingId, response.body.registrarVK)
 
   do { // Contribution surveyor creation is handled asynchonously, this API will return 503 until ready
@@ -648,10 +644,9 @@ async function createVotingCredentials (t, viewingId) {
       .post('/v2/registrar/viewing/' + viewingCredential.parameters.userId)
       .send({ proof: viewingCredential.request() })
   } while (response.status === 503)
-  err = ok(response)
+  const err = ok(response)
   if (err) throw err
 
-  t.true(response.body.hasOwnProperty('surveyorIds'))
   const surveyorIds = response.body.surveyorIds
   t.true(surveyorIds.length >= 5)
   viewingCredential.finalize(response.body.verification)

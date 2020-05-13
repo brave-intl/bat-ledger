@@ -1,13 +1,13 @@
 'use strict'
 
-import Currency from './runtime-currency'
-import BigNumber from 'bignumber.js'
-import test from 'ava'
-import _ from 'underscore'
-import dotenv from 'dotenv'
-import {
+const Currency = require('./runtime-currency')
+const BigNumber = require('bignumber.js')
+const test = require('ava')
+const _ = require('underscore')
+const dotenv = require('dotenv')
+const {
   timeout
-} from './extras-utils'
+} = require('./extras-utils')
 dotenv.config()
 
 const currency = make(Currency)
@@ -32,8 +32,7 @@ test('get decimal scale', async (t) => {
 
 test('get fiat 2 alt rate', async (t) => {
   t.plan(5)
-  let result
-  result = await currency.fiat2alt('USD', 5, 'BAT')
+  const result = await currency.fiat2alt('USD', 5, 'BAT')
   t.true(_.isString(result))
   t.true(_.isNumber(+result))
   // make sure is integer
@@ -71,8 +70,7 @@ test('capture exception is passed up to runtime', async (t) => {
 test('rates are provided for basic tokens', async (t) => {
   const knownRateKeys = currency.knownRateKeys
   t.plan(2 + knownRateKeys.length)
-  let result
-  result = await currency.rates('BAT')
+  const result = await currency.rates('BAT')
   t.true(_.isObject(result))
   t.true(knownRateKeys.length > 1)
   knownRateKeys.forEach((key) => {

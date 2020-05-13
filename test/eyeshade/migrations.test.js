@@ -1,8 +1,8 @@
 'use strict'
 
-import { serial as test } from 'ava'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import uuidV4 from 'uuid/v4'
+const { serial: test } = require('ava')
+const Postgres = require('bat-utils/lib/runtime-postgres')
+const uuidV4 = require('uuid/v4')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 
@@ -26,9 +26,9 @@ test('removal of payout_report_id removes payout_reports_ads as well', async (t)
   const id = uuidV4()
   await postgres.query(createPayoutReportQuery, [id])
   await postgres.query(createPotentialPaymentsQuery, [id, uuidV4(), uuidV4(), '5'])
-  q = await postgres.query(`SELECT * FROM potential_payments_ads WHERE payout_report_id = $1;`, [id])
+  q = await postgres.query('SELECT * FROM potential_payments_ads WHERE payout_report_id = $1;', [id])
   t.is(q.rowCount, 1, 'found by payout_reports_ads id')
-  await postgres.query(`DELETE FROM payout_reports_ads WHERE id = $1;`, [id])
-  q = await postgres.query(`SELECT * FROM potential_payments_ads WHERE payout_report_id = $1;`, [id])
+  await postgres.query('DELETE FROM payout_reports_ads WHERE id = $1;', [id])
+  q = await postgres.query('SELECT * FROM potential_payments_ads WHERE payout_report_id = $1;', [id])
   t.is(q.rowCount, 0, 'removal of potential_payments_ads when corresponding payout_reports_ads is deleted')
 })

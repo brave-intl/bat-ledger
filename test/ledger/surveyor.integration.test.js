@@ -1,16 +1,16 @@
-import { serial as test } from 'ava'
-import {
+const { serial: test } = require('ava')
+const {
   Runtime
-} from 'bat-utils'
-import _ from 'underscore'
-import {
+} = require('bat-utils')
+const _ = require('underscore')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import BigNumber from 'bignumber.js'
-import {
+} = require('bat-utils/lib/extras-utils')
+const BigNumber = require('bignumber.js')
+const {
   addSurveyorChoices
-} from '../../ledger/controllers/surveyor'
-import {
+} = require('../../ledger/controllers/surveyor')
+const {
   agents,
   getSurveyor,
   connectToDb,
@@ -18,7 +18,7 @@ import {
   cleanDbs,
   cleanPgDb,
   ok
-} from '../utils'
+} = require('../utils')
 
 const runtime = new Runtime({
   postgres: {
@@ -37,11 +37,11 @@ test('verify voting batching endpoint does not error', async t => {
   t.plan(0)
   const surveyorType = 'voting'
   const url = `/v2/batch/surveyor/${surveyorType}`
-  const data = [ { surveyorId: '...', proof: '...' } ]
+  const data = [{ surveyorId: '...', proof: '...' }]
 
   await agents.ledger.global.post(url).send(data).expect(ok)
 
-  const getURL = `/v2/batch/surveyor/16457ddb9913cd7928d3205ab455ecd`
+  const getURL = '/v2/batch/surveyor/16457ddb9913cd7928d3205ab455ecd'
 
   await agents.ledger.global.get(getURL).expect(ok)
 })
@@ -57,14 +57,9 @@ test('verify surveyor sends back choices', async t => {
   console.log('choices', choices) // eslint-disable-line
   checkResponse(response, choices)
   t.plan(2 + choices.USD.length)
-  for (let number of choices.USD) {
-    t.true(_.isNumber(number), 'each item is a number')
+  for (let i = 0; i < choices.USD.length; i += 1) {
+    t.true(_.isNumber(choices.USD[i]), 'each item is a number')
   }
-  /*
-  {
-    USD: [20, 35, 50, 85]
-  }
-  */
 
   function checkResponse (response, expectation) {
     const { body } = response
@@ -88,7 +83,8 @@ test('check votes ratio', async (t) => {
   }]
   t.plan(list.length)
 
-  for (let context of list) {
+  for (let i = 0; i < list.length; i += 1) {
+    const context = list[i]
     const {
       options,
       rate
@@ -146,7 +142,7 @@ test('required cohorts are added to surveyors', async (t) => {
   await surveyors.remove({
     surveyorId
   })
-  await runtime.postgres.query(`DELETE FROM surveyor_groups WHERE id = $1::text;`, [surveyorId])
+  await runtime.postgres.query('DELETE FROM surveyor_groups WHERE id = $1::text;', [surveyorId])
 
   function findOneSurveyor () {
     return surveyors.findOne({

@@ -50,7 +50,7 @@ v1.login = {
       runtime.notify(debug, {
         channel: '#devops-bot',
         text: 'login ' + credentials.provider + ' ' +
-          JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
+          JSON.stringify(underscore.pick(credentials.profile, ['username', 'displayName', 'email', 'id'])) +
           ': ' + JSON.stringify(credentials.scope) + ' at ' + os.hostname() + ' ' + npminfo.name + '@' +
           npminfo.version + (process.env.DYNO ? ' at ' + process.env.DYNO : '') + ' from ' + whitelist.ipaddr(request)
       })
@@ -64,7 +64,7 @@ v1.login = {
 
   description: 'Logs the user into management operations',
   notes: 'This operation authenticates an administrative role for the server. The user is asked to authenticate their GitHub identity, and are assigned permissions based on team-membership. Operations are henceforth authenticated via an encrypted session cookie.',
-  tags: [ 'api' ],
+  tags: ['api'],
 
   validate: {
     query: Joi.object().keys({
@@ -91,7 +91,7 @@ v1.logout = {
         runtime.notify(debug, {
           channel: '#devops-bot',
           text: 'logout ' + credentials.provider + ' ' +
-            JSON.stringify(underscore.pick(credentials.profile, [ 'username', 'displayName', 'email', 'id' ])) +
+            JSON.stringify(underscore.pick(credentials.profile, ['username', 'displayName', 'email', 'id'])) +
 ': ' + JSON.stringify(credentials.scope) + suffix
         })
       } else {
@@ -108,7 +108,7 @@ v1.logout = {
 
   description: 'Logs the user out',
   notes: 'Used to remove the authenticating session cookie.',
-  tags: [ 'api' ]
+  tags: ['api']
 }
 
 module.exports.routes = [

@@ -1,5 +1,5 @@
 const base58check = require('bs58check')
-const batPublisher = require('bat-publisher')
+const batPublisher = require('./extras-publisher')
 const bitcoin = require('bitcoinjs-lib')
 const countryCodes = require('country-list')()
 const currencyCodes = require('currency-codes')
@@ -29,8 +29,8 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const parent = state.ancestors[0]
           const skipKeys = {
-            'CARD_ID': true,
-            'BAT': true
+            CARD_ID: true,
+            BAT: true
           }
           const key = Object.keys(parent).find((key) => {
             if (skipKeys[key]) return

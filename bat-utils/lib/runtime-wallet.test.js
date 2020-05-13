@@ -1,15 +1,15 @@
-import crypto from 'crypto'
-import _ from 'underscore'
-import dotenv from 'dotenv'
-import tweetnacl from 'tweetnacl'
-import test from 'ava'
-import uuidV4 from 'uuid/v4'
-import { sign } from 'http-request-signature'
+const crypto = require('crypto')
+const _ = require('underscore')
+const dotenv = require('dotenv')
+const tweetnacl = require('tweetnacl')
+const test = require('ava')
+const uuidV4 = require('uuid/v4')
+const { sign } = require('http-request-signature')
 
-import Wallet from './runtime-wallet'
-import Runtime from '../boot-runtime'
-import utils from './extras-utils'
-import braveJoi from './extras-joi'
+const Wallet = require('./runtime-wallet')
+const Runtime = require('../boot-runtime')
+const utils = require('./extras-utils')
+const braveJoi = require('./extras-joi')
 
 dotenv.config()
 
@@ -33,7 +33,7 @@ test('validateTxSignature: works', async t => {
       digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
     }
 
-    headers['signature'] = sign({
+    headers.signature = sign({
       headers: headers,
       keyId: 'primary',
       secretKey: utils.uint8tohex(keypair.secretKey)

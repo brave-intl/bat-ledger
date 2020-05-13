@@ -7,16 +7,56 @@ const v3 = {}
 const v4 = {}
 const v5 = {}
 
-v3.read = {
-  handler: () => async () => {
-    throw boom.resourceGone()
+const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
+  const endpoint = '/v1/attestations/safetynet'
+  const {
+    config
+  } = runtime
+  const {
+    captcha
+  } = config
+
+  const url = captcha.url + endpoint
+  const headers = {
+    Authorization: 'Bearer ' + captcha.access_token,
+    'Content-Type': 'application/json'
   }
+  const body = JSON.stringify({
+    token: request.headers['safetynet-token']
+  })
+
+  try {
+    await braveHapi.wreck.post(url, {
+      headers,
+      payload: body
+    })
+  } catch (e) {
+    let errPayload = e
+    try {
+      if (e && e.data && e.data.payload && e.data.payload.toString) {
+        const parsed = JSON.parse(e.data.payload.toString())
+        errPayload = parsed.message
+      }
+    } catch (err) {}
+    if (errPayload.isBoom) {
+      throw errPayload
+    }
+    throw boom.badData(errPayload)
+  }
+  const curried = handler(runtime)
+  return curried(request, h)
+}
+
+v3.read = {
+  handler: safetynetPassthrough(() => async () => {
+    throw boom.resourceGone()
+  })
 }
 
 v5.read = {
-  handler: () => async () => {
+  handler: safetynetPassthrough(() => async () => {
     throw boom.resourceGone()
-  }
+  })
 }
 
 v4.read = {
@@ -99,10 +139,10 @@ module.exports.initialize = async (debug, runtime) => {
         batchId: '',
         timestamp: bson.Timestamp.ZERO
       },
-      unique: [ { grantId: 1 } ],
-      others: [ { promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
+      unique: [{ grantId: 1 }],
+      others: [{ promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
         { status: 1 },
-        { batchId: 1 }, { timestamp: 1 } ]
+        { batchId: 1 }, { timestamp: 1 }]
     },
     {
       category: runtime.database.get('promotions', debug),
@@ -120,10 +160,10 @@ module.exports.initialize = async (debug, runtime) => {
 
         protocolVersion: 2
       },
-      unique: [ { promotionId: 1 } ],
-      others: [ { active: 1 }, { count: 1 },
+      unique: [{ promotionId: 1 }],
+      others: [{ active: 1 }, { count: 1 },
         { batchId: 1 }, { timestamp: 1 },
-        { protocolVersion: 2 } ]
+        { protocolVersion: 2 }]
     }
   ])
 

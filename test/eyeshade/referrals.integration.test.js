@@ -1,9 +1,9 @@
 'use strict'
-import { serial as test } from 'ava'
-import _ from 'underscore'
-import uuidV4 from 'uuid/v4'
-import BigNumber from 'bignumber.js'
-import {
+const { serial: test } = require('ava')
+const _ = require('underscore')
+const uuidV4 = require('uuid/v4')
+const BigNumber = require('bignumber.js')
+const {
   ok,
   cleanDbs,
   cleanPgDb,
@@ -11,11 +11,11 @@ import {
   readJSONFile,
   connectToDb,
   braveYoutubePublisher
-} from '../utils'
-import {
+} = require('../utils')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import { Runtime } from 'bat-utils'
+} = require('bat-utils/lib/extras-utils')
+const { Runtime } = require('bat-utils')
 
 const originalGroupId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 const sept = new Date('2019-09-30')
@@ -80,7 +80,8 @@ async function getGroups (query = {}) {
 
 function normalizeGroups (_body) {
   const body = _body.slice(0).sort((a, b) => a.id > b.id ? 1 : -1)
-  for (const group of body) {
+  for (let i = 0; i < body.length; i += 1) {
+    const group = body[i]
     const { codes } = group
     if (codes) {
       group.codes = codes.slice(0).sort()
@@ -108,6 +109,43 @@ test('referrals are inserted into mongo then eventually postgres', async t => {
   t.true(referralDocs.length === 1)
 
   await ensureReferrals(runtime, 1)
+})
+
+test('peer to peer referrals are inserted into mongo then eventually postgres', async t => {
+  const eyeshadeMongo = await connectToDb('eyeshade')
+
+  const txId = uuidV4().toLowerCase()
+  const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
+  const referral1 = {
+    downloadId: uuidV4().toLowerCase(),
+    // no channelId value
+    channelId: null,
+    platform: 'ios',
+    finalized: new Date(),
+    ownerId
+  }
+  const referral2 = {
+    downloadId: uuidV4().toLowerCase(),
+    // no channel id key
+    platform: 'android',
+    finalized: new Date(),
+    ownerId
+  }
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`).send([referral1, referral2]).expect(200)
+
+  // ensure referral docs are created in mongo
+  const referralCollection = await eyeshadeMongo.collection('referrals')
+  const referralDocs = await referralCollection.find({ transactionId: txId }).toArray()
+  const mongoAmount = (new BigNumber(referralDocs[0].probi)).times(2).dividedBy(1e18).toFixed(18)
+  t.is(referralDocs.length, 2)
+  t.true(mongoAmount > 0, 'an amount is held for each referral')
+
+  const rows = await ensureReferrals(runtime, 1)
+  const row = rows[0]
+  const postgresAmount = (new BigNumber(row.amount)).toFixed(18)
+  t.is(1, rows.length, 'only one transaction is added')
+  t.is(mongoAmount, postgresAmount, 'summed amounts match')
+  t.is(null, row.channel, 'the channel id should not be set')
 })
 
 test('duplicate referrals will not be inserted into mongo', async t => {
@@ -258,7 +296,7 @@ async function ensureReferrals (runtime, expect) {
   // ensure referral records are created in postgres
   let rows
   do { // wait until referral-report is processed and transactions are entered into postgres
-    rows = (await postgresClient.query(`select * from transactions where transaction_type = 'referral';`)).rows
+    rows = (await postgresClient.query('select * from transactions where transaction_type = \'referral\';')).rows
     await timeout(500)
   } while (rows.length !== expect)
   postgresClient.release()

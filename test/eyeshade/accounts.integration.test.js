@@ -1,26 +1,26 @@
 'use strict'
 
-import {
-  serial as test
-} from 'ava'
-import uuidV4 from 'uuid/v4'
-import _ from 'underscore'
-import {
+const {
+  serial: test
+} = require('ava')
+const uuidV4 = require('uuid/v4')
+const _ = require('underscore')
+const {
   insertTransaction,
   insertFromSettlement,
   insertFromReferrals
-} from '../../eyeshade/lib/transaction'
+} = require('../../eyeshade/lib/transaction')
 
-import {
+const {
   Runtime,
   extras
-} from 'bat-utils'
-import {
+} = require('bat-utils')
+const {
   cleanPgDb,
   cleanGrantDb,
   agents,
   ok
-} from '../utils'
+} = require('../utils')
 
 const { utils: braveUtils } = extras
 const docId = {
@@ -37,8 +37,8 @@ const runtime = new Runtime({
     access_token: process.env.BAT_RATIOS_TOKEN
   },
   wallet: {
-    settlementAddress: { 'BAT': '0xdeadbeef' },
-    adsPayoutAddress: { 'BAT': '0xdeadbeef' }
+    settlementAddress: { BAT: '0xdeadbeef' },
+    adsPayoutAddress: { BAT: '0xdeadbeef' }
   }
 })
 
@@ -270,7 +270,7 @@ test('a uuid can be sent as an account id', async (t) => {
     toAccountType: 'uphold',
     amount: 1
   }
-  await insertTransaction(runtime.postgres, transaction)
+  await insertTransaction(runtime, null, transaction)
   response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   const { body } = response
   t.is(body.length, 1, 'one tx is matched')
@@ -296,7 +296,7 @@ test('an empty channel can exist', async (t) => {
     toAccountType: 'uphold',
     amount: 1
   }
-  await insertTransaction(runtime.postgres, transaction)
+  await insertTransaction(runtime, null, transaction)
   response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   const { body } = response
   const tx = body[0]

@@ -1,6 +1,6 @@
 const SDebug = require('sdebug')
 const pg = require('pg')
-
+const _ = require('underscore')
 const Pool = pg.Pool
 const debug = new SDebug('postgres')
 
@@ -8,34 +8,60 @@ const Postgres = function (config, runtime) {
   if (!(this instanceof Postgres)) return new Postgres(config, runtime)
 
   if (!config.postgres) return
-  this.pool = new Pool({ connectionString: config.postgres.url, ssl: process.env.NODE_ENV === 'production' })
+  this.rwPool = new Pool({
+    connectionString: config.postgres.url,
+    ssl: process.env.NODE_ENV === 'production'
+  })
 
-  this.pool.on('error', (err, client) => {
+  this.pool().on('error', (err) => {
     debug('postgres', { message: err })
     throw err
   })
 
-  if (config.postgres.schemaVersionCheck) {
-    this.query('select id from migrations order by id desc limit 1;', []).then((resp) => {
-      if (resp.rowCount !== 1) {
-        throw Error('db has not been initialized')
-      }
-      const currentVersion = resp.rows[0].id
-      const targetVersion = config.postgres.schemaVersion
-      if (targetVersion !== currentVersion) {
-        throw Error(`db schema is too old, saw ${currentVersion} expected ${targetVersion}`)
-      }
+  if (config.postgres.roURL) {
+    this.roPool = new Pool({
+      connectionString: config.postgres.roURL,
+      ssl: process.env.NODE_ENV === 'production'
     })
+
+    this.pool(true).on('error', (err) => {
+      debug('postgres', { message: err })
+      throw err
+    })
+  }
+
+  if (config.postgres.schemaVersionCheck) {
+    this.pool(true).query('select id from migrations order by id desc limit 1')
+      .then((resp) => {
+        if (resp.rowCount !== 1) {
+          throw Error('db has not been initialized')
+        }
+        const currentVersion = resp.rows[0].id
+        const targetVersion = config.postgres.schemaVersion
+        if (targetVersion !== currentVersion) {
+          throw Error(`db schema is too old, saw ${currentVersion} expected ${targetVersion}`)
+        }
+      })
   }
 }
 
 Postgres.prototype = {
-  connect: function () {
-    return this.pool.connect()
+  connect: function (readOnly) {
+    return this.pool(readOnly).connect()
   },
-  query: async function (text, params) {
+  pool: function (readOnly) {
+    return (readOnly ? this.roPool : this.rwPool) || this.rwPool
+  },
+  query: async function (text, params = [], readOnly) {
     const start = Date.now()
-    const ret = await this.pool.query(text, params)
+    let client = null
+    if (_.isBoolean(readOnly)) {
+      client = this.pool(readOnly)
+    } else {
+      // passed the pool / client
+      client = readOnly || this.pool() // nothing was passed so assume rw
+    }
+    const ret = await client.query(text, params)
     const duration = Date.now() - start
     debug('executed query', { text, duration, rows: ret.rowCount })
     return ret

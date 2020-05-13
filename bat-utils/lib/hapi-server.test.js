@@ -1,10 +1,10 @@
 'use strict'
 
-import Server from './hapi-server'
-import Cache from './runtime-cache'
-import test from 'ava'
-import dotenv from 'dotenv'
-import supertest from 'supertest'
+const Server = require('./hapi-server')
+const Cache = require('./runtime-cache')
+const test = require('ava')
+const dotenv = require('dotenv')
+const supertest = require('supertest')
 dotenv.config()
 
 test('hapi throws', async (t) => {
