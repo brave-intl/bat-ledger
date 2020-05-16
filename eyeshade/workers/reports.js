@@ -65,11 +65,9 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
     rows: virtualSurveyors
   } = await runtime.postgres.query(virtualQuery, [], true)
 
-  const updateSurveyorsStatement = 'update surveyor_groups set frozen = true, updated_at = current_timestamp where id = $1'
   const toFreeze = nonVirtualSurveyors.concat(virtualSurveyors)
   for (let i = 0; i < toFreeze.length; i += 1) {
     const surveyorId = toFreeze[i].id
-    await runtime.postgres.query(updateSurveyorsStatement, [surveyorId])
     await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
     await waitForTransacted(runtime, surveyorId)
   }
@@ -101,7 +99,7 @@ async function waitForTransacted (runtime, surveyorId) {
   } while (row) // when no row is returned, all votes have been transacted
 }
 
-const mixer = async (debug, runtime, filter, qid) => {
+const mixer = async (debug, runtime, client, filter, qid) => {
   const query = `
   update votes
   set
@@ -110,7 +108,7 @@ const mixer = async (debug, runtime, filter, qid) => {
   from surveyor_groups
   where votes.surveyor_id = surveyor_groups.id and not votes.excluded and surveyor_groups.frozen;
   `
-  return runtime.postgres.query(query, [feePercent])
+  return runtime.postgres.query(query, [feePercent], client)
 }
 
 exports.mixer = mixer

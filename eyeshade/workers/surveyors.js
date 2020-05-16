@@ -22,38 +22,42 @@ exports.workers = {
       const { postgres } = runtime
       const { mix, surveyorId, shouldUpdateBalances } = payload
 
-      const surveyorQ = await postgres.query('select created_at from surveyor_groups where id = $1 limit 1;', [surveyorId])
-      if (surveyorQ.rowCount !== 1) {
-        throw new Error('surveyor does not exist')
-      }
-      const surveyorCreatedAt = surveyorQ.rows[0].created_at
-
-      if (mix) {
-        await mixer(debug, runtime, undefined, undefined)
-      }
-
       const client = await runtime.postgres.connect()
       try {
-        const query1 = `
+        await client.query('BEGIN')
+
+        const updateSurveyorsStatement = 'update surveyor_groups set frozen = true, updated_at = current_timestamp where id = $1 returning created_at'
+        const surveyorQ = await postgres.query(updateSurveyorsStatement, [surveyorId], client)
+        if (surveyorQ.rowCount !== 1) {
+          throw new Error('surveyor does not exist')
+        }
+        const surveyorCreatedAt = surveyorQ.rows[0].created_at
+        if (surveyorQ.rowCount !== 1) {
+          throw new Error('surveyor does not exist')
+        }
+
+        if (mix) {
+          await mixer(debug, runtime, client, undefined, undefined)
+        }
+
+        const countVotesStatement = `
         select
           votes.channel,
           coalesce(sum(votes.amount), 0.0) as amount,
           coalesce(sum(votes.fees), 0.0) as fees
-        from votes where surveyor_id = $1 and not excluded and not transacted and amount is not null
-        group by votes.channel;
+        from votes where surveyor_id = $1::text and not excluded and not transacted and amount is not null
+        group by votes.channel
         `
-        const votingQ = await runtime.postgres.query(query1, [surveyorId], client)
+        const votingQ = await runtime.postgres.query(countVotesStatement, [surveyorId], client)
         if (!votingQ.rowCount) {
           throw new Error('no votes for this surveyor!')
         }
         const docs = votingQ.rows
-
-        await client.query('BEGIN')
         try {
           for (let i = 0; i < docs.length; i += 1) {
             await insertFromVoting(runtime, client, Object.assign(docs[i], { surveyorId }), surveyorCreatedAt)
           }
-          const query2 = `
+          const markVotesTransactedStatement = `
           update votes
             set transacted = true
           from
@@ -64,10 +68,11 @@ exports.workers = {
           ) o
           where votes.id = o.id
           `
-          await runtime.postgres.query(query2, [surveyorId], client)
+          await runtime.postgres.query(markVotesTransactedStatement, [surveyorId], client)
 
           await client.query('COMMIT')
         } catch (e) {
+          console.log(e)
           await client.query('ROLLBACK')
           runtime.captureException(e, { extra: { report: 'surveyor-frozen-report', surveyorId } })
           throw e
@@ -77,6 +82,7 @@ exports.workers = {
           await updateBalances(runtime)
         }
       } catch (e) {
+        console.log(e)
         runtime.captureException(e, {
           extra: {
             surveyorId
