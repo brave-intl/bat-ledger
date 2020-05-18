@@ -5,6 +5,7 @@ const utils = require('bat-utils')
 const config = require('../config.js')
 
 const suggestionsConsumer = require('./workers/suggestions')
+const voteConsumer = require('./workers/acvote')
 
 const {
   Runtime
@@ -50,4 +51,5 @@ if (kafkaSslKey) {
 }
 
 suggestionsConsumer(runtime)
+voteConsumer(runtime)
 runtime.kafka.consume()

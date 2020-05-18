@@ -36,7 +36,6 @@ const fullSnapshotValidator = Joi.object().keys({
 const upsertPayoutReport = `
 insert into payout_reports (id)
 values ($1)
-returning *
 `
 const getOnePayoutReport = `
 select
