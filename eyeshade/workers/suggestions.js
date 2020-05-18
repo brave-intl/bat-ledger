@@ -1,18 +1,14 @@
 const { votesId } = require('../lib/queries.js')
 const suggestions = require('../lib/suggestions.js')
 const BigNumber = require('bignumber.js')
+const moment = require('moment')
 
 const suggestionTopic = process.env.ENV + '.grant.suggestion'
 
 module.exports = (runtime, callback) => {
   runtime.kafka.on(suggestionTopic, async (messages) => {
     const client = await runtime.postgres.connect()
-    const now = new Date()
-    const date = [
-      now.getFullYear(),
-      ((now.getMonth() + 1) + '').padStart(2, '0'),
-      (now.getDate() + '').padStart(2, '0')
-    ].join('-')
+    const date = moment().format("YYYY-MM-DD")
 
     try {
       await client.query('BEGIN')

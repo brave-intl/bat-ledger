@@ -1,17 +1,14 @@
 const { votesId } = require('../lib/queries.js')
 const { voteType } = require('../lib/vote.js')
+const moment = require('moment')
 
 const voteTopic = process.env.ENV + '.payment.vote'
 
 module.exports = (runtime, callback) => {
   runtime.kafka.on(voteTopic, async (messages) => {
     const client = await runtime.postgres.connect()
-    const now = new Date()
-    const date = [
-      now.getFullYear(),
-      ((now.getMonth() + 1) + '').padStart(2, '0'),
-      (now.getDate() + '').padStart(2, '0')
-    ].join('-')
+
+    const date = moment().format("YYYY-MM-DD")
 
     try {
       await client.query('BEGIN')
@@ -58,11 +55,21 @@ module.exports = (runtime, callback) => {
           ])
         }
       } catch (e) {
-        await client.query('ROLLBACK')
+        await client.query('ROLLBACK', err => {
+          if (err) {
+            console.error('Error rolling back transaction', err.stack)
+          }
+          done()
+        })
         runtime.captureException(e, { extra: { topic: voteTopic } })
         throw e
       }
-      await client.query('COMMIT')
+      await client.query('COMMIT', err => {
+        if (err) {
+          console.error('Error committing transaction', err.stack)
+        }
+        done()
+      })
     } finally {
       client.release()
     }
