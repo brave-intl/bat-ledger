@@ -99,7 +99,7 @@ async function waitForTransacted (runtime, surveyorId) {
   } while (row) // when no row is returned, all votes have been transacted
 }
 
-const mixer = async (runtime, surveyorId) => {
+const mixer = async (runtime, client, surveyorId) => {
   const query = `
   update votes
   set
@@ -108,7 +108,7 @@ const mixer = async (runtime, surveyorId) => {
   from surveyor_groups
   where votes.surveyor_id = $2 and not votes.excluded and surveyor_groups.frozen;
   `
-  return runtime.postgres.query(query, [feePercent, surveyorId])
+  return runtime.postgres.query(query, [feePercent, surveyorId], client)
 }
 
 exports.mixer = mixer

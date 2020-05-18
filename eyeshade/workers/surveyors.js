@@ -22,15 +22,6 @@ exports.workers = {
       const { postgres } = runtime
       const { mix, surveyorId, shouldUpdateBalances } = payload
 
-      const surveyorQ = await postgres.query('select created_at from surveyor_groups where id = $1 limit 1;', [surveyorId])
-      if (surveyorQ.rowCount !== 1) {
-        throw new Error('surveyor does not exist')
-      }
-
-      if (mix) {
-        await mixer(runtime, surveyorId)
-      }
-
       const client = await runtime.postgres.connect()
       try {
         await client.query('BEGIN')
@@ -43,7 +34,7 @@ exports.workers = {
         const surveyorCreatedAt = surveyors[0].created_at
 
         if (mix) {
-          await mixer(debug, runtime, client, undefined, undefined)
+          await mixer(runtime, client, surveyorId)
         }
 
         const countVotesStatement = `
