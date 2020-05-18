@@ -346,9 +346,10 @@ test('can add transactions for different account types', async (t) => {
     amount: {}
   }), Error, 'amount goes through bignumber')
   const fakeAddress = '0xbloop'
-  const noValueTransferred = await insertUserDepositFromChain(runtime, client, {
+  await insertUserDepositFromChain(runtime, client, {
     amount: '0'
   })
+  const { rows: noValueTransferred } = await runtime.postgres.query('select * from transactions')
   t.deepEqual([], noValueTransferred, 'when no value is transferred, we skip inserting the tx')
   const knownChainKeys = _.keys(knownChains)
   for (let i = 0; i < knownChainKeys.length; i += 1) {
@@ -368,7 +369,8 @@ test('can add transactions for different account types', async (t) => {
       createdAt,
       address: fakeAddress
     }
-    const txs = await insertUserDepositFromChain(runtime, client, inputs)
+    await insertUserDepositFromChain(runtime, client, inputs)
+    const { rows: txs } = await runtime.postgres.query(`select * from transactions where transaction_type = 'user_deposit' and description = 'deposits from ${chain} chain'`)
     const expectedResults = [{
       created_at: createdAt,
       description: `deposits from ${chain} chain`,
@@ -413,8 +415,8 @@ test('common insertion fn', async (t) => {
     toAccountType,
     amount
   }
-  // const client = await runtime.postgres.connect()
-  const txs = await insertTransaction(runtime, null, inputs)
+  await insertTransaction(runtime, null, inputs)
+  const { rows: txs } = await runtime.postgres.query('select * from transactions')
   const zeroAmount = Object.assign({}, inputs, { amount: '0' })
   await insertTransaction(runtime, null, zeroAmount)
   const negativeAmount = Object.assign({}, inputs, { amount: '-1' })
