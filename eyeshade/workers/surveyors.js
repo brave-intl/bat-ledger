@@ -27,17 +27,14 @@ exports.workers = {
         await client.query('BEGIN')
 
         const updateSurveyorsStatement = 'update surveyor_groups set frozen = true, updated_at = current_timestamp where id = $1 returning created_at'
-        const surveyorQ = await postgres.query(updateSurveyorsStatement, [surveyorId], client)
-        if (surveyorQ.rowCount !== 1) {
+        const { rows: surveyors } = await postgres.query(updateSurveyorsStatement, [surveyorId], client)
+        if (surveyors.rowCount !== 1) {
           throw new Error('surveyor does not exist')
         }
-        const surveyorCreatedAt = surveyorQ.rows[0].created_at
-        if (surveyorQ.rowCount !== 1) {
-          throw new Error('surveyor does not exist')
-        }
+        const surveyorCreatedAt = surveyors[0].created_at
 
         if (mix) {
-          await mixer(debug, runtime, client, undefined, undefined)
+          await mixer(runtime, client, surveyorId)
         }
 
         const countVotesStatement = `
