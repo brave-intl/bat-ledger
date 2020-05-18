@@ -8,7 +8,7 @@ module.exports = (runtime, callback) => {
   runtime.kafka.on(voteTopic, async (messages) => {
     const client = await runtime.postgres.connect()
 
-    const date = moment().format("YYYY-MM-DD")
+    const date = moment().format('YYYY-MM-DD')
 
     try {
       await client.query('BEGIN')
@@ -59,7 +59,6 @@ module.exports = (runtime, callback) => {
           if (err) {
             console.error('Error rolling back transaction', err.stack)
           }
-          done()
         })
         runtime.captureException(e, { extra: { topic: voteTopic } })
         throw e
@@ -68,7 +67,6 @@ module.exports = (runtime, callback) => {
         if (err) {
           console.error('Error committing transaction', err.stack)
         }
-        done()
       })
     } finally {
       client.release()

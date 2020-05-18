@@ -8,7 +8,7 @@ const suggestionTopic = process.env.ENV + '.grant.suggestion'
 module.exports = (runtime, callback) => {
   runtime.kafka.on(suggestionTopic, async (messages) => {
     const client = await runtime.postgres.connect()
-    const date = moment().format("YYYY-MM-DD")
+    const date = moment().format('YYYY-MM-DD')
 
     try {
       await client.query('BEGIN')
