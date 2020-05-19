@@ -28,7 +28,7 @@ exports.workers = {
 
         const updateSurveyorsStatement = 'update surveyor_groups set frozen = true, updated_at = current_timestamp where id = $1 returning created_at'
         const { rows: surveyors } = await postgres.query(updateSurveyorsStatement, [surveyorId], client)
-        if (surveyors.rowCount !== 1) {
+        if (surveyors.length !== 1) {
           throw new Error('surveyor does not exist')
         }
         const surveyorCreatedAt = surveyors[0].created_at
