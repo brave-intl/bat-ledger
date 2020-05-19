@@ -82,7 +82,7 @@ v2.readInfo = {
 /*
    GET /v2/wallet/{paymentId}/members
  */
-v2.readInfo = {
+v2.readMembersInfo = {
   handler: (runtime) => {
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
@@ -780,6 +780,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v2/wallet/stats/{from}/{until?}').whitelist().config(v2.getStats),
   braveHapi.routes.async().post().path('/v2/wallet/{paymentId}/claim').config(v2.claimWallet),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}/info').config(v2.readInfo),
+  braveHapi.routes.async().path('/v2/wallet/{paymentId}/members').config(v2.readMembersInfo),
   braveHapi.routes.async().path('/v2/wallet/{paymentId}').config(v2.read),
   braveHapi.routes.async().put().path('/v2/wallet/{paymentId}').config(v2.write),
   braveHapi.routes.async().path('/v2/wallet').config(v2.lookup)
