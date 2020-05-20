@@ -47,18 +47,16 @@ GROUP BY (q.account_type, q.account_id)
 `
 const selectPendingAccountVotes = `
 SELECT
-  channel,
-  SUM(votes.tally * surveyor.price)::TEXT as balance
-FROM votes, (
-  SELECT id, price
-  FROM surveyor_groups
-) surveyor
+  V.channel,
+  SUM(V.tally * S.price)::TEXT as balance
+FROM votes V
+INNER JOIN surveyor_groups S
+ON V.surveyor_id = S.id
 WHERE
-    votes.surveyor_id = surveyor.id
-AND votes.channel = any($1::text[])
-AND NOT votes.transacted
-AND NOT votes.excluded
-GROUP BY channel;
+  V.channel = any($1::text[])
+  AND NOT V.transacted
+  AND NOT V.excluded
+GROUP BY channel
 `
 /*
    GET /v1/accounts/{account}/transactions
