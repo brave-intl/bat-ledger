@@ -33,14 +33,14 @@ FROM (
     from_account_type as account_type,
     (0 - amount) AS amount
   FROM transactions
-  WHERE from_account = any('{wikipedia.org}')
+  WHERE from_account = any($1::text[])
   UNION
   SELECT
     to_account AS account_id,
     to_account_type as account_type,
     sum(amount) AS amount
   FROM transactions
-  WHERE to_account = any('{wikipedia.org}')
+  WHERE to_account = any($1::text[])
   GROUP BY to_account_type, to_account
 ) AS q
 GROUP BY (q.account_type, q.account_id)
@@ -218,6 +218,7 @@ v1.getBalances = {
 
     const votesRows = results[0].rows
     const balanceRows = results[1].rows
+    // votes rows are missing data so we backfill
     const body = votesRows.reduce(mergeVotes, balanceRows)
 
     return body
