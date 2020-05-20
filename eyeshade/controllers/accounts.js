@@ -23,9 +23,27 @@ const joiChannel = Joi.string().description('The channel that earned or paid the
 const joiBAT = braveJoi.string().numeric()
 
 const selectAccountBalances = `
-SELECT *
-FROM account_balances
-WHERE account_id = any($1::text[]);
+SELECT
+  q.account_id,
+  q.account_type,
+  coalesce(sum(q.amount), 0.0)
+FROM (
+  SELECT
+    from_account AS account_id,
+    from_account_type as account_type,
+    (0 - amount) AS amount
+  FROM transactions
+  WHERE from_account = any('{wikipedia.org}')
+  UNION
+  SELECT
+    to_account AS account_id,
+    to_account_type as account_type,
+    sum(amount) AS amount
+  FROM transactions
+  WHERE to_account = any('{wikipedia.org}')
+  GROUP BY to_account_type, to_account
+) AS q
+GROUP BY (q.account_type, q.account_id)
 `
 const selectPendingAccountVotes = `
 SELECT
