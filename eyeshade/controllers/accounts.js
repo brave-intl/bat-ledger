@@ -26,7 +26,7 @@ const selectAccountBalances = `
 SELECT
   q.account_id,
   q.account_type,
-  coalesce(sum(q.amount), 0.0)
+  coalesce(sum(q.amount), 0.0) as balance
 FROM (
   SELECT
     from_account AS account_id,
