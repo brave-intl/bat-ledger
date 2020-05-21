@@ -80,6 +80,4 @@ test('votes kafka consumer enters into votes', async (t) => {
     account_type: 'channel',
     balance: '20.000000000000000000'
   }], 'vote votes show up after small delay')
-
-
 })
