@@ -12,12 +12,15 @@ import {
 } from '../utils'
 import Postgres from 'bat-utils/lib/runtime-postgres'
 import { voteType } from '../../eyeshade/lib/vote'
+const { votesId } = require('../../eyeshade/lib/queries.js')
+const moment = require('moment')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.afterEach.always(async t => {
   await cleanPgDb(postgres)()
 })
 
+const date = moment().format('YYYY-MM-DD')
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 const example = {
   id: 'e2874d25-14a9-4859-9729-78459af02a6f',
@@ -58,6 +61,18 @@ test('votes kafka consumer enters into votes', async (t) => {
       })
       .expect(ok))
   }
+
+  const surveyorId = date + '_' + example.fundingSource
+  const cohort = 'control'
+  const publisher = example.channel
+
+  // test the voteId is correct:
+  const result = await postgres.query(
+    'select id from votes where id=$1',
+    votesId(publisher, cohort, surveyorId))
+  // assert the id is correct
+  t.deepEqual(result.id, votesId(publisher, cohort, surveyorId))
+
   t.deepEqual(body, [{
     account_id: channel,
     account_type: 'channel',
