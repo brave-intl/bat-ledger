@@ -918,7 +918,7 @@ function claimWalletHandler (runtime) {
             $size: {
               $ifNull: ['$paymentIds', []]
             }
-          }, process.env.NODE_ENV === 'development' ? 1000 : 3]
+          }, process.env.NODE_ENV !== 'production' ? +process.env.PER_MEMBER_CLAIM_LIMIT || 3 : 3]
         }
       }, {
         $push: {
