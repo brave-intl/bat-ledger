@@ -44,25 +44,44 @@ const runtime = new Runtime({
 test.afterEach.always(cleanPgDb(runtime.postgres))
 
 test('verify frozen occurs when daily is run', async t => {
-  t.plan(15)
+  t.plan(27)
 
   // FIXME sometimes hangs
   await createSurveyor()
   // just made value
-  const { body } = await getSurveyor()
-  const { surveyorId } = body
-  await waitUntilPropagated(querySurveyor, surveyorId)
+  const { body: body1 } = await getSurveyor()
+  const { surveyorId: surveyorId1 } = body1
+  await waitUntilPropagated(querySurveyor, surveyorId1)
   // does not freeze if midnight is before creation date
   // vote on surveyor, no rejectedVotes yet
   const publisher = 'fake-publisher'
-  await voteAndCheckTally(t, publisher, surveyorId, 1)
-  await voteAndCheckTally(t, publisher, surveyorId, 2)
-  await tryFreeze(t, 0, false, surveyorId)
+  await voteAndCheckTally(t, publisher, surveyorId1, 1)
+  await voteAndCheckTally(t, publisher, surveyorId1, 2)
+  await tryFreeze(t, 0, false, surveyorId1)
   // freezes if midnight is after creation date
-  await voteAndCheckTally(t, publisher, surveyorId, 3)
-  await tryFreeze(t, -1, true, surveyorId)
+  await voteAndCheckTally(t, publisher, surveyorId1, 3)
+  // use yesterday as threshold
+  await tryFreeze(t, -1, true, surveyorId1)
   // property is needed
-  await voteAndCheckTally(t, publisher, surveyorId, 3)
+  await voteAndCheckTally(t, publisher, surveyorId1, 3)
+
+  // create second surveyor to check that freezing does not write bad data
+  await createSurveyor()
+  const { body: body2 } = await getSurveyor()
+  const { surveyorId: surveyorId2 } = body2
+  await waitUntilPropagated(querySurveyor, surveyorId2)
+  await voteAndCheckTally(t, publisher, surveyorId2, 1)
+  const votes1a = await queryVotes(surveyorId1)
+  await tryFreeze(t, -1, true, surveyorId2)
+  const votes1b = await queryVotes(surveyorId1)
+  const votes2 = await queryVotes(surveyorId2)
+  t.is(votes1a.rows.length, 1)
+  t.is(votes1b.rows.length, 1)
+  t.is(votes2.rows.length, 1)
+  // votes should not be updated between surveyors after subsequent surveyor freezes
+  t.deepEqual(votes1a.rows[0].updated_at, votes1b.rows[0].updated_at)
+  t.notDeepEqual(votes1b.rows[0].updated_at, votes2.rows[0].updated_at)
+  t.is(votes1a.rows[0].amount, votes1b.rows[0].amount)
 })
 
 async function tryFreeze (t, dayShift, expect, surveyorId) {

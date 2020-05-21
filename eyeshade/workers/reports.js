@@ -106,7 +106,11 @@ const mixer = async (runtime, client, surveyorId) => {
     amount = (1 - $1::decimal) * votes.tally * surveyor_groups.price,
     fees =  $1::decimal * votes.tally * surveyor_groups.price
   from surveyor_groups
-  where votes.surveyor_id = $2 and not votes.excluded and surveyor_groups.frozen;
+  where
+      votes.surveyor_id = surveyor_groups.id
+  and votes.surveyor_id = $2
+  and not votes.excluded
+  and surveyor_groups.frozen
   `
   return runtime.postgres.query(query, [feePercent, surveyorId], client)
 }
