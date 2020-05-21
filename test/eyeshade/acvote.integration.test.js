@@ -1,17 +1,17 @@
 'use strict'
 
-import Kafka from 'bat-utils/lib/runtime-kafka'
-import test from 'ava'
-import {
+const Kafka = require('bat-utils/lib/runtime-kafka')
+const test = require('ava')
+const {
   timeout
-} from 'bat-utils/lib/extras-utils'
-import {
+} = require('bat-utils/lib/extras-utils')
+const {
   agents,
   cleanPgDb,
   ok
-} from '../utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import { voteType } from '../../eyeshade/lib/vote'
+} = require('../utils')
+const Postgres = require('bat-utils/lib/runtime-postgres')
+const { voteType } = require('../../eyeshade/lib/vote')
 const { votesId } = require('../../eyeshade/lib/queries.js')
 const moment = require('moment')
 
@@ -68,9 +68,10 @@ test('votes kafka consumer enters into votes', async (t) => {
   const publisher = example.channel
 
   // test the voteId is correct:
-  const result = await postgres.query(
+  const { rows } = await postgres.query(
     'select id, tally from votes where id=$1 limit 1',
-    votesId(publisher, cohort, surveyorId))
+    [votesId(publisher, cohort, surveyorId)])
+  const result = rows[0]
   // assert the id is correct
   t.is(result.id, votesId(publisher, cohort, surveyorId))
   t.is(result.tally, 20)
@@ -78,6 +79,6 @@ test('votes kafka consumer enters into votes', async (t) => {
   t.deepEqual(body, [{
     account_id: channel,
     account_type: 'channel',
-    balance: '20.000000000000000000'
+    balance: '5.000000000000000000'
   }], 'vote votes show up after small delay')
 })

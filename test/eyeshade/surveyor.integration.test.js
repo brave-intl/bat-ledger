@@ -44,7 +44,7 @@ const runtime = new Runtime({
 test.afterEach.always(cleanPgDb(runtime.postgres))
 
 test('verify frozen occurs when daily is run', async t => {
-  t.plan(15)
+  t.plan(27)
 
   // FIXME sometimes hangs
   await createSurveyor()
@@ -79,8 +79,9 @@ test('verify frozen occurs when daily is run', async t => {
   t.is(votes1b.rows.length, 1)
   t.is(votes2.rows.length, 1)
   // votes should not be updated between surveyors after subsequent surveyor freezes
-  t.is(votes1a.rows[0].updated_at, votes1b.rows[0].updated_at)
-  t.not(votes1b.rows[0].updated_at, votes2.rows[0].updated_at)
+  t.deepEqual(votes1a.rows[0].updated_at, votes1b.rows[0].updated_at)
+  t.notDeepEqual(votes1b.rows[0].updated_at, votes2.rows[0].updated_at)
+  t.is(votes1a.rows[0].amount, votes1b.rows[0].amount)
 })
 
 async function tryFreeze (t, dayShift, expect, surveyorId) {
