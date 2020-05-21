@@ -29,7 +29,6 @@ module.exports = (runtime, callback) => {
         const tally = vote.voteTally
         const voteValue = vote.baseVoteValue
         const publisher = vote.channel
-        const id = vote.id
 
         const surveyorUpdate = `
             insert into surveyor_groups (id, price, virtual) values ($1, $2, true)
@@ -45,7 +44,7 @@ module.exports = (runtime, callback) => {
             on conflict (id) do update set updated_at = current_timestamp, tally = votes.tally + $3;
             `
         await client.query(voteUpdate, [
-          votesId(publisher, cohort, id),
+          votesId(publisher, cohort, surveyorId),
           cohort,
           tally,
           runtime.config.testingCohorts.includes(cohort),
