@@ -49,6 +49,7 @@ test('votes kafka consumer enters into votes', async (t) => {
   t.is(body.length, 0)
 
   await producer.send(process.env.ENV + '.payment.vote', voteType.toBuffer(example))
+  await producer.send(process.env.ENV + '.payment.vote', voteType.toBuffer(example))
 
   while (!body.length) {
     await timeout(2000)
@@ -68,14 +69,17 @@ test('votes kafka consumer enters into votes', async (t) => {
 
   // test the voteId is correct:
   const result = await postgres.query(
-    'select id from votes where id=$1',
+    'select id, tally from votes where id=$1 limit 1',
     votesId(publisher, cohort, surveyorId))
   // assert the id is correct
-  t.deepEqual(result.id, votesId(publisher, cohort, surveyorId))
+  t.is(result.id, votesId(publisher, cohort, surveyorId))
+  t.is(result.tally, 20)
 
   t.deepEqual(body, [{
     account_id: channel,
     account_type: 'channel',
-    balance: '10.000000000000000000'
+    balance: '20.000000000000000000'
   }], 'vote votes show up after small delay')
+
+
 })
