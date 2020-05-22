@@ -38,10 +38,9 @@ FROM (
   SELECT
     to_account AS account_id,
     to_account_type as account_type,
-    sum(amount) AS amount
+    amount
   FROM transactions
   WHERE to_account = any($1::text[])
-  GROUP BY to_account_type, to_account
 ) AS q
 GROUP BY (q.account_type, q.account_id)
 `
