@@ -34,7 +34,7 @@ FROM (
     (0 - amount) AS amount
   FROM transactions
   WHERE from_account = any($1::text[])
-  UNION
+  UNION ALL
   SELECT
     to_account AS account_id,
     to_account_type as account_type,
