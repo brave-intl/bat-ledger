@@ -200,11 +200,15 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
       })
       .expect(ok))
   }
+  // no transactions have been input yet
+  t.is(null, await getPublisherAccountBalance([braveYoutubePublisher]))
+  // channel only counts toward pending
   t.deepEqual(body, [{
     account_id: braveYoutubePublisher,
     account_type: 'channel',
     balance: '1.000000000000000000'
   }], 'pending votes show up after small delay')
+  const pendingBalances = body
   ;({
     body
   } = await agents.eyeshade.publishers.get(balanceURL)
@@ -228,13 +232,18 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   body = []
   do {
-    await timeout(1000)
+    await timeout(5000)
+    await updateBalances(runtime)
     ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)
       .expect(ok))
   } while (!body.length)
 
+  // transactions have now been input and balance will match the one returned from balances endpoint
+  const insertedTransactions = await getPublisherAccountBalance([account])
+  t.is(body[0].balance, insertedTransactions)
+  t.is(pendingBalances[0].balance, insertedTransactions)
   t.true(body[0].balance > 0)
 
   const newYear = new Date('2019-01-01')
@@ -245,7 +254,8 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   response = await agents.eyeshade.publishers.post(settlementURL).send([settlement]).expect(ok)
   await agents.eyeshade.publishers.post(settlementURL + '/submit').send(response.body).expect(ok)
   do {
-    await timeout(1000)
+    await timeout(5000)
+    await updateBalances(runtime)
     ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)
@@ -321,6 +331,14 @@ WHERE
     return transactions.filter(({ transaction_type: type }) => type === 'referral')
   }
 })
+
+async function getPublisherAccountBalance (account) {
+  const { rows } = await runtime.postgres.query(`
+  select * from account_balances
+  where account_id = any($1::text[])`, [account])
+  const row = rows[0]
+  return row ? row.balance : null
+}
 
 test('wallets can be claimed by verified members', async (t) => {
   const ledgerDB = await connectToDb('ledger')
