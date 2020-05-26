@@ -24,25 +24,11 @@ const joiBAT = braveJoi.string().numeric()
 
 const selectAccountBalances = `
 SELECT
-  q.account_id,
-  q.account_type,
-  coalesce(sum(q.amount), 0.0) as balance
-FROM (
-  SELECT
-    from_account AS account_id,
-    from_account_type as account_type,
-    (0 - amount) AS amount
-  FROM transactions
-  WHERE from_account = any($1::text[])
-  UNION ALL
-  SELECT
-    to_account AS account_id,
-    to_account_type as account_type,
-    amount
-  FROM transactions
-  WHERE to_account = any($1::text[])
-) AS q
-GROUP BY (q.account_type, q.account_id)
+  account_transactions.account_type,
+  account_transactions.account_id,
+  COALESCE(SUM(account_transactions.amount), 0.0)
+FROM account_transactions
+GROUP BY (account_transactions.account_type, account_transactions.account_id);
 `
 const selectPendingAccountVotes = `
 SELECT
