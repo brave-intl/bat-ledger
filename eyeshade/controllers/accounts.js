@@ -24,9 +24,9 @@ const joiBAT = braveJoi.string().numeric()
 
 const selectAccountBalances = `
 SELECT
-  account_transactions.account_type,
-  account_transactions.account_id,
-  COALESCE(SUM(account_transactions.amount), 0.0)
+  account_transactions.account_type as account_type,
+  account_transactions.account_id as account_id,
+  COALESCE(SUM(account_transactions.amount), 0.0) as balance
 FROM account_transactions
 WHERE account_id = $1
 GROUP BY (account_transactions.account_type, account_transactions.account_id);
