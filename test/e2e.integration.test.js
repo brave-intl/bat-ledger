@@ -228,8 +228,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
 
   body = []
   do {
-    await timeout(5000)
-    await updateBalances(runtime)
+    await timeout(1000)
     ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)
@@ -246,8 +245,7 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   response = await agents.eyeshade.publishers.post(settlementURL).send([settlement]).expect(ok)
   await agents.eyeshade.publishers.post(settlementURL + '/submit').send(response.body).expect(ok)
   do {
-    await timeout(5000)
-    await updateBalances(runtime)
+    await timeout(1000)
     ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)
