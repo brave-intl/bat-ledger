@@ -28,6 +28,7 @@ SELECT
   account_transactions.account_id,
   COALESCE(SUM(account_transactions.amount), 0.0)
 FROM account_transactions
+WHERE account_id = $1
 GROUP BY (account_transactions.account_type, account_transactions.account_id);
 `
 const selectPendingAccountVotes = `
