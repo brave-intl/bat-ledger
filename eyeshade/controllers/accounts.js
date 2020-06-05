@@ -125,13 +125,22 @@ v1.getTopBalances =
       const { limit } = request.query
       const { type } = request.params
 
-      const query1 = `SELECT *
-    FROM account_balances
-    WHERE account_type = $1::text
-    ORDER BY balance DESC
-    LIMIT $2;`
+      const { rows: reports } = await runtime.postgres.query(`
+      select id from payout_reports
+      order by latest_transaction_at desc`)
 
-      const { rows } = await runtime.postgres.query(query1, [type, limit], true)
+      const { rows } = await runtime.postgres.query(`
+      select * from balance_snapshots
+      where snapshot_id = $1
+        and account_type = $2
+      order by balance desc
+      limit $3
+      `, [
+        reports[0].id,
+        type,
+        limit
+      ])
+
       return rows
     }
   },

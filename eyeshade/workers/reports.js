@@ -2,9 +2,6 @@ const moment = require('moment')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
-const {
-  updateBalances
-} = require('../lib/transaction')
 
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
@@ -71,7 +68,6 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
     await runtime.queue.send(debug, 'surveyor-frozen-report', { surveyorId, mix: true })
     await waitForTransacted(runtime, surveyorId)
   }
-  await updateBalances(runtime)
 }
 
 async function waitForTransacted (runtime, surveyorId) {
@@ -124,14 +120,5 @@ exports.initialize = async (debug, runtime) => {
 
   if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
     setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
-    updateBalancesOnInterval(runtime)
   }
-}
-
-async function updateBalancesOnInterval (runtime) {
-  await updateBalances(runtime)
-  const now = (new Date()).getTime()
-  const hours6 = 1000 * 60 * 60 * 6
-  const msUntilNext = hours6 - (now % hours6)
-  setTimeout(() => updateBalancesOnInterval(runtime), msUntilNext)
 }
