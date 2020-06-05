@@ -18,17 +18,16 @@ const Postgres = function (config, runtime) {
     throw err
   })
 
-  if (config.postgres.roURL) {
-    this.roPool = new Pool({
-      connectionString: config.postgres.roURL,
-      ssl: process.env.NODE_ENV === 'production'
-    })
-
-    this.pool(true).on('error', (err) => {
-      debug('postgres', { message: err })
-      throw err
-    })
-  }
+  // if (config.postgres.roURL) {
+  //   this.roPool = new Pool({
+  //     connectionString: config.postgres.roURL,
+  //     ssl: process.env.NODE_ENV === 'production'
+  //   })
+  //   this.pool(true).on('error', (err) => {
+  //     debug('postgres', { message: err })
+  //     throw err
+  //   })
+  // }
 
   if (config.postgres.schemaVersionCheck) {
     this.pool(true).query('select id from migrations order by id desc limit 1')
