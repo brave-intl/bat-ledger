@@ -282,7 +282,6 @@ function cleanPgDb (postgres) {
         client.query('DELETE from balance_snapshots;'),
         client.query('DELETE from payout_reports;')
       ])
-      await client.query('REFRESH MATERIALIZED VIEW account_balances;')
       await insertReferralInfos(client)
     } finally {
       client.release()
