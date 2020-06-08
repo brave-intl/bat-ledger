@@ -1,6 +1,5 @@
 const {
-  insertFromSettlement,
-  updateBalances
+  insertFromSettlement
 } = require('../lib/transaction.js')
 const underscore = require('underscore')
 
@@ -14,8 +13,7 @@ exports.workers = {
 
     { queue   : 'settlement-report'
     , message :
-      { shouldUpdateBalances : false,
-        settlementId         : '',
+      { settlementId         : '',
         publisher            : '',
         type                 : '',
       }
@@ -25,7 +23,6 @@ exports.workers = {
     async (debug, runtime, payload) => {
       const settlementsCollection = runtime.database.get('settlements', debug)
       const {
-        shouldUpdateBalances,
         settlementId,
         publisher,
         type
@@ -58,9 +55,6 @@ exports.workers = {
           throw e
         }
         await client.query('COMMIT')
-        if (shouldUpdateBalances) {
-          await updateBalances(runtime)
-        }
       } finally {
         client.release()
       }

@@ -135,8 +135,7 @@ v2.submitSettlement = {
         const settlementId = settlementIds[j]
         await runtime.queue.send(debug, 'settlement-report', {
           type,
-          settlementId,
-          shouldUpdateBalances: true
+          settlementId
         })
       }
     }

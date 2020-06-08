@@ -49,9 +49,6 @@ test('ads payout report cron job takes a snapshot of balances', async t => {
   const insertQuery = 'insert into transactions (id, created_at, description, transaction_type, from_account_type, from_account, to_account_type, to_account, amount) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)'
   await postgres.query(insertQuery, [txId, createdAt, description, transactionType, fromAccountType, fromAccount, toAccountType, paymentId, amount])
 
-  // Refresh the account balances materialized view so the balance filters through
-  await postgres.query('refresh materialized view account_balances')
-
   await monthly({}, runtime)
 
   // Ensure the wallet balance made it in

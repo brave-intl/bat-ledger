@@ -25,7 +25,6 @@ module.exports = {
   insertFromSettlement,
   insertFromVoting,
   insertFromReferrals,
-  updateBalances,
   insertFromAd
 }
 
@@ -320,18 +319,6 @@ async function insertFromReferrals (runtime, client, referrals) {
       ], client)
     }
   }
-}
-
-async function updateBalances (runtime) {
-  const { prometheus, postgres } = runtime
-  const end = prometheus.timedRequest('viewRefresh_request_buckets_milliseconds')
-  try {
-    await postgres.query('REFRESH MATERIALIZED VIEW CONCURRENTLY account_balances')
-  } catch (e) {
-    end({ erred: true })
-    throw e
-  }
-  end({ erred: false })
 }
 
 async function allSettlementStats (runtime, options) {
