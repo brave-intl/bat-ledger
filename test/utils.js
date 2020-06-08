@@ -16,6 +16,7 @@ const {
   BigNumber,
   uint8tohex
 } = require('bat-utils/lib/extras-utils')
+const Postgres = require('bat-utils/lib/runtime-postgres')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
 const Pool = pg.Pool
@@ -268,6 +269,7 @@ function cleanDbs () {
     cleanEyeshadeDb(),
     cleanLedgerDb(),
     cleanGrantDb(),
+    cleanEyeshadePgDb(),
     cleanWalletMigrationDb(),
     cleanRedeemerRedisDb()
   ])
@@ -287,6 +289,16 @@ async function cleanWalletMigrationDb () {
   } finally {
     client.release()
   }
+}
+
+async function cleanEyeshadePgDb () {
+  const postgres = new Postgres({
+    postgres: {
+      url: process.env.BAT_POSTGRES_URL
+    }
+  })
+  const cleaner = cleanPgDb(postgres)
+  return cleaner()
 }
 
 function cleanPgDb (postgres) {
@@ -498,6 +510,7 @@ async function setupForwardingServer ({
   }
   const agent = agentAutoAuth(server.listener, token)
   return {
+    server,
     runtime,
     agent
   }

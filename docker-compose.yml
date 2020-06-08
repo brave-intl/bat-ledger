@@ -128,7 +128,6 @@ services:
       - "CAPTCHA_URL=${CAPTCHA_URL-http://captcha-web:3334}"
       - "PORT=3001"
       - "SERVICE=ledger"
-      - PUBLISHERS_TAKEOVER
       - "DYNO=web.1"
     depends_on:
       - mongo
