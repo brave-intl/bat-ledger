@@ -38,9 +38,6 @@ const {
 const {
   freezeOldSurveyors
 } = require('../eyeshade/workers/reports')
-const {
-  updateBalances
-} = require('../eyeshade/lib/transaction')
 
 dotenv.config()
 
@@ -190,7 +187,6 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   body = []
   while (!body.length) {
     await timeout(2000)
-    await updateBalances(runtime)
     ;({
       body
     } = await agents.eyeshade.publishers.get(balanceURL)
@@ -233,7 +229,6 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   body = []
   do {
     await timeout(5000)
-    await updateBalances(runtime)
     ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)
@@ -255,7 +250,6 @@ test('ledger : user contribution workflow with uphold BAT wallet', async t => {
   await agents.eyeshade.publishers.post(settlementURL + '/submit').send(response.body).expect(ok)
   do {
     await timeout(5000)
-    await updateBalances(runtime)
     ;({ body } = await agents.eyeshade.publishers
       .get(balanceURL)
       .query(query)

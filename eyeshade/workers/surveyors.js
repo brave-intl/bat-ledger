@@ -1,4 +1,4 @@
-const { insertFromVoting, updateBalances } = require('../lib/transaction.js')
+const { insertFromVoting } = require('../lib/transaction.js')
 const { mixer } = require('../workers/reports.js')
 
 exports.initialize = async (debug, runtime) => {
@@ -11,7 +11,6 @@ exports.workers = {
     { queue            : 'surveyor-frozen-report'
     , message          :
       { surveyorId           : '...'
-      , shouldUpdateBalances : false
       , mix                  : false
       }
     }
@@ -20,7 +19,7 @@ exports.workers = {
     async (debug, runtime, payload) => {
       // FIXME should rework this
       const { postgres } = runtime
-      const { mix, surveyorId, shouldUpdateBalances } = payload
+      const { mix, surveyorId } = payload
 
       const client = await runtime.postgres.connect()
       try {
@@ -73,10 +72,6 @@ exports.workers = {
           await client.query('ROLLBACK')
           runtime.captureException(e, { extra: { report: 'surveyor-frozen-report', surveyorId } })
           throw e
-        }
-
-        if (shouldUpdateBalances) {
-          await updateBalances(runtime)
         }
       } catch (e) {
         console.log(e)

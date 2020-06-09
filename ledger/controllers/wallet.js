@@ -217,6 +217,13 @@ const read = function (runtime, apiVersion) {
         probi: balances.confirmed.toString(),
         unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
       })
+    } else {
+      underscore.extend(result, {
+        balance: new BigNumber(0).toFixed(4),
+        cardBalance: new BigNumber(0).toString(),
+        probi: '0',
+        unconfirmed: new BigNumber(0).toFixed(4)
+      })
     }
 
     if (amount) {
