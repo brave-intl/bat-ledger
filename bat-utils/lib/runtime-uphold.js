@@ -2,6 +2,8 @@ const {
   default: SDK,
   RequestClient: Client
 } = require('@uphold/uphold-sdk-javascript')
+const SDebug = require('sdebug')
+const debug = new SDebug('uphold')
 const { URL } = require('url')
 const {
   isUUID
@@ -53,6 +55,13 @@ class AlternativeClient extends Client {
     const { status = 500 } = (err || result)
     end({ status })
     if (err) {
+      debug({
+        url,
+        method,
+        body,
+        customHeaders,
+        err
+      })
       throw err
     }
     return result
