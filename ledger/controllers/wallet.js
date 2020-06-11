@@ -917,7 +917,9 @@ function claimWalletHandler (runtime) {
           providerLinkingId
         }
       }, { upsert: true })
-      // Attempt to associate the paymentId with the member, enforcing max associations no more than 3
+      // Attempt to associate the paymentId with the member, enforcing max associations no more than the default
+      const defaultLimit = 4
+      const limit = process.env.NODE_ENV !== 'production' ? +process.env.PER_MEMBER_CLAIM_LIMIT || defaultLimit : defaultLimit
       const member = await members.findOneAndUpdate({
         providerLinkingId,
         $expr: {
@@ -925,7 +927,7 @@ function claimWalletHandler (runtime) {
             $size: {
               $ifNull: ['$paymentIds', []]
             }
-          }, process.env.NODE_ENV !== 'production' ? +process.env.PER_MEMBER_CLAIM_LIMIT || 3 : 3]
+          }, limit]
         }
       }, {
         $push: {
