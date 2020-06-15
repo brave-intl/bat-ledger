@@ -57,21 +57,39 @@ class Kafka {
       // parallel processing on topic level
       const topicPromises = Object.keys(batchOfMessages).map(async (topic) => {
         // parallel processing on partition level
-        const partitionPromises = Object.keys(batchOfMessages[topic]).map((partition) => {
+        let partition
+        let partKey = 0
+        while ((partition = batchOfMessages[topic][partKey])) {
           // sequential processing on message level (to respect ORDER)
-          const messages = batchOfMessages[topic][partition]
-
-          debug('batch', topic, messages.length, messages[0])
-          return this.topicHandlers[topic](messages)
-        })
-
-        // wait until all partitions of this topic are processed and commit its offset
-        // make sure to keep batch sizes large enough, you dont want to commit too often
-        await Promise.all(partitionPromises)
-        await consumer.commitLocalOffsetsForTopic(topic)
+          const partLength = partition.length
+          const offset = partition[partition.length - 1].offset
+          debug('batch', topic, partLength, partition[0])
+          try {
+            await this.topicHandlers[topic](partition)
+            consumer.commitOffsetHard(topic, partKey, offset)
+          } catch (err) {
+            // must break to not skip ahead to another partition
+            // or set of messages
+            return {
+              topic,
+              partition,
+              partKey,
+              offset,
+              err: {
+                message: err.message,
+                stack: err.stack
+              }
+            }
+          }
+          partKey += 1
+        }
       })
 
-      await Promise.all(topicPromises)
+      let errors = await Promise.all(topicPromises)
+      errors = errors.filter((error) => error)
+      if (errors.length) {
+        debug('errors', errors)
+      }
       // callback still controlls the "backpressure"
       // as soon as you call it, it will fetch the next batch of messages
       callback()
