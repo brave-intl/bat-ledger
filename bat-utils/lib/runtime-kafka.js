@@ -57,30 +57,25 @@ class Kafka {
       // parallel processing on topic level
       const topicPromises = Object.keys(batchOfMessages).map(async (topic) => {
         // parallel processing on partition level
-        const partitionPromises = Object.keys(batchOfMessages[topic]).map(async (partition) => {
-          // sequential processing on message level (to respect ORDER)
-          const messages = batchOfMessages[topic][partition]
-
-          debug('batch', topic, messages.length, messages[0])
-          try {
-            await this.topicHandlers[topic](messages)
-          } catch (e) {
-            debug('batcherror', e)
-            return e
-          }
-        })
-
-        // wait until all partitions of this topic are processed and commit its offset
-        // make sure to keep batch sizes large enough, you dont want to commit too often
-        const results = await Promise.all(partitionPromises)
-        if (results.find((e) => e)) {
-          // if we find a truthy value (an error), don't update the topic
-          return
+        const byTopic = batchOfMessages[topic]
+        let messages = Object.keys(byTopic).map((key) => byTopic[key])
+        messages = [].concat.apply([], messages)
+        // sequential processing on message level (to respect ORDER)
+        debug('batch', topic, messages.length, messages[0])
+        try {
+          await this.topicHandlers[topic](messages)
+        } catch (e) {
+          debug('batcherror', e)
+          // do not commit if failure occurs somewhere in the received messages
+          return e
         }
         await consumer.commitLocalOffsetsForTopic(topic)
       })
 
-      await Promise.all(topicPromises)
+      const errors = await Promise.all(topicPromises)
+      if (errors.filter((error) => error).length) {
+        debug('errors', errors)
+      }
       // callback still controlls the "backpressure"
       // as soon as you call it, it will fetch the next batch of messages
       callback()
