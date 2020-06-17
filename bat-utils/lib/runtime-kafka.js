@@ -67,7 +67,15 @@ class Kafka {
 
         // wait until all partitions of this topic are processed and commit its offset
         // make sure to keep batch sizes large enough, you dont want to commit too often
-        await Promise.all(partitionPromises)
+        try {
+          await Promise.all(partitionPromises)
+        } catch (err) {
+          console.log('kafka error', {
+            err,
+            batchOfMessages
+          })
+          throw err
+        }
         await consumer.commitLocalOffsetsForTopic(topic)
       })
 

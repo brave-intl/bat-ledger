@@ -2,6 +2,8 @@
 
 const Kafka = require('bat-utils/lib/runtime-kafka')
 const test = require('ava')
+const fs = require('fs')
+const path = require('path')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
@@ -16,9 +18,7 @@ const { votesId } = require('../../eyeshade/lib/queries.js')
 const moment = require('moment')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-test.afterEach.always(async t => {
-  await cleanPgDb(postgres)()
-})
+test.afterEach.always(cleanPgDb(postgres))
 
 const date = moment().format('YYYY-MM-DD')
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
@@ -34,13 +34,7 @@ const example = {
 const balanceURL = '/v1/accounts/balances'
 
 test('votes kafka consumer enters into votes', async (t) => {
-  process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
-  const runtime = {
-    config: require('../../config')
-  }
-  const producer = new Kafka(runtime.config, runtime)
-  await producer.connect()
-
+  const producer = await createProducer()
   let { body } = await agents.eyeshade.publishers.get(balanceURL)
     .query({
       pending: true,
@@ -48,8 +42,8 @@ test('votes kafka consumer enters into votes', async (t) => {
     }).expect(ok)
   t.is(body.length, 0)
 
-  await producer.send(process.env.ENV + '.payment.vote', voteType.toBuffer(example))
-  await producer.send(process.env.ENV + '.payment.vote', voteType.toBuffer(example))
+  await sendVotes(producer, example)
+  await sendVotes(producer, example)
 
   while (!body.length) {
     await timeout(2000)
@@ -82,3 +76,56 @@ test('votes kafka consumer enters into votes', async (t) => {
     balance: '5.000000000000000000'
   }], 'vote votes show up after small delay')
 })
+
+test('votes go through', async (t) => {
+  const jsonPath = path.join(__dirname, '..', 'data/votes/failed.json')
+  const json = JSON.parse(fs.readFileSync(jsonPath))
+  const producer = await createProducer()
+  let msg
+  let afterVoteTally
+  let beforeVoteTally
+  let i = 0
+  setInterval(() => {
+    console.log({
+      i,
+      msg,
+      afterVoteTally,
+      beforeVoteTally
+    })
+  }, 10000)
+  json.sort((a, b) => a.createdAt > b.createdAt ? 1 : -1)
+  for (; i < json.length; i += 1) {
+    msg = json[i]
+    beforeVoteTally = await checkVoteTally(msg.channel)
+    await sendVotes(producer, msg)
+    do {
+      await timeout(250)
+      afterVoteTally = await checkVoteTally(msg.channel)
+    } while (afterVoteTally !== beforeVoteTally + msg.voteTally)
+  }
+})
+
+async function checkVoteTally (channel) {
+  const { rows } = await postgres.query(`
+  select coalesce(sum(tally), 0.0) as tally, channel
+  from votes
+  where channel = $1
+  group by channel
+  `, [channel])
+  const row = rows[0]
+  return row ? +row.tally : 0
+}
+
+async function sendVotes (producer, message) {
+  await producer.send(process.env.ENV + '.payment.vote', voteType.toBuffer(message))
+}
+
+async function createProducer () {
+  process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
+  const runtime = {
+    config: require('../../config')
+  }
+  const producer = new Kafka(runtime.config, runtime)
+  await producer.connect()
+  return producer
+}
