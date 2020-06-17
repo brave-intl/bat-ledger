@@ -32,6 +32,7 @@
     "test-e2e": "ava -v test/e2e.integration.test.js",
     "test-grant": "ava -v -s test/ledger/grants.integration.test.js",
     "test-suggestions": "ava -v -s test/eyeshade/suggestions.integration.test.js",
+    "test-acvote": "ava -v -s test/eyeshade/acvote.integration.test.js",
     "test-unit": "ava -v -s bat-utils/**/*.test.js ledger/**/*.test.js",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
     "docker-build": "docker-compose build",

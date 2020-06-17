@@ -57,31 +57,32 @@ class Kafka {
       // parallel processing on topic level
       const topicPromises = Object.keys(batchOfMessages).map(async (topic) => {
         // parallel processing on partition level
-        let partition
-        let partKey = 0
-        while ((partition = batchOfMessages[topic][partKey])) {
+        const topicPartitions = batchOfMessages[topic]
+        const handler = this.topicHandlers[topic]
+        const partitionKeys = Object.keys(topicPartitions)
+        for (let i = 0; i < partitionKeys.length; i += 1) {
+          const partitionKey = partitionKeys[i]
+          const partitionMessages = topicPartitions[partitionKey]
           // sequential processing on message level (to respect ORDER)
-          const partLength = partition.length
-          const offset = partition[partition.length - 1].offset
-          debug('batch', topic, partLength, partition[0])
-          try {
-            await this.topicHandlers[topic](partition)
-            consumer.commitOffsetHard(topic, partKey, offset)
-          } catch (err) {
-            // must break to not skip ahead to another partition
-            // or set of messages
-            return {
-              topic,
-              partition,
-              partKey,
-              offset,
-              err: {
-                message: err.message,
-                stack: err.stack
+          for (let j = 0; j < partitionMessages.length; j += 1) {
+            const message = partitionMessages[j]
+            try {
+              await handler(message)
+              consumer.commitOffsetHard(topic, partitionKey, message.offset)
+            } catch (err) {
+              // must break to not skip ahead to another partition
+              // or set of messages
+              debug('erred', topic, message, err)
+              return {
+                topic,
+                message,
+                err: {
+                  message: err.message,
+                  stack: err.stack
+                }
               }
             }
           }
-          partKey += 1
         }
       })
 
@@ -93,7 +94,7 @@ class Kafka {
       // callback still controlls the "backpressure"
       // as soon as you call it, it will fetch the next batch of messages
       callback()
-    }, true, false, batchOptions)
+    }, false, false, batchOptions)
   }
 }
 
