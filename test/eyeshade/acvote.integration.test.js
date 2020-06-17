@@ -82,27 +82,27 @@ test('votes go through', async (t) => {
   const json = JSON.parse(fs.readFileSync(jsonPath))
   const producer = await createProducer()
   let msg
-  let afterVoteTally
-  let beforeVoteTally
+  // let afterVoteTally
+  // let beforeVoteTally
   let i = 0
-  setInterval(() => {
-    console.log({
-      i,
-      msg,
-      afterVoteTally,
-      beforeVoteTally
-    })
-  }, 10000)
+  // setInterval(() => {
+  //   console.log({
+  //     // i,
+  //     // msg,
+  //     // afterVoteTally,
+  //     // beforeVoteTally
+  //   })
+  // }, 10000)
   json.sort((a, b) => a.createdAt > b.createdAt ? 1 : -1)
   for (; i < json.length; i += 1) {
     msg = json[i]
-    beforeVoteTally = await checkVoteTally(msg.channel)
-    await sendVotes(producer, msg)
-    do {
-      await timeout(250)
-      afterVoteTally = await checkVoteTally(msg.channel)
-    } while (afterVoteTally !== beforeVoteTally + msg.voteTally)
+    await checkVoteTally(msg.channel)
+    sendVotes(producer, msg)
   }
+  // do {
+  //   // await timeout(5000)
+  //   // afterVoteTally = await checkVoteTally(msg.channel)
+  // } while (true)
 })
 
 async function checkVoteTally (channel) {
