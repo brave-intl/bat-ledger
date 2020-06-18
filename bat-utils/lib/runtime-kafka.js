@@ -33,7 +33,7 @@ class Kafka {
 
     this.producer = new NProducer(this.config, null, partitionCount)
     this.producer.on('error', error => {
-      console.error(error)
+      console.error('error handler', error)
       if (this.runtime.captureException) {
         this.runtime.captureException(error)
       }
@@ -50,37 +50,31 @@ class Kafka {
     this.topicHandlers[topic] = handler
   }
 
-  async consume () {
+  async consume (runtime) {
     const consumer = new NConsumer(Object.keys(this.topicHandlers), this.config)
     await consumer.connect()
     consumer.consume(async (batchOfMessages, callback) => {
       // parallel processing on topic level
       const topicPromises = Object.keys(batchOfMessages).map(async (topic) => {
         // parallel processing on partition level
-        const topicPartitions = batchOfMessages[topic]
+        const partitions = batchOfMessages[topic]
         const handler = this.topicHandlers[topic]
-        const partitionKeys = Object.keys(topicPartitions)
-        for (let i = 0; i < partitionKeys.length; i += 1) {
-          const partitionKey = partitionKeys[i]
-          const partitionMessages = topicPartitions[partitionKey]
+        const partitionPromises = Object.keys(partitions).map(async (partitionKey) => {
           // sequential processing on message level (to respect ORDER)
-          for (let j = 0; j < partitionMessages.length; j += 1) {
-            const message = partitionMessages[j]
-            try {
-              await handler(message)
-              consumer.commitOffsetHard(topic, partitionKey, message.offset)
-            } catch (err) {
-              // must break to not skip ahead to another partition
-              // or set of messages
-              debug('erred', topic, message, err)
-              return {
-                topic,
-                message,
-                err: {
-                  message: err.message,
-                  stack: err.stack
-                }
-              }
+          const messages = partitions[partitionKey]
+          return handler(messages)
+        })
+        try {
+          // if there is an error in any of the handlers, the commit will not occur
+          await Promise.all(partitionPromises)
+          await consumer.commitLocalOffsetsForTopic(topic)
+        } catch (err) {
+          return {
+            topic,
+            partitions,
+            err: {
+              message: err.message,
+              stack: err.stack
             }
           }
         }
