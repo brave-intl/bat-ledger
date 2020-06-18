@@ -75,7 +75,7 @@ class Kafka {
       // callback still controlls the "backpressure"
       // as soon as you call it, it will fetch the next batch of messages
       callback()
-    }, true, false, batchOptions)
+    }, false, false, batchOptions)
   }
 }
 

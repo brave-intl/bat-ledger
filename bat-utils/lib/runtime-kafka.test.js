@@ -13,17 +13,17 @@ test('can create kafka consumer', async (t) => {
   await producer.connect()
 
   const consumer = new Kafka(runtime.config, runtime)
-  const messagesPromise = new Promise(resolve => {
+  const messagePromise = new Promise(resolve => {
     consumer.on('test-topic', async (messages) => {
-      resolve(messages)
+      const buf = Buffer.from(messages[0].value, 'binary')
+      resolve(buf.toString())
     })
   })
   await consumer.consume()
 
   await producer.send('test-topic', 'hello world')
 
-  const messages = await messagesPromise
+  const message = await messagePromise
 
-  t.is(messages.length, 1)
-  t.is(messages[0].value, 'hello world')
+  t.is(message, 'hello world')
 })

@@ -1,0 +1,1954 @@
+[
+  {
+  "id": "9b30ad44-11e9-4ce1-94e1-72d9ab5269b2",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-04-29T21:22:44Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "4b544c3a-8833-4e89-a931-4ba6e7c79388",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-04-29T21:27:14Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "cb4cf70a-56f3-41f5-b66e-b1b41fdaefd1",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-04-29T21:28:56Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "9bd191d9-4a73-4901-aff6-7c5374c30420",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-05-29T20:16:14Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "8881d2a7-89c8-48e3-8fbd-0b4823cb9686",
+  "type": "oneoff-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T01:00:13Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "5bedf8a1-252a-4b64-a916-004581cc70ae",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T13:49:51Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "40284ca4-1d1e-4360-8048-94b3f45243e6",
+  "type": "oneoff-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T14:15:21Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "273271dc-285c-4363-974e-0b0a96228962",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T14:16:54Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "ca40405d-3294-43e6-acc6-e097d034233e",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T14:18:57Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "f7a31898-0ba7-4007-a317-b4201f21c667",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T14:19:08Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a74562a3-4611-4e57-abe6-e1f3ad2cc6fe",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T14:20:53Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "9f8c1716-7766-45cd-8829-219b667ee62c",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T14:25:41Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "10a13d84-da0a-415a-821a-cfda851cfdf3",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-02T14:33:56Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 29,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "a3f51c80-0139-47d8-b902-9f070e6bd260",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T15:09:17Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 23,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "92bc1cb6-05ed-40ca-a3bb-d139f05db180",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T15:11:33Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 17,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "fe9d75bb-eeb7-40dc-9a89-d20b8abbefdb",
+  "type": "auto-contribute",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-02T15:16:21Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 16,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "e047330f-cb87-4d00-aa9f-04bb6ac08f05",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T15:16:53Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "8748264b-be77-46d0-be91-00a9f4668c60",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T15:30:14Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "9490ffb2-f612-40fd-8cbd-5e544eec82da",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T16:37:45Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "cab427f6-0904-4c2c-89e1-0e4002b84955",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T16:46:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "cc2b5506-ec57-4888-92ea-2603665d2fae",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T16:47:38Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "fa525bc4-7104-4f89-a9a1-61ee477de8bc",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-02T16:51:45Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 10,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "fac0fdc1-4bc2-4dcd-9ef7-15a0905bb053",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-02T16:55:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 10,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "d8e21622-e31a-40cb-9b07-cf60655c6732",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-02T19:32:26Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "60d1fe77-44ca-4108-876e-704913fbad07",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-03T09:07:14Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 37,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "15d0ffdc-98d2-4238-b923-fee433f03e44",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-03T09:16:18Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 7,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "60b37d95-66ea-4086-98c1-b60b4fef6c40",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-03T10:34:57Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 12,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "c9ebd76b-d7c5-4c56-83da-f4cd8a44fd04",
+  "type": "auto-contribute",
+  "channel": "jotunheimr.org",
+  "createdAt": "2020-06-03T10:35:03Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 8,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "69bb470c-a77c-4a68-a882-44edb8916a6f",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-03T10:59:19Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 39,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "5015704f-7aff-43e0-b167-48a048ce8a3b",
+  "type": "auto-contribute",
+  "channel": "jotunheimr.org",
+  "createdAt": "2020-06-03T10:59:25Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 41,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "e923d3af-1b54-4ec7-bcca-01159e57ee73",
+  "type": "oneoff-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-03T14:53:27Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "18304ce3-ad75-4fed-a1a7-8de207eebf85",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-03T14:56:34Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "86d953c0-ef63-4320-9095-48573d05a24a",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:13169512",
+  "createdAt": "2020-06-03T15:05:02Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "743931e2-b649-41f8-b7ec-b1ba12a27ee1",
+  "type": "oneoff-tip",
+  "channel": "yachtcaptain23.github.io",
+  "createdAt": "2020-06-03T15:08:16Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "993da1a7-32c0-46f7-bad5-3b28c2579bfb",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-03T15:13:40Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 36,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "ec6a1391-9580-4f89-ad49-6a5f9fab1e4b",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-03T15:15:10Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "d02583a1-6824-4817-8596-300935f5d197",
+  "type": "oneoff-tip",
+  "channel": "yachtcaptain23.github.io",
+  "createdAt": "2020-06-03T15:28:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "d1f3e7c1-1f11-45e2-af70-4abcef1eae51",
+  "type": "recurring-tip",
+  "channel": "reddit#channel:11ncas",
+  "createdAt": "2020-06-03T15:32:11Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "85d05bdd-c3fa-4a48-9082-d263f12702cb",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-04T01:17:17Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "1b1e6337-6d63-4c92-9c04-51d1c14c6c4f",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-08T17:11:04Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 5,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "2e4097bb-070a-4e5c-8ab5-e23a89c88e4e",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-08T17:11:05Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 5,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "01416b5a-0554-41e3-b7e3-86049c585d54",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-08T17:11:06Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 10,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "82c5150a-2dcd-48c1-abfd-f0141ba5f5d3",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-08T17:22:23Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 56,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "12172605-d96a-411b-9390-f8bb1fe7c281",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-08T18:15:19Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 56,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "3ad6415e-cf61-44a7-aef2-d57c3b64daf8",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-08T18:40:58Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 56,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "86004566-e4fb-4130-aecd-271827e27521",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-08T19:18:46Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "6a20cf8e-6d35-4d86-9939-ec3e8af143e8",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-08T19:29:12Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "7b508804-1a8e-4cfe-a564-ed7d04ab1da1",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-08T19:40:41Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "87ffc3a3-3a4a-4393-8f5d-a454e40db8aa",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-08T19:40:42Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "a053d74e-1031-4c5b-994f-95ff65ba3c60",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-08T19:42:00Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2dbda764-0445-42fe-adca-5e42538a74e7",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-08T20:00:22Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 13,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b2a54e45-98c2-47e8-9656-739cf64a4ecc",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-08T20:00:23Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 13,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "1245035f-b672-4faf-949e-b37cf797f890",
+  "type": "auto-contribute",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-08T20:00:24Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b8819502-e57d-4215-9d58-aaf85ddef2fc",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-08T20:08:37Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 10,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "98770057-9631-4acb-8da6-1b17f11bdf3e",
+  "type": "auto-contribute",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-08T20:08:38Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "6328fcbd-32dd-43b8-9f3c-747db9c04c71",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-08T20:08:39Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "e0d9d994-a343-4bf2-90d5-a4d90512290d",
+  "type": "auto-contribute",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-08T20:08:40Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 10,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "c8dbb1da-0046-425c-882d-c1c6e081a36d",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-09T11:40:24Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 10,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "11a70296-99bc-4255-9492-d3ca3156729e",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-09T11:40:23Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 3,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "68368089-079f-4321-b066-01b360fe2a0d",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-09T11:46:52Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "e83c2a49-c4ff-4818-bed9-2039fdb56396",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-09T11:46:54Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "49960f58-29bc-42ec-8ddd-553f9ff65873",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-09T13:29:29Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "c70c14d1-4fbc-443d-8163-3bad377bbf3e",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-09T14:04:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "d6fca9c2-fa73-45d0-b16c-5c4853d0993e",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-09T14:31:22Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "284bfd4f-db83-43fb-8a93-25bb46fa46c5",
+  "type": "recurring-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-09T15:30:17Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a6bc92a5-7d9e-43aa-a6f6-67945c624b11",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T10:49:05Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 13,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "b19eaa0a-5580-4b35-a232-e284717ebe75",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T10:58:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "2f8a782c-7ddc-4b20-81b8-9146e5225da4",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-10T10:59:50Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "b21702ec-7604-4b5a-b66d-b8071a8b0002",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T11:05:34Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "2ca7e286-bb76-4eaf-aceb-3b8f579344de",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-10T11:08:47Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "8dc78bab-1809-4dd1-a97c-2bb4e16f8327",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T11:17:33Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "d3c935c0-dae3-4433-8703-bf7d092cfd31",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-10T11:23:06Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "4a308954-789f-4c5f-a558-47f95c201b39",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T11:23:05Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "b79c6576-51cc-4add-bd1a-848e14cc1fb2",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T11:46:25Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "606497e2-d15e-442b-81ba-d28d30eecb6b",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-10T11:46:28Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 16,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b711dd7a-d72b-488f-9263-1477119cc55c",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T11:57:56Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 3,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "f78f4b92-dfc0-45dd-a30c-d589c6a41869",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-10T11:57:59Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 17,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "7ca90659-0dd1-47f5-a122-d598ff5ceb86",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T13:12:43Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 8,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "66bd5a92-7a1d-4e09-8d8b-f88bc24ececb",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-10T13:27:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 7,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "37812cb2-0de4-4fcf-99c9-eeed8248f3a3",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T13:27:36Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "06651662-8df5-441f-8b6a-2374c84a1f6e",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-10T13:27:39Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 29,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "81dc13a6-f0ab-4e51-b87b-a1dfba768638",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-10T13:53:16Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "012046db-de3b-4be7-8de9-bd4ca3211114",
+  "type": "recurring-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-10T14:15:33Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "363d0f70-c76d-4296-9296-fb66937ab2f7",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-10T15:39:10Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 56,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "bdc2fb27-cfb1-4b68-bfe7-4e9a2cd80d5c",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-10T15:52:07Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 56,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b3082eeb-0623-4149-8c9d-5c928f2970fd",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T16:20:59Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 33,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "3b229011-1082-4dc0-b1e7-6a748228fc87",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-10T16:21:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 30,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "166f7304-0a85-499d-b54c-0a64ed004895",
+  "type": "auto-contribute",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-10T16:42:02Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 72,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "6c7937b8-a031-42b0-8222-7660be5b4bee",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-10T16:52:40Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "f2c027b1-7ed2-47ab-b559-fadc155eac49",
+  "type": "auto-contribute",
+  "channel": "bravesoftware.com",
+  "createdAt": "2020-06-10T18:58:28Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "85be9315-60da-4e39-8c24-1e4686e2d728",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-11T06:30:45Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "fe4f6e8a-393a-46d9-b25d-b53098ee0c6d",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-11T06:38:32Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "bbd7825d-381b-4798-a160-477c066d18d8",
+  "type": "recurring-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-11T07:16:54Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a286baea-419b-4b3f-b294-a375ecb4a44a",
+  "type": "oneoff-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T12:26:14Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "bdb5d29b-5fff-4c7a-9b22-fcb0ca12849b",
+  "type": "oneoff-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T12:26:26Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "9d76141c-58ef-4007-ae3a-55ffbab97c0d",
+  "type": "oneoff-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T12:26:41Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a2a500e8-5b80-41bf-94c0-6012ab5591b5",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T12:50:07Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 21,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2c67c926-ad89-42ca-a7d2-755c6f28962b",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T12:50:08Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 19,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "cfcadff3-0f86-4265-851b-74d80a63f325",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T12:50:10Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 16,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "a32e0f1d-3ea8-411e-9cf0-d2007b1d79d5",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T12:50:12Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 24,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "2bb4c962-b787-4995-8277-6754ef2b3b39",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T13:41:32Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 3,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "d947eb82-9f1b-424b-9590-86ab4fc64ed5",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T13:41:33Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 6,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "d9a72eda-4bcf-465d-ba07-66f98c8fe99e",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-11T13:41:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2169bd1b-95a7-4e99-92bc-b57bc375f420",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T14:32:19Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "bbac5d6d-b533-454d-8c97-ea730ce84abf",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T14:32:20Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "5a81249b-e0c6-4328-92eb-484977a5cf47",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T14:53:00Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 8,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b8efbc9b-e646-43f7-97a2-8276d365cb72",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T14:53:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 12,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b20dd7ea-50d7-4462-b1e8-f6153a9ad32c",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T15:09:39Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 18,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "f0460791-5f85-4760-9668-a8c96d87dcd3",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T15:09:41Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 22,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "35607132-6f3c-491c-8b92-bcd4c9edac22",
+  "type": "oneoff-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T17:11:36Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "f21d55b4-f37d-4d70-9544-dd836697a6fb",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T17:37:07Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "53d3cb5e-0dd4-497e-99db-3e01b697d1aa",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T17:41:02Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 26,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2baf8243-e847-4977-ad9f-7882cfd21c02",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T17:41:04Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "fd3bf51a-cd86-4db8-87b4-56948dd72836",
+  "type": "recurring-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-11T17:49:08Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "dce19f48-a23c-47dd-a04d-1cc7b5669eef",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T17:49:13Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 5,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b2990d5c-12b7-4bab-b173-e8a01eb82911",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-11T17:49:14Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 15,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "1788888e-ff5c-4ad7-bdda-25398c4fb400",
+  "type": "recurring-tip",
+  "channel": "yachtcaptain23.github.io",
+  "createdAt": "2020-06-11T17:57:06Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "59150a1b-d66c-46fc-8415-26d4d82f1a18",
+  "type": "recurring-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T17:57:07Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "f814553b-52d0-4c8b-b532-35488e011ee6",
+  "type": "auto-contribute",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-11T17:57:26Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 2,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "90afaaab-fec5-4ec0-93dc-8d016394b107",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-11T18:07:07Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 18,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "5029cbc5-497c-4605-a9a1-c6a4bb167084",
+  "type": "oneoff-tip",
+  "channel": "reddit#channel:11ncas",
+  "createdAt": "2020-06-11T18:29:09Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "6f965500-5223-4918-960c-adefb71446a7",
+  "type": "recurring-tip",
+  "channel": "yachtcaptain23.github.io",
+  "createdAt": "2020-06-11T18:32:34Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "035d9a3f-bb28-4819-a785-f129ebbf51c9",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T18:47:18Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2ac94e8d-2c01-44a7-9c8e-ecea9f147688",
+  "type": "recurring-tip",
+  "channel": "yachtcaptain23.github.io",
+  "createdAt": "2020-06-11T18:51:04Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "910c69ce-2539-4fdd-a3c9-6f6149bb1f68",
+  "type": "auto-contribute",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-11T18:51:15Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 6,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "67bc1a8e-ee20-4845-be86-4be52f369d83",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-11T18:51:23Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "58a2f831-6235-47f3-8a56-0ad6b7f06f70",
+  "type": "auto-contribute",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-11T19:16:26Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 9,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "ee77ba06-3fb2-4c07-8e56-3b4d81291442",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-11T19:16:27Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "677c9f34-0e29-4198-8b72-e97baf071430",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T19:34:43Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 16,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "c59d681e-995e-4eb3-8f99-6361b3e1d004",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T19:39:18Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 16,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "2f0ea462-eb86-4527-8656-163970480bb2",
+  "type": "auto-contribute",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-11T19:43:57Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 8,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "a91d5f8e-3327-44a0-b6f4-b266ff477695",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T19:57:22Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "aea632f0-8484-4e04-9d41-8cdbd73b50f0",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T20:20:36Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "464f7183-1d8d-463c-b092-63cef6b530ba",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T20:38:40Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "5d8cb936-b695-4c9d-96f3-5459f6c1c8b3",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-11T20:50:04Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "930f8169-5a34-42f8-85b4-65afdef53a1e",
+  "type": "recurring-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-11T21:07:37Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "36650928-7063-46a1-a150-f885b508eba4",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T21:33:44Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 39,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "7e2e380b-70c9-491f-9384-38d291901002",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T21:33:45Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 41,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "3f7c904f-a37f-46df-9bb1-74449853dbee",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-11T22:31:41Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "d380dd33-b287-4df2-92a6-6b4447412b11",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-11T22:32:58Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 15,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "35405af7-0da4-4440-bd6e-c5a6f0780687",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-11T22:37:15Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "f4ab0b7d-8ab1-4170-9f65-dc5086fc75eb",
+  "type": "oneoff-tip",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-12T08:26:49Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "d744acdd-c2b7-4a0c-98ed-d800c3e9923d",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T10:30:23Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "8586ec38-64e9-4cfd-b0ce-84d68b9df366",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T10:35:25Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 23,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "d0672310-5d36-4495-9598-b3790760bc9d",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T10:35:26Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 17,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "578bf912-4868-4251-83dd-40f218e1e69b",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T10:50:31Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 6,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "951b2dc4-5ae3-4bd2-8e3e-454e0d9af034",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T10:50:33Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "b7d9924f-1c72-49bd-ba53-5699f910188c",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T10:59:30Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "00515f01-09ee-451f-90fe-63a5c24a553a",
+  "type": "oneoff-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T11:00:53Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b88f74c7-bdfc-4492-a4f7-2a6cb769c679",
+  "type": "recurring-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T11:02:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "3434dcc8-957d-4536-b808-76d1b6df057f",
+  "type": "recurring-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T11:02:11Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2fd10e57-15da-4a22-a753-a65b8a38af4f",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T11:02:15Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "4fe0aa62-bc0d-41b0-9be7-8624c0a6d681",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T11:02:25Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 2,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "74e2f0fb-f8b8-4932-b3ea-36a3abd497a1",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T11:02:27Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "f8fd0fed-1d8d-4bd6-9425-2192d560e66d",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T11:02:26Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a737ffc6-6206-457d-aaae-9b12770d3b72",
+  "type": "oneoff-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T11:26:37Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "31efda3b-72b4-4568-8a73-79c4e649fdb5",
+  "type": "oneoff-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T11:27:00Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a6fbcba2-afcb-401d-983c-160ad7456749",
+  "type": "oneoff-tip",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-12T11:27:55Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "01052f42-6311-4822-8388-63ad5cab41b6",
+  "type": "oneoff-tip",
+  "channel": "twitter#channel:870390728601501696",
+  "createdAt": "2020-06-12T11:28:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "1a812ce3-656b-4316-9388-4cdaca6f310c",
+  "type": "oneoff-tip",
+  "channel": "reddit#channel:4evw586z",
+  "createdAt": "2020-06-12T11:29:28Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "b2f45330-edf4-4546-9750-386a9ba34893",
+  "type": "oneoff-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T11:30:23Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "6018be1c-6c2c-4995-b18d-b02f33c5def3",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T11:57:33Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 5,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "b05d6e5a-1966-4dc5-a1de-752b7faac3c3",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T12:00:39Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 1,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "82df511e-0c64-481c-97a9-234ba14a7605",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:02:13Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "602b78bc-b7f9-4783-acf0-44955689b5e5",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T12:02:38Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "c236ce44-08d3-4c3f-910b-e2598f0d9364",
+  "type": "recurring-tip",
+  "channel": "reddit#channel:4evw586z",
+  "createdAt": "2020-06-12T12:03:13Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "43634266-089c-4809-8f60-f4706cf05900",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:1008981859584229376",
+  "createdAt": "2020-06-12T12:03:22Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "fd6bea44-9091-40d2-a348-dc0c1c94794e",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-12T12:04:44Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "938c2d01-a739-4bcb-86bd-296134cd7203",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:15:12Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "ab54dfcd-b0c8-4372-9459-a99abeb22b76",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T12:16:03Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2da947aa-6de7-4d5c-b76b-d8ce8691f0ec",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:1008981859584229376",
+  "createdAt": "2020-06-12T12:16:08Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "79f9853b-c17e-410c-aa84-c0a1e68fb842",
+  "type": "recurring-tip",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-12T12:16:53Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "cd0a8291-2efe-412f-be63-54fbeddc10a6",
+  "type": "recurring-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-12T12:17:33Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "963b03c3-4f2d-4ca9-967c-aabd5ee67edd",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:17:49Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "eac86924-e7db-43b7-8d44-190e735b7bf0",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:25:13Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "4de133a2-e410-4347-b722-1b08c957a8a8",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T12:25:19Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "25f1c959-7d9e-4353-abce-525de2f9ccd7",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:31:05Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 17,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "ceee5cfb-85e1-4d59-b113-0b4190e7e472",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T12:39:53Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 18,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "02ed6e9b-2918-48a0-b352-64d1614d1db2",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:43:36Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "8e8ecac1-3310-4377-8940-5433859874cd",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-12T12:43:45Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 49,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a827ec76-42be-438b-8991-989f3f7c45b6",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T12:44:09Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2ce758f4-fba5-49ff-9069-76c542899b62",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:1008981859584229376",
+  "createdAt": "2020-06-12T12:44:19Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "be34decb-a369-4daf-ba79-e57f9418279e",
+  "type": "recurring-tip",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-12T12:44:24Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "f13cf279-0707-4e54-b760-05e3863808f9",
+  "type": "recurring-tip",
+  "channel": "reddit#channel:4evw586z",
+  "createdAt": "2020-06-12T12:44:44Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "ddb60688-3988-4f1f-b71a-166ab24f337e",
+  "type": "recurring-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-12T12:44:53Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a113ca9f-f2c8-4544-9e8f-e1c93a80c681",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:44:57Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "7c6d2a3b-6670-4a6d-9d8f-ee07a9454730",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T12:50:34Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "4e0fe016-ee88-492f-8f26-9a562bb62283",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T12:50:55Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "c2d11da7-2577-49f6-811e-c3fe4cfa4397",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:1008981859584229376",
+  "createdAt": "2020-06-12T12:51:11Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "1e78eb9c-80ac-465e-9b1b-5bd75889fbb1",
+  "type": "recurring-tip",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-12T12:51:24Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "88369fd2-427f-4de2-80f4-57815d20f020",
+  "type": "recurring-tip",
+  "channel": "reddit#channel:4evw586z",
+  "createdAt": "2020-06-12T12:51:44Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "25d405b9-7535-4787-9e38-e86ec95b8937",
+  "type": "recurring-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-12T12:51:49Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "52d47afd-d609-433d-a870-797411aa37e1",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T13:00:16Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "bfef6a8b-5f4a-47a2-8adc-efaacc4e3a64",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T13:00:43Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "7ad22acd-2050-42b5-bb70-9d7c62d541a3",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:1008981859584229376",
+  "createdAt": "2020-06-12T13:01:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a61c4abe-4fb2-4bc3-af26-d9506067d03c",
+  "type": "recurring-tip",
+  "channel": "reddit#channel:4evw586z",
+  "createdAt": "2020-06-12T13:01:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "c3304e7a-43d3-4646-b8cd-90fda8e71d13",
+  "type": "recurring-tip",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-12T13:01:38Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "c3f36e89-bb8a-4f79-8192-8a99b223783f",
+  "type": "recurring-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-12T13:01:43Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "af13bf9c-a55f-46d5-9655-25a4ba203a68",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T13:10:02Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "caf62e46-fe0e-4a7e-9406-56f11699fe7a",
+  "type": "recurring-tip",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T13:10:12Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "d6da62f4-ce87-47c6-8ff2-cd6ba40590cc",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCXO1nrwOrprBDD-75fNQZ1Q",
+  "createdAt": "2020-06-12T13:10:21Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a99b42e2-c364-46a6-85bf-abbad5270445",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:1008981859584229376",
+  "createdAt": "2020-06-12T13:10:30Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "70efafc8-aeb3-40f3-9695-8fbde1156ba0",
+  "type": "recurring-tip",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-12T13:10:32Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "82e96d59-b292-442f-8f91-bef1faab57b5",
+  "type": "recurring-tip",
+  "channel": "reddit#channel:4evw586z",
+  "createdAt": "2020-06-12T13:10:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "4985a9f4-afa0-4f86-b245-bf75269050eb",
+  "type": "oneoff-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-12T13:10:39Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "9fde0dfe-37fc-4df0-8070-7a951cb05553",
+  "type": "recurring-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-12T13:10:54Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "07d9137f-e24e-4311-b3ca-cb39141dae28",
+  "type": "recurring-tip",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-12T13:16:48Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "4e326771-4b5f-4f1f-8d49-cacdb124b443",
+  "type": "recurring-tip",
+  "channel": "yachtcaptain23.github.io",
+  "createdAt": "2020-06-12T13:16:52Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "21c53db2-32b2-4811-aecd-251fca2121d3",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCD7siefto4I33L4U61IU5LQ",
+  "createdAt": "2020-06-12T13:17:54Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "f960b27c-294f-4e08-b6a0-4d9d99283561",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:13169512",
+  "createdAt": "2020-06-12T13:17:58Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a8f88cc3-39f2-4f20-bbf3-919293448ed3",
+  "type": "recurring-tip",
+  "channel": "vimeo#channel:102029751",
+  "createdAt": "2020-06-12T13:18:14Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "21008842-9956-4835-b49c-15fbc862889a",
+  "type": "recurring-tip",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-12T13:18:19Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "39c2b675-9afc-457c-87d0-9fba9441302f",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-12T17:26:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 21,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "9b2f7768-a3d5-42d6-b38f-bee0fbb8d7fe",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T17:36:09Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 19,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "d4fda5c4-6cc3-40ba-abd7-1e19912ba618",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-12T18:11:36Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 19,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "1f93be9a-de60-4df5-a503-7f3e5230f7ee",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-15T05:02:18Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 40,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "75a72c56-8e5a-442a-8d93-a52bfb796f8e",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-15T05:04:42Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 18,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "1df98638-33aa-4b96-a576-fd56d92db377",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-15T05:16:47Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 22,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "26499739-a50d-4a04-b329-73c1e423d134",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T07:12:46Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 8,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "2f175b22-49e4-41e0-896f-f804e586f51a",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T07:13:35Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 8,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "e21f1d1e-2b46-4741-aea8-4d0aff9928f5",
+  "type": "auto-contribute",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-15T07:13:53Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 12,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "d76a1409-b2f6-4a3d-a7ee-1f68661c5c24",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-15T07:16:34Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "c5174778-9422-41fb-9fc1-870aae447d47",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T07:18:54Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 3,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "08f5935e-b428-44f5-8a2a-36b0715f1393",
+  "type": "auto-contribute",
+  "channel": "kjozwiakstaging.github.io",
+  "createdAt": "2020-06-15T07:19:23Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "78528c9b-4b3f-45ad-8e04-09bca6aab352",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-15T07:21:45Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 6,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "ae1c1a61-ec67-4e1b-95b1-6fef1323822c",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T13:47:19Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 17,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "a1230ddc-9388-4955-a081-18623748aeef",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-15T13:56:34Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 12,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "aa26f7be-f6d5-4688-81ed-d791a10caf62",
+  "type": "auto-contribute",
+  "channel": "github#channel:28145373",
+  "createdAt": "2020-06-15T13:58:18Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 11,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "694b52dc-8def-40b2-bf24-56560835a54c",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T14:42:30Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 80,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "656f5743-2f5b-4d98-97ee-a591f536d962",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T16:19:24Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 3,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "ca56e070-c20a-4e5a-92f7-45ba1cb1c308",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCCs7AQEDwrHEc86r0NNXE_A",
+  "createdAt": "2020-06-15T16:21:09Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 17,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "4e38312b-ecf7-4a45-b8f7-ea518313b08a",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T16:29:56Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 8,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "efa91cf8-f0b3-4888-9c98-4732c4c5667c",
+  "type": "auto-contribute",
+  "channel": "youtube#channel:UCCs7AQEDwrHEc86r0NNXE_A",
+  "createdAt": "2020-06-15T16:31:16Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 12,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "85e4b86a-b53c-4eba-8ca7-c4e8c0f01273",
+  "type": "auto-contribute",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T16:32:46Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "2078831a-23af-479b-8f21-215f3f210e3c",
+  "type": "oneoff-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T16:39:10Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "a0b7bb95-fc49-432e-a501-e8b36cdfd094",
+  "type": "oneoff-tip",
+  "channel": "youtube#channel:UCCs7AQEDwrHEc86r0NNXE_A",
+  "createdAt": "2020-06-15T16:40:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "de068b71-d926-4a46-9fff-6a33ffaaaca5",
+  "type": "oneoff-tip",
+  "channel": "reddit#channel:3qcrujfx",
+  "createdAt": "2020-06-15T16:40:39Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "bed8390d-54bf-4341-99cd-ad8c3b4ac9be",
+  "type": "oneoff-tip",
+  "channel": "twitter#channel:870390728601501696",
+  "createdAt": "2020-06-15T16:41:07Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "9ab565e1-3056-4593-b89e-fc9dae602f31",
+  "type": "recurring-tip",
+  "channel": "3zsistemi.si",
+  "createdAt": "2020-06-15T16:52:15Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "513be6a2-5d8a-412a-b8f1-a9974353ae5c",
+  "type": "recurring-tip",
+  "channel": "twitter#channel:870390728601501696",
+  "createdAt": "2020-06-15T16:52:44Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "268fe82c-c979-4007-a822-bae5ade38ed7",
+  "type": "recurring-tip",
+  "channel": "youtube#channel:UCCs7AQEDwrHEc86r0NNXE_A",
+  "createdAt": "2020-06-15T16:52:51Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 20,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "19ae4433-06f6-4bfb-b248-16ae5f9a835f",
+  "type": "recurring-tip",
+  "channel": "reddit#channel:3qcrujfx",
+  "createdAt": "2020-06-15T16:53:01Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 4,
+  "fundingSource": "anonymous-card"
+}, {
+  "id": "64c235cc-b0b7-4c36-931b-3f590db2f63c",
+  "type": "auto-contribute",
+  "channel": "duckduckgo.com",
+  "createdAt": "2020-06-15T20:00:28Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 14,
+  "fundingSource": "user-wallet"
+}, {
+  "id": "b30472bb-ba84-4455-a67b-ba2d5bf49c30",
+  "type": "auto-contribute",
+  "channel": "laurenwags.github.io",
+  "createdAt": "2020-06-15T20:07:40Z",
+  "baseVoteValue": "0.25",
+  "voteTally": 26,
+  "fundingSource": "user-wallet"
+}]
