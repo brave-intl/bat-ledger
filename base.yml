@@ -21,7 +21,7 @@ services:
       - "BAT_REDEEMER_REDIS_URL=redis://redeemer-redis:6379"
       - "BAT_REDEEMER_SERVER=http://redeemer-web:3333"
       - "BAT_REDIS_URL=redis://redis:6379"
-      - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava,kafka}"
+      - "DEBUG=${DEBUG-*,-babel*,-eslint:*,-mongo:*,mongo:queries,-ava}"
       - "ENABLE_ADS_PAYOUT=1"
       - "ENV=local"
       - "FASTLY_TOKEN_LIST=foobarfoobar"
