@@ -69,7 +69,7 @@ test('one topic failing does not cause others to fail', async (t) => {
     messages.push(sendMsgs())
   }
   const expectingTopic1 = [].concat.apply([], await Promise.all(messages))
-  await waitForParody(topic1)
+  await waitForParity(topic1)
 
   // check state
   t.true(state[topic1].length === 100, 'topic 1 should have processed 100 msgs')
@@ -80,16 +80,16 @@ test('one topic failing does not cause others to fail', async (t) => {
   console.log('consumption pattern', expectedLength, consumptionPattern)
   t.is(expectedLength, state[topic2].length, `topic 2 should be less than or equal to ${expectedLength} in length`)
   const expectedStateTopic2 = expectingTopic1.slice(0, state[topic2].length)
-  t.deepEqual(expectedStateTopic2, state[topic2], 'topic2 should the frist ordered subset of topic 1')
+  t.deepEqual(expectedStateTopic2, state[topic2], 'topic2 should the first ordered subset of topic 1')
 
   // service gets restarted
   consumers.forEach((consumer) => consumer.close())
   const consumer2 = new Kafka(runtime.config, runtime)
   consumer2.on(topic2, pseudoDBTX(topic2))
   await consumer2.consume()
-  await waitForParody(topic2)
+  await waitForParity(topic2)
 
-  async function waitForParody (topic) {
+  async function waitForParity (topic) {
     do {
       await timeout(500)
     } while (!_.isEqual(state[topic], expectingTopic1))
