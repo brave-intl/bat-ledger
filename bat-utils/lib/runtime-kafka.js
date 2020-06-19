@@ -50,32 +50,37 @@ class Kafka {
     this.topicHandlers[topic] = handler
   }
 
-  async consume () {
-    const consumer = new NConsumer(Object.keys(this.topicHandlers), this.config)
-    await consumer.connect()
-    consumer.consume(async (batchOfMessages, callback) => {
-      // parallel processing on topic level
-      const topicPromises = Object.keys(batchOfMessages).map(async (topic) => {
-        // parallel processing on partition level
-        const partitionPromises = Object.keys(batchOfMessages[topic]).map((partition) => {
-          // sequential processing on message level (to respect ORDER)
-          const messages = batchOfMessages[topic][partition]
-
-          debug('batch', topic, messages.length, messages[0])
-          return this.topicHandlers[topic](messages)
-        })
-
-        // wait until all partitions of this topic are processed and commit its offset
-        // make sure to keep batch sizes large enough, you dont want to commit too often
-        await Promise.all(partitionPromises)
-        await consumer.commitLocalOffsetsForTopic(topic)
-      })
-
-      await Promise.all(topicPromises)
-      // callback still controlls the "backpressure"
-      // as soon as you call it, it will fetch the next batch of messages
-      callback()
-    }, false, false, batchOptions)
+  consume () {
+    return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
+      const handler = this.topicHandlers[topic]
+      const consumer = new NConsumer([topic], this.config)
+      await consumer.connect()
+      consumer.consume(async (batchOfMessages, callback) => {
+        // parallel processing on topic level
+        const { runtime } = this
+        try {
+          await runtime.postgres.transact(async (client) => {
+            const partitions = batchOfMessages[topic]
+            // parallel processing on partition level
+            const partitionKeys = Object.keys(partitions)
+            for (let i = 0; i < partitionKeys.length; i += 1) {
+              const messages = partitions[partitionKeys[i]]
+              await handler(messages, client)
+            }
+          })
+          // wait until all partitions of this topic are processed and commit its offset
+          // make sure to keep batch sizes large enough, you dont want to commit too often
+          // callback still controlls the "backpressure"
+          // as soon as you call it, it will fetch the next batch of messages
+          await consumer.commitLocalOffsetsForTopic(topic)
+          callback()
+        } catch (e) {
+          runtime.captureException(e, { extra: { topic } })
+          debug('discontinuing topic processing', { topic })
+        }
+      }, false, false, batchOptions)
+      return consumer
+    }))
   }
 }
 
