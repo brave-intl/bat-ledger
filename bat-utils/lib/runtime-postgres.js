@@ -65,6 +65,21 @@ Postgres.prototype = {
     const duration = Date.now() - start
     debug('executed query', { text, duration, rows: ret.rowCount })
     return ret
+  },
+  transact: async function (fn) {
+    const client = await this.connect()
+    let res
+    try {
+      await client.query('BEGIN')
+      res = await fn(client)
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK')
+      throw e
+    } finally {
+      client.release()
+    }
+    return res
   }
 }
 
