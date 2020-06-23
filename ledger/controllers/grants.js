@@ -9,13 +9,13 @@ const v5 = {}
 
 v3.read = {
   handler: () => async () => {
-    throw boom.resourceGone()
+    throw boom.badData()
   }
 }
 
 v5.read = {
   handler: () => async () => {
-    throw boom.resourceGone()
+    throw boom.badData()
   }
 }
 
