@@ -253,6 +253,33 @@ test('referrals use the correct geo-specific amount and checked values', async t
   await ensureReferrals(runtime, 3)
 })
 
+test('unable to insert a row with the same country code and created_at twice', async (t) => {
+  const { rows } = await runtime.postgres.query(`
+  select *
+  from geo_referral_countries
+  where country_code = 'US'`)
+  const us = rows[0]
+  await t.throwsAsync(async () => {
+    await runtime.postgres.query(`
+  insert into
+  geo_referral_countries(country_code, created_at, name, group_id)
+  values($1, $2, 'anyname', $3)`, ['US', +us.created_at, us.group_id])
+  })
+})
+
+test('unable to throw when inserting a row with the same country code and created_at twice', async (t) => {
+  t.plan(0)
+  const { rows } = await runtime.postgres.query(`
+  select *
+  from geo_referral_countries
+  where country_code = 'US'`)
+  const us = rows[0]
+  await runtime.postgres.query(`
+insert into
+geo_referral_countries(country_code, created_at, name, group_id)
+values($1, $2, 'anyname', $3)`, ['US', us.created_at, us.group_id])
+})
+
 async function setActiveAt (client, date) {
   const oct1 = new Date('2019-10-01')
   const min = date > oct1 ? oct1 : date
