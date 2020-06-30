@@ -263,21 +263,14 @@ test('unable to insert a row with the same country code and created_at twice', a
     await runtime.postgres.query(`
   insert into
   geo_referral_countries(country_code, created_at, name, group_id)
+  values($1, $2, 'anyname', $3)`, ['US', us.created_at, us.group_id])
+  })
+  await t.throwsAsync(async () => {
+    await runtime.postgres.query(`
+  insert into
+  geo_referral_countries(country_code, created_at, name, group_id)
   values($1, $2, 'anyname', $3)`, ['US', +us.created_at, us.group_id])
   })
-})
-
-test('unable to throw when inserting a row with the same country code and created_at twice', async (t) => {
-  t.plan(0)
-  const { rows } = await runtime.postgres.query(`
-  select *
-  from geo_referral_countries
-  where country_code = 'US'`)
-  const us = rows[0]
-  await runtime.postgres.query(`
-insert into
-geo_referral_countries(country_code, created_at, name, group_id)
-values($1, $2, 'anyname', $3)`, ['US', us.created_at, us.group_id])
 })
 
 async function setActiveAt (client, date) {
