@@ -272,15 +272,26 @@ Wallet.providers.uphold = {
       authenticate: true
     }, options))
   },
-  create: async function (requestType, request) {
+  create: async function (requestType, request, _id) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
         let btcAddr, ethAddr, ltcAddr, wallet
-
+        let id = _id
         try {
-          wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
-          const { id } = wallet
+          if (!id) {
+            wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
+            id = wallet.id
+          }
+        } catch (ex) {
+          debug('create', {
+            provider: 'uphold',
+            reason: ex.toString(),
+            operation: '/me/cards'
+          })
+          throw ex
+        }
+        try {
           ethAddr = await this.uphold.createCardAddress(id, 'ethereum')
           btcAddr = await this.uphold.createCardAddress(id, 'bitcoin')
           ltcAddr = await this.uphold.createCardAddress(id, 'litecoin')
@@ -288,7 +299,7 @@ Wallet.providers.uphold = {
           debug('create', {
             provider: 'uphold',
             reason: ex.toString(),
-            operation: btcAddr ? 'litecoin' : ethAddr ? 'bitcoin' : wallet ? 'ethereum' : '/me/cards'
+            operation: btcAddr ? 'litecoin' : (ethAddr ? 'bitcoin' : 'ethereum')
           })
           throw ex
         }
@@ -297,12 +308,12 @@ Wallet.providers.uphold = {
             addresses: {
               BAT: ethAddr.id,
               BTC: btcAddr.id,
-              CARD_ID: wallet.id,
+              CARD_ID: id,
               ETH: ethAddr.id,
               LTC: ltcAddr.id
             },
             provider: 'uphold',
-            providerId: wallet.id,
+            providerId: id,
             httpSigningPubKey: request.body.publicKey,
             altcurrency: 'BAT'
           }

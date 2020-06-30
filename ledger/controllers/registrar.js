@@ -132,6 +132,9 @@ v2.update =
  */
 const createPersona = function (runtime) {
   return async (request, h) => {
+    if (runtime.config.disable.walletCreateToGrants) {
+      throw boom.serverUnavailable()
+    }
     const debug = braveHapi.debug(module, request)
     const uId = request.params.uId.toLowerCase()
     const proof = request.payload.proof
@@ -207,8 +210,20 @@ const createPersona = function (runtime) {
 
     const requestBody = request.payload.request
 
+    let id
+    if (runtime.config.forward.walletCreateToGrants) {
+      const req = request.payload.request
+      const { body } = await runtime.wreck.grants.post(debug, '/v3/wallet/uphold', {
+        headers: req.headers,
+        body: req.body
+      })
+      id = body.providerId
+      // let create happen again and skip the "create step"
+      // but create new addresses
+    }
+
     try {
-      result = await runtime.wallet.create(requestType, requestBody)
+      result = await runtime.wallet.create(requestType, requestBody, id)
       wallet = result.wallet
     } catch (ex) {
       runtime.captureException(ex, { req: request })
