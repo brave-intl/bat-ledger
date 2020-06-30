@@ -179,7 +179,7 @@ services:
       - ledger
   grant-web:
     container_name: grant-web
-    image: brave/bat-go:v0.2.0-243-g67f0f7fa1593531242
+    image: brave/bat-go:grants
     ports:
       - "3336:3333"
     environment:

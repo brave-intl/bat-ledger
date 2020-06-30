@@ -212,10 +212,14 @@ const createPersona = function (runtime) {
 
     let id
     if (runtime.config.forward.walletCreateToGrants) {
-      const req = request.payload.request
       const { body } = await runtime.wreck.grants.post(debug, '/v3/wallet/uphold', {
-        headers: req.headers,
-        body: req.body
+        headers: {
+          signature: requestBody.headers.digest
+        },
+        body: {
+          provider: 'uphold',
+          signedTx: requestBody.body.signature
+        }
       })
       id = body.providerId
       // let create happen again and skip the "create step"

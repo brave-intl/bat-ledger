@@ -106,7 +106,6 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
   process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
 })
 
-console.log('process.env.FORWARD_WALLET_CREATE_TO_GRANTS', process.env.FORWARD_WALLET_CREATE_TO_GRANTS)
 module.exports =
 {
   disable: {

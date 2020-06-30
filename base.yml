@@ -31,6 +31,7 @@ services:
       - "KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/consumer.client.key"
       - "KAFKA_SSL_KEY_PASSWORD=confluent"
       - "KAFKA_REQUIRED_ACKS=1"
+      - "FEATURE_WALLET=true"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "GRANT_SERVER=http://grant-web:3333"
       - "LEDGER_URL=${LEDGER_URL-http://ledger-web:3001}"
