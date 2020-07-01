@@ -79,6 +79,7 @@
     "boom": "5.2.0",
     "bs58check": "^2.0.2",
     "bson": "1.0.5",
+    "btoa": "^1.2.1",
     "country-list": "1.1.0",
     "cron-parser": "2.4.1",
     "cryptiles": "4.1.2",

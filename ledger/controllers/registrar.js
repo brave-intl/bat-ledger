@@ -6,6 +6,7 @@ const crypto = require('crypto')
 const underscore = require('underscore')
 const uuidV4 = require('uuid/v4')
 const { verify } = require('http-request-signature')
+const btoa = require('btoa')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -212,9 +213,13 @@ const createPersona = function (runtime) {
 
     let id
     if (runtime.config.forward.walletCreateToGrants) {
-      const { body } = await runtime.wreck.grants.post(debug, '/v1/wallet', {
-        headers: request.headers,
-        body: requestBody.body
+      const { body } = await runtime.wreck.grants.post(debug, '/v3/wallet/uphold', {
+        headers: Object.assign({
+          'content-type': 'application/json'
+        }, request.headers),
+        body: {
+          signedCreationRequest: btoa(JSON.stringify(requestBody.body.signedTx))
+        }
       })
       id = body.providerId
       // let create happen again and skip the "create step"
