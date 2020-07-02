@@ -216,7 +216,7 @@ const createPersona = function (runtime) {
       const { body } = await runtime.wreck.grants.post(debug, '/v3/wallet/uphold', {
         headers: Object.assign({
           'content-type': 'application/json'
-        }, request.headers),
+        }, requestBody.headers),
         body: {
           signedCreationRequest: btoa(JSON.stringify(requestBody.body.signedTx))
         }
