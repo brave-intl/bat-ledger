@@ -1,5 +1,8 @@
+const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const underscore = require('underscore')
+
+const { votesId } = require('../lib/queries.js')
 
 exports.name = 'wallet'
 exports.initialize = async (debug, runtime) => {
@@ -106,6 +109,32 @@ exports.workers = {
       await wallets.update({ paymentId: paymentId }, state, { upsert: true })
     },
 
+  /* sent by ledger POST /v1/surveyor/contribution
+           ledger PATCH /v1/surveyor/contribution/{surveyorId}
+           daily()
+
+    { queue            : 'surveyor-report'
+    , message          :
+      { surveyorId     : '...'
+      , surveyorType   : '...'
+      , altcurrency    : '...'
+      , probi          : ...
+      , votes          : ...
+      }
+    }
+ */
+  'surveyor-report':
+    async (debug, runtime, payload) => {
+      const BATtoProbi = runtime.currency.alt2scale(payload.altcurrency)
+      const { surveyorId } = payload
+      const { postgres } = runtime
+
+      const probi = payload.probi && new BigNumber(payload.probi.toString())
+      const price = probi.dividedBy(BATtoProbi).dividedBy(payload.votes)
+
+      await postgres.query('insert into surveyor_groups (id, price) values ($1, $2)', [surveyorId, price.toString()])
+    },
+
   /* sent by PUT /v1/wallet/{paymentId}
 
     { queue              : 'contribution-report'
@@ -146,6 +175,42 @@ exports.workers = {
 
       state.$set = { paymentStamp: payload.paymentStamp }
       await wallets.update({ paymentId: paymentId }, state, { upsert: true })
+    },
+
+  /* sent by PUT /v1/surveyor/viewing/{surveyorId}
+
+{ queue           : 'voting-report'
+, message         :
+  { surveyorId    : '...'
+  , publisher     : '...'
+  }
+}
+ */
+  'voting-report':
+    async (debug, runtime, payload) => {
+      const { publisher, surveyorId } = payload
+      const cohort = payload.cohort || 'control'
+      const { postgres } = runtime
+
+      if (!publisher) throw new Error('no publisher specified')
+
+      const surveyorQ = await postgres.query('select frozen from surveyor_groups where id = $1 limit 1;', [surveyorId], true)
+      if (surveyorQ.rowCount !== 1) {
+        throw new Error('surveyor does not exist')
+      }
+      if (!surveyorQ.rows[0].frozen) {
+        const update = `
+        insert into votes (id, cohort, tally, excluded, channel, surveyor_id) values ($1, $2, 1, $3, $4, $5)
+        on conflict (id) do update set updated_at = current_timestamp, tally = votes.tally + 1;
+        `
+        await postgres.query(update, [
+          votesId(publisher, cohort, surveyorId),
+          cohort,
+          runtime.config.testingCohorts.includes(cohort),
+          publisher,
+          surveyorId
+        ])
+      }
     },
 
   /* sent when the wallet balance updates
