@@ -115,20 +115,6 @@ services:
       - eyeshade-postgres
     networks:
       - ledger
-  ledger-worker:
-    container_name: ledger-worker
-    command: "npm run ledger-worker"
-    extends:
-      file: base.yml
-      service: ledger
-    environment:
-      - "SERVICE=ledger"
-      - "DYNO=worker.1"
-    depends_on:
-      - mongo
-      - redis
-    networks:
-      - ledger
   ledger-web:
     container_name: ledger-web
     ports:
