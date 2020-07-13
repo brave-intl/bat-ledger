@@ -10,14 +10,12 @@
     "eyeshade-worker": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "eyeshade-consumer": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/consumer.js",
     "ledger-server": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/server.js",
-    "ledger-worker": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
     "start": "echo use 'npm run start-[ledger|eyeshade|balance]' or 'npm run start-[ledger|eyeshade]-worker'",
     "start-balance": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=balance node balance/server.js",
     "start-eyeshade": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=eyeshade node eyeshade/server.js",
     "start-eyeshade-worker": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=eyeshade node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "start-eyeshade-consumer": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=eyeshade node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/consumer.js",
     "start-ledger": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=ledger node ledger/server.js",
-    "start-ledger-worker": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=ledger node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/worker.js",
     "test": "nyc --reporter=html --reporter=text npm run test-all",
     "coverage": "nyc report --reporter=text-lcov | coveralls",
     "test-all": "npm run test-isup && npm run test-unit && npm run test-integration && npm run test-e2e",
@@ -50,7 +48,7 @@
   },
   "config": {
     "dockermonitors": "prometheus grafana",
-    "dockerservices": "balance-web ledger-web ledger-worker eyeshade-web eyeshade-worker eyeshade-consumer grant-web redeemer-web"
+    "dockerservices": "balance-web ledger-web eyeshade-web eyeshade-worker eyeshade-consumer grant-web redeemer-web"
   },
   "repository": {
     "type": "git",

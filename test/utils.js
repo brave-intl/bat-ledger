@@ -214,7 +214,6 @@ module.exports = {
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
-  createSurveyor,
   getSurveyor,
   fetchReport,
   formURL,
@@ -293,25 +292,6 @@ function getSurveyor (id) {
   return ledgerGlobalAgent
     .get(`/v2/surveyor/contribution/${id || 'current'}`)
     .expect(ok)
-}
-
-function createSurveyor (options = {}) {
-  const {
-    votes = 1,
-    rate = 1,
-    // probi is optional
-    probi
-  } = options
-  const url = '/v2/surveyor/contribution'
-  const data = {
-    adFree: {
-      fee: { USD: 5 },
-      votes,
-      altcurrency: 'BAT',
-      probi: probi || new BigNumber(votes * rate).times('1e18').toString()
-    }
-  }
-  return ledgerGlobalAgent.post(url).send(data).expect(ok)
 }
 
 function setupCreatePayload ({
