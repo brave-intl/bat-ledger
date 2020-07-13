@@ -133,7 +133,7 @@ v2.update =
  */
 const createPersona = function (runtime) {
   return async (request, h) => {
-    if (runtime.config.disable.walletCreateToGrants) {
+    if (runtime.config.disable.wallets) {
       throw boom.serverUnavailable()
     }
     const debug = braveHapi.debug(module, request)
@@ -212,7 +212,7 @@ const createPersona = function (runtime) {
     const requestBody = request.payload.request
 
     let id
-    if (runtime.config.forward.walletCreateToGrants) {
+    if (runtime.config.forward.wallets) {
       const { body } = await runtime.wreck.grants.post(debug, '/v3/wallet/uphold', {
         headers: Object.assign({
           'content-type': 'application/json'

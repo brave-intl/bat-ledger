@@ -109,11 +109,11 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
 module.exports =
 {
   disable: {
-    walletCreateToGrants: process.env.DISABLE_WALLET_CREATE_TO_GRANTS || false,
+    wallets: process.env.DISABLE_WALLET_TO_GRANTS || false,
     grants: process.env.DISABLE_GRANTS || false
   },
   forward: {
-    walletCreateToGrants: process.env.FORWARD_WALLET_CREATE_TO_GRANTS || false,
+    wallets: process.env.FORWARD_WALLET_TO_GRANTS || false,
     grants: process.env.FORWARD_TO_GRANTS || false
   },
   wreck: {

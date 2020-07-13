@@ -895,6 +895,19 @@ function claimWalletHandler (runtime) {
     if (type !== 'card' || !isMember || !userId) {
       throw boom.forbidden()
     }
+
+    let skipTx = false
+    if (runtime.config.forward.wallets) {
+      await runtime.wreck.grants.post(debug, `/v3/wallet/${paymentId}/link`, {
+        useProxyP: true,
+        payload: {
+          signedCreationRequest: signedTx,
+          anonymousAddress
+        }
+      })
+      skipTx = true
+    }
+
     const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
     // if wallet has already been claimed, don't tie wallet to member id
     if (wallet.providerLinkingId) {
@@ -950,7 +963,7 @@ function claimWalletHandler (runtime) {
       })
     }
 
-    if (+txn.denomination.amount !== 0) {
+    if (!skipTx && +txn.denomination.amount !== 0) {
       await runtime.wallet.submitTx(wallet, txn, signedTx, {
         commit: true
       })
