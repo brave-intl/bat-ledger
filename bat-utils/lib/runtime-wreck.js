@@ -34,7 +34,6 @@ function normalizedWreckCall (method, scopedWreck) {
     const filteredOpts = _.omit(passedOpts, ['query'])
     const fullpath = appendQueryString(path, query)
     const { opts } = WreckProxy(fullpath, filteredOpts)
-    debug(fullpath, opts)
     return scopedWreck[method](fullpath, opts)
   }
 }

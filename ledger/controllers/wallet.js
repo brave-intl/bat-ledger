@@ -153,7 +153,20 @@ const read = function (runtime, apiVersion) {
     let currency = request.query.currency
     let balances, result, state
 
-    const wallet = await wallets.findOne({ paymentId: paymentId })
+    if (runtime.config.disable.wallets) {
+      throw boom.serverUnavailable()
+    }
+    let wallet
+    if (runtime.config.forward.wallets) {
+      try {
+        wallet = await runtime.wreck.grants.get(debug, `/v1/wallet/${paymentId}`)
+      } catch (err) {
+        throw boom.boomify(err)
+      }
+    } else {
+      wallet = await wallets.findOne({ paymentId })
+    }
+
     if (!wallet) {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
