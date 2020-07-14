@@ -508,8 +508,22 @@ v2.lookup = {
   handler: (runtime) => {
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
-      const wallets = runtime.database.get('wallets', debug)
       const publicKey = request.query.publicKey
+      if (runtime.config.disable.wallets) {
+        throw boom.serverUnavailable()
+      }
+      if (runtime.config.forward.wallets) {
+        try {
+          const url = `/v3/wallet/recover/${publicKey}`
+          const res = await runtime.wreck.grants.get(debug, url)
+          return {
+            paymentId: res.paymentId
+          }
+        } catch (err) {
+          throw boom.boomify(err)
+        }
+      }
+      const wallets = runtime.database.get('wallets', debug)
       const wallet = await wallets.findOne({ httpSigningPubKey: publicKey })
       if (!wallet) {
         throw boom.notFound('no such wallet with publicKey: ' + publicKey)
