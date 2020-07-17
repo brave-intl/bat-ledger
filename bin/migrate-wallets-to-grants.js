@@ -9,6 +9,7 @@ DEBUG=-* DATABASE_URL= MONGODB_URI= ./bin/migrate-wallets-to-grants.js
 const bson = require('bson')
 const Postgres = require('bat-utils/lib/runtime-postgres')
 const { MongoClient } = require('mongodb')
+const url = require('url')
 
 const insertStatement = `
 insert into wallets(id, provider, provider_id, public_key, anonymous_address, provider_linking_id)
@@ -112,13 +113,10 @@ function objectIdFromTimestamp (_timestamp) {
   return bson.ObjectID.createFromHexString(hexSeconds + '0000000000000000')
 }
 
-function pathname (url) {
-  const shardSplits = url.split(',')
-  const shard = shardSplits[shardSplits.length - 1]
-  const pathnames = shard.split('/')
-  const pathnameAndAfter = pathnames[pathnames.length - 1]
-  const noQuerySplit = pathnameAndAfter.split('?')
-  return noQuerySplit[0]
+function pathname (uri) {
+  const { pathname } = url.parse(uri) // eslint-disable-line
+  const split = pathname.split('/')
+  return split[split.length - 1]
 }
 
 function connectMongo (url) {
