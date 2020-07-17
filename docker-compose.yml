@@ -211,6 +211,76 @@ services:
       - "3014:5432"
     networks:
       - ledger
+
+  # rewards-dev:
+  #   container_name: rewards-dev
+  #   image: 045014719567.dkr.ecr.us-west-2.amazonaws.com/rewards:v0.2.0-226-gdd572124-dirty_1
+  #   ports:
+  #     - "3338:3333"
+  #   volumes:
+  #     - ../:/src
+  #   working_dir: /src
+  #   networks:
+  #     - ledger
+  #   environment:
+  #     - PPROF_ENABLED
+  #     - ENV=local
+  #     - ADDR=:3333
+  #     - RATIOS_SERVICE=https://bat-ratios-dev.herokuapp.com/
+  #     - RATIOS_TOKEN
+  #     - DEFAULT_TIP_CHOICES=1,10,100
+  #     - DEFAULT_MONTHLY_CHOICES=1,10,100
+  #     - DEFAULT_AC_CHOICES
+  #     - DEFAULT_CURRENCY=USD
+  #     - RATIOS_CACHE_EXPIRY=1m
+  #     - RATIOS_CACHE_PURGE=2m
+
+  wallet-migration-web:
+    container_name: wallet-migration-web
+    image: brave/bat-go:wallet-migration
+    ports:
+      - "3337:3333"
+      - "6061:6061"
+    environment:
+      - "FEATURE_WALLET=1"
+      - "DATABASE_URL=postgres://wallet-migration:password@wallet-migration-postgres/wallet-migration?sslmode=disable"
+      - "LEDGER_SERVER=http://ledger-web:3001"
+      - "DATABASE_MIGRATIONS_URL=file:///migrations"
+      - BAT_SETTLEMENT_ADDRESS
+      - CHALLENGE_BYPASS_SERVER=http://challenge-bypass:2416
+      - CHALLENGE_BYPASS_TOKEN
+      - GRANT_SIGNATOR_PUBLIC_KEY
+      - GRANT_WALLET_CARD_ID
+      - GRANT_WALLET_PRIVATE_KEY
+      - GRANT_WALLET_PUBLIC_KEY
+      - KAFKA_BROKERS=kafka:19092
+      - KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/snakeoil-ca-1.crt
+      - KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/consumer-ca1-signed.pem
+      - KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/consumer.client.key
+      - KAFKA_SSL_KEY_PASSWORD=confluent
+      - KAFKA_REQUIRED_ACKS=1
+      - "REPUTATION_SERVER=http://reputation-web-grant:3334"
+      - "REPUTATION_TOKEN=636765a9-1f92-4b40-ab0b-85ebd1e2c23d"
+      - "TOKEN_LIST=98f27f2e-239b-40e9-8f62-bf1a55ea530c"
+      - UPHOLD_ACCESS_TOKEN
+    depends_on:
+      - wallet-migration-postgres
+      - kafka
+      - challenge-bypass
+    networks:
+      - ledger
+    volumes:
+      - ./test/secrets:/etc/kafka/secrets
+  wallet-migration-postgres:
+    container_name: wallet-migration-postgres
+    image: postgres:10.4
+    environment:
+      - "POSTGRES_USER=wallet-migration"
+      - "POSTGRES_PASSWORD=password"
+    ports:
+      - "3015:5432"
+    networks:
+      - ledger
   challenge-bypass-postgres:
     container_name: challenge-bypass-postgres
     image: postgres:10.4

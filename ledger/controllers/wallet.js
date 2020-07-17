@@ -140,6 +140,60 @@ v2.readMembersInfo = {
    GET /v2/wallet/{paymentId}
  */
 
+async function reformWalletGet (debug, runtime, {
+  paymentId
+}) {
+  const [walletResponse, parametersResponse, balancesResponse] = await Promise.all([
+    runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
+    // runtime.wreck.rewards.get(debug, '/v1/parameters'),
+    Promise.resolve({ payload: JSON.stringify({ batRate: 0.2662813020066082, autocontribute: { choices: [5, 10, 15, 20, 25, 50, 100], defaultChoice: 20 }, tips: { defaultTipChoices: [1, 10, 100], defaultMonthlyChoices: [1, 10, 100] } }) }),
+    Promise.resolve({
+      payload: JSON.stringify({
+        balance: new BigNumber(0),
+        cardBalance: new BigNumber(0),
+        probi: new BigNumber(0),
+        unconfirmed: new BigNumber(0).toString(4)
+      })
+    })
+  ])
+  const { payload: walletPayload } = walletResponse
+  const wallet = JSON.parse(walletPayload.toString())
+  const { payload: parametersPayload } = parametersResponse
+  const parameters = JSON.parse(parametersPayload.toString())
+  const { payload: balancesPayload } = balancesResponse
+  const balances = JSON.parse(balancesPayload.toString())
+  return {
+    altcurrency: 'BAT',
+    paymentStamp: 0,
+    httpSigningPubKey: wallet.publicKey,
+    addresses: {
+      CARD_ID: wallet.providerId
+    },
+    rates: {
+      BAT: parameters.batRate
+    },
+    parameters: {
+      adFree: {
+        currency: 'BAT',
+        fee: {
+          BAT: 10
+        },
+        choices: parameters.autocontribute.choices,
+        range: {
+          BAT: [5, 100]
+        },
+        days: 30
+      },
+      defaultTipChoices: parameters.tips.defaultTipChoices,
+      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
+    },
+    balance: balances.balance,
+    cardBalance: balances.cardBalance,
+    probi: balances.probi,
+    unconfirmed: balances.unconfirmed
+  }
+}
+
 const read = function (runtime, apiVersion) {
   return async (request, h) => {
     const amount = request.query.amount
@@ -158,11 +212,7 @@ const read = function (runtime, apiVersion) {
     }
     let wallet
     if (runtime.config.forward.wallets) {
-      try {
-        wallet = await runtime.wreck.grants.get(debug, `/v1/wallet/${paymentId}`)
-      } catch (err) {
-        throw boom.boomify(err)
-      }
+      return reformWalletGet(debug, runtime, { paymentId })
     } else {
       wallet = await wallets.findOne({ paymentId })
     }

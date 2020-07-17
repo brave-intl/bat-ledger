@@ -117,6 +117,19 @@ module.exports =
     grants: process.env.FORWARD_TO_GRANTS || false
   },
   wreck: {
+    rewards: {
+      baseUrl: process.env.REWARD_SERVER,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    },
+    walletMigration: {
+      baseUrl: process.env.WALLET_MIGRATION_SERVER,
+      headers: {
+        'Authorization': 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN  || '00000000-0000-4000-0000-000000000000'),
+        'Content-Type': 'application/json'
+      }
+    },
     grants: {
       baseUrl: process.env.GRANT_SERVER,
       headers: {
