@@ -213,12 +213,13 @@ const createPersona = function (runtime) {
 
     let id
     if (runtime.config.forward.wallets) {
-      const { body } = await runtime.wreck.grants.post(debug, '/v3/wallet/uphold', {
+      console.log('request body', requestBody)
+      const { body } = await runtime.wreck.walletMigration.post(debug, '/v3/wallet/uphold', {
         headers: Object.assign({
           'content-type': 'application/json'
         }, requestBody.headers),
         body: {
-          signedCreationRequest: btoa(JSON.stringify(requestBody.body.signedTx))
+          signedCreationRequest: btoa(requestBody.octets)
         }
       })
       id = body.providerId
