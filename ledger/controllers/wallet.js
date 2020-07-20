@@ -162,10 +162,10 @@ async function reformWalletGet (debug, runtime, {
     runtime.wreck.rewards.get(debug, '/v1/parameters'),
     Promise.resolve({
       payload: JSON.stringify({
-        balance: new BigNumber(0),
+        balance: new BigNumber(0).toFixed(4),
         cardBalance: new BigNumber(0),
         probi: new BigNumber(0),
-        unconfirmed: new BigNumber(0).toString(4)
+        unconfirmed: new BigNumber(0).toFixed(4)
       })
     })
   ])
@@ -175,6 +175,7 @@ async function reformWalletGet (debug, runtime, {
   const parameters = JSON.parse(parametersPayload.toString())
   const { payload: balancesPayload } = balancesResponse
   const balances = JSON.parse(balancesPayload.toString())
+  console.log('balances from reform wallet', balances)
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,

@@ -86,10 +86,10 @@ test('wallet endpoint returns default tip choices', async (t) => {
     rates: {
       BAT: body.rates.BAT
     },
-    balance: '0',
+    balance: '0.0000',
     cardBalance: '0',
     probi: '0',
-    unconfirmed: '0'
+    unconfirmed: '0.0000'
   }, 'body should be knowable')
 
   const {
