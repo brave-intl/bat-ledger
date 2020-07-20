@@ -160,7 +160,6 @@ async function reformWalletGet (debug, runtime, {
   const [walletResponse, parametersResponse, balancesResponse] = await Promise.all([
     runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
     runtime.wreck.rewards.get(debug, '/v1/parameters'),
-    // Promise.resolve({ payload: JSON.stringify({ batRate: 0.2662813020066082, autocontribute: { choices: [5, 10, 15, 20, 25, 50, 100], defaultChoice: 20 }, tips: { defaultTipChoices: [1, 10, 100], defaultMonthlyChoices: [1, 10, 100] } }) }),
     Promise.resolve({
       payload: JSON.stringify({
         balance: new BigNumber(0),
