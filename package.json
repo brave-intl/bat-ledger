@@ -49,7 +49,7 @@
   },
   "config": {
     "dockermonitors": "prometheus grafana",
-    "dockerservices": "balance-web ledger-web eyeshade-web eyeshade-worker eyeshade-consumer grant-web redeemer-web wallet-migration-web"
+    "dockerservices": "balance-web ledger-web eyeshade-web eyeshade-worker eyeshade-consumer grant-web redeemer-web wallet-migration-web rewards-dev"
   },
   "repository": {
     "type": "git",

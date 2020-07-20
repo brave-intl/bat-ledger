@@ -75,7 +75,7 @@ test('wallet endpoint returns default tip choices', async (t) => {
   } = await t.context.ledger.get(`/v2/wallet/${paymentId}`).expect(ok)
 
   t.true(underscore.isNumber(body.rates.BAT), 'a value is returned: ' + body.rates.BAT)
-  t.deepEqual({
+  t.deepEqual(body, {
     altcurrency: 'BAT',
     paymentStamp: 0,
     httpSigningPubKey: publicKey,
@@ -90,7 +90,22 @@ test('wallet endpoint returns default tip choices', async (t) => {
     cardBalance: '0',
     probi: '0',
     unconfirmed: '0'
-  }, body, 'body should be knowable')
+  }, 'body should be knowable')
+
+  const {
+    body: info
+  } = await t.context.ledger.get(`/v2/wallet/${paymentId}/info`).expect(ok)
+  t.deepEqual(info, {
+    altcurrency: 'BAT',
+    provider: 'uphold',
+    providerId,
+    paymentId,
+    httpSigningPubKey: publicKey,
+    addresses: {
+      CARD_ID: providerId
+    },
+    anonymousAddress: null
+  })
 })
 
 function insertWallet (t, options) {

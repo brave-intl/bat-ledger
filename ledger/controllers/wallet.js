@@ -44,10 +44,24 @@ v2.readInfo = {
   handler: (runtime) => {
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
-      const wallets = runtime.database.get('wallets', debug)
       const paymentId = request.params.paymentId.toLowerCase()
 
-      const wallet = await wallets.findOne({ paymentId: paymentId })
+      if (runtime.config.disable.wallets) {
+        throw boom.serverUnavailable()
+      }
+
+      let wallet
+      if (runtime.config.forward.wallets) {
+        const { payload } = await runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`)
+        wallet = JSON.parse(payload.toString())
+        wallet.httpSigningPubKey = wallet.publicKey
+        wallet.addresses = {
+          CARD_ID: wallet.providerId
+        }
+      } else {
+        const wallets = runtime.database.get('wallets', debug)
+        wallet = await wallets.findOne({ paymentId })
+      }
       if (!wallet) {
         throw boom.notFound('no such wallet: ' + paymentId)
       }
@@ -145,8 +159,8 @@ async function reformWalletGet (debug, runtime, {
 }) {
   const [walletResponse, parametersResponse, balancesResponse] = await Promise.all([
     runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
-    // runtime.wreck.rewards.get(debug, '/v1/parameters'),
-    Promise.resolve({ payload: JSON.stringify({ batRate: 0.2662813020066082, autocontribute: { choices: [5, 10, 15, 20, 25, 50, 100], defaultChoice: 20 }, tips: { defaultTipChoices: [1, 10, 100], defaultMonthlyChoices: [1, 10, 100] } }) }),
+    runtime.wreck.rewards.get(debug, '/v1/parameters'),
+    // Promise.resolve({ payload: JSON.stringify({ batRate: 0.2662813020066082, autocontribute: { choices: [5, 10, 15, 20, 25, 50, 100], defaultChoice: 20 }, tips: { defaultTipChoices: [1, 10, 100], defaultMonthlyChoices: [1, 10, 100] } }) }),
     Promise.resolve({
       payload: JSON.stringify({
         balance: new BigNumber(0),

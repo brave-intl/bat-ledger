@@ -212,28 +212,28 @@ services:
     networks:
       - ledger
 
-  # rewards-dev:
-  #   container_name: rewards-dev
-  #   image: 045014719567.dkr.ecr.us-west-2.amazonaws.com/rewards:v0.2.0-226-gdd572124-dirty_1
-  #   ports:
-  #     - "3338:3333"
-  #   volumes:
-  #     - ../:/src
-  #   working_dir: /src
-  #   networks:
-  #     - ledger
-  #   environment:
-  #     - PPROF_ENABLED
-  #     - ENV=local
-  #     - ADDR=:3333
-  #     - RATIOS_SERVICE=https://bat-ratios-dev.herokuapp.com/
-  #     - RATIOS_TOKEN
-  #     - DEFAULT_TIP_CHOICES=1,10,100
-  #     - DEFAULT_MONTHLY_CHOICES=1,10,100
-  #     - DEFAULT_AC_CHOICES
-  #     - DEFAULT_CURRENCY=USD
-  #     - RATIOS_CACHE_EXPIRY=1m
-  #     - RATIOS_CACHE_PURGE=2m
+  rewards-dev:
+    container_name: rewards-dev
+    image: brave/rewards-api:wallet-migration
+    ports:
+      - "3338:3333"
+    volumes:
+      - ../:/src
+    working_dir: /src
+    networks:
+      - ledger
+    environment:
+      - PPROF_ENABLED
+      - ENV=local
+      - ADDR=:3333
+      - "RATIOS_SERVICE=${BAT_RATIOS_URL}"
+      - "RATIOS_TOKEN=${BAT_RATIOS_TOKEN}"
+      - DEFAULT_TIP_CHOICES=1,10,100
+      - DEFAULT_MONTHLY_CHOICES=1,10,100
+      - DEFAULT_AC_CHOICES
+      - DEFAULT_CURRENCY=USD
+      - RATIOS_CACHE_EXPIRY=1m
+      - RATIOS_CACHE_PURGE=2m
 
   wallet-migration-web:
     container_name: wallet-migration-web
