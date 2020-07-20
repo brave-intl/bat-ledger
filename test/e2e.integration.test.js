@@ -23,8 +23,22 @@ const {
   signTxn,
   status,
   cleanDbs,
+  setupForwardingServer,
   ok
 } = require('./utils')
+
+const {
+  routes: grantsRoutes,
+  initialize: grantsInitializer
+} = require('../ledger/controllers/grants')
+const {
+  routes: registrarRoutes,
+  initialize: registrarInitializer
+} = require('../ledger/controllers/registrar')
+const {
+  routes: walletRoutes,
+  initialize: walletInitializer
+} = require('../ledger/controllers/wallet')
 
 dotenv.config()
 
@@ -46,9 +60,11 @@ test.before(async (t) => {
   const surveyors = ledgerDB.collection('surveyors')
   _.extend(t.context, {
     wallets,
-    surveyors
+    surveyors,
+    ledger: agents.ledger.global
   })
 })
+
 test.beforeEach(cleanDbs)
 
 test('check /metrics is up with no authorization', async (t) => {
@@ -72,75 +88,117 @@ test('check /metrics is up with no authorization', async (t) => {
   }
 })
 
-test('wallets can be claimed by verified members', async (t) => {
+// allows us to use legacy version
+test('wallets can be claimed by verified members', runWalletClaimTests)
+
+test('wallets can be claimed by verified members using migrated endpoints', async (t) => {
+  // allows us to use legacy version
+  const {
+    agent,
+    runtime
+  } = await setupForwardingServer({
+    token: null,
+    routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
+    initers: [grantsInitializer, registrarInitializer, walletInitializer],
+    config: {
+      postgres: {
+        url: process.env.BAT_WALLET_MIGRATION_POSTGRES_URL
+      },
+      forward: {
+        wallets: '1'
+      },
+      wreck: {
+        rewards: {
+          baseUrl: process.env.BAT_REWARD_SERVER,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        },
+        walletMigration: {
+          baseUrl: process.env.BAT_WALLET_MIGRATION_SERVER,
+          headers: {
+            Authorization: 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
+            'Content-Type': 'application/json'
+          }
+        }
+      }
+    }
+  })
+  t.context.runtime = runtime
+  t.context.ledger = agent
+
+  await runWalletClaimTests(t)
+})
+
+async function runWalletClaimTests (t) {
   const surveyorId = await createSurveyor(t, {
     rate: 1,
     votes: 1
   })
-  const anonCardInfo1 = await createAndFundUserWallet()
-  const anonCardInfo2 = await createAndFundUserWallet()
-  const anonCardInfo3 = await createAndFundUserWallet()
-  const anonCardInfo4 = await createAndFundUserWallet()
+  const anonCardInfo1 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo2 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo3 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo4 = await createAndFundUserWallet(t, surveyorId)
   const settlement = process.env.BAT_SETTLEMENT_ADDRESS
 
   const anonCard1AnonAddr = await createAnonymousAddress(anonCardInfo1.providerId)
   const anonCard2AnonAddr = await createAnonymousAddress(anonCardInfo2.providerId)
 
-  await claimCard(anonCardInfo1, settlement)
+  await claimCard(t, anonCardInfo1, settlement, 200, anonCardInfo1.amount)
 
-  await claimCard(anonCardInfo2, anonCardInfo1.providerId, 200, '0', anonCard1AnonAddr.id)
-  await claimCard(anonCardInfo2, anonCardInfo1.providerId)
+  await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, '0', anonCard1AnonAddr.id)
+  await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, anonCardInfo1.amount)
   let wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo2.paymentId })
   t.deepEqual(wallet.anonymousAddress, anonCard1AnonAddr.id)
 
-  await claimCard(anonCardInfo3, anonCardInfo2.providerId)
+  await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, anonCardInfo1.amount)
   wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
   t.false(!!wallet.anonymousAddress)
 
-  await claimCard(anonCardInfo4, anonCardInfo3.providerId, 409)
+  await claimCard(t, anonCardInfo4, anonCardInfo3.providerId, 409, anonCardInfo1.amount)
 
   // redundant calls are fine provided the amount we are attempting to transfer is less than the balance
   // furthermore if the anonymous address has not previously been set it can be now
-  await claimCard(anonCardInfo3, anonCardInfo2.providerId, 200, '0', anonCard2AnonAddr.id)
+  await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, '0', anonCard2AnonAddr.id)
   wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
   t.deepEqual(wallet.anonymousAddress, anonCard2AnonAddr.id)
+}
 
-  async function createAnonymousAddress (providerId) {
-    return uphold.createCardAddress(providerId, 'anonymous')
-  }
+async function createAnonymousAddress (providerId) {
+  return uphold.createCardAddress(providerId, 'anonymous')
+}
 
-  async function claimCard (anonCard, destination, code = 200, amount = anonCardInfo1.amount, anonymousAddress) {
-    const txn = {
-      destination,
-      denomination: {
-        currency: 'BAT',
-        // amount should be same for this example
-        amount
-      }
-    }
-    const body = { signedTx: signTxn(anonCard.keypair, txn) }
-    if (anonymousAddress) {
-      _.extend(body, { anonymousAddress })
-    }
-    await agents.ledger.global
-      .post(`/v2/wallet/${anonCard.paymentId}/claim`)
-      .send(body)
-      .expect(status(code))
-  }
-
-  async function createAndFundUserWallet () {
-    // Create user wallet
-    const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t) // eslint-disable-line
-    // Fund user uphold wallet
-    const amountFunded = await fundUserWallet(t, surveyorId, paymentId, userCardId)
-    return {
-      keypair,
-      amount: amountFunded,
-      providerId: userCardId,
-      paymentId
+async function claimCard (t, anonCard, destination, code, amount, anonymousAddress) {
+  const txn = {
+    destination,
+    denomination: {
+      currency: 'BAT',
+      // amount should be same for this example
+      amount
     }
   }
-})
+  const body = { signedTx: signTxn(anonCard.keypair, txn) }
+  if (anonymousAddress) {
+    _.extend(body, { anonymousAddress })
+  }
+  await t.context.ledger
+    .post(`/v2/wallet/${anonCard.paymentId}/claim`)
+    .send(body)
+    .expect(status(code))
+}
+
+async function createAndFundUserWallet (t, surveyorId) {
+  // Create user wallet
+  const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t) // eslint-disable-line
+  // Fund user uphold wallet
+  const amountFunded = await fundUserWallet(t, surveyorId, paymentId, userCardId)
+  return {
+    keypair,
+    amount: amountFunded,
+    providerId: userCardId,
+    paymentId
+  }
+}
 
 async function createSurveyor (t, payload) {
   const surveyorId = uuidV4()
@@ -163,7 +221,7 @@ async function createUserWallet (t) {
   const viewingId = uuidV4().toLowerCase()
   let response
 
-  response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
+  response = await t.context.ledger.get('/v2/registrar/persona').expect(ok)
   t.true(_.isString(response.body.registrarVK))
   const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
   const keypair = tweetnacl.sign.keyPair()
@@ -191,7 +249,7 @@ async function createUserWallet (t) {
     proof: personaCredential.request()
   }
 
-  response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+  response = await t.context.ledger.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
     .send(payload).expect(ok)
 
   t.true(_.isString(response.body.wallet.paymentId))
@@ -207,7 +265,7 @@ async function createUserWallet (t) {
 
   personaCredential.finalize(response.body.verification)
 
-  response = await agents.ledger.global.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+  response = await t.context.ledger.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
     .expect(ok)
 
   t.true(response.body.paymentId === paymentId)

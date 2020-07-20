@@ -278,7 +278,6 @@ async function cleanWalletMigrationDb () {
   const pool = new Pool({ connectionString: url, ssl: false })
   const client = await pool.connect()
   try {
-    console.log('cleaning wallet migration')
     await Promise.all([
       client.query('DELETE from claim_creds'),
       client.query('DELETE from claims'),
