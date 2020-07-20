@@ -984,7 +984,7 @@ function claimWalletHandler (runtime) {
 
     let skipTx = false
     if (runtime.config.forward.wallets) {
-      await runtime.wreck.grants.post(debug, `/v3/wallet/${paymentId}/link`, {
+      await runtime.wreck.walletMigration.post(debug, `/v3/wallet/${paymentId}/link`, {
         useProxyP: true,
         payload: {
           signedCreationRequest: signedTx,
