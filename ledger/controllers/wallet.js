@@ -175,7 +175,6 @@ async function reformWalletGet (debug, runtime, {
   const parameters = JSON.parse(parametersPayload.toString())
   const { payload: balancesPayload } = balancesResponse
   const balances = JSON.parse(balancesPayload.toString())
-  console.log('balances from reform wallet', balances)
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,
@@ -590,14 +589,10 @@ v2.lookup = {
         throw boom.serverUnavailable()
       }
       if (runtime.config.forward.wallets) {
-        try {
-          const url = `/v3/wallet/recover/${publicKey}`
-          const res = await runtime.wreck.grants.get(debug, url)
-          return {
-            paymentId: res.paymentId
-          }
-        } catch (err) {
-          throw boom.boomify(err)
+        const url = `/v3/wallet/recover/${publicKey}`
+        const { payload } = await runtime.wreck.walletMigration.get(debug, url)
+        return {
+          paymentId: JSON.parse(payload.toString()).paymentId
         }
       }
       const wallets = runtime.database.get('wallets', debug)

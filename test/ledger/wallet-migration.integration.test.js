@@ -108,6 +108,25 @@ test('wallet endpoint returns default tip choices', async (t) => {
   })
 })
 
+test('lookup still works the same way', async (t) => {
+  const paymentId = uuidV4().toLowerCase()
+  const publicKey = '5811b31fb2823e63925895e3a041b31fccf0f351b87c3057d2fd2ee744ba6409'
+  const providerId = '8c8e3b38-10dd-420d-a3a9-288a47b0999b'
+  await insertWallet(t, {
+    paymentId,
+    provider: 'uphold',
+    providerId,
+    publicKey
+  })
+
+  const {
+    body: lookup
+  } = await t.context.ledger.get('/v2/wallet').query({ publicKey }).expect(ok)
+  t.deepEqual(lookup, {
+    paymentId
+  }, 'only payment id should be returned')
+})
+
 function insertWallet (t, options) {
   return t.context.runtime.postgres.query(`
   insert into wallets(id, provider, provider_id, public_key)
