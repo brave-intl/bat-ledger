@@ -1,14 +1,55 @@
 'use strict'
+const BigNumber = require('bignumber.js')
 const parsePrometheusText = require('parse-prometheus-text-format')
 const { serial: test } = require('ava')
+const {
+  default: UpholdSDK
+} = require('@uphold/uphold-sdk-javascript')
+const uuidV4 = require('uuid/v4')
 const _ = require('underscore')
 const dotenv = require('dotenv')
 const { agent } = require('supertest')
+const tweetnacl = require('tweetnacl')
+const anonize = require('node-anonize2-relic')
+const crypto = require('crypto')
+const { sign } = require('http-request-signature')
 const {
+  timeout,
+  uint8tohex
+} = require('bat-utils/lib/extras-utils')
+const {
+  connectToDb,
+  agents,
+  signTxn,
+  status,
+  cleanDbs,
   ok
 } = require('./utils')
 
 dotenv.config()
+
+const donorCardId = process.env.UPHOLD_DONOR_CARD_ID
+const upholdBaseUrls = {
+  prod: 'https://api.uphold.com',
+  sandbox: 'https://api-sandbox.uphold.com'
+}
+const environment = process.env.UPHOLD_ENVIRONMENT || 'sandbox'
+const uphold = new UpholdSDK({ // eslint-disable-line new-cap
+  baseUrl: upholdBaseUrls[environment],
+  clientId: 'none',
+  clientSecret: 'none'
+})
+
+test.before(async (t) => {
+  const ledgerDB = await connectToDb('ledger')
+  const wallets = ledgerDB.collection('wallets')
+  const surveyors = ledgerDB.collection('surveyors')
+  _.extend(t.context, {
+    wallets,
+    surveyors
+  })
+})
+test.beforeEach(cleanDbs)
 
 test('check /metrics is up with no authorization', async (t) => {
   const {
@@ -30,3 +71,187 @@ test('check /metrics is up with no authorization', async (t) => {
     t.true(_.isArray(parsePrometheusText(text)), 'a set of metrics is sent back')
   }
 })
+
+test('wallets can be claimed by verified members', async (t) => {
+  const surveyorId = await createSurveyor(t, {
+    rate: 1,
+    votes: 1
+  })
+  const anonCardInfo1 = await createAndFundUserWallet()
+  const anonCardInfo2 = await createAndFundUserWallet()
+  const anonCardInfo3 = await createAndFundUserWallet()
+  const anonCardInfo4 = await createAndFundUserWallet()
+  const settlement = process.env.BAT_SETTLEMENT_ADDRESS
+
+  const anonCard1AnonAddr = await createAnonymousAddress(anonCardInfo1.providerId)
+  const anonCard2AnonAddr = await createAnonymousAddress(anonCardInfo2.providerId)
+
+  await claimCard(anonCardInfo1, settlement)
+
+  await claimCard(anonCardInfo2, anonCardInfo1.providerId, 200, '0', anonCard1AnonAddr.id)
+  await claimCard(anonCardInfo2, anonCardInfo1.providerId)
+  let wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo2.paymentId })
+  t.deepEqual(wallet.anonymousAddress, anonCard1AnonAddr.id)
+
+  await claimCard(anonCardInfo3, anonCardInfo2.providerId)
+  wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
+  t.false(!!wallet.anonymousAddress)
+
+  await claimCard(anonCardInfo4, anonCardInfo3.providerId, 409)
+
+  // redundant calls are fine provided the amount we are attempting to transfer is less than the balance
+  // furthermore if the anonymous address has not previously been set it can be now
+  await claimCard(anonCardInfo3, anonCardInfo2.providerId, 200, '0', anonCard2AnonAddr.id)
+  wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
+  t.deepEqual(wallet.anonymousAddress, anonCard2AnonAddr.id)
+
+  async function createAnonymousAddress (providerId) {
+    return uphold.createCardAddress(providerId, 'anonymous')
+  }
+
+  async function claimCard (anonCard, destination, code = 200, amount = anonCardInfo1.amount, anonymousAddress) {
+    const txn = {
+      destination,
+      denomination: {
+        currency: 'BAT',
+        // amount should be same for this example
+        amount
+      }
+    }
+    const body = { signedTx: signTxn(anonCard.keypair, txn) }
+    if (anonymousAddress) {
+      _.extend(body, { anonymousAddress })
+    }
+    await agents.ledger.global
+      .post(`/v2/wallet/${anonCard.paymentId}/claim`)
+      .send(body)
+      .expect(status(code))
+  }
+
+  async function createAndFundUserWallet () {
+    // Create user wallet
+    const [viewingId, keypair, personaCredential, paymentId, userCardId] = await createUserWallet(t) // eslint-disable-line
+    // Fund user uphold wallet
+    const amountFunded = await fundUserWallet(t, surveyorId, paymentId, userCardId)
+    return {
+      keypair,
+      amount: amountFunded,
+      providerId: userCardId,
+      paymentId
+    }
+  }
+})
+
+async function createSurveyor (t, payload) {
+  const surveyorId = uuidV4()
+  await t.context.surveyors.updateOne({
+    surveyorId
+  }, {
+    $currentDate: { timestamp: { $type: 'timestamp' } },
+    $set: {
+      surveyorType: 'contribution',
+      active: false,
+      available: true,
+      payload
+    }
+  }, { upsert: true })
+  return surveyorId
+}
+
+async function createUserWallet (t) {
+  const personaId = uuidV4().toLowerCase()
+  const viewingId = uuidV4().toLowerCase()
+  let response
+
+  response = await agents.ledger.global.get('/v2/registrar/persona').expect(ok)
+  t.true(_.isString(response.body.registrarVK))
+  const personaCredential = new anonize.Credential(personaId, response.body.registrarVK)
+  const keypair = tweetnacl.sign.keyPair()
+  const body = {
+    label: uuidV4().toLowerCase(),
+    currency: 'BAT',
+    publicKey: uint8tohex(keypair.publicKey)
+  }
+  const octets = JSON.stringify(body)
+  const headers = {
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
+  }
+  headers.signature = sign({
+    headers: headers,
+    keyId: 'primary',
+    secretKey: uint8tohex(keypair.secretKey)
+  }, { algorithm: 'ed25519' })
+  const payload = {
+    requestType: 'httpSignature',
+    request: {
+      body: body,
+      headers: headers,
+      octets: octets
+    },
+    proof: personaCredential.request()
+  }
+
+  response = await agents.ledger.global.post('/v2/registrar/persona/' + personaCredential.parameters.userId)
+    .send(payload).expect(ok)
+
+  t.true(_.isString(response.body.wallet.paymentId))
+  t.true(_.isString(response.body.verification))
+  t.true(_.isString(response.body.wallet.addresses.BAT))
+  t.true(_.isString(response.body.wallet.addresses.BTC))
+  t.true(_.isString(response.body.wallet.addresses.CARD_ID))
+  t.true(_.isString(response.body.wallet.addresses.ETH))
+  t.true(_.isString(response.body.wallet.addresses.LTC))
+
+  const paymentId = response.body.wallet.paymentId
+  const userCardId = response.body.wallet.addresses.CARD_ID
+
+  personaCredential.finalize(response.body.verification)
+
+  response = await agents.ledger.global.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
+    .expect(ok)
+
+  t.true(response.body.paymentId === paymentId)
+
+  return [viewingId, keypair, personaCredential, paymentId, userCardId]
+}
+
+async function fundUserWallet (t, surveyorId, paymentId, userCardId) {
+  const donateAmt = await getSurveyorContributionAmount(t, surveyorId)
+  const desiredTxAmt = await waitForContributionAmount(t, paymentId, donateAmt)
+  await createCardTransaction(desiredTxAmt, userCardId)
+  return desiredTxAmt
+}
+
+async function waitForContributionAmount (t, paymentId, donateAmt) {
+  let response
+  do { // This depends on currency conversion rates being available, retry until they are available
+    response = await agents.ledger.global
+      .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
+    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
+  } while (response.status === 503)
+  const err = ok(response)
+  if (err) throw err
+
+  t.true(_.isString(response.body.balance))
+  t.true(_.isString(response.body.httpSigningPubKey))
+  t.is(response.body.balance, '0.0000')
+
+  return donateAmt.toFixed(4).toString()
+}
+
+async function getSurveyorContributionAmount (t, surveyorId) {
+  const surveyor = await t.context.surveyors.findOne({ surveyorId })
+  const probi = new BigNumber(surveyor.payload.votes).times(surveyor.payload.rate).times(1e18)
+  const donateAmt = new BigNumber(probi).dividedBy('1e18').toNumber()
+  return donateAmt
+}
+
+async function createCardTransaction (desiredTxAmt, userCardId) {
+  // have to do some hacky shit to use a personal access token
+  uphold.storage.setItem('uphold.access_token', process.env.UPHOLD_ACCESS_TOKEN)
+
+  await uphold.createCardTransaction(donorCardId,
+    { amount: desiredTxAmt, currency: 'BAT', destination: userCardId },
+    true // commit tx in one swoop
+  )
+}
