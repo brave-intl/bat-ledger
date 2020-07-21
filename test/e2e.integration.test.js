@@ -89,7 +89,7 @@ test('check /metrics is up with no authorization', async (t) => {
 })
 
 // allows us to use legacy version
-test('wallets can be claimed by verified members', runWalletClaimTests)
+test('wallets can be claimed by verified members', runLegacyWalletClaimTests)
 
 test('wallets can be claimed by verified members using migrated endpoints', async (t) => {
   // allows us to use legacy version
@@ -130,7 +130,7 @@ test('wallets can be claimed by verified members using migrated endpoints', asyn
   await runWalletClaimTests(t)
 })
 
-async function runWalletClaimTests (t) {
+async function runLegacyWalletClaimTests (t) {
   const surveyorId = await createSurveyor(t, {
     rate: 1,
     votes: 1
@@ -139,12 +139,13 @@ async function runWalletClaimTests (t) {
   const anonCardInfo2 = await createAndFundUserWallet(t, surveyorId)
   const anonCardInfo3 = await createAndFundUserWallet(t, surveyorId)
   const anonCardInfo4 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo5 = await createAndFundUserWallet(t, surveyorId)
   const settlement = process.env.BAT_SETTLEMENT_ADDRESS
 
   const anonCard1AnonAddr = await createAnonymousAddress(anonCardInfo1.providerId)
   const anonCard2AnonAddr = await createAnonymousAddress(anonCardInfo2.providerId)
 
-  await claimCard(t, anonCardInfo1, settlement, 200, anonCardInfo1.amount)
+  await claimCard(t, anonCardInfo1, settlement, 200, '0')
 
   await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, '0', anonCard1AnonAddr.id)
   await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, anonCardInfo1.amount)
@@ -155,13 +156,52 @@ async function runWalletClaimTests (t) {
   wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
   t.false(!!wallet.anonymousAddress)
 
-  await claimCard(t, anonCardInfo4, anonCardInfo3.providerId, 409, anonCardInfo1.amount)
+  await claimCard(t, anonCardInfo4, anonCardInfo3.providerId, 200, anonCardInfo1.amount)
+
+  await claimCard(t, anonCardInfo5, anonCardInfo4.providerId, 409, anonCardInfo1.amount)
 
   // redundant calls are fine provided the amount we are attempting to transfer is less than the balance
   // furthermore if the anonymous address has not previously been set it can be now
   await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, '0', anonCard2AnonAddr.id)
   wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
   t.deepEqual(wallet.anonymousAddress, anonCard2AnonAddr.id)
+}
+
+async function runWalletClaimTests (t) {
+  const surveyorId = await createSurveyor(t, {
+    rate: 1,
+    votes: 1
+  })
+  const anonCardInfo1 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo2 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo3 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo4 = await createAndFundUserWallet(t, surveyorId)
+  const anonCardInfo5 = await createAndFundUserWallet(t, surveyorId)
+  const settlement = process.env.BAT_SETTLEMENT_ADDRESS
+
+  const anonCard1AnonAddr = await createAnonymousAddress(anonCardInfo1.providerId)
+  const anonCard2AnonAddr = await createAnonymousAddress(anonCardInfo2.providerId)
+
+  await claimCard(t, anonCardInfo1, settlement, 200, '0')
+
+  await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, '0', anonCard1AnonAddr.id)
+  await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, anonCardInfo1.amount)
+  // let wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo2.paymentId })
+  // t.deepEqual(wallet.anonymousAddress, anonCard1AnonAddr.id)
+
+  await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, anonCardInfo1.amount)
+  // wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
+  // t.false(!!wallet.anonymousAddress)
+
+  await claimCard(t, anonCardInfo4, anonCardInfo3.providerId, 200, anonCardInfo1.amount)
+
+  await claimCard(t, anonCardInfo5, anonCardInfo4.providerId, 409, anonCardInfo1.amount)
+
+  // redundant calls are fine provided the amount we are attempting to transfer is less than the balance
+  // furthermore if the anonymous address has not previously been set it can be now
+  await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, '0', anonCard2AnonAddr.id)
+  // wallet = await t.context.wallets.findOne({ paymentId: anonCardInfo3.paymentId })
+  // t.deepEqual(wallet.anonymousAddress, anonCard2AnonAddr.id)
 }
 
 async function createAnonymousAddress (providerId) {
@@ -254,11 +294,11 @@ async function createUserWallet (t) {
 
   t.true(_.isString(response.body.wallet.paymentId))
   t.true(_.isString(response.body.verification))
-  t.true(_.isString(response.body.wallet.addresses.BAT))
-  t.true(_.isString(response.body.wallet.addresses.BTC))
+  // t.true(_.isString(response.body.wallet.addresses.BAT))
+  // t.true(_.isString(response.body.wallet.addresses.BTC))
   t.true(_.isString(response.body.wallet.addresses.CARD_ID))
-  t.true(_.isString(response.body.wallet.addresses.ETH))
-  t.true(_.isString(response.body.wallet.addresses.LTC))
+  // t.true(_.isString(response.body.wallet.addresses.ETH))
+  // t.true(_.isString(response.body.wallet.addresses.LTC))
 
   const paymentId = response.body.wallet.paymentId
   const userCardId = response.body.wallet.addresses.CARD_ID
@@ -283,10 +323,10 @@ async function fundUserWallet (t, surveyorId, paymentId, userCardId) {
 async function waitForContributionAmount (t, paymentId, donateAmt) {
   let response
   do { // This depends on currency conversion rates being available, retry until they are available
-    response = await agents.ledger.global
+    response = await t.context.ledger
       .get('/v2/wallet/' + paymentId + '?refresh=true&amount=1&currency=USD')
-    if (response.status === 503) await timeout(response.headers['retry-after'] * 1000)
-  } while (response.status === 503)
+    if (response.status === 503 || response.status === 429) await timeout(response.headers['retry-after'] * 1000)
+  } while (response.status === 503 || response.status === 429)
   const err = ok(response)
   if (err) throw err
 

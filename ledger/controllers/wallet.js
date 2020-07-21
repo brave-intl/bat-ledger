@@ -158,53 +158,55 @@ v2.readMembersInfo = {
 async function reformWalletGet (debug, runtime, {
   paymentId
 }) {
-  const [walletResponse, parametersResponse, balancesResponse] = await Promise.all([
-    runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
-    runtime.wreck.rewards.get(debug, '/v1/parameters'),
-    Promise.resolve({
-      payload: JSON.stringify({
-        balance: new BigNumber(0).toFixed(4),
-        cardBalance: new BigNumber(0),
-        probi: new BigNumber(0),
-        unconfirmed: new BigNumber(0).toFixed(4)
-      })
-    })
-  ])
-  const { payload: walletPayload } = walletResponse
-  const wallet = JSON.parse(walletPayload.toString())
-  const { payload: parametersPayload } = parametersResponse
-  const parameters = JSON.parse(parametersPayload.toString())
-  const { payload: balancesPayload } = balancesResponse
-  const balances = JSON.parse(balancesPayload.toString())
-  return {
-    altcurrency: 'BAT',
-    paymentStamp: 0,
-    httpSigningPubKey: wallet.publicKey,
-    addresses: {
-      CARD_ID: wallet.providerId
-    },
-    rates: {
-      BAT: parameters.batRate
-    },
-    parameters: {
-      adFree: {
-        currency: 'BAT',
-        fee: {
-          BAT: 10
-        },
-        choices: parameters.autocontribute.choices,
-        range: {
-          BAT: [5, 100]
-        },
-        days: 30
+  try {
+    debug('getting reformed wallet')
+    const [walletResponse, parametersResponse] = await Promise.all([
+      runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
+      runtime.wreck.rewards.get(debug, '/v1/parameters')
+    ])
+    debug('getting reformed wallet balance')
+    const balancesResponse = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/uphold/${paymentId}`)
+    const { payload: walletPayload } = walletResponse
+    const wallet = JSON.parse(walletPayload.toString())
+    const { payload: parametersPayload } = parametersResponse
+    const parameters = JSON.parse(parametersPayload.toString())
+    const { statusCode, payload: balancesPayload } = balancesResponse
+    debug('balances status', statusCode)
+    const balances = JSON.parse(balancesPayload.toString())
+    debug('balances', balances)
+    return {
+      altcurrency: 'BAT',
+      paymentStamp: 0,
+      httpSigningPubKey: wallet.publicKey,
+      addresses: {
+        CARD_ID: wallet.providerId
       },
-      defaultTipChoices: parameters.tips.defaultTipChoices,
-      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
-    },
-    balance: balances.balance,
-    cardBalance: balances.cardBalance,
-    probi: balances.probi,
-    unconfirmed: balances.unconfirmed
+      rates: {
+        BAT: parameters.batRate
+      },
+      parameters: {
+        adFree: {
+          currency: 'BAT',
+          fee: {
+            BAT: 10
+          },
+          choices: parameters.autocontribute.choices,
+          range: {
+            BAT: [5, 100]
+          },
+          days: 30
+        },
+        defaultTipChoices: parameters.tips.defaultTipChoices,
+        defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
+      },
+      balance: balances.balance || '0.0000',
+      cardBalance: balances.cardBalance || '0',
+      probi: balances.probi || '0',
+      unconfirmed: balances.unconfirmed || '0.0000'
+    }
+  } catch (err) {
+    debug('erred during wallet get', err)
+    throw err
   }
 }
 
@@ -965,12 +967,10 @@ function claimWalletHandler (runtime) {
 
     if (runtime.config.forward.wallets) {
       try {
-        debug('signed tx', typeof signedTx, signedTx)
-
         await runtime.wreck.walletMigration.post(debug, `/v3/wallet/uphold/${paymentId}/claim`, {
           useProxyP: true,
           payload: {
-            signedCreationRequest: btoa(JSON.stringify(signedTx)),
+            signedLinkingRequest: btoa(JSON.stringify(signedTx)),
             anonymousAddress
           }
         })

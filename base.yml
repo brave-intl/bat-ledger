@@ -15,6 +15,7 @@ services:
       - "BAT_GRANT_POSTGRES_URL=postgres://grants:password@grant-postgres/grants?sslmode=disable"
       - "BAT_GRANT_SERVER=http://grant-web:3333"
       - "BAT_WALLET_MIGRATION_SERVER=${BAT_WALLET_MIGRATION_SERVER-http://wallet-migration-web:3333}"
+      - "WALLET_MIGRATION_SERVER=${WALLET_MIGRATION_SERVER-http://wallet-migration-web:3333}"
       - "WALLET_MIGRATION_TOKEN=${WALLET_MIGRATION_TOKEN-98f27f2e-239b-40e9-8f62-bf1a55ea530c}"
       - "BAT_WALLET_MIGRATION_POSTGRES_URL=${BAT_WALLET_MIGRATION_POSTGRES_URL-postgres://wallet-migration:password@wallet-migration-postgres/wallet-migration}"
       - "BAT_LEDGER_SERVER=http://ledger-web:3001"
@@ -41,6 +42,7 @@ services:
       - "LEDGER_URL=${LEDGER_URL-http://ledger-web:3001}"
       - "MONGODB_URI=${MONGODB_URI-mongodb://mongo/ledger}"
       - "NODE_ENV=${NODE_ENV-development}"
+      - "PER_MEMBER_CLAIM_LIMIT=4"
       - "REDEEMER_REDIS_HOST=${REDEEMER_REDIS_HOST-redeemer-redis}"
       - "REDEEMER_SERVER=${REDEEMER_SERVER-http://redeemer-web:3333}"
       - "REWARD_SERVER=http://rewards-dev:3333"
@@ -81,7 +83,6 @@ services:
       - LEDGER_GITHUB_CLIENT_SECRET
       - LEDGER_SLACK_CHANNEL
       - LEDGER_SLACK_ICON_URL
-      - PER_MEMBER_CLAIM_LIMIT
       - PORT
       - PUBLISHERS_TOKEN
       - PUBLISHERS_URL

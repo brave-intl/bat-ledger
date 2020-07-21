@@ -223,6 +223,11 @@ const createPersona = function (runtime) {
       paymentId = body.paymentId
       // let create happen again and skip the "create step"
       // but create new addresses
+      // return {
+      //   verification,
+      //   payload: registrar.payload,
+      //   wallet: { paymentId, addresses: { CARD_ID: id } }
+      // }
     }
     try {
       result = await runtime.wallet.create(requestType, requestBody, id)
