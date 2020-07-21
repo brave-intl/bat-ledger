@@ -6,6 +6,7 @@ const boom = require('boom')
 const bson = require('bson')
 const timestamp = require('monotonic-timestamp')
 const underscore = require('underscore')
+const btoa = require('btoa')
 
 const surveyorsLib = require('../lib/surveyor')
 const {
@@ -958,6 +959,32 @@ function claimWalletHandler (runtime) {
     const wallets = runtime.database.get('wallets', debug)
     const members = runtime.database.get('members', debug)
 
+    if (runtime.config.disable.wallets) {
+      throw boom.serverUnavailable()
+    }
+
+    if (runtime.config.forward.wallets) {
+      try {
+        debug('signed tx', typeof signedTx, signedTx)
+
+        await runtime.wreck.walletMigration.post(debug, `/v3/wallet/uphold/${paymentId}/claim`, {
+          useProxyP: true,
+          payload: {
+            signedCreationRequest: btoa(JSON.stringify(signedTx)),
+            anonymousAddress
+          }
+        })
+        return {}
+      } catch (err) {
+        if (!err.data) {
+          debug('erred no data', err)
+          throw err
+        }
+        debug('erred from wallet migration claim', err.data.payload.toString())
+        throw err
+      }
+    }
+
     const wallet = await wallets.findOne({ paymentId })
     if (!wallet) {
       throw boom.notFound()
@@ -980,18 +1007,6 @@ function claimWalletHandler (runtime) {
     // check that where the transfer is going to is a card, that belongs to a member
     if (type !== 'card' || !isMember || !userId) {
       throw boom.forbidden()
-    }
-
-    let skipTx = false
-    if (runtime.config.forward.wallets) {
-      await runtime.wreck.walletMigration.post(debug, `/v3/wallet/${paymentId}/link`, {
-        useProxyP: true,
-        payload: {
-          signedCreationRequest: signedTx,
-          anonymousAddress
-        }
-      })
-      skipTx = true
     }
 
     const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
@@ -1049,7 +1064,7 @@ function claimWalletHandler (runtime) {
       })
     }
 
-    if (!skipTx && +txn.denomination.amount !== 0) {
+    if (+txn.denomination.amount !== 0) {
       await runtime.wallet.submitTx(wallet, txn, signedTx, {
         commit: true
       })

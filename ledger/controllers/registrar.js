@@ -205,7 +205,7 @@ const createPersona = function (runtime) {
       throw boom.badData('invalid registrar proof: ' + JSON.stringify(proof))
     }
 
-    const paymentId = uuidV4().toLowerCase()
+    let paymentId = uuidV4().toLowerCase()
     const wallets = runtime.database.get('wallets', debug)
     let result, wallet
 
@@ -213,19 +213,17 @@ const createPersona = function (runtime) {
 
     let id
     if (runtime.config.forward.wallets) {
-      const { body } = await runtime.wreck.walletMigration.post(debug, '/v3/wallet/uphold', {
-        headers: {
-          'content-type': 'application/json'
-        },
-        body: {
+      const { payload } = await runtime.wreck.walletMigration.post(debug, '/v3/wallet/uphold', {
+        payload: {
           signedCreationRequest: btoa(JSON.stringify(requestBody))
         }
       })
-      id = body.providerId
+      const body = JSON.parse(payload.toString())
+      id = body.walletProvider.id
+      paymentId = body.paymentId
       // let create happen again and skip the "create step"
       // but create new addresses
     }
-
     try {
       result = await runtime.wallet.create(requestType, requestBody, id)
       wallet = result.wallet

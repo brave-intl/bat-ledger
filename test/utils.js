@@ -518,7 +518,8 @@ async function cleanRedeemerRedisDb () {
   })
 }
 
-function signTxn (keypair, body, octets) {
+function signTxn (keypair, body, _octets) {
+  let octets = _octets
   if (!octets) {
     octets = JSON.stringify(body)
   }
@@ -535,6 +536,7 @@ function signTxn (keypair, body, octets) {
   })
   return {
     headers,
-    octets
+    octets,
+    body
   }
 }

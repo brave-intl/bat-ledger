@@ -170,12 +170,12 @@ async function createAnonymousAddress (providerId) {
 
 async function claimCard (t, anonCard, destination, code, amount, anonymousAddress) {
   const txn = {
-    destination,
     denomination: {
-      currency: 'BAT',
+      amount,
+      currency: 'BAT'
       // amount should be same for this example
-      amount
-    }
+    },
+    destination
   }
   const body = { signedTx: signTxn(anonCard.keypair, txn) }
   if (anonymousAddress) {
@@ -268,7 +268,7 @@ async function createUserWallet (t) {
   response = await t.context.ledger.get('/v2/wallet?publicKey=' + uint8tohex(keypair.publicKey))
     .expect(ok)
 
-  t.true(response.body.paymentId === paymentId)
+  t.is(response.body.paymentId, paymentId, 'payment ids should match')
 
   return [viewingId, keypair, personaCredential, paymentId, userCardId]
 }
