@@ -910,7 +910,6 @@ function claimWalletHandler (runtime) {
     if (runtime.config.forward.wallets) {
       try {
         await runtime.wreck.walletMigration.post(debug, `/v3/wallet/uphold/${paymentId}/claim`, {
-          useProxyP: true,
           payload: {
             signedLinkingRequest: btoa(JSON.stringify(signedTx)),
             anonymousAddress
