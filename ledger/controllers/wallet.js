@@ -47,10 +47,6 @@ v2.readInfo = {
       const debug = braveHapi.debug(module, request)
       const paymentId = request.params.paymentId.toLowerCase()
 
-      if (runtime.config.disable.wallets) {
-        throw boom.serverUnavailable()
-      }
-
       let wallet
       if (runtime.config.forward.wallets) {
         const { payload } = await runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`)
