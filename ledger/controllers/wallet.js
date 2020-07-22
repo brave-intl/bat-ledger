@@ -12,6 +12,7 @@ const surveyorsLib = require('../lib/surveyor')
 const {
   createComposite,
   promotionIdExclusions,
+  reformWalletGet,
   promotionIdBonuses
 } = require('../lib/wallet')
 
@@ -150,63 +151,6 @@ v2.readMembersInfo = {
 /*
    GET /v2/wallet/{paymentId}
  */
-
-async function reformWalletGet (debug, runtime, {
-  paymentId
-}) {
-  const [walletResponse, parametersResponse] = await Promise.all([
-    runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
-    runtime.wreck.rewards.get(debug, '/v1/parameters')
-  ])
-  const { payload: walletPayload } = walletResponse
-  const wallet = JSON.parse(walletPayload.toString())
-  const { payload: parametersPayload } = parametersResponse
-  const parameters = JSON.parse(parametersPayload.toString())
-  let balancesPayload = Buffer.from(JSON.stringify({}))
-  try {
-    const balancesResponse = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/uphold/${paymentId}`)
-    balancesPayload = balancesResponse.payload
-  } catch (e) {
-    const { output } = e
-    if (output) {
-      const { statusCode } = output
-      if (statusCode !== 429 && statusCode !== 400) {
-        throw boom.boomify(e)
-      }
-    }
-  }
-  const balances = JSON.parse(balancesPayload.toString())
-  return {
-    altcurrency: 'BAT',
-    paymentStamp: 0,
-    httpSigningPubKey: wallet.publicKey,
-    addresses: {
-      CARD_ID: wallet.providerId
-    },
-    rates: {
-      BAT: parameters.batRate
-    },
-    parameters: {
-      adFree: {
-        currency: 'BAT',
-        fee: {
-          BAT: 10
-        },
-        choices: parameters.autocontribute.choices,
-        range: {
-          BAT: [5, 100]
-        },
-        days: 30
-      },
-      defaultTipChoices: parameters.tips.defaultTipChoices,
-      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
-    },
-    balance: balances.balance || '0.0000',
-    cardBalance: balances.cardBalance || '0',
-    probi: balances.probi || '0',
-    unconfirmed: balances.unconfirmed || '0.0000'
-  }
-}
 
 const read = function (runtime, apiVersion) {
   return async (request, h) => {
