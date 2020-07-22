@@ -6,7 +6,6 @@ const boom = require('boom')
 const bson = require('bson')
 const timestamp = require('monotonic-timestamp')
 const underscore = require('underscore')
-const btoa = require('btoa')
 
 const surveyorsLib = require('../lib/surveyor')
 const {
@@ -20,6 +19,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
+const { btoa } = braveUtils
 
 const defaultTipChoices = (process.env.DEFAULT_TIP_CHOICES && process.env.DEFAULT_TIP_CHOICES.split(',')) || [1, 5, 10]
 const defaultMonthlyChoices = (process.env.DEFAULT_MONTHLY_CHOICES && process.env.DEFAULT_MONTHLY_CHOICES.split(',')) || [1, 5, 10]

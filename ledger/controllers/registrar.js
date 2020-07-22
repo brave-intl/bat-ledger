@@ -6,11 +6,11 @@ const crypto = require('crypto')
 const underscore = require('underscore')
 const uuidV4 = require('uuid/v4')
 const { verify } = require('http-request-signature')
-const btoa = require('btoa')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { btoa } = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
