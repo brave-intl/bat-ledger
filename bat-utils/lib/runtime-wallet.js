@@ -68,13 +68,13 @@ Wallet.prototype.createCard = async function () {
   return f.apply(this, arguments)
 }
 
-Wallet.prototype.create = async function (requestType, request) {
+Wallet.prototype.create = async function (requestType, request, id) {
   let f = Wallet.providers.mock.create
   if (this.config.uphold) {
     f = Wallet.providers.uphold.create
   }
   if (!f) return {}
-  return f.bind(this)(requestType, request)
+  return f.bind(this)(requestType, request, id)
 }
 
 Wallet.prototype.balances = async function (info) {

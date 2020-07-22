@@ -205,7 +205,7 @@ const createPersona = function (runtime) {
       throw boom.badData('invalid registrar proof: ' + JSON.stringify(proof))
     }
 
-    let paymentId = uuidV4().toLowerCase()
+    const paymentId = uuidV4().toLowerCase()
     const wallets = runtime.database.get('wallets', debug)
     let result, wallet
 
@@ -220,14 +220,13 @@ const createPersona = function (runtime) {
       })
       const body = JSON.parse(payload.toString())
       id = body.walletProvider.id
-      paymentId = body.paymentId
-      // let create happen again and skip the "create step"
-      // but create new addresses
-      // return {
-      //   verification,
-      //   payload: registrar.payload,
-      //   wallet: { paymentId, addresses: { CARD_ID: id } }
-      // }
+      const paymentId = body.paymentId
+      // skip all other collection updates
+      return {
+        verification,
+        payload: registrar.payload,
+        wallet: { paymentId, addresses: { CARD_ID: id } }
+      }
     }
     try {
       result = await runtime.wallet.create(requestType, requestBody, id)

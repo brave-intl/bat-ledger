@@ -20,21 +20,20 @@ function Wreck (config, runtime) {
 function byDomain (options) {
   const scopedWreck = wreck.defaults(options || {})
   return {
-    get: normalizedWreckCall('get', scopedWreck, options),
-    patch: normalizedWreckCall('patch', scopedWreck, options),
-    post: normalizedWreckCall('post', scopedWreck, options),
-    put: normalizedWreckCall('put', scopedWreck, options),
-    delete: normalizedWreckCall('delete', scopedWreck, options)
+    get: normalizedWreckCall('get', scopedWreck),
+    patch: normalizedWreckCall('patch', scopedWreck),
+    post: normalizedWreckCall('post', scopedWreck),
+    put: normalizedWreckCall('put', scopedWreck),
+    delete: normalizedWreckCall('delete', scopedWreck)
   }
 }
 
-function normalizedWreckCall (method, scopedWreck, options) {
+function normalizedWreckCall (method, scopedWreck) {
   return async (debug, path, passedOpts = {}) => {
     const { query } = passedOpts
     const filteredOpts = _.omit(passedOpts, ['query'])
     const fullpath = appendQueryString(path, query)
     const { opts } = WreckProxy(fullpath, filteredOpts)
-    debug(fullpath, opts, options)
     return scopedWreck[method](fullpath, opts)
   }
 }

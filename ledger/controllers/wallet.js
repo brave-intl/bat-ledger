@@ -158,55 +158,57 @@ v2.readMembersInfo = {
 async function reformWalletGet (debug, runtime, {
   paymentId
 }) {
+  const [walletResponse, parametersResponse] = await Promise.all([
+    runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
+    runtime.wreck.rewards.get(debug, '/v1/parameters')
+  ])
+  const { payload: walletPayload } = walletResponse
+  const wallet = JSON.parse(walletPayload.toString())
+  const { payload: parametersPayload } = parametersResponse
+  const parameters = JSON.parse(parametersPayload.toString())
+  let balancesPayload = Buffer.from(JSON.stringify({}))
   try {
-    debug('getting reformed wallet')
-    const [walletResponse, parametersResponse] = await Promise.all([
-      runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
-      runtime.wreck.rewards.get(debug, '/v1/parameters')
-    ])
-    debug('getting reformed wallet balance')
     const balancesResponse = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/uphold/${paymentId}`)
-    const { payload: walletPayload } = walletResponse
-    const wallet = JSON.parse(walletPayload.toString())
-    const { payload: parametersPayload } = parametersResponse
-    const parameters = JSON.parse(parametersPayload.toString())
-    const { statusCode, payload: balancesPayload } = balancesResponse
-    debug('balances status', statusCode)
-    const balances = JSON.parse(balancesPayload.toString())
-    debug('balances', balances)
-    return {
-      altcurrency: 'BAT',
-      paymentStamp: 0,
-      httpSigningPubKey: wallet.publicKey,
-      addresses: {
-        CARD_ID: wallet.providerId
-      },
-      rates: {
-        BAT: parameters.batRate
-      },
-      parameters: {
-        adFree: {
-          currency: 'BAT',
-          fee: {
-            BAT: 10
-          },
-          choices: parameters.autocontribute.choices,
-          range: {
-            BAT: [5, 100]
-          },
-          days: 30
-        },
-        defaultTipChoices: parameters.tips.defaultTipChoices,
-        defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
-      },
-      balance: balances.balance || '0.0000',
-      cardBalance: balances.cardBalance || '0',
-      probi: balances.probi || '0',
-      unconfirmed: balances.unconfirmed || '0.0000'
+    balancesPayload = balancesResponse.payload
+  } catch (e) {
+    const { output } = e
+    if (output) {
+      const { statusCode } = output
+      if (statusCode !== 429 && statusCode !== 400) {
+        throw boom.boomify(e)
+      }
     }
-  } catch (err) {
-    debug('erred during wallet get', err)
-    throw err
+  }
+  const balances = JSON.parse(balancesPayload.toString())
+  return {
+    altcurrency: 'BAT',
+    paymentStamp: 0,
+    httpSigningPubKey: wallet.publicKey,
+    addresses: {
+      CARD_ID: wallet.providerId
+    },
+    rates: {
+      BAT: parameters.batRate
+    },
+    parameters: {
+      adFree: {
+        currency: 'BAT',
+        fee: {
+          BAT: 10
+        },
+        choices: parameters.autocontribute.choices,
+        range: {
+          BAT: [5, 100]
+        },
+        days: 30
+      },
+      defaultTipChoices: parameters.tips.defaultTipChoices,
+      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
+    },
+    balance: balances.balance || '0.0000',
+    cardBalance: balances.cardBalance || '0',
+    probi: balances.probi || '0',
+    unconfirmed: balances.unconfirmed || '0.0000'
   }
 }
 

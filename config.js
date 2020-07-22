@@ -126,7 +126,7 @@ module.exports =
     walletMigration: {
       baseUrl: process.env.WALLET_MIGRATION_SERVER,
       headers: {
-        'Authorization': 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN  || '00000000-0000-4000-0000-000000000000'),
+        'Authorization': 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
         'Content-Type': 'application/json'
       }
     },

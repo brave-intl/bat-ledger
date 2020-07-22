@@ -115,10 +115,7 @@ AsyncRoute.prototype.whitelist = function () {
 
 AsyncRoute.prototype.config = function (config) {
   if (typeof config === 'function') { config = { handler: config } }
-  if (typeof config.handler === 'undefined') {
-    console.log(this, config)
-    throw new Error('undefined handler for ' + JSON.stringify(this.internal))
-  }
+  if (typeof config.handler === 'undefined') throw new Error('undefined handler for ' + JSON.stringify(this.internal))
 
   return (runtime) => {
     const payload = { handler: config.handler(runtime) }
