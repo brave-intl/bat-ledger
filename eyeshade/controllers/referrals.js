@@ -11,6 +11,7 @@ const extrasUtils = utils.extras.utils
 const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
+const countries = require('../lib/countries')
 
 const v1 = {}
 
@@ -138,20 +139,7 @@ v1.getReferralGroups = {
     let { rows } = await runtime.postgres.query(statement, [activeAt || new Date()], true)
 
     if (resolve && fields.includes('codes')) {
-      // if this can be done in sql please fix!
-      const resolver = rows.reduce((memo, { codes, id, activeAt }) => {
-        return codes.reduce((memo, code) => {
-          const group = { id, activeAt }
-          const byCode = memo[code] = memo[code] || group
-          if (!byCode.id !== id && new Date(byCode.activeAt) < new Date(activeAt)) {
-            memo[code] = group
-          }
-          return memo
-        }, memo)
-      }, {})
-      rows = rows.map((row) => Object.assign({}, row, {
-        codes: row.codes.filter((code) => row.id === resolver[code].id)
-      })).filter(({ codes }) => codes.length)
+      rows = countries.resolve(activeAt, rows)
     }
 
     return rows.map((row) => _.pick(row, allFields))
