@@ -58,12 +58,14 @@ async function reformWalletGet (debug, runtime, {
     }
   }
   const balances = JSON.parse(balancesPayload.toString())
+  let { providerId, depositAccountProvider } = wallet
+  providerId = providerId || (depositAccountProvider && depositAccountProvider.id)
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,
     httpSigningPubKey: wallet.publicKey,
     addresses: {
-      CARD_ID: wallet.providerId
+      CARD_ID: providerId
     },
     rates: {
       BAT: parameters.batRate
