@@ -37,7 +37,7 @@ async function reformWalletGet (debug, runtime, {
   paymentId
 }) {
   const [walletResponse, parametersResponse] = await Promise.all([
-    runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
+    runtime.wreck.walletMigration.get(debug, `/v3/wallet/${paymentId}`),
     runtime.wreck.rewards.get(debug, '/v1/parameters')
   ])
   const { payload: walletPayload } = walletResponse

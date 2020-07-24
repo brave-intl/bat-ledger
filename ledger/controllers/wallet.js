@@ -50,7 +50,7 @@ v2.readInfo = {
 
       let wallet
       if (runtime.config.forward.wallets) {
-        const { payload } = await runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`)
+        const { payload } = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/${paymentId}`)
         wallet = JSON.parse(payload.toString())
         wallet.httpSigningPubKey = wallet.publicKey
         wallet.addresses = {
