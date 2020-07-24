@@ -54,7 +54,6 @@ v2.readInfo = {
         wallet = JSON.parse(payload.toString())
         const { walletProvider, publicKey, depositAccountProvider } = wallet
         wallet.httpSigningPubKey = publicKey
-        console.log('v3 wallet get', wallet)
         if (walletProvider.name === 'uphold') {
           wallet.addresses = {
             CARD_ID: walletProvider.id
