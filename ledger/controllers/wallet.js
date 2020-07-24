@@ -58,12 +58,17 @@ v2.readInfo = {
           wallet.addresses = {
             CARD_ID: walletProvider.id
           }
+          wallet.anonymousAddress = null
+          wallet.provider = 'uphold'
+          wallet.providerId = walletProvider.id
         } else {
           wallet.addresses = {
             CARD_ID: depositAccountProvider.id
           }
           wallet.anonymousAddress = depositAccountProvider.anonymousAddress
           wallet.providerLinkingId = depositAccountProvider.providerLinkingId
+          wallet.provider = 'uphold'
+          wallet.providerId = depositAccountProvider.id
         }
       } else {
         const wallets = runtime.database.get('wallets', debug)
