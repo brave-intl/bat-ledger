@@ -95,6 +95,7 @@ before_script:
   # build the docker compose file
   - npm run docker-build
   - docker-compose up -d eyeshade-postgres
+  - docker-compose up -d wallet-migration-postgres
   - sleep 3
   - npm run docker-migrate-up
   # bring up the relevant services
