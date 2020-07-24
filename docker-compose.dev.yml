@@ -10,13 +10,6 @@ services:
       - "./config.js:/usr/src/app/config.js"
       - "./test:/usr/src/app/test"
     command: "npm run start-ledger"
-  ledger-worker:
-    volumes:
-      - "./bat-utils:/usr/src/app/bat-utils"
-      - "./ledger:/usr/src/app/ledger"
-      - "./package.json:/usr/src/app/package.json"
-      - "./config.js:/usr/src/app/config.js"
-    command: "npm run start-ledger-worker"
   eyeshade-web:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"

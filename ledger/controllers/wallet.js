@@ -11,6 +11,7 @@ const surveyorsLib = require('../lib/surveyor')
 const {
   createComposite,
   promotionIdExclusions,
+  reformWalletGet,
   promotionIdBonuses
 } = require('../lib/wallet')
 
@@ -18,6 +19,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
+const { btoa } = braveUtils
 
 const defaultTipChoices = (process.env.DEFAULT_TIP_CHOICES && process.env.DEFAULT_TIP_CHOICES.split(',')) || [1, 5, 10]
 const defaultMonthlyChoices = (process.env.DEFAULT_MONTHLY_CHOICES && process.env.DEFAULT_MONTHLY_CHOICES.split(',')) || [1, 5, 10]
@@ -44,10 +46,20 @@ v2.readInfo = {
   handler: (runtime) => {
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
-      const wallets = runtime.database.get('wallets', debug)
       const paymentId = request.params.paymentId.toLowerCase()
 
-      const wallet = await wallets.findOne({ paymentId: paymentId })
+      let wallet
+      if (runtime.config.forward.wallets) {
+        const { payload } = await runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`)
+        wallet = JSON.parse(payload.toString())
+        wallet.httpSigningPubKey = wallet.publicKey
+        wallet.addresses = {
+          CARD_ID: wallet.providerId
+        }
+      } else {
+        const wallets = runtime.database.get('wallets', debug)
+        wallet = await wallets.findOne({ paymentId })
+      }
       if (!wallet) {
         throw boom.notFound('no such wallet: ' + paymentId)
       }
@@ -153,7 +165,16 @@ const read = function (runtime, apiVersion) {
     let currency = request.query.currency
     let balances, result, state
 
-    const wallet = await wallets.findOne({ paymentId: paymentId })
+    if (runtime.config.disable.wallets) {
+      throw boom.serverUnavailable()
+    }
+    let wallet
+    if (runtime.config.forward.wallets) {
+      return reformWalletGet(debug, runtime, { paymentId })
+    } else {
+      wallet = await wallets.findOne({ paymentId })
+    }
+
     if (!wallet) {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
@@ -508,8 +529,18 @@ v2.lookup = {
   handler: (runtime) => {
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
-      const wallets = runtime.database.get('wallets', debug)
       const publicKey = request.query.publicKey
+      if (runtime.config.disable.wallets) {
+        throw boom.serverUnavailable()
+      }
+      if (runtime.config.forward.wallets) {
+        const url = `/v3/wallet/recover/${publicKey}`
+        const { payload } = await runtime.wreck.walletMigration.get(debug, url)
+        return {
+          paymentId: JSON.parse(payload.toString()).paymentId
+        }
+      }
+      const wallets = runtime.database.get('wallets', debug)
       const wallet = await wallets.findOne({ httpSigningPubKey: publicKey })
       if (!wallet) {
         throw boom.notFound('no such wallet with publicKey: ' + publicKey)
@@ -872,6 +903,29 @@ function claimWalletHandler (runtime) {
     const wallets = runtime.database.get('wallets', debug)
     const members = runtime.database.get('members', debug)
 
+    if (runtime.config.disable.wallets) {
+      throw boom.serverUnavailable()
+    }
+
+    if (runtime.config.forward.wallets) {
+      try {
+        await runtime.wreck.walletMigration.post(debug, `/v3/wallet/uphold/${paymentId}/claim`, {
+          payload: {
+            signedLinkingRequest: btoa(JSON.stringify(signedTx)),
+            anonymousAddress
+          }
+        })
+        return {}
+      } catch (err) {
+        if (!err.data) {
+          debug('erred no data', err)
+          throw err
+        }
+        debug('erred from wallet migration claim', err.data.payload.toString())
+        throw err
+      }
+    }
+
     const wallet = await wallets.findOne({ paymentId })
     if (!wallet) {
       throw boom.notFound()
@@ -895,6 +949,7 @@ function claimWalletHandler (runtime) {
     if (type !== 'card' || !isMember || !userId) {
       throw boom.forbidden()
     }
+
     const providerLinkingId = uuidV5(userId, 'c39b298b-b625-42e9-a463-69c7726e5ddc')
     // if wallet has already been claimed, don't tie wallet to member id
     if (wallet.providerLinkingId) {

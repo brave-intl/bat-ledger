@@ -27,6 +27,7 @@ module.exports = {
   isYoutubeChannelId,
   normalizeChannel,
   justDate,
+  btoa,
   BigNumber
 }
 
@@ -155,4 +156,14 @@ function isUUID (string) {
   var uuidRegExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
   return uuidRegExp.test(string)
+}
+
+function btoa (str) {
+  let buffer
+  if (str instanceof Buffer) {
+    buffer = str
+  } else {
+    buffer = Buffer.from(str.toString(), 'binary')
+  }
+  return buffer.toString('base64')
 }
