@@ -36,7 +36,9 @@ const {
   BAT_MONGODB_URI,
   BAT_REDEEMER_REDIS_URL,
   GRANT_TOKEN,
-  REDEEMER_TOKEN
+  REDEEMER_TOKEN,
+  BAT_WALLET_MIGRATION_SERVER,
+  WALLET_MIGRATION_TOKEN
 } = process.env
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
@@ -96,6 +98,7 @@ const eyeshadePublishersAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(A
 const grantGlobalAgent = agent(BAT_GRANT_SERVER).set(AUTH_KEY, token(GRANT_TOKEN))
 
 const redeemerGlobalAgent = agent(BAT_REDEEMER_SERVER).set(AUTH_KEY, token(REDEEMER_TOKEN))
+const walletMigrationGlobalAgent = agent(BAT_WALLET_MIGRATION_SERVER).set(AUTH_KEY, WALLET_MIGRATION_TOKEN)
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -227,6 +230,9 @@ module.exports = {
     redeemer: {
       global: redeemerGlobalAgent
     },
+    walletMigration: {
+      global: walletMigrationGlobalAgent
+    },
     eyeshade: {
       global: eyeshadeGlobalAgent,
       referrals: eyeshadeReferralsAgent,
@@ -262,8 +268,25 @@ function cleanDbs () {
     cleanEyeshadeDb(),
     cleanLedgerDb(),
     cleanGrantDb(),
+    cleanWalletMigrationDb(),
     cleanRedeemerRedisDb()
   ])
+}
+
+async function cleanWalletMigrationDb () {
+  const url = process.env.BAT_WALLET_MIGRATION_POSTGRES_URL
+  const pool = new Pool({ connectionString: url, ssl: false })
+  const client = await pool.connect()
+  try {
+    await Promise.all([
+      client.query('DELETE from claim_creds'),
+      client.query('DELETE from claims'),
+      client.query('DELETE from wallets'),
+      client.query('DELETE from promotions')
+    ])
+  } finally {
+    client.release()
+  }
 }
 
 function cleanPgDb (postgres) {
@@ -405,6 +428,19 @@ async function setupForwardingServer ({
       grants: '1'
     },
     wreck: {
+      walletMigration: {
+        baseUrl: process.env.BAT_WALLET_MIGRATION_SERVER,
+        headers: {
+          Authorization: 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
+          'Content-Type': 'application/json'
+        }
+      },
+      rewards: {
+        baseUrl: process.env.BAT_REWARDS_SERVER,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      },
       grants: {
         baseUrl: process.env.BAT_GRANT_SERVER,
         headers: {
@@ -482,7 +518,8 @@ async function cleanRedeemerRedisDb () {
   })
 }
 
-function signTxn (keypair, body, octets) {
+function signTxn (keypair, body, _octets) {
+  let octets = _octets
   if (!octets) {
     octets = JSON.stringify(body)
   }
@@ -499,6 +536,7 @@ function signTxn (keypair, body, octets) {
   })
   return {
     headers,
-    octets
+    octets,
+    body
   }
 }

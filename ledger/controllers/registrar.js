@@ -10,6 +10,7 @@ const { verify } = require('http-request-signature')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { btoa } = utils.extras.utils
 
 const v1 = {}
 const v2 = {}
@@ -132,6 +133,9 @@ v2.update =
  */
 const createPersona = function (runtime) {
   return async (request, h) => {
+    if (runtime.config.disable.wallets) {
+      throw boom.serverUnavailable()
+    }
     const debug = braveHapi.debug(module, request)
     const uId = request.params.uId.toLowerCase()
     const proof = request.payload.proof
@@ -207,8 +211,25 @@ const createPersona = function (runtime) {
 
     const requestBody = request.payload.request
 
+    let id
+    if (runtime.config.forward.wallets) {
+      const { payload } = await runtime.wreck.walletMigration.post(debug, '/v3/wallet/uphold', {
+        payload: {
+          signedCreationRequest: btoa(JSON.stringify(requestBody))
+        }
+      })
+      const body = JSON.parse(payload.toString())
+      id = body.walletProvider.id
+      const paymentId = body.paymentId
+      // skip all other collection updates
+      return {
+        verification,
+        payload: registrar.payload,
+        wallet: { paymentId, addresses: { CARD_ID: id } }
+      }
+    }
     try {
-      result = await runtime.wallet.create(requestType, requestBody)
+      result = await runtime.wallet.create(requestType, requestBody, id)
       wallet = result.wallet
     } catch (ex) {
       runtime.captureException(ex, { req: request })

@@ -7,6 +7,10 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 
+const {
+  reformWalletGet
+} = require('../../ledger/lib/wallet')
+
 const plugins = {
   rateLimit: {
     enabled: true,
@@ -51,20 +55,26 @@ v2.walletBalance =
       if (walletInfo) {
         walletInfo = JSON.parse(walletInfo)
       } else {
-        try {
-          const headers = {}
-          if (process.env.LEDGER_TOKEN) {
-            headers.Authorization = 'Bearer ' + process.env.LEDGER_TOKEN
-          }
-          const url = `${runtime.config.ledger.url}/v2/wallet/${paymentId}?refresh=true`
-          debug('GET', url)
-          walletInfo = await braveHapi.wreck.get(url, {
-            headers,
-            useProxyP: true
+        if (runtime.config.forward.wallets) {
+          walletInfo = await reformWalletGet(debug, runtime, {
+            paymentId
           })
-          if (Buffer.isBuffer(walletInfo)) walletInfo = JSON.parse(walletInfo)
-        } catch (ex) {
-          throw boom.boomify(ex)
+        } else {
+          try {
+            const headers = {}
+            if (process.env.LEDGER_TOKEN) {
+              headers.Authorization = 'Bearer ' + process.env.LEDGER_TOKEN
+            }
+            const url = `${runtime.config.ledger.url}/v2/wallet/${paymentId}?refresh=true`
+            debug('GET', url)
+            walletInfo = await braveHapi.wreck.get(url, {
+              headers,
+              useProxyP: true
+            })
+            if (Buffer.isBuffer(walletInfo)) walletInfo = JSON.parse(walletInfo)
+          } catch (ex) {
+            throw boom.boomify(ex)
+          }
         }
         fresh = true
       }

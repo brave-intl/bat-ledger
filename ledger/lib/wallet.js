@@ -1,4 +1,5 @@
 const BigNumber = require('bignumber.js')
+const boom = require('boom')
 const promotionIdExclusions = {
   'cba1e5c0-8081-49cb-b4b8-05e109c96fd4': true,
   'f8913681-eab9-48c2-890e-c40d4a3efb95': true,
@@ -15,6 +16,7 @@ const promotionIdBonuses = {
 module.exports = {
   promotionIdExclusions,
   promotionIdBonuses,
+  reformWalletGet,
   createComposite
 }
 
@@ -28,5 +30,64 @@ function createComposite ({
     type,
     amount: (new BigNumber(amount)).toString(),
     lastClaim: lastClaim ? lastClaim.toISOString() : null
+  }
+}
+
+async function reformWalletGet (debug, runtime, {
+  paymentId
+}) {
+  const [walletResponse, parametersResponse] = await Promise.all([
+    runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
+    runtime.wreck.rewards.get(debug, '/v1/parameters')
+  ])
+  const { payload: walletPayload } = walletResponse
+  const wallet = JSON.parse(walletPayload.toString())
+  const { payload: parametersPayload } = parametersResponse
+  const parameters = JSON.parse(parametersPayload.toString())
+  let balancesPayload = Buffer.from(JSON.stringify({}))
+  try {
+    const balancesResponse = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/uphold/${paymentId}`)
+    balancesPayload = balancesResponse.payload
+  } catch (e) {
+    const { output } = e
+    if (output) {
+      const { statusCode } = output
+      if (statusCode !== 429 && statusCode !== 400) {
+        throw boom.boomify(e)
+      }
+    }
+  }
+  const balances = JSON.parse(balancesPayload.toString())
+  let { providerId, depositAccountProvider } = wallet
+  providerId = providerId || (depositAccountProvider && depositAccountProvider.id)
+  return {
+    altcurrency: 'BAT',
+    paymentStamp: 0,
+    httpSigningPubKey: wallet.publicKey,
+    addresses: {
+      CARD_ID: providerId
+    },
+    rates: {
+      BAT: parameters.batRate
+    },
+    parameters: {
+      adFree: {
+        currency: 'BAT',
+        fee: {
+          BAT: 10
+        },
+        choices: parameters.autocontribute.choices,
+        range: {
+          BAT: [5, 100]
+        },
+        days: 30
+      },
+      defaultTipChoices: parameters.tips.defaultTipChoices,
+      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
+    },
+    balance: balances.balance || '0.0000',
+    cardBalance: balances.cardBalance || '0',
+    probi: balances.probi || '0',
+    unconfirmed: balances.unconfirmed || '0.0000'
   }
 }
