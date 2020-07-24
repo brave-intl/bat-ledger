@@ -123,7 +123,7 @@ test('a faulty request does not result in an error', async (t) => {
 })
 
 test('a faulty request delays subsequent requests', async (t) => {
-  t.plan(4)
+  t.plan(5)
   const currency = make(Currency.Constructor, {
     lastFailure: 5000
   })

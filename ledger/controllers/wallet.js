@@ -50,11 +50,25 @@ v2.readInfo = {
 
       let wallet
       if (runtime.config.forward.wallets) {
-        const { payload } = await runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`)
+        const { payload } = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/${paymentId}`)
         wallet = JSON.parse(payload.toString())
-        wallet.httpSigningPubKey = wallet.publicKey
-        wallet.addresses = {
-          CARD_ID: wallet.providerId
+        const { walletProvider, publicKey, depositAccountProvider } = wallet
+        wallet.httpSigningPubKey = publicKey
+        if (walletProvider.name === 'uphold') {
+          wallet.addresses = {
+            CARD_ID: walletProvider.id
+          }
+          wallet.anonymousAddress = null
+          wallet.provider = 'uphold'
+          wallet.providerId = walletProvider.id
+        } else {
+          wallet.addresses = {
+            CARD_ID: depositAccountProvider.id
+          }
+          wallet.anonymousAddress = depositAccountProvider.anonymousAddress
+          wallet.providerLinkingId = depositAccountProvider.providerLinkingId
+          wallet.provider = 'uphold'
+          wallet.providerId = depositAccountProvider.id
         }
       } else {
         const wallets = runtime.database.get('wallets', debug)

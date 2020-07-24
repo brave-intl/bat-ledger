@@ -37,7 +37,7 @@ async function reformWalletGet (debug, runtime, {
   paymentId
 }) {
   const [walletResponse, parametersResponse] = await Promise.all([
-    runtime.wreck.walletMigration.get(debug, `/v1/wallet/${paymentId}`),
+    runtime.wreck.walletMigration.get(debug, `/v3/wallet/${paymentId}`),
     runtime.wreck.rewards.get(debug, '/v1/parameters')
   ])
   const { payload: walletPayload } = walletResponse
@@ -58,8 +58,12 @@ async function reformWalletGet (debug, runtime, {
     }
   }
   const balances = JSON.parse(balancesPayload.toString())
-  let { providerId, depositAccountProvider } = wallet
-  providerId = providerId || (depositAccountProvider && depositAccountProvider.id)
+  let { providerId, walletProvider, depositAccountProvider } = wallet
+  if (walletProvider.name === 'uphold') {
+    providerId = walletProvider.id
+  } else {
+    providerId = depositAccountProvider.id
+  }
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,
