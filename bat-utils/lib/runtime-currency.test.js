@@ -123,19 +123,26 @@ test('a faulty request does not result in an error', async (t) => {
 })
 
 test('a faulty request delays subsequent requests', async (t) => {
+  t.plan(4)
   const currency = make(Currency.Constructor, {
     lastFailure: 5000
   })
   const first = await currency.rates('BAT')
   currency.parser = () => { throw new Error('missed') }
+  let runCount = 0
   currency.request = _.wrap(currency.request, (request, endpoint) => {
+    runCount += 1
+    t.true(runCount < 3)
     return request.call(currency, endpoint)
   })
+  // should hit request
   t.deepEqual(first, await currency.rates('BAT'))
   await timeout(6000)
+  // should hit again
   t.deepEqual(first, await currency.rates('BAT'))
   currency.cache = currency.Cache()
   try {
+    // should hit again
     await currency.rates('BAT')
   } catch (e) {
     t.true(_.isObject(e))
