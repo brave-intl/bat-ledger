@@ -124,7 +124,6 @@ test('wallets can be claimed by verified members using migrated endpoints', asyn
       }
     }
   })
-  console.log('migration token', process.env.WALLET_MIGRATION_TOKEN)
   t.context.runtime = runtime
   t.context.ledger = agent
 
@@ -183,18 +182,18 @@ async function runWalletClaimTests (t) {
   const anonCard1AnonAddr = await createAnonymousAddress(anonCardInfo1.providerId)
   const anonCard2AnonAddr = await createAnonymousAddress(anonCardInfo2.providerId)
 
-  await claimCard(t, anonCardInfo1, settlement, 200, '0')
+  await claimCard(t, anonCardInfo1, settlement, 200, '0', anonCard1AnonAddr.id)
 
   await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, '0', anonCard1AnonAddr.id)
-  await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, anonCardInfo1.amount)
+  await claimCard(t, anonCardInfo2, anonCardInfo1.providerId, 200, anonCardInfo1.amount, anonCard1AnonAddr.id)
   // const wallet = await getWalletFromMigration(anonCardInfo2.paymentId)
   // t.deepEqual(wallet.anonymousAddress, anonCard1AnonAddr.id)
 
-  await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, anonCardInfo1.amount)
+  await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, anonCardInfo1.amount, anonCard1AnonAddr.id)
 
-  await claimCard(t, anonCardInfo4, anonCardInfo3.providerId, 200, anonCardInfo1.amount)
+  await claimCard(t, anonCardInfo4, anonCardInfo3.providerId, 200, anonCardInfo1.amount, anonCard1AnonAddr.id)
 
-  await claimCard(t, anonCardInfo5, anonCardInfo4.providerId, 409, anonCardInfo1.amount)
+  await claimCard(t, anonCardInfo5, anonCardInfo4.providerId, 409, anonCardInfo1.amount, anonCard1AnonAddr.id)
 
   // redundant calls are fine provided the amount we are attempting to transfer is less than the balance
   // furthermore if the anonymous address has not previously been set it can be now
