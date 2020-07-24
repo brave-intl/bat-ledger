@@ -58,8 +58,12 @@ async function reformWalletGet (debug, runtime, {
     }
   }
   const balances = JSON.parse(balancesPayload.toString())
-  let { providerId, depositAccountProvider } = wallet
-  providerId = providerId || (depositAccountProvider && depositAccountProvider.id)
+  let { providerId, walletProvider, depositAccountProvider } = wallet
+  if (walletProvider.name === 'uphold') {
+    providerId = walletProvider.id
+  } else {
+    providerId = depositAccountProvider.id
+  }
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,
