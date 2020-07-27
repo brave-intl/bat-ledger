@@ -65,6 +65,11 @@ async function reformWalletGet (debug, runtime, {
     providerId = depositAccountProvider.id
   }
   const total = new BigNumber(balances.total || '0.0000')
+
+  console.log('balance', total.toString())
+  console.log('cardBalance', new BigNumber(balances.spendable || '0').toString())
+  console.log('probi', total.times(1e18).toString())
+  console.log('unconfirmed', new BigNumber(balances.unconfirmed || '0.0000').toString())
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,
