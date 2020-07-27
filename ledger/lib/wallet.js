@@ -82,7 +82,7 @@ async function reformWalletGet (debug, runtime, {
           BAT: 10
         },
         choices: {
-            BAT: parameters.autocontribute.choices
+          BAT: parameters.autocontribute.choices
         },
         range: {
           BAT: [5, 100]
