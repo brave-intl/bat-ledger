@@ -1,10 +1,10 @@
 const { serial: test } = require('ava')
 const uuidV4 = require('uuid/v4')
 const {
+  BigNumber,
   timeout
 } = require('bat-utils/lib/extras-utils')
 const { Runtime } = require('bat-utils')
-const BigNumber = require('bignumber.js')
 const {
   insertFromSettlement
 } = require('../../eyeshade/lib/transaction')

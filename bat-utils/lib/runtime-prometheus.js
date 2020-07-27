@@ -1,5 +1,5 @@
 const client = require('prom-client')
-const BigNumber = require('bignumber.js')
+const { BigNumber } = require('./extras-utils')
 const _ = require('underscore')
 const listenerPrefix = 'listeners:prometheus:'
 const listenerChannel = `${listenerPrefix}${process.env.SERVICE}`

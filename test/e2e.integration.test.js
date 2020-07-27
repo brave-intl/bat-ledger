@@ -1,5 +1,4 @@
 'use strict'
-const BigNumber = require('bignumber.js')
 const parsePrometheusText = require('parse-prometheus-text-format')
 const { serial: test } = require('ava')
 const {
@@ -15,6 +14,7 @@ const crypto = require('crypto')
 const { sign } = require('http-request-signature')
 const {
   timeout,
+  BigNumber,
   uint8tohex
 } = require('bat-utils/lib/extras-utils')
 const {

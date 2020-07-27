@@ -127,6 +127,38 @@ test('lookup still works the same way', async (t) => {
   }, 'only payment id should be returned')
 })
 
+test.skip('lookup failing prod', async (t) => {
+  const {
+    agent
+  } = await setupForwardingServer({
+    token: null,
+    routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
+    initers: [grantsInitializer, registrarInitializer, walletInitializer],
+    config: {
+      forward: {
+        wallets: '1'
+      },
+      wreck: {
+        rewards: {
+          baseUrl: 'https://api.rewards.brave.com',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        },
+        walletMigration: {
+          baseUrl: 'https://grant.rewards.brave.com',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      }
+    }
+  })
+
+  const paymentId = ''
+  await agent.get(`/v2/wallet/${paymentId}`).expect(ok)
+})
+
 function insertWallet (t, options) {
   return t.context.runtime.postgres.query(`
   insert into wallets(id, provider, provider_id, public_key)

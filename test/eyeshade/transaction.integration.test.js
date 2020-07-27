@@ -1,10 +1,10 @@
 'use strict'
 
-const BigNumber = require('bignumber.js')
 const { serial: test } = require('ava')
 const uuidV4 = require('uuid/v4')
 const {
   PROBI_FACTOR,
+  BigNumber,
   createdTimestamp
 } = require('bat-utils/lib/extras-utils')
 const { Runtime } = require('bat-utils')

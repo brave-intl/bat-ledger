@@ -1,8 +1,8 @@
-const BigNumber = require('bignumber.js')
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
 const uuidv5 = require('uuid/v5')
 const {
   createdTimestamp,
+  BigNumber,
   normalizeChannel
 } = require('bat-utils/lib/extras-utils')
 

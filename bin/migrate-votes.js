@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const BigNumber = require('bignumber.js')
 const Database = require('bat-utils/lib/runtime-database')
 const SDebug = require('sdebug')
 const debug = new SDebug('migrate-transaction-table')
@@ -10,6 +9,7 @@ const Postgres = require('bat-utils/lib/runtime-postgres')
 
 const {
   createdTimestamp,
+  BigNumber,
   normalizeChannel
 } = require('bat-utils/lib/extras-utils')
 
