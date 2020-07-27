@@ -92,7 +92,7 @@ async function reformWalletGet (debug, runtime, {
     },
     balance: total,
     cardBalance: new BigNumber(balances.spendable || '0').toString(),
-    probi: total.dividedBy(1e18).toString(),
+    probi: total.times(1e18).toString(),
     unconfirmed: new BigNumber(balances.unconfirmed || '0.0000').toString()
   }
 }
