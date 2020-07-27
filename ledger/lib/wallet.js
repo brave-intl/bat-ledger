@@ -90,7 +90,7 @@ async function reformWalletGet (debug, runtime, {
       defaultTipChoices: parameters.tips.defaultTipChoices,
       defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
     },
-    balance: total,
+    balance: total.toString(),
     cardBalance: new BigNumber(balances.spendable || '0').toString(),
     probi: total.times(1e18).toString(),
     unconfirmed: new BigNumber(balances.unconfirmed || '0.0000').toString()
