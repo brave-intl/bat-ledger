@@ -2,7 +2,7 @@ const { URL } = require('url')
 const SDebug = require('sdebug')
 const currencyCodes = require('currency-codes')
 const braveHapi = require('./extras-hapi')
-const BigNumber = require('bignumber.js')
+const { BigNumber } = require('./extras-utils')
 const _ = require('underscore')
 const debug = new SDebug('currency')
 let singleton

@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const uuidV5 = require('uuid/v5')
 const Joi = require('@hapi/joi')
 const anonize = require('node-anonize2-relic')
@@ -19,7 +18,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
-const { btoa } = braveUtils
+const { btoa, BigNumber } = braveUtils
 
 const defaultTipChoices = (process.env.DEFAULT_TIP_CHOICES && process.env.DEFAULT_TIP_CHOICES.split(',')) || [1, 5, 10]
 const defaultMonthlyChoices = (process.env.DEFAULT_MONTHLY_CHOICES && process.env.DEFAULT_MONTHLY_CHOICES.split(',')) || [1, 5, 10]

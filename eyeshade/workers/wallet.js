@@ -1,6 +1,6 @@
-const BigNumber = require('bignumber.js')
 const bson = require('bson')
 const underscore = require('underscore')
+const { BigNumber } = require('bat-utils/lib/extras-utils')
 
 const { votesId } = require('../lib/queries.js')
 

@@ -2,13 +2,13 @@ const Joi = require('@hapi/joi')
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
 const boom = require('boom')
 const utils = require('bat-utils')
-const BigNumber = require('bignumber.js')
 const _ = require('underscore')
 const extrasUtils = require('bat-utils/lib/extras-utils')
 const queries = require('../lib/queries')
 const transactions = require('../lib/transaction')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { BigNumber } = utils.extras.utils
 
 const v1 = {}
 

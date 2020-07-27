@@ -1,4 +1,4 @@
-const BigNumber = require('bignumber.js')
+const { BigNumber } = require('bat-utils/lib/extras-utils')
 const cohorts = ['control', 'grant', 'ads', 'safetynet']
 
 module.exports = {
