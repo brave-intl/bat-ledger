@@ -123,14 +123,12 @@ test('a faulty request does not result in an error', async (t) => {
 })
 
 test('a faulty request delays subsequent requests', async (t) => {
-  t.plan(5)
   const currency = make(Currency.Constructor, {
     lastFailure: 5000
   })
   const first = await currency.rates('BAT')
   currency.parser = () => { throw new Error('missed') }
   currency.request = _.wrap(currency.request, (request, endpoint) => {
-    t.true(true)
     return request.call(currency, endpoint)
   })
   t.deepEqual(first, await currency.rates('BAT'))
