@@ -64,7 +64,7 @@ async function reformWalletGet (debug, runtime, {
   } else {
     providerId = depositAccountProvider.id
   }
-  const total = new BigNumber(balances.total || '0.0000')
+  const total = new BigNumber((balances.total || '0.0000').toString())
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,
@@ -91,8 +91,8 @@ async function reformWalletGet (debug, runtime, {
       defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
     },
     balance: total.toFixed(4),
-    cardBalance: new BigNumber(balances.spendable || '0').toString(),
+    cardBalance: new BigNumber((balances.spendable || '0').toString()).toString(),
     probi: total.times(1e18).toString(),
-    unconfirmed: new BigNumber(balances.unconfirmed || '0.0000').toFixed(4)
+    unconfirmed: new BigNumber((balances.unconfirmed || '0.0000').toString()).toFixed(4)
   }
 }
