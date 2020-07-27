@@ -52,7 +52,7 @@ async function reformWalletGet (debug, runtime, {
     const { output } = e
     if (output) {
       const { statusCode } = output
-      if (statusCode !== 429 && statusCode !== 400) {
+      if (statusCode !== 400) {
         throw boom.boomify(e)
       }
     }
@@ -64,6 +64,7 @@ async function reformWalletGet (debug, runtime, {
   } else {
     providerId = depositAccountProvider.id
   }
+  const total = new BigNumber(balances.total || '0.0000')
   return {
     altcurrency: 'BAT',
     paymentStamp: 0,
@@ -89,9 +90,9 @@ async function reformWalletGet (debug, runtime, {
       defaultTipChoices: parameters.tips.defaultTipChoices,
       defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
     },
-    balance: balances.balance || '0.0000',
-    cardBalance: balances.cardBalance || '0',
-    probi: balances.probi || '0',
-    unconfirmed: balances.unconfirmed || '0.0000'
+    balance: total,
+    cardBalance: new BigNumber(balances.spendable || '0').toString(),
+    probi: total.dividedBy(1e18).toString(),
+    unconfirmed: new BigNumber(balances.unconfirmed || '0.0000').toString()
   }
 }
