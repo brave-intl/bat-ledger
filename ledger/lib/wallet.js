@@ -1,5 +1,5 @@
-const BigNumber = require('bignumber.js')
 const boom = require('boom')
+const { BigNumber } = require('bat-utils/lib/extras-utils')
 const promotionIdExclusions = {
   'cba1e5c0-8081-49cb-b4b8-05e109c96fd4': true,
   'f8913681-eab9-48c2-890e-c40d4a3efb95': true,

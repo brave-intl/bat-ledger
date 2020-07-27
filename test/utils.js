@@ -10,10 +10,10 @@ const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuidV4 = require('uuid/v4')
-const BigNumber = require('bignumber.js')
 const pg = require('pg')
 const {
   timeout,
+  BigNumber,
   uint8tohex
 } = require('bat-utils/lib/extras-utils')
 const SDebug = require('sdebug')

@@ -1,7 +1,7 @@
 'use strict'
 
 const Currency = require('./runtime-currency')
-const BigNumber = require('bignumber.js')
+const { BigNumber } = require('./extras-utils')
 const test = require('ava')
 const _ = require('underscore')
 const dotenv = require('dotenv')

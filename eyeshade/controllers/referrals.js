@@ -1,6 +1,5 @@
 const boom = require('boom')
 const bson = require('bson')
-const BigNumber = require('bignumber.js')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 const _ = underscore
@@ -9,6 +8,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const extrasUtils = utils.extras.utils
+const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
 

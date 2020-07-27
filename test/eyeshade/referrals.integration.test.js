@@ -2,7 +2,6 @@
 const { serial: test } = require('ava')
 const _ = require('underscore')
 const uuidV4 = require('uuid/v4')
-const BigNumber = require('bignumber.js')
 const {
   ok,
   cleanDbs,
@@ -13,6 +12,7 @@ const {
   braveYoutubePublisher
 } = require('../utils')
 const {
+  BigNumber,
   timeout
 } = require('bat-utils/lib/extras-utils')
 const { Runtime } = require('bat-utils')

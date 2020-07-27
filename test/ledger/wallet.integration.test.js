@@ -18,7 +18,9 @@ const {
 const {
   Runtime
 } = require('bat-utils')
-const BigNumber = require('bignumber.js')
+const {
+  BigNumber
+} = require('bat-utils/lib/extras-utils')
 const {
   createComposite
 } = require('../../ledger/lib/wallet')
