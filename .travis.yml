@@ -15,7 +15,7 @@ env:
     - "BAT_LEDGER_SERVER=http://localhost:3001"
     - "BAT_MONGODB_URI=mongodb://localhost:3010"
     - "BAT_POSTGRES_URL=postgres://eyeshade:password@localhost:3012/eyeshade"
-    - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
+    - "BAT_RATIOS_URL=https://bat-ratios-staging.herokuapp.com"
     - "BAT_REDEEMER_REDIS_URL=redis://localhost:3013"
     - "BAT_REDEEMER_SERVER=http://localhost:3335"
     - "BAT_REDIS_URL=redis://localhost:3011"
