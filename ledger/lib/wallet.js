@@ -89,8 +89,8 @@ async function reformWalletGet (debug, runtime, {
         },
         days: 30
       },
-      defaultTipChoices: parameters.tips.defaultTipChoices,
-      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
+      defaultTipChoices: parameters.tips.defaultTipChoices.map((item) => item + ''),
+      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices.map((item) => item + '')
     },
     balance: total.toFixed(4),
     cardBalance: new BigNumber((balances.spendable || '0').toString()).toString(),
