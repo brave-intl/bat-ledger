@@ -73,7 +73,8 @@ async function reformWalletGet (debug, runtime, {
       CARD_ID: providerId
     },
     rates: {
-      BAT: parameters.batRate
+      BAT: 1,
+      USD: parameters.batRate
     },
     parameters: {
       adFree: {
