@@ -73,7 +73,8 @@ async function reformWalletGet (debug, runtime, {
       CARD_ID: providerId
     },
     rates: {
-      BAT: parameters.batRate
+      BAT: 1,
+      USD: parameters.batRate
     },
     parameters: {
       adFree: {
@@ -81,14 +82,16 @@ async function reformWalletGet (debug, runtime, {
         fee: {
           BAT: 10
         },
-        choices: parameters.autocontribute.choices,
+        choices: {
+          BAT: parameters.autocontribute.choices
+        },
         range: {
           BAT: [5, 100]
         },
         days: 30
       },
-      defaultTipChoices: parameters.tips.defaultTipChoices,
-      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices
+      defaultTipChoices: parameters.tips.defaultTipChoices.map((item) => item + ''),
+      defaultMonthlyChoices: parameters.tips.defaultMonthlyChoices.map((item) => item + '')
     },
     balance: total.toFixed(4),
     cardBalance: new BigNumber((balances.spendable || '0').toString()).toString(),
