@@ -74,7 +74,7 @@ test('wallet endpoint returns default tip choices', async (t) => {
     body
   } = await t.context.ledger.get(`/v2/wallet/${paymentId}`).expect(ok)
 
-  t.true(underscore.isNumber(body.rates.BAT), 'a value is returned: ' + body.rates.BAT)
+  t.true(underscore.isNumber(body.rates.USD), 'a value is returned: ' + body.rates.USD)
   t.deepEqual(body, {
     altcurrency: 'BAT',
     paymentStamp: 0,
@@ -84,7 +84,8 @@ test('wallet endpoint returns default tip choices', async (t) => {
     },
     parameters: body.parameters,
     rates: {
-      BAT: body.rates.BAT
+      BAT: 1,
+      USD: body.rates.USD
     },
     balance: '0.0000',
     cardBalance: '0',
