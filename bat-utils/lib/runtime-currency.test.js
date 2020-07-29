@@ -134,7 +134,9 @@ test('a faulty request delays subsequent requests', async (t) => {
   let expectedRunCounter = 0
   currency.request = _.wrap(currency.request, async (request, endpoint) => {
     runCount += 1
+    console.trace('before', runCount)
     const res = await request.call(currency, endpoint)
+    console.trace('after', res.toString())
     t.is(runCount, expectedRunCounter, `run counter ${runCount} was expected to be ${expectedRunCounter}`)
     return res
   })
