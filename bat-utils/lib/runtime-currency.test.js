@@ -124,18 +124,18 @@ test('a faulty request does not result in an error', async (t) => {
 
 test('a faulty request delays subsequent requests', async (t) => {
   t.plan(8)
-  const currency = make(Currency.Constructor, {
+  const nc = make(Currency.Constructor, {
     failureDebounceTime: 3000
   })
-  currency.cache = currency.Cache()
-  const first = await currency.rates('BAT')
-  currency.parser = () => { throw new Error('missed') }
+  nc.cache = nc.Cache()
+  const first = await nc.rates('BAT')
+  nc.parser = () => { throw new Error('missed') }
   let runCount = 0
   let expectedRunCounter = 0
-  currency.request = _.wrap(currency.request, async (request, endpoint) => {
+  nc.request = _.wrap(nc.request, async (request, endpoint) => {
     runCount += 1
     console.trace('before', runCount)
-    const res = await request.call(currency, endpoint)
+    const res = await request.call(nc, endpoint)
     console.trace('after', res.toString())
     t.is(runCount, expectedRunCounter, `run counter ${runCount} was expected to be ${expectedRunCounter}`)
     return res
@@ -143,20 +143,20 @@ test('a faulty request delays subsequent requests', async (t) => {
   // should hit request
   expectedRunCounter = 1
   console.log('expecting', expectedRunCounter)
-  t.deepEqual(first, await currency.rates('BAT'))
-  t.deepEqual(first, await currency.rates('BAT'))
+  t.deepEqual(first, await nc.rates('BAT'))
+  t.deepEqual(first, await nc.rates('BAT'))
   await timeout(4000)
   // should hit again
   expectedRunCounter = 2
   console.log('expecting', expectedRunCounter)
-  t.deepEqual(first, await currency.rates('BAT'))
-  t.deepEqual(first, await currency.rates('BAT'))
-  currency.cache = currency.Cache()
+  t.deepEqual(first, await nc.rates('BAT'))
+  t.deepEqual(first, await nc.rates('BAT'))
+  nc.cache = nc.Cache()
   try {
     // should hit again
     expectedRunCounter = 3
     console.log('expecting', expectedRunCounter)
-    await currency.rates('BAT')
+    await nc.rates('BAT')
   } catch (e) {
     t.true(_.isObject(e))
   }

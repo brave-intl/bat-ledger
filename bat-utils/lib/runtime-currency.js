@@ -237,4 +237,5 @@ function Currency (config, runtime) {
   context.runtime = runtime
   context.debug = debug
   context.cache = Currency.Cache()
+  return context
 }
