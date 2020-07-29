@@ -1,16 +1,18 @@
 const SDebug = require('sdebug')
-const pg = require('pg')
+const { Pool } = require('pg')
 const _ = require('underscore')
-const Pool = pg.Pool
 const debug = new SDebug('postgres')
 
 const Postgres = function (config, runtime) {
   if (!(this instanceof Postgres)) return new Postgres(config, runtime)
 
   if (!config.postgres) return
+  const ssl = {
+    rejectUnauthorized: process.env.NODE_ENV === 'production'
+  }
   this.rwPool = new Pool({
     connectionString: config.postgres.url,
-    ssl: process.env.NODE_ENV === 'production'
+    ssl
   })
 
   this.pool().on('error', (err) => {
@@ -21,7 +23,7 @@ const Postgres = function (config, runtime) {
   if (config.postgres.roURL) {
     this.roPool = new Pool({
       connectionString: config.postgres.roURL,
-      ssl: process.env.NODE_ENV === 'production'
+      ssl
     })
 
     this.pool(true).on('error', (err) => {
