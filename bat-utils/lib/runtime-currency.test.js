@@ -2,7 +2,7 @@
 
 const Currency = require('./runtime-currency')
 const { BigNumber } = require('./extras-utils')
-const test = require('ava')
+const { serial: test } = require('ava')
 const _ = require('underscore')
 const dotenv = require('dotenv')
 const {
@@ -158,11 +158,12 @@ test('a faulty request delays subsequent requests', async (t) => {
 })
 
 function make (Constructor = Currency, options = {}) {
+  const currency = Object.assign({
+    url: process.env.BAT_RATIOS_URL,
+    access_token: process.env.BAT_RATIOS_TOKEN
+  }, options)
   return new Constructor({
-    currency: Object.assign({
-      url: process.env.BAT_RATIOS_URL,
-      access_token: process.env.BAT_RATIOS_TOKEN
-    }, options)
+    currency
   }, {
     captureException: () => {}
   })
