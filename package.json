@@ -66,7 +66,6 @@
     "@hapi/cookie": "^10.1.2",
     "@hapi/hapi": "^18.4.1",
     "@hapi/inert": "^5.2.2",
-    "@hapi/joi": "^16.1.8",
     "@hapi/vision": "^5.5.4",
     "@octokit/rest": "^16.43.1",
     "@sentry/node": "^5.13.2",
@@ -92,6 +91,7 @@
     "hapi-auth-bearer-token": "^6.1.4",
     "hapi-require-https": "^4.0.0",
     "http-request-signature": "0.0.3",
+    "joi": "^17.1.1",
     "moment": "^2.22.1",
     "mongodb": "^3.5.4",
     "monk": "^7.1.2",
@@ -122,7 +122,7 @@
     "npm": "5.10.0"
   },
   "devDependencies": {
-    "ava": "^2.4.0",
+    "ava": "^3.11.0",
     "coveralls": "^3.0.6",
     "parse-prometheus-text-format": "^1.1.1",
     "standard": "^14.0.1",
