@@ -142,17 +142,20 @@ test('a faulty request delays subsequent requests', async (t) => {
   })
   // should hit request
   expectedRunCounter = 1
+  console.log('expecting', expectedRunCounter)
   t.deepEqual(first, await currency.rates('BAT'))
   t.deepEqual(first, await currency.rates('BAT'))
   await timeout(4000)
   // should hit again
   expectedRunCounter = 2
+  console.log('expecting', expectedRunCounter)
   t.deepEqual(first, await currency.rates('BAT'))
   t.deepEqual(first, await currency.rates('BAT'))
   currency.cache = currency.Cache()
   try {
     // should hit again
     expectedRunCounter = 3
+    console.log('expecting', expectedRunCounter)
     await currency.rates('BAT')
   } catch (e) {
     t.true(_.isObject(e))
