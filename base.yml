@@ -10,6 +10,7 @@ services:
     environment:
       - "ADS_AVAILABLE_LIST=US"
       - "ADS_URL=${ADS_URL-https://ads-serve.bravesoftware.com}"
+      - "ANON_RATE_LIMIT_PER_M=60000"
       - "BAT_BALANCE_SERVER=http://balance-web:3003"
       - "BAT_EYESHADE_SERVER=http://eyeshade-web:3002"
       - "BAT_GRANT_POSTGRES_URL=postgres://grants:password@grant-postgres/grants?sslmode=disable"
