@@ -28,7 +28,6 @@ test.before(async (t) => {
     agent,
     runtime
   } = await setupForwardingServer({
-    token: null,
     routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
     initers: [grantsInitializer, registrarInitializer, walletInitializer],
     config: {
