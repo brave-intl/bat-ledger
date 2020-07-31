@@ -109,6 +109,56 @@ test('wallet endpoint returns default tip choices', async (t) => {
   })
 })
 
+test('missing provider id still works', async (t) => {
+  const paymentId = uuidV4().toLowerCase()
+  const publicKey = '5811b31fb2823e63925895e3a041b31fccf0f351b87c3057d2fd2ee744ba6409'
+  const providerId = ''
+  await insertWallet(t, {
+    paymentId,
+    provider: 'uphold',
+    providerId,
+    publicKey
+  })
+
+  const {
+    body
+  } = await t.context.ledger.get(`/v2/wallet/${paymentId}`).expect(ok)
+
+  t.true(underscore.isNumber(body.rates.USD), 'a value is returned: ' + body.rates.USD)
+  t.deepEqual(body, {
+    altcurrency: 'BAT',
+    paymentStamp: 0,
+    httpSigningPubKey: publicKey,
+    addresses: {
+      CARD_ID: providerId
+    },
+    parameters: body.parameters,
+    rates: {
+      BAT: 1,
+      USD: body.rates.USD
+    },
+    balance: '0.0000',
+    cardBalance: '0',
+    probi: '0',
+    unconfirmed: '0.0000'
+  }, 'body should be knowable')
+
+  const {
+    body: info
+  } = await t.context.ledger.get(`/v2/wallet/${paymentId}/info`).expect(ok)
+  t.deepEqual(info, {
+    altcurrency: 'BAT',
+    provider: 'uphold',
+    providerId,
+    paymentId,
+    httpSigningPubKey: publicKey,
+    addresses: {
+      CARD_ID: providerId
+    },
+    anonymousAddress: null
+  })
+})
+
 test('lookup still works the same way', async (t) => {
   const paymentId = uuidV4().toLowerCase()
   const publicKey = '5811b31fb2823e63925895e3a041b31fccf0f351b87c3057d2fd2ee744ba6409'

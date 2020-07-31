@@ -45,25 +45,27 @@ async function reformWalletGet (debug, runtime, {
   const { payload: parametersPayload } = parametersResponse
   const parameters = JSON.parse(parametersPayload.toString())
   let balancesPayload = Buffer.from(JSON.stringify({}))
-  try {
-    const balancesResponse = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/uphold/${paymentId}`)
-    balancesPayload = balancesResponse.payload
-  } catch (e) {
-    const { output } = e
-    if (output) {
-      const { statusCode } = output
-      if (statusCode !== 400) {
-        throw boom.boomify(e)
-      }
-    }
-  }
-  const balances = JSON.parse(balancesPayload.toString())
   let { providerId, walletProvider, depositAccountProvider } = wallet
   if (walletProvider.name === 'uphold') {
     providerId = walletProvider.id
   } else {
     providerId = depositAccountProvider.id
   }
+  if (providerId) {
+    try {
+      const balancesResponse = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/uphold/${paymentId}`)
+      balancesPayload = balancesResponse.payload
+    } catch (e) {
+      const { output } = e
+      if (output) {
+        const { statusCode } = output
+        if (statusCode !== 400) {
+          throw boom.boomify(e)
+        }
+      }
+    }
+  }
+  const balances = JSON.parse(balancesPayload.toString())
   const total = new BigNumber((balances.total || '0.0000').toString())
   return {
     altcurrency: 'BAT',
