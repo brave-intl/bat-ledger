@@ -403,7 +403,7 @@ async function setupForwardingServer ({
   routes,
   config,
   initers = [],
-  token
+  token = uuidV4()
 }) {
   const conf = _.extend({
     sentry: {},
