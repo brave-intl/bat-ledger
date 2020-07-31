@@ -4,6 +4,9 @@ const {
 const uuidV4 = require('uuid/v4')
 const underscore = require('underscore')
 const {
+  timeout
+} = require('bat-utils/lib/extras-utils')
+const {
   ok,
   cleanDbs,
   setupForwardingServer
@@ -119,9 +122,17 @@ test('missing provider id still works', async (t) => {
     publicKey
   })
 
-  const {
-    body
-  } = await t.context.ledger.get(`/v2/wallet/${paymentId}`).expect(ok)
+  let body
+  while (!body) {
+    const response = await t.context.ledger.get(`/v2/wallet/${paymentId}`)
+    if (response.status === 503 || response.status === 429) {
+      await timeout(response.headers['retry-after'] * 1000)
+    } else if (response.status !== 200) {
+      throw ok(response)
+    } else {
+      ;({ body } = response)
+    }
+  }
 
   t.true(underscore.isNumber(body.rates.USD), 'a value is returned: ' + body.rates.USD)
   t.deepEqual(body, {
