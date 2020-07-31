@@ -91,7 +91,7 @@
     "hapi-auth-bearer-token": "^6.1.4",
     "hapi-require-https": "^4.0.0",
     "http-request-signature": "0.0.3",
-    "joi": "^17.1.1",
+    "joi": "github:sideway/joi#8091cc15005c3c613d378e07c5d39de9e5bfb5fd",
     "moment": "^2.22.1",
     "mongodb": "^3.5.4",
     "monk": "^7.1.2",
