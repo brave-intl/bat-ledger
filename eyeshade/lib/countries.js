@@ -9,7 +9,7 @@ function resolve (_rows) {
     return codes.reduce((memo, code) => {
       const group = { id, activeAt }
       const byCode = memo[code] = memo[code] || group
-      if (!byCode.id !== id && new Date(byCode.activeAt) < new Date(activeAt)) {
+      if (byCode.id !== id && new Date(byCode.activeAt) < new Date(activeAt)) {
         memo[code] = group
       }
       return memo
