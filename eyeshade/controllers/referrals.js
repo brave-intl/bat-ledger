@@ -139,7 +139,7 @@ v1.getReferralGroups = {
     let { rows } = await runtime.postgres.query(statement, [activeAt || new Date()], true)
 
     if (resolve && fields.includes('codes')) {
-      rows = countries.resolve(activeAt, rows)
+      rows = countries.resolve(rows)
     }
 
     return rows.map((row) => _.pick(row, allFields))
