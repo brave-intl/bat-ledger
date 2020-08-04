@@ -10,7 +10,6 @@ const Postgres = function (config, runtime) {
   if (!config.postgres) return
   this.rwPool = new Pool({
     connectionString: config.postgres.url,
-    parseInputDatesAsUTC: true,
     ssl: process.env.NODE_ENV === 'production'
   })
 
@@ -22,7 +21,6 @@ const Postgres = function (config, runtime) {
   if (config.postgres.roURL) {
     this.roPool = new Pool({
       connectionString: config.postgres.roURL,
-      parseInputDatesAsUTC: true,
       ssl: process.env.NODE_ENV === 'production'
     })
 
@@ -63,8 +61,7 @@ Postgres.prototype = {
       // passed the pool / client
       client = readOnly || this.pool() // nothing was passed so assume rw
     }
-    const args = params.map((arg) => arg instanceof Date ? ((+arg) / 1000) : arg)
-    const ret = await client.query(text, args)
+    const ret = await client.query(text, params)
     const duration = Date.now() - start
     debug('executed query', { text, duration, rows: ret.rowCount })
     return ret

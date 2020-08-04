@@ -263,12 +263,6 @@ test('unable to insert a row with the same country code and created_at twice', a
     return runtime.postgres.query(`
   insert into
   geo_referral_countries(country_code, created_at, name, group_id)
-  values($1, $2, 'anyname', $3)`, ['US', us.created_at, us.group_id])
-  })
-  await t.throwsAsync(async () => {
-    return runtime.postgres.query(`
-  insert into
-  geo_referral_countries(country_code, created_at, name, group_id)
   values($1, $2, 'anyname', $3)`, ['US', +us.created_at, us.group_id])
   })
 })
