@@ -63,7 +63,8 @@ Postgres.prototype = {
       // passed the pool / client
       client = readOnly || this.pool() // nothing was passed so assume rw
     }
-    const ret = await client.query(text, params)
+    const args = params.map((arg) => arg instanceof Date ? +arg : arg)
+    const ret = await client.query(text, args)
     const duration = Date.now() - start
     debug('executed query', { text, duration, rows: ret.rowCount })
     return ret
