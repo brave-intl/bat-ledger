@@ -67,6 +67,27 @@ test('referral groups are returned correctly', async (t) => {
   t.deepEqual(codesNameSubset, stringQuery, 'a string or array can be sent for query')
   const whitespacedQuery = await getGroups({ fields: 'codes,name, currency, activeAt' })
   t.deepEqual(codesNameSubset, whitespacedQuery, 'works with whitespace')
+  const groupId1 = 'e48f310b-0e81-4b39-a836-4dda32d7df74'
+  const groupId2 = '6491bbe5-4d50-4c05-af5c-a2ac4a04d14e'
+  const australiaInGroup1 = `
+  INSERT INTO geo_referral_countries
+    (group_id,name,country_code)
+  VALUES
+    ('${groupId1}','Australia','AU')
+  `
+  await t.context.postgres.query(australiaInGroup1)
+  const unresolvedGroups = await getGroups({ fields })
+  const howUnresolvedGroupsShouldLookBase = normalizeGroups(json)
+  howUnresolvedGroupsShouldLookBase.find(({ id }) => id === groupId1).codes.push('AU')
+  const howUnresolvedGroupsShouldLook = normalizeGroups(howUnresolvedGroupsShouldLookBase)
+  t.deepEqual(normalizeGroups(unresolvedGroups), howUnresolvedGroupsShouldLook, 'should add au to the group')
+
+  const howResolvedGroupsShouldLook = normalizeGroups(howUnresolvedGroupsShouldLookBase)
+  const resolvedGroup = howResolvedGroupsShouldLook.find(({ id }) => id === groupId2)
+  const auIndex = resolvedGroup.codes.indexOf('AU')
+  resolvedGroup.codes.splice(auIndex, auIndex + 1) // throw away
+  const resolvedGroups = await getGroups({ fields, resolve: true })
+  t.deepEqual(normalizeGroups(resolvedGroups), howResolvedGroupsShouldLook, 'should remove au from group 2')
 })
 
 async function getGroups (query = {}) {
@@ -230,6 +251,20 @@ test('referrals use the correct geo-specific amount and checked values', async t
   await checkReferralValue(t, oct1, tier2GroupId, '6.5', referral2)
 
   await ensureReferrals(runtime, 3)
+})
+
+test('unable to insert a row with the same country code and created_at twice', async (t) => {
+  const { rows } = await runtime.postgres.query(`
+  select *
+  from geo_referral_countries
+  where country_code = 'US'`)
+  const us = rows[0]
+  await t.throwsAsync(async () => {
+    return runtime.postgres.query(`
+  insert into
+  geo_referral_countries(country_code, created_at, name, group_id)
+  values($1, $2, 'anyname', $3)`, ['US', +us.created_at, us.group_id])
+  })
 })
 
 async function setActiveAt (client, date) {
