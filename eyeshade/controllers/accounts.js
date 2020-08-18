@@ -68,6 +68,7 @@ v1.getTransactions =
   amount,
   from_account,
   to_account,
+  to_account_type,
   settlement_currency,
   settlement_amount,
   transaction_type
@@ -83,11 +84,17 @@ ORDER BY created_at
         rows: transactions
       } = await runtime.postgres.query(query1, args, true)
 
+      const settlementTypes = {
+        contribution_settlement: true,
+        referral_settlement: true
+      }
       return _.map(transactions, ({
+        channel = '',
         created_at: createdAt,
         description,
         from_account: fromAccount,
-        channel = '',
+        to_account: toAccount,
+        to_account_type: toAccountType,
         amount: _amount,
         settlement_currency: settlementCurrency,
         settlement_amount: settlementAmount,
@@ -97,15 +104,28 @@ ORDER BY created_at
         if (fromAccount === account) {
           amount = amount.negated()
         }
-        return _.omit({
+        const transaction = {
+          channel: channel || '',
           created_at: createdAt,
           description,
-          channel: channel || '',
-          amount: amount.toFixed(18),
-          settlement_currency: settlementCurrency,
-          settlement_amount: settlementAmount,
-          transaction_type: transactionType
-        }, value => value == null)
+          amount: amount.toFixed(18)
+        }
+        if (settlementCurrency) {
+          transaction.settlement_currency = settlementCurrency
+        }
+        if (settlementAmount) {
+          transaction.settlement_amount = settlementAmount
+        }
+        if (settlementTypes[transactionType]) {
+          if (toAccountType) {
+            transaction.settlement_destination_type = toAccountType
+          }
+          if (toAccount) {
+            transaction.settlement_destination = toAccount
+          }
+        }
+        transaction.transaction_type = transactionType
+        return transaction
       })
     }
   },
@@ -145,6 +165,8 @@ ORDER BY created_at
       amount: braveJoi.string().numeric().required().description('amount in BAT'),
       settlement_currency: braveJoi.string().anycurrencyCode().optional().description('the fiat of the settlement'),
       settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
+      settlement_destination_type: stringValidator.valid.apply(stringValidator, settlementDestinationTypes).optional().description('type of address settlement was paid to'),
+      settlement_destination: Joi.string().optional().description('destination address of the settlement'),
       transaction_type: transactionTypesValidator.required()
     }))
   }
