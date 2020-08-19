@@ -1,7 +1,7 @@
 select execute($$
 
-drop table payout_reports;
 drop table balance_snapshots;
+drop table payout_reports;
 
 delete from migrations where id = '0012';
 

@@ -55,6 +55,7 @@ test.afterEach.always(cleanDbs)
 test.before(async (t) => {
   const {
     agent,
+    server,
     runtime
   } = await setupForwardingServer({
     token: null,
@@ -71,6 +72,11 @@ test.before(async (t) => {
   })
   t.context.runtime = runtime
   t.context.ledger = agent
+  t.context.server = server
+})
+
+test.after(async (t) => {
+  await t.context.server.stop({ timeout: 0 })
 })
 
 test('a stats endpoint exists', async (t) => {

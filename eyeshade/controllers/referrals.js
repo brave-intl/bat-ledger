@@ -11,6 +11,7 @@ const extrasUtils = utils.extras.utils
 const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
+const countries = require('../lib/countries')
 
 const v1 = {}
 
@@ -130,12 +131,17 @@ v1.findReferrals = {
 
 v1.getReferralGroups = {
   handler: (runtime) => async (request, h) => {
-    let { fields } = request.query
-    const statement = queries.referralGroups()
+    let { fields, resolve, activeAt } = request.query
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
     const allFields = ['id'].concat(fields)
 
-    const { rows } = await runtime.postgres.query(statement, [], true)
+    const statement = queries.referralGroups()
+    let { rows } = await runtime.postgres.query(statement, [activeAt || new Date()], true)
+
+    if (resolve && fields.includes('codes')) {
+      rows = countries.resolve(rows)
+    }
+
     return rows.map((row) => _.pick(row, allFields))
   },
 
@@ -153,7 +159,8 @@ v1.getReferralGroups = {
       authorization: Joi.string().required()
     }).unknown(),
     query: Joi.object().keys({
-      active: Joi.boolean().optional().description('optionally filter active or inactive groups'),
+      resolve: Joi.boolean().optional().description('optionally resolve groups so that only the active categorization shows'),
+      activeAt: Joi.date().iso().optional().description('a parameter to get active group state at a given point in time'),
       fields: Joi.alternatives().try(
         fieldValidator,
         Joi.array().items(fieldValidator)

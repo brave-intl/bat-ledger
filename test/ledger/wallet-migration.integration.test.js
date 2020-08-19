@@ -29,6 +29,7 @@ test.beforeEach(cleanDbs)
 test.before(async (t) => {
   const {
     agent,
+    server,
     runtime
   } = await setupForwardingServer({
     routes: [].concat(grantsRoutes, registrarRoutes, walletRoutes),
@@ -59,6 +60,11 @@ test.before(async (t) => {
   })
   t.context.runtime = runtime
   t.context.ledger = agent
+  t.context.server = server
+})
+
+test.after(async (t) => {
+  await t.context.server.stop({ timeout: 0 })
 })
 
 test('wallet endpoint returns default tip choices', async (t) => {
