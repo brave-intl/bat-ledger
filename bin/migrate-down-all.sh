@@ -1,4 +1,5 @@
 #!/bin/sh
+psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0017_include_indexes/down.sql
 psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0016_geo_referral/down.sql
 psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0015_account_balances/down.sql
 psql $DATABASE_URL -U eyeshade --single-transaction -v ON_ERROR_STOP=1 -f ./migrations/0014_vote_surveyor_id_idx/down.sql
