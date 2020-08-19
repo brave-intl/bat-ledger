@@ -55,7 +55,7 @@ services:
       - ledger
   eyeshade-postgres:
     container_name: eyeshade-postgres
-    image: postgres:10.4
+    image: postgres:11.9
     ports:
       - "3012:5432"
     networks:
@@ -202,7 +202,7 @@ services:
       - ledger
   grant-postgres:
     container_name: grant-postgres
-    image: postgres:10.4
+    image: postgres:11.9
     environment:
       - "POSTGRES_USER=grants"
       - "POSTGRES_PASSWORD=password"
@@ -272,7 +272,7 @@ services:
       - ./test/secrets:/etc/kafka/secrets
   wallet-migration-postgres:
     container_name: wallet-migration-postgres
-    image: postgres:10.4
+    image: postgres:11.9
     environment:
       - "POSTGRES_USER=wallet-migration"
       - "POSTGRES_PASSWORD=password"
@@ -282,7 +282,7 @@ services:
       - ledger
   challenge-bypass-postgres:
     container_name: challenge-bypass-postgres
-    image: postgres:10.4
+    image: postgres:11.9
     environment:
       - "POSTGRES_USER=btokens"
       - "POSTGRES_PASSWORD=password"
