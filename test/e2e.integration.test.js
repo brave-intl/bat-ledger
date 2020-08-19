@@ -4,6 +4,7 @@ const { serial: test } = require('ava')
 const {
   default: UpholdSDK
 } = require('@uphold/uphold-sdk-javascript')
+const { freezeOldSurveyors } = require('../eyeshade/workers/reports')
 const uuidV4 = require('uuid/v4')
 const _ = require('underscore')
 const dotenv = require('dotenv')
@@ -12,6 +13,8 @@ const tweetnacl = require('tweetnacl')
 const anonize = require('node-anonize2-relic')
 const crypto = require('crypto')
 const { sign } = require('http-request-signature')
+const { Runtime } = require('bat-utils')
+const Kafka = require('bat-utils/lib/runtime-kafka')
 const {
   timeout,
   BigNumber,
@@ -24,6 +27,10 @@ const {
   status,
   cleanDbs,
   setupForwardingServer,
+  braveYoutubePublisher,
+  braveYoutubeOwner,
+  debug,
+  makeSettlement,
   ok
 } = require('./utils')
 
@@ -39,6 +46,7 @@ const {
   routes: walletRoutes,
   initialize: walletInitializer
 } = require('../ledger/controllers/wallet')
+const suggestions = require('../eyeshade/lib/suggestions')
 
 dotenv.config()
 
@@ -58,7 +66,15 @@ test.before(async (t) => {
   const ledgerDB = await connectToDb('ledger')
   const wallets = ledgerDB.collection('wallets')
   const surveyors = ledgerDB.collection('surveyors')
+  const runtimeConfig = Object.assign({}, require('../config'), {
+    queue: process.env.BAT_REDIS_URL,
+    postgres: {
+      url: process.env.BAT_POSTGRES_URL
+    }
+  })
+  const runtime = new Runtime(runtimeConfig)
   _.extend(t.context, {
+    runtime,
     wallets,
     surveyors,
     ledger: agents.ledger.global
@@ -88,6 +104,181 @@ test('check /metrics is up with no authorization', async (t) => {
   }
 })
 
+test('publisher accounts are filled with votes and transactions at appropriate times', async t => {
+  // check pending tx endpoint
+  const topic = process.env.ENV + '.grant.suggestion'
+  let body
+  const balanceURL = '/v1/accounts/balances'
+  const settlementURL = '/v2/publishers/settlement'
+  const promotion = uuidV4()
+  const { runtime } = t.context
+  const producer = new Kafka(runtime.config, runtime)
+  await producer.connect()
+
+  const example = {
+    id: uuidV4(),
+    type: 'oneoff-tip',
+    channel: braveYoutubePublisher,
+    createdAt: (new Date()).toISOString(),
+    totalAmount: '1',
+    funding: [
+      {
+        type: 'ugp',
+        amount: '1',
+        cohort: 'control',
+        promotion
+      }
+    ]
+  }
+  ;({ body } = await agents.eyeshade.publishers.get(balanceURL)
+    .query({
+      pending: true,
+      account: braveYoutubePublisher
+    }).expect(ok))
+  t.is(body.length, 0)
+
+  await producer.send(topic, suggestions.typeV1.toBuffer(example))
+
+  body = []
+  while (!body.length) {
+    await timeout(1000)
+    ;({
+      body
+    } = await agents.eyeshade.publishers.get(balanceURL)
+      .query({
+        pending: true,
+        account: braveYoutubePublisher
+      })
+      .expect(ok))
+  }
+  // no transactions have been input yet
+  t.is(null, await getPublisherAccountBalance(runtime, [braveYoutubePublisher]))
+  // channel only counts toward pending
+  t.deepEqual(body, [{
+    account_id: braveYoutubePublisher,
+    account_type: 'channel',
+    balance: '1.000000000000000000'
+  }], 'pending votes show up after small delay')
+  const pendingBalances = body
+  ;({
+    body
+  } = await agents.eyeshade.publishers.get(balanceURL)
+    .query({
+      pending: false,
+      account: braveYoutubePublisher
+    }))
+  t.deepEqual(body, [], 'pending votes are not counted if pending is not true')
+  ;({
+    body
+  } = await agents.eyeshade.publishers.get(balanceURL)
+    .query({
+      account: braveYoutubePublisher
+    }))
+  t.deepEqual(body, [], 'endpoint defaults pending to false')
+
+  const account = [braveYoutubePublisher]
+  const query = { account }
+  await runtime.postgres.query(`
+  update surveyor_groups set created_at = (current_date - interval '1d')`)
+  await freezeOldSurveyors(debug, runtime, -1)
+
+  body = []
+  do {
+    await timeout(1000)
+    ;({ body } = await agents.eyeshade.publishers
+      .get(balanceURL)
+      .query(query)
+      .expect(ok))
+  } while (!body.length)
+
+  // transactions have now been input and balance will match the one returned from balances endpoint
+  const insertedTransactions = await getPublisherAccountBalance(runtime, account)
+  t.is(body[0].balance, insertedTransactions)
+  t.is(pendingBalances[0].balance, insertedTransactions)
+  t.true(body[0].balance > 0)
+
+  const newYear = new Date('2019-01-01')
+  const settlement = makeSettlement('contribution', body[0].balance, {
+    executedAt: newYear.toISOString()
+  })
+
+  const response = await agents.eyeshade.publishers.post(settlementURL).send([settlement]).expect(ok)
+  await agents.eyeshade.publishers.post(settlementURL + '/submit').send(response.body).expect(ok)
+  do {
+    await timeout(1000)
+    ;({ body } = await agents.eyeshade.publishers
+      .get(balanceURL)
+      .query(query)
+      .expect(ok))
+  } while (+body[0].balance)
+
+  const { balance } = body[0]
+  t.true(balance.length > 1)
+  t.is(+balance, 0)
+
+  const select = `
+SELECT *
+FROM transactions
+WHERE
+    transaction_type = 'contribution_settlement';
+`
+  const {
+    rows
+  } = await runtime.postgres.query(select)
+
+  t.deepEqual(rows.map((entry) => _.omit(entry, ['from_account', 'to_account', 'document_id', 'id'])), [{
+    created_at: newYear,
+    description: 'payout for contribution',
+    transaction_type: 'contribution_settlement',
+    from_account_type: 'owner',
+    to_account_type: 'uphold',
+    amount: '0.950000000000000000',
+    channel: braveYoutubePublisher,
+    settlement_currency: 'USD',
+    settlement_amount: '1.000000000000000000'
+  }])
+
+  // ensure referral balances are computed correctly
+  let transactions
+  const referralKey = uuidV4().toLowerCase()
+  const referralURL = '/v1/referrals/' + referralKey
+  const referral = {
+    ownerId: braveYoutubeOwner,
+    channelId: braveYoutubePublisher,
+    downloadId: uuidV4(),
+    platform: 'android',
+    finalized: (new Date()).toISOString()
+  }
+  const referrals = [referral]
+
+  transactions = await getReferrals()
+  t.deepEqual(transactions, [])
+
+  await agents.eyeshade.referrals
+    .put(referralURL)
+    .send(referrals)
+    .expect(ok)
+
+  transactions = []
+  do {
+    await timeout(1000)
+    transactions = await getReferrals()
+  } while (!transactions.length)
+
+  const [tx] = transactions
+  const amount = tx.amount
+  t.true(amount.length > 1)
+  t.true(amount > 0)
+
+  async function getReferrals () {
+    const { rows } = await runtime.postgres.query(`
+    select *
+    from transactions
+    where transaction_type = 'referral'`)
+    return rows
+  }
+})
+
 // allows us to use legacy version
 test('wallets can be claimed by verified members', runLegacyWalletClaimTests)
 
@@ -95,6 +286,7 @@ test('wallets can be claimed by verified members using migrated endpoints', asyn
   // allows us to use legacy version
   const {
     agent,
+    server,
     runtime
   } = await setupForwardingServer({
     token: null,
@@ -128,6 +320,7 @@ test('wallets can be claimed by verified members using migrated endpoints', asyn
   t.context.ledger = agent
 
   await runWalletClaimTests(t)
+  await server.stop({ timeout: 0 })
 })
 
 async function runLegacyWalletClaimTests (t) {
@@ -199,12 +392,6 @@ async function runWalletClaimTests (t) {
   // furthermore if the anonymous address has not previously been set it can be now
   await claimCard(t, anonCardInfo3, anonCardInfo2.providerId, 200, '0', anonCard2AnonAddr.id)
 }
-
-// async function getWalletFromMigration (paymentId) {
-//   const { body } = await agents.walletMigration.global.get(`/v1/wallet/${paymentId}`)
-//   console.log(body)
-//   return body
-// }
 
 async function createAnonymousAddress (providerId) {
   return uphold.createCardAddress(providerId, 'anonymous')
@@ -354,4 +541,12 @@ async function createCardTransaction (desiredTxAmt, userCardId) {
     { amount: desiredTxAmt, currency: 'BAT', destination: userCardId },
     true // commit tx in one swoop
   )
+}
+
+async function getPublisherAccountBalance (runtime, accountIds) {
+  const { rows } = await runtime.postgres.query(`
+  select * from account_balances
+  where account_id = any($1::text[])`, [accountIds])
+  const row = rows[0]
+  return row ? row.balance : null
 }
