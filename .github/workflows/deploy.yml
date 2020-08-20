@@ -1,0 +1,21 @@
+
+name: Easy Generalized Deployments
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  push:
+    name: Invoke easy_generalized_deploy Lambda
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.EGD_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.EGD_AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+    - name: Easy Generalized Deployments
+      uses: brave-intl/aws-codebuild-run-build@v1.0.4
