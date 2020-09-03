@@ -76,7 +76,7 @@ test('one topic failing does not cause others to fail', async (t) => {
   t.deepEqual(expectingTopic1, state[topic1], 'topic 1 state should be as expected')
   const expectedLength = consumptionPattern.reduce((memo, value) => {
     return (memo + value) > errAt ? memo : (memo + value)
-  })
+  }, 0)
   console.log('consumption pattern', expectedLength, consumptionPattern)
   t.is(expectedLength, state[topic2].length, `topic 2 should be less than or equal to ${expectedLength} in length`)
   const expectedStateTopic2 = expectingTopic1.slice(0, state[topic2].length)

@@ -6,7 +6,7 @@ const config = require('../config.js')
 
 const suggestionsConsumer = require('./workers/suggestions')
 const voteConsumer = require('./workers/acvote')
-
+const { consumer: referralsConsumer } = require('./workers/referrals')
 const {
   Runtime
 } = utils
@@ -20,7 +20,6 @@ if (!process.env.BATUTIL_SPACES) {
 Runtime.newrelic.setupNewrelic(config, __filename)
 
 config.cache = false
-config.currency = false
 config.database = false
 config.queue = false
 config.prometheus = false
@@ -52,4 +51,5 @@ if (kafkaSslKey) {
 
 suggestionsConsumer(runtime)
 voteConsumer(runtime)
+referralsConsumer(runtime)
 runtime.kafka.consume()

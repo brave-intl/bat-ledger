@@ -28,6 +28,7 @@ module.exports = {
   normalizeChannel,
   justDate,
   btoa,
+  isPostgresConflict,
   BigNumber
 }
 
@@ -37,8 +38,12 @@ function timeout (msec) {
   return new Promise((resolve) => setTimeout(resolve, msec))
 }
 
+function isPostgresConflict (e) {
+  return e && e.code === '23505'
+}
+
 function postgresToBoom (e) {
-  if (e && e.code === '23505') { // Unique constraint violation
+  if (isPostgresConflict(e)) { // Unique constraint violation
     return boom.conflict('Row with that id exists, updates are not allowed')
   } else {
     return boom.boomify(e)
@@ -56,7 +61,7 @@ function backfillDateRange ({
     }
   }
   return {
-    start,
+    start: new Date(start),
     until: changeMonth(start)
   }
 }
@@ -101,6 +106,9 @@ function documentOlderThan (olderThanDays, anchorTime, _id) {
 }
 
 function createdTimestamp (id) {
+  if (id instanceof Date) {
+    return id
+  }
   return new Date(parseInt(id.toHexString().substring(0, 8), 16) * 1000).getTime()
 }
 

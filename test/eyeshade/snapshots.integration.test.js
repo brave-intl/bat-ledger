@@ -65,6 +65,7 @@ const referralSettlement = (extras) => Object.assign({
   currency: 'BAT'
 }, extras)
 
+test.beforeEach(cleanPgDb(runtime.postgres))
 test.afterEach.always(cleanPgDb(runtime.postgres))
 test('check snapshots auth', async (t) => {
   t.plan(0)
@@ -99,7 +100,7 @@ test('snapshots getting statuses', async (t) => {
   let rows = []
   while (!rows.length) {
     await timeout(1000)
-    ;({ rows } = await runtime.postgres.query('select * from payout_reports where completed = true'))
+    ;({ rows } = await runtime.postgres.query('select * from payout_reports where completed'))
   }
   await getSnapshot({
     snapshotId,

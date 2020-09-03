@@ -16,6 +16,7 @@ const {
   timeout
 } = require('bat-utils/lib/extras-utils')
 const { Runtime } = require('bat-utils')
+const { kafka } = require('../../config')
 
 const originalGroupId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 const sept = new Date('2019-09-30')
@@ -25,6 +26,8 @@ const {
   BAT_POSTGRES_URL
 } = process.env
 const runtime = new Runtime({
+  forward: {},
+  kafka,
   prometheus: {
     label: 'eyeshade.worker.1'
   },

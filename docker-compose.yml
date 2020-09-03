@@ -78,6 +78,8 @@ services:
       - kafka
     networks:
       - ledger
+    volumes:
+      - ./eyeshade:/usr/src/app/eyeshade
   eyeshade-worker:
     container_name: eyeshade-worker
     command: "npm run eyeshade-worker"
@@ -95,6 +97,8 @@ services:
       - eyeshade-postgres
     networks:
       - ledger
+    volumes:
+      - ./eyeshade:/usr/src/app/eyeshade
   eyeshade-web:
     container_name: eyeshade-web
     ports:
@@ -115,6 +119,8 @@ services:
       - eyeshade-postgres
     networks:
       - ledger
+    volumes:
+      - ./eyeshade:/usr/src/app/eyeshade
   ledger-web:
     container_name: ledger-web
     ports:

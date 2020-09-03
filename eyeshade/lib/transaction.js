@@ -17,6 +17,7 @@ const SETTLEMENT_NAMESPACE = {
   manual: 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
 module.exports = {
+  referralId,
   allSettlementStats,
   settlementStatsByCurrency,
   knownChains: Object.assign({}, knownChains),
@@ -26,6 +27,10 @@ module.exports = {
   insertFromVoting,
   insertFromReferrals,
   insertFromAd
+}
+
+function referralId (transactionId, normalizedChannel) {
+  return uuidv5(transactionId + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536')
 }
 
 async function insertTransaction (runtime, client, options = {}) {
@@ -305,7 +310,7 @@ async function insertFromReferrals (runtime, client, referrals) {
       `
       await runtime.postgres.query(query, [
         // transactionId and channel pair should be unique
-        uuidv5(referrals.transactionId + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536'),
+        referralId(referrals.transactionId, normalizedChannel),
         created / 1000,
         `referrals through ${month}`,
         'referral',

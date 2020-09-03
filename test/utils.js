@@ -210,6 +210,7 @@ const cleanGrantDb = async () => {
 }
 
 module.exports = {
+  token,
   signTxn,
   cleanRedeemerRedisDb,
   setupForwardingServer,

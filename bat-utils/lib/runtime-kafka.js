@@ -31,19 +31,28 @@ class Kafka {
 
     const partitionCount = 1
 
-    this.producer = new NProducer(this.config, null, partitionCount)
-    this.producer.on('error', error => {
+    this._producer = new NProducer(this.config, null, partitionCount)
+    this._producer.on('error', error => {
       console.error(error)
       if (this.runtime.captureException) {
         this.runtime.captureException(error)
       }
     })
-    await this.producer.connect()
+    await this._producer.connect()
+  }
+
+  async producer () {
+    if (this._producer) {
+      return this._producer
+    }
+    await this.connect()
+    return this._producer
   }
 
   async send (topicName, message, _partition = null, _key = null, _partitionKey = null) {
     // return await producer.send("my-topic", "my-message", 0, "my-key", "my-partition-key")
-    return this.producer.send(topicName, message, _partition, _key, _partitionKey)
+    const producer = await this.producer()
+    return producer.send(topicName, message, _partition, _key, _partitionKey)
   }
 
   on (topic, handler) {
