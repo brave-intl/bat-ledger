@@ -1,0 +1,21 @@
+on:
+  push:
+    branches:
+      - sandbox
+
+name: Generalized Deployments
+jobs:
+  push:
+    name: Invoke General Docker Build Pipeline
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.GDBP_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.GDBP_AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+    - name: Generalized Deployments
+      uses: brave-intl/general-docker-build-pipeline-action@v1.0.4
