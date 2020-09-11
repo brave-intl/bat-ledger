@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - sandbox
+      - master
 
 name: Generalized Deployments
 jobs:
