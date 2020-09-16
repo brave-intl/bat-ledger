@@ -407,6 +407,8 @@ v1.createReferrals = {
     { schema: Joi.object().length(0) }
 }
 
+module.exports.groupReferrals = groupReferrals
+
 function groupReferrals (objects) {
   return objects.reduce((memo, obj) => {
     const pub = obj.publisher || ''

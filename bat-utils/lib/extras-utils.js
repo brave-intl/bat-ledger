@@ -1,3 +1,4 @@
+const fs = require('fs')
 const { getPublisherProps } = require('./extras-publisher')
 // this can be abstracted elsewhere as soon as we finish #274
 const BigNumber = require('bignumber.js')
@@ -13,6 +14,7 @@ const PROBI_FACTOR = 1e18
 
 module.exports = {
   PROBI_FACTOR,
+  setupKafkaCert,
   postgresToBoom,
   backfillDateRange,
   changeMonth,
@@ -174,4 +176,28 @@ function btoa (str) {
     buffer = Buffer.from(str.toString(), 'binary')
   }
   return buffer.toString('base64')
+}
+
+function setupKafkaCert () {
+  let kafkaSslCertificate = process.env.KAFKA_SSL_CERTIFICATE
+  const kafkaSslCertificateLocation = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+  let kafkaSslKey = process.env.KAFKA_SSL_KEY
+  const kafkaSslKeyLocation = process.env.KAFKA_SSL_KEY_LOCATION
+
+  if (kafkaSslCertificate) {
+    if (kafkaSslCertificateLocation && !fs.existsSync(kafkaSslCertificateLocation)) {
+      if (kafkaSslCertificate[0] === '{') {
+        const tmp = JSON.parse(kafkaSslCertificate)
+        kafkaSslCertificate = tmp.certificate
+        kafkaSslKey = tmp.key
+      }
+      fs.writeFileSync(kafkaSslCertificateLocation, kafkaSslCertificate)
+    }
+  }
+
+  if (kafkaSslKey) {
+    if (kafkaSslKeyLocation && !fs.existsSync(kafkaSslKeyLocation)) {
+      fs.writeFileSync(kafkaSslKeyLocation, kafkaSslKey)
+    }
+  }
 }

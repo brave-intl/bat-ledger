@@ -3,9 +3,7 @@ const utils = require('bat-utils')
 
 const config = require('../config.js')
 
-const suggestionsConsumer = require('./workers/suggestions')
-const voteConsumer = require('./workers/acvote')
-const { consumer: referralsConsumer } = require('./workers/referrals')
+const { producer: referralsProducer } = require('./workers/referrals')
 const {
   extras,
   Runtime
@@ -29,7 +27,4 @@ const runtime = new Runtime(config)
 
 extras.utils.setupKafkaCert()
 
-suggestionsConsumer(runtime)
-voteConsumer(runtime)
-referralsConsumer(runtime)
-runtime.kafka.consume()
+referralsProducer(runtime)
