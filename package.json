@@ -125,7 +125,7 @@
     "ava": "github:brave-intl/ava#6a2f20f65668dc6ab6822fef6503ee885a1759fb",
     "coveralls": "^3.0.6",
     "parse-prometheus-text-format": "^1.1.1",
-    "standard": "^14.0.1",
+    "standard": "~14.0.1",
     "supertest": "^4.0.2"
   },
   "standard": {
