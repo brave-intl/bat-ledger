@@ -418,7 +418,6 @@ function groupReferrals (objects) {
       cached = {
         id: uuidV4(),
         createdAt: memo.now,
-        excluded: false,
         transactionId: obj.transactionId,
         publisher: pub,
         owner: obj.owner,

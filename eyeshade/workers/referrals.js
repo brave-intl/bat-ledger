@@ -71,6 +71,11 @@ module.exports.producer = (runtime) => {
   setInterval(produce, nextHour())
 
   async function produce () {
+    // keep pulling until you run out
+    while (await pull()) {}
+  }
+
+  async function pull () {
     const getActiveGroups = `
     SELECT
       id,
@@ -127,16 +132,19 @@ module.exports.producer = (runtime) => {
           probi
         }
       })))
-      await runtime.promo.transact(async (client) => {
-        for (let i = 0; i < transactions.length; i += 1) {
-          await runtime.promo.query(promo.UPDATE_QUERY, [txid, transactions[i].downloadId], client)
-        }
-        const producer = await runtime.kafka.producer()
-        for (let i = 0; i < referralSets.length; i += 1) {
-          const buf = referrals.typeV1.toBuffer(referralSets[i])
-          await producer.send(referrals.topic, buf)
-        }
-      })
+      if (referralSets.length) {
+        await runtime.promo.transact(async (client) => {
+          for (let i = 0; i < transactions.length; i += 1) {
+            await runtime.promo.query(promo.UPDATE_QUERY, [txid, transactions[i].downloadId], client)
+          }
+          const producer = await runtime.kafka.producer()
+          for (let i = 0; i < referralSets.length; i += 1) {
+            const buf = referrals.typeV1.toBuffer(referralSets[i])
+            await producer.send(referrals.topic, buf)
+          }
+        })
+      }
+      return referralSets.length
     }))
   }
 
