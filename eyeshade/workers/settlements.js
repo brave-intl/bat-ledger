@@ -1,8 +1,5 @@
-const {
-  insertFromSettlement,
-  settlementId: createSettlementId
-} = require('../lib/transaction')
-const { normalizeChannel } = require('bat-utils/lib/extras-utils')
+const transaction = require('../lib/transaction')
+const { normalizeChannel, BigNumber } = require('bat-utils/lib/extras-utils')
 const { eachMessage } = require('./utils')
 const settlements = require('../lib/settlements')
 
@@ -13,29 +10,43 @@ module.exports = {
 function consumer (runtime) {
   runtime.kafka.on(settlements.topic, async (messages, client) => {
     const inserting = {}
-    await eachMessage(runtime, settlements, messages, async ({
-      createdAt,
-      publisher,
-      settlementId,
-      altcurrency,
-      probi,
-      fees,
-      type,
-      owner
-    }) => {
+    await eachMessage(runtime, settlements, messages, async (settlement) => {
+      const {
+        createdAt,
+        publisher,
+        settlementId,
+        altcurrency,
+        address,
+        probi: probiString,
+        fees,
+        type,
+        owner
+      } = settlement
       const normalizedChannel = normalizeChannel(publisher)
-      const id = createSettlementId(settlementId, normalizedChannel)
+      const id = transaction.id.settlement(settlementId, normalizedChannel, type)
       if (inserting[id]) {
         return
       }
       inserting[id] = true
-      await insertFromSettlement(runtime, client, {
-        _id: createdAt,
+      const scale = runtime.currency.alt2scale(altcurrency)
+      const probi = new BigNumber(probiString)
+      // amount is a duplicate value. should discuss removing
+      const amount = probi.dividedBy(scale)
+      const {
+        rows: inserted
+      } = await runtime.postgres.query('select * from transactions where id = $1', [id], client)
+      if (inserted.length) {
+        return
+      }
+      await transaction.insertFromSettlement(runtime, client, {
+        _id: new Date(createdAt),
         publisher,
+        address,
         settlementId,
         altcurrency,
         probi,
-        fees,
+        amount,
+        fees: new BigNumber(fees),
         type,
         owner
       })

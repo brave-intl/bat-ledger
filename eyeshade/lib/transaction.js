@@ -17,8 +17,10 @@ const SETTLEMENT_NAMESPACE = {
   manual: 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
 module.exports = {
-  referralId,
-  settlementId,
+  id: {
+    referral: referralId,
+    settlement: settlementId
+  },
   allSettlementStats,
   settlementStatsByCurrency,
   knownChains: Object.assign({}, knownChains),
@@ -34,8 +36,9 @@ function referralId (id, normalizedChannel) {
   return uuidv5(id + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536')
 }
 
-function settlementId (id, normalizedChannel) {
-  return uuidv5(id + normalizedChannel, 'eb296f6d-ab2a-489f-bc75-a34f1ff70acb')
+function settlementId (id, normalizedChannel, type) {
+  console.log(type, SETTLEMENT_NAMESPACE[type], id, normalizedChannel)
+  return uuidv5(id + normalizedChannel, SETTLEMENT_NAMESPACE[type])
 }
 
 async function insertTransaction (runtime, client, options = {}) {
@@ -204,7 +207,7 @@ async function insertFromSettlement (runtime, client, settlement) {
         `
       await runtime.postgres.query(query3, [
         // settlementId and channel pair should be unique per settlement type
-        uuidv5(settlement.settlementId + normalizedChannel, SETTLEMENT_NAMESPACE[settlement.type]),
+        settlementId(settlement.settlementId, normalizedChannel, settlement.type),
         (created / 1000),
         `payout for ${settlement.type}`,
         `${settlement.type}_settlement`,

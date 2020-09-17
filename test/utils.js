@@ -210,10 +210,15 @@ const cleanGrantDb = async () => {
 }
 
 module.exports = {
+  transaction: {
+    ensureCount: ensureTransactionCount,
+    ensureArrived: ensureTransactionArrived
+  },
   referral: {
-    create: createReferral,
-    ensureCount: ensureReferralCount,
-    ensureArrived: ensureReferralArrived
+    create: createReferral
+  },
+  settlement: {
+    create: createSettlement
   },
   token,
   signTxn,
@@ -581,18 +586,34 @@ function createReferral () {
   }
 }
 
-async function ensureReferralCount (t, expect) {
+async function ensureTransactionCount (t, expect) {
   let rows = []
   do {
     ;({ rows } = await t.context.runtime.postgres.query('select * from transactions'))
   } while (rows.length !== expect && (await timeout(1000) || true))
 }
 
-async function ensureReferralArrived (t, id) {
+async function ensureTransactionArrived (t, id) {
   let seen = []
   do {
     ;({ rows: seen } = await t.context.runtime.postgres.query(`
-    select * from transactions where document_id = $1
+    select * from transactions where id = $1
     `, [id]))
   } while (seen.length === 0 && (await timeout(1000) || true))
+}
+
+function createSettlement (options) {
+  const probi = new BigNumber(Math.random() + '').times(10).times(1e18)
+  return Object.assign({
+    id: uuidV4(),
+    settlementId: uuidV4(),
+    address: uuidV4(),
+    publisher: braveYoutubePublisher,
+    altcurrency: 'BAT',
+    createdAt: (new Date()).toISOString(),
+    owner: braveYoutubeOwner,
+    probi: probi.times(0.95).toFixed(0),
+    fees: probi.times(0.05).toFixed(0),
+    type: 'contribution'
+  }, options || {})
 }

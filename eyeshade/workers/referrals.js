@@ -1,4 +1,4 @@
-const { insertFromReferrals, referralId } = require('../lib/transaction.js')
+const transaction = require('../lib/transaction')
 const referrals = require('../lib/referrals')
 const { BigNumber, normalizeChannel } = require('bat-utils/lib/extras-utils')
 const promo = require('./promo')
@@ -53,7 +53,7 @@ exports.workers = {
                 }
               }
             }
-            await insertFromReferrals(runtime, client, Object.assign(doc, { transactionId }))
+            await transaction.insertFromReferrals(runtime, client, Object.assign(doc, { transactionId }))
           }
         } catch (e) {
           await client.query('ROLLBACK')
@@ -186,8 +186,7 @@ module.exports.consumer = (runtime) => {
       }
 
       const normalizedChannel = normalizeChannel(referral._id.publisher)
-      const id = referralId(transactionId, normalizedChannel)
-      console.log(transactionId, normalizedChannel, id)
+      const id = transaction.id.referral(transactionId, normalizedChannel)
       if (inserting[id]) {
         return
       }
@@ -199,9 +198,9 @@ module.exports.consumer = (runtime) => {
       only one client should be inserting a given message
       so we should not run into errors
       */
-      const { rows } = await client.query('select * from transactions where id = $1', [id])
+      const { rows } = await runtime.postgres.query('select * from transactions where id = $1', [id], client)
       if (!rows.length) {
-        await insertFromReferrals(runtime, client, referral)
+        await transaction.insertFromReferrals(runtime, client, referral)
       }
     })
   })
