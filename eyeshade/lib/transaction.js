@@ -18,6 +18,7 @@ const SETTLEMENT_NAMESPACE = {
 }
 module.exports = {
   referralId,
+  settlementId,
   allSettlementStats,
   settlementStatsByCurrency,
   knownChains: Object.assign({}, knownChains),
@@ -29,8 +30,12 @@ module.exports = {
   insertFromAd
 }
 
-function referralId (transactionId, normalizedChannel) {
-  return uuidv5(transactionId + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536')
+function referralId (id, normalizedChannel) {
+  return uuidv5(id + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536')
+}
+
+function settlementId (id, normalizedChannel) {
+  return uuidv5(id + normalizedChannel, 'eb296f6d-ab2a-489f-bc75-a34f1ff70acb')
 }
 
 async function insertTransaction (runtime, client, options = {}) {

@@ -210,6 +210,11 @@ const cleanGrantDb = async () => {
 }
 
 module.exports = {
+  referral: {
+    create: createReferral,
+    ensureCount: ensureReferralCount,
+    ensureArrived: ensureReferralArrived
+  },
   token,
   signTxn,
   cleanRedeemerRedisDb,
@@ -553,4 +558,41 @@ function signTxn (keypair, body, _octets) {
     octets,
     body
   }
+}
+
+function createReferral () {
+  return {
+    id: uuidV4(),
+    transactionId: uuidV4(),
+    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    publisher: braveYoutubePublisher,
+    altcurrency: 'BAT',
+    createdAt: (new Date()).toISOString(),
+    inputs: [{
+      finalized: (new Date()).toISOString(),
+      downloadId: uuidV4(),
+      downloadTimestamp: (new Date()).toISOString(),
+      countryGroupId: uuidV4(),
+      platform: 'desktop',
+      payoutRate: '4',
+      referralCode: 'ABC123',
+      probi: new BigNumber(Math.random() + '').times(1e18).toString()
+    }]
+  }
+}
+
+async function ensureReferralCount (t, expect) {
+  let rows = []
+  do {
+    ;({ rows } = await t.context.runtime.postgres.query('select * from transactions'))
+  } while (rows.length !== expect && (await timeout(1000) || true))
+}
+
+async function ensureReferralArrived (t, id) {
+  let seen = []
+  do {
+    ;({ rows: seen } = await t.context.runtime.postgres.query(`
+    select * from transactions where document_id = $1
+    `, [id]))
+  } while (seen.length === 0 && (await timeout(1000) || true))
 }

@@ -6,6 +6,7 @@ const config = require('../config.js')
 const suggestionsConsumer = require('./workers/suggestions')
 const voteConsumer = require('./workers/acvote')
 const { consumer: referralsConsumer } = require('./workers/referrals')
+const { consumer: settlementsConsumer } = require('./workers/settlements')
 const {
   extras,
   Runtime
@@ -32,4 +33,5 @@ extras.utils.setupKafkaCert()
 suggestionsConsumer(runtime)
 voteConsumer(runtime)
 referralsConsumer(runtime)
+settlementsConsumer(runtime)
 runtime.kafka.consume()

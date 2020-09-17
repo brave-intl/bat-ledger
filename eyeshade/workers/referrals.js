@@ -5,6 +5,7 @@ const promo = require('./promo')
 const underscore = require('underscore')
 const _ = underscore
 const { groupReferrals } = require('../controllers/referrals')
+const { eachMessage } = require('./utils')
 
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('referral-report')
@@ -158,7 +159,8 @@ module.exports.producer = (runtime) => {
 
 module.exports.consumer = (runtime) => {
   runtime.kafka.on(referrals.topic, async (messages, client) => {
-    await eachMessage(referrals, messages, async (referralSet) => {
+    const inserting = {}
+    await eachMessage(runtime, referrals, messages, async (referralSet) => {
       const zero = new BigNumber(0)
       const {
         inputs,
@@ -185,6 +187,11 @@ module.exports.consumer = (runtime) => {
 
       const normalizedChannel = normalizeChannel(referral._id.publisher)
       const id = referralId(transactionId, normalizedChannel)
+      console.log(transactionId, normalizedChannel, id)
+      if (inserting[id]) {
+        return
+      }
+      inserting[id] = true
       /*
       because of this error
       error: current transaction is aborted, commands ignored until end of transaction block
@@ -198,20 +205,4 @@ module.exports.consumer = (runtime) => {
       }
     })
   })
-
-  async function eachMessage (decoder, messages, fn) {
-    for (let i = 0; i < messages.length; i += 1) {
-      const msg = messages[i]
-      const buf = Buffer.from(msg.value, 'binary')
-      let message
-      try {
-        ;({ message } = decoder.decode(buf))
-      } catch (e) {
-        // If the event is not well formed, capture the error and continue
-        runtime.captureException(e, { extra: { topic: decoder.topic, message } })
-        continue
-      }
-      await fn(message)
-    }
-  }
 }
