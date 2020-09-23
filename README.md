@@ -18,7 +18,6 @@ PUBLISHERS_TOKEN=foo
 PUBLISHERS_URL=http://docker.for.mac.localhost:3000
 ```
 
-
 ```
 
 # To bring up all the services : 
