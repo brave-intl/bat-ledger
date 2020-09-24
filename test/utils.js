@@ -208,6 +208,31 @@ const cleanGrantDb = async () => {
     client.release()
   }
 }
+const agents = {
+  grants: {
+    global: grantGlobalAgent
+  },
+  redeemer: {
+    global: redeemerGlobalAgent
+  },
+  walletMigration: {
+    global: walletMigrationGlobalAgent
+  },
+  eyeshade: {
+    global: eyeshadeGlobalAgent,
+    referrals: eyeshadeReferralsAgent,
+    ads: eyeshadeAdsAgent,
+    publishers: eyeshadePublishersAgent,
+    stats: eyeshadeStatsAgent
+  },
+  ledger: {
+    global: ledgerGlobalAgent,
+    stats: ledgerStatsAgent
+  },
+  balance: {
+    global: balanceGlobalAgent
+  }
+}
 
 module.exports = {
   transaction: {
@@ -215,7 +240,9 @@ module.exports = {
     ensureArrived: ensureTransactionArrived
   },
   referral: {
-    create: createReferral
+    create: createReferral,
+    sendLegacy: sendLegacyReferral,
+    createLegacy: createLegacyReferral
   },
   settlement: {
     create: createSettlement
@@ -235,31 +262,7 @@ module.exports = {
   ok,
   debug,
   status,
-  agents: {
-    grants: {
-      global: grantGlobalAgent
-    },
-    redeemer: {
-      global: redeemerGlobalAgent
-    },
-    walletMigration: {
-      global: walletMigrationGlobalAgent
-    },
-    eyeshade: {
-      global: eyeshadeGlobalAgent,
-      referrals: eyeshadeReferralsAgent,
-      ads: eyeshadeAdsAgent,
-      publishers: eyeshadePublishersAgent,
-      stats: eyeshadeStatsAgent
-    },
-    ledger: {
-      global: ledgerGlobalAgent,
-      stats: ledgerStatsAgent
-    },
-    balance: {
-      global: balanceGlobalAgent
-    }
-  },
+  agents,
   assertWithinBounds,
   connectToDb,
   dbUri,
@@ -565,6 +568,23 @@ function signTxn (keypair, body, _octets) {
   }
 }
 
+function createLegacyReferral (timestamp, groupId) {
+  const txId = uuidV4().toLowerCase()
+  return {
+    txId,
+    referral: {
+      downloadId: uuidV4().toLowerCase(),
+      channelId: braveYoutubePublisher,
+      platform: 'ios',
+      referralCode: uuidV4().toLowerCase(),
+      finalized: timestamp || new Date(),
+      groupId,
+      downloadTimestamp: timestamp || new Date(),
+      ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
+    }
+  }
+}
+
 function createReferral () {
   return {
     id: uuidV4(),
@@ -591,6 +611,7 @@ async function ensureTransactionCount (t, expect) {
   do {
     ;({ rows } = await t.context.runtime.postgres.query('select * from transactions'))
   } while (rows.length !== expect && (await timeout(1000) || true))
+  return rows
 }
 
 async function ensureTransactionArrived (t, id) {
@@ -600,6 +621,7 @@ async function ensureTransactionArrived (t, id) {
     select * from transactions where id = $1
     `, [id]))
   } while (seen.length === 0 && (await timeout(1000) || true))
+  return seen
 }
 
 function createSettlement (options) {
@@ -616,4 +638,10 @@ function createSettlement (options) {
     fees: probi.times(0.05).toFixed(0),
     type: 'contribution'
   }, options || {})
+}
+
+async function sendLegacyReferral (txId, referrals) {
+  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`)
+    .send(referrals)
+    .expect(ok)
 }
