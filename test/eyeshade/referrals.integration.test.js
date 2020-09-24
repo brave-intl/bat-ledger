@@ -60,7 +60,7 @@ test('referrals inserted using old methodology will match new insertion methodol
     'settlement_amount'
   ]
   t.deepEqual(
-    _.pick(rowsLegacy, fields),
-    _.pick(rows, fields)
+    _.pick(rowsLegacy[0], fields),
+    _.pick(rows[0], fields)
   )
 })
