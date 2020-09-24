@@ -1,35 +1,41 @@
 const { serial: test } = require('ava')
-const { kafka } = require('../../config')
+const config = require('../../config')
 const utils = require('../utils')
-const referrals = require('../../eyeshade/lib/referrals')
-const { Runtime } = require('bat-utils')
+const _ = require('underscore')
 const {
+  routes: referralRoutes,
+  initialize: referralInitializer
+} = require('../../eyeshade/controllers/referrals')
+const {
+  setupForwardingServer,
   cleanDbs,
   connectToDb
 } = utils
 const {
-  BAT_REDIS_URL,
-  BAT_POSTGRES_URL
+  ALLOWED_REFERRALS_TOKENS
 } = process.env
 
 test.before(async (t) => {
   const eyeshadeMongo = await connectToDb('eyeshade')
-  Object.assign(t.context, {
-    referrals: await eyeshadeMongo.collection('referrals'),
-    runtime: new Runtime({
-      prometheus: {
-        label: 'eyeshade.worker.1'
-      },
-      cache: {
-        redis: {
-          url: BAT_REDIS_URL
-        }
-      },
-      postgres: {
-        url: BAT_POSTGRES_URL
-      },
-      kafka
+  const {
+    runtime,
+    agent
+  } = await setupForwardingServer({
+    token: ALLOWED_REFERRALS_TOKENS,
+    routes: referralRoutes,
+    initers: [referralInitializer],
+    // database, postgres, currency, prometheus, config
+    config: Object.assign({}, config, {
+      forward: {
+        referrals: '1'
+      }
     })
+  })
+
+  Object.assign(t.context, {
+    agent,
+    referrals: await eyeshadeMongo.collection('referrals'),
+    runtime
   })
 })
 test.beforeEach(cleanDbs)
@@ -37,19 +43,24 @@ test.beforeEach(cleanDbs)
 test('referrals inserted using old methodology will match new insertion methodology', async (t) => {
   const {
     txId,
-    referral: referral1
+    referral
   } = utils.referral.createLegacy(null, '71341fc9-aeab-4766-acf0-d91d3ffb0bfa')
-  const referral2 = utils.referral.create()
 
-  await utils.referral.sendLegacy(txId, [referral1])
+  await utils.referral.sendLegacy(txId, [referral])
   const rowsLegacy = await utils.transaction.ensureCount(t, 1)
 
-  referral2.transactionId = txId
-  referral2.inputs[0].platform = referral1.platform
-  await t.context.runtime.kafka.send(
-    referrals.topic,
-    referrals.typeV1.toBuffer(referral2)
-  )
+  await cleanDbs()
+  // use kafka
+  await utils.referral.sendLegacy(txId, [referral], t.context.agent)
   const rows = await utils.transaction.ensureCount(t, 1)
-  console.log(rowsLegacy, rows)
+  const fields = [
+    'id', 'description', 'transaction_type', 'document_id',
+    'from_account_type', 'from_account', 'to_account_type',
+    'to_account', 'amount', 'channel', 'settlement_currency',
+    'settlement_amount'
+  ]
+  t.deepEqual(
+    _.pick(rowsLegacy, fields),
+    _.pick(rows, fields)
+  )
 })

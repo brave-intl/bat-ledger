@@ -640,8 +640,12 @@ function createSettlement (options) {
   }, options || {})
 }
 
-async function sendLegacyReferral (txId, referrals) {
-  await agents.eyeshade.referrals.put(`/v1/referrals/${txId}`)
+async function sendLegacyReferral (
+  txId,
+  referrals,
+  agent = agents.eyeshade.referrals
+) {
+  await agent.put(`/v1/referrals/${txId}`)
     .send(referrals)
     .expect(ok)
 }
