@@ -635,6 +635,7 @@ function createSettlement (options) {
     address: uuidV4(),
     publisher: braveYoutubePublisher,
     altcurrency: 'BAT',
+    currency: 'USD',
     createdAt: (new Date()).toISOString(),
     owner: braveYoutubeOwner,
     probi: probi.times(0.95).toFixed(0),

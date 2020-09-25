@@ -11,6 +11,7 @@ const {
   cleanDbs
 } = utils
 const {
+  BAT_POSTGRES_URL,
   ALLOWED_REFERRALS_TOKENS
 } = process.env
 
@@ -25,6 +26,9 @@ test.before(async (t) => {
     config: Object.assign({}, config, {
       forward: {
         referrals: '1'
+      },
+      postgres: {
+        url: BAT_POSTGRES_URL
       }
     })
   })
@@ -52,7 +56,7 @@ test('referrals inserted using old methodology will match new insertion methodol
   const fields = [
     'id', 'description', 'transaction_type', 'document_id',
     'from_account_type', 'from_account', 'to_account_type',
-    'to_account', 'amount', 'channel', 'settlement_currency',
+    'to_account', 'channel', 'settlement_currency',
     'settlement_amount'
   ]
   t.deepEqual(

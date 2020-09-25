@@ -11,6 +11,7 @@ const {
   cleanDbs
 } = utils
 const {
+  BAT_POSTGRES_URL,
   ALLOWED_PUBLISHERS_TOKENS
 } = process.env
 
@@ -25,6 +26,9 @@ test.before(async (t) => {
     config: Object.assign({}, config, {
       forward: {
         settlements: '1'
+      },
+      postgres: {
+        url: BAT_POSTGRES_URL
       }
     })
   })
@@ -36,7 +40,7 @@ test.before(async (t) => {
 })
 test.beforeEach(cleanDbs)
 
-test('referrals inserted using old methodology will match new insertion methodology', async (t) => {
+test('settlements inserted using old methodology will match new insertion methodology', async (t) => {
   const settlement = utils.settlement.createLegacy(null, '71341fc9-aeab-4766-acf0-d91d3ffb0bfa')
 
   const { body: ids } = await utils.settlement.sendLegacy([settlement])
