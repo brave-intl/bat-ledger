@@ -245,7 +245,10 @@ module.exports = {
     createLegacy: createLegacyReferral
   },
   settlement: {
-    create: createSettlement
+    create: createSettlement,
+    sendLegacy: sendSettlement,
+    sendLegacySubmit: sendSettlementSubmit,
+    createLegacy: createLegacySettlement
   },
   token,
   signTxn,
@@ -640,12 +643,50 @@ function createSettlement (options) {
   }, options || {})
 }
 
+function createLegacySettlement (options) {
+  const amount = new BigNumber(Math.random() + '').times(10)
+  const probiTotal = amount.times(1e18)
+  const probi = probiTotal.times(0.95)
+  const fees = probiTotal.times(0.05)
+  return Object.assign({
+    altcurrency: 'BAT',
+    currency: 'USD',
+    amount: probi.dividedBy('1e18').toFixed(18),
+    address: uuidV4(),
+    publisher: braveYoutubePublisher,
+    owner: braveYoutubeOwner,
+    probi: probi.toFixed(0),
+    fees: fees.toFixed(0),
+    transactionId: uuidV4(),
+    type: 'contribution',
+    hash: uuidV4()
+  }, options || {})
+}
+
+async function sendSettlement (
+  settlements,
+  agent = agents.eyeshade.publishers
+) {
+  return agent.post('/v2/publishers/settlement')
+    .send(settlements)
+    .expect(ok)
+}
+
+async function sendSettlementSubmit (
+  identifiers,
+  agent = agents.eyeshade.publishers
+) {
+  return agent.post('/v2/publishers/settlement/submit')
+    .send(identifiers)
+    .expect(ok)
+}
+
 async function sendLegacyReferral (
   txId,
   referrals,
   agent = agents.eyeshade.referrals
 ) {
-  await agent.put(`/v1/referrals/${txId}`)
+  return agent.put(`/v1/referrals/${txId}`)
     .send(referrals)
     .expect(ok)
 }

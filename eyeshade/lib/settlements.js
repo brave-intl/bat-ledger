@@ -13,6 +13,7 @@ const typeV1 = avro.parse({
     { name: 'settlementId', type: 'string' },
     { name: 'publisher', type: 'string' },
     { name: 'altcurrency', type: 'string' },
+    { name: 'currency', type: 'string' },
     { name: 'createdAt', type: 'string' },
     { name: 'owner', type: 'string' },
     { name: 'probi', type: 'string' },

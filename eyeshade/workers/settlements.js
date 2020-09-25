@@ -1,6 +1,7 @@
 const transaction = require('../lib/transaction')
 const { normalizeChannel, BigNumber } = require('bat-utils/lib/extras-utils')
 const { eachMessage } = require('./utils')
+const { ObjectID } = require('bson')
 const settlements = require('../lib/settlements')
 
 module.exports = {
@@ -16,6 +17,7 @@ function consumer (runtime) {
         publisher,
         settlementId,
         altcurrency,
+        currency,
         address,
         probi: probiString,
         fees,
@@ -39,11 +41,12 @@ function consumer (runtime) {
         return
       }
       await transaction.insertFromSettlement(runtime, client, {
-        _id: new Date(createdAt),
+        _id: ObjectID.createFromTime(+(new Date(createdAt)) / 1000),
         publisher,
         address,
         settlementId,
         altcurrency,
+        currency,
         probi,
         amount,
         fees: new BigNumber(fees),
