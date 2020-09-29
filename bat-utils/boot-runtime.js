@@ -10,7 +10,6 @@ const database = require('./lib/runtime-database')
 const kafka = require('./lib/runtime-kafka')
 const newrelic = require('./lib/runtime-newrelic')
 const postgres = require('./lib/runtime-postgres')
-const promo = require('./lib/runtime-promo')
 const prometheus = require('./lib/runtime-prometheus')
 const queue = require('./lib/runtime-queue')
 const sentry = require('./lib/runtime-sentry')
@@ -26,7 +25,6 @@ const hash = {
   newrelic,
   postgres,
   prometheus,
-  promo,
   queue,
   sentry,
   slack,

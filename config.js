@@ -50,11 +50,6 @@ const services = {
         , roURL                 : process.env.DATABASE_RO_URL || false
         , schemaVersionCheck    : true
         }
-      module.exports.promo =
-        { url                   : process.env.PROMO_DATABASE_URL || 'postgres://localhost/test'
-        , roURL                 : process.env.PROMO_DATABASE_RO_URL || false
-        , schemaVersionCheck    : true
-        }
 
       uphold()
     }
