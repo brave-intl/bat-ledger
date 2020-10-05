@@ -1,6 +1,5 @@
 const transaction = require('../lib/transaction')
 const { normalizeChannel, BigNumber } = require('bat-utils/lib/extras-utils')
-const { eachMessage } = require('./utils')
 const { ObjectID } = require('bson')
 const settlements = require('../lib/settlements')
 
@@ -9,9 +8,10 @@ module.exports = {
 }
 
 function consumer (runtime) {
-  runtime.kafka.on(settlements.topic, async (messages, client) => {
+  const { kafka, postgres } = runtime
+  kafka.on(settlements.topic, async (messages, client) => {
     const inserting = {}
-    await eachMessage(runtime, settlements, messages, async (settlement) => {
+    await kafka.mapMessages(settlements, messages, async (settlement) => {
       const {
         createdAt,
         publisher,
@@ -19,7 +19,8 @@ function consumer (runtime) {
         altcurrency,
         currency,
         address,
-        probi: probiString,
+        probi,
+        amount,
         fees,
         type,
         owner
@@ -30,13 +31,9 @@ function consumer (runtime) {
         return
       }
       inserting[id] = true
-      const scale = runtime.currency.alt2scale(altcurrency)
-      const probi = new BigNumber(probiString)
-      // amount is a duplicate value. should discuss removing
-      const amount = probi.dividedBy(scale)
       const {
         rows: inserted
-      } = await runtime.postgres.query('select * from transactions where id = $1', [id], client)
+      } = await postgres.query('select * from transactions where id = $1', [id], client)
       if (inserted.length) {
         return
       }
@@ -47,8 +44,8 @@ function consumer (runtime) {
         settlementId,
         altcurrency,
         currency,
-        probi,
-        amount,
+        probi: new BigNumber(probi),
+        amount: new BigNumber(amount),
         fees: new BigNumber(fees),
         type,
         owner

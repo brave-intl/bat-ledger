@@ -28,7 +28,7 @@ async function addSettlementsToKafkaQueue (runtime, request) {
   const { payload } = request
 
   const producer = await runtime.kafka.producer()
-  const now = (new Date().toISOString())
+  const now = new Date()
   for (let i = 0; i < payload.length; i += 1) {
     const {
       id,
@@ -39,6 +39,9 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       currency,
       owner,
       probi,
+      fee,
+      amount,
+      commission,
       createdAt,
       fees,
       type
@@ -52,6 +55,9 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       altcurrency,
       currency,
       owner,
+      fee,
+      commission,
+      amount,
       probi,
       fees,
       type
@@ -59,7 +65,7 @@ async function addSettlementsToKafkaQueue (runtime, request) {
 
     await producer.send(
       settlement.topic,
-      settlement.typeV1.toBuffer(msg)
+      settlement.encode(msg)
     )
   }
   return {}

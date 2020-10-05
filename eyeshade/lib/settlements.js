@@ -1,7 +1,8 @@
 const avro = require('avro-js')
+const { dateToISO } = require('bat-utils/lib/extras-utils')
 
 const topic = process.env.ENV + '.settlement.payout'
-const typeV1 = avro.parse({
+const v1 = avro.parse({
   // it is important to keep this as a group that is not reported live to preserve anonymity
   namespace: 'brave.payments',
   type: 'record',
@@ -17,6 +18,9 @@ const typeV1 = avro.parse({
     { name: 'createdAt', type: 'string' },
     { name: 'owner', type: 'string' },
     { name: 'probi', type: 'string' },
+    { name: 'amount', type: 'string' },
+    { name: 'fee', type: 'string' },
+    { name: 'commission', type: 'string' },
     { name: 'fees', type: 'string' },
     { name: 'type', type: 'string' }
   ]
@@ -24,15 +28,24 @@ const typeV1 = avro.parse({
 
 module.exports = {
   topic,
-  typeV1,
+  encode,
   decode,
-  objectify
+  objectify,
+  type: {
+    v1
+  }
+}
+
+function encode (obj) {
+  return v1.toBuffer(Object.assign({}, obj, {
+    createdAt: dateToISO(obj.createdAt)
+  }))
 }
 
 function decode (buf) {
   return {
     version: 1,
-    message: typeV1.fromBuffer(buf)
+    message: v1.fromBuffer(buf)
   }
 }
 

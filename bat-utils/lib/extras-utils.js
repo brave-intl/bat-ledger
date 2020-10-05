@@ -31,6 +31,7 @@ module.exports = {
   justDate,
   btoa,
   isPostgresConflict,
+  dateToISO,
   BigNumber
 }
 
@@ -200,4 +201,8 @@ function setupKafkaCert () {
       fs.writeFileSync(kafkaSslKeyLocation, kafkaSslKey)
     }
   }
+}
+
+function dateToISO (d) {
+  return d instanceof Date ? d.toISOString() : d
 }

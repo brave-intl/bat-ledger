@@ -37,7 +37,6 @@ function referralId (id, normalizedChannel) {
 }
 
 function settlementId (id, normalizedChannel, type) {
-  console.log(type, SETTLEMENT_NAMESPACE[type], id, normalizedChannel)
   return uuidv5(id + normalizedChannel, SETTLEMENT_NAMESPACE[type])
 }
 

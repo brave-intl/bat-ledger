@@ -9,6 +9,7 @@
     "eyeshade-server": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/server.js",
     "eyeshade-worker": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "eyeshade-consumer": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/consumer.js",
+    "eyeshade-producer": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 bin/migrate-mongo-to-kafka.js",
     "ledger-server": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 ledger/server.js",
     "start": "echo use 'npm run start-[ledger|eyeshade|balance]' or 'npm run start-[ledger|eyeshade]-worker'",
     "start-balance": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=balance node balance/server.js",

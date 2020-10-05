@@ -1,7 +1,9 @@
+const { normalizeChannel } = require('bat-utils/lib/extras-utils')
+
 const transaction = require('../lib/transaction')
 const referrals = require('../lib/referrals')
-const { BigNumber, normalizeChannel } = require('bat-utils/lib/extras-utils')
-const { eachMessage } = require('./utils')
+const queries = require('../lib/queries')
+const countries = require('../lib/countries')
 
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('referral-report')
@@ -65,30 +67,36 @@ exports.workers = {
 }
 
 module.exports.consumer = (runtime) => {
-  runtime.kafka.on(referrals.topic, async (messages, client) => {
+  const { kafka, postgres, config } = runtime
+  kafka.on(referrals.topic, async (messages, client) => {
     const inserting = {}
-    await eachMessage(runtime, referrals, messages, async (referralSet) => {
-      const zero = new BigNumber(0)
+    const {
+      rows: referralGroups
+    } = await postgres.query(queries.getActiveCountryGroups(), [], true)
+    const firstId = new Date()
+
+    await kafka.mapMessages(referrals, messages, async (ref) => {
       const {
-        inputs,
-        owner,
-        publisher,
-        altcurrency,
+        ownerId: owner,
+        channelId: publisher,
         transactionId,
-        createdAt
-      } = referralSet
-      const probi = inputs.reduce((memo, { probi }) => memo.plus(probi), zero)
+        countryGroupId
+      } = ref
+
+      const {
+        probi
+      } = await countries.computeValue(runtime, countryGroupId, referralGroups)
+
       const _id = {
         owner,
+        // take care of empty string case
         publisher: publisher || null,
-        altcurrency
+        altcurrency: config.altcurrency || 'BAT'
       }
       const referral = {
-        // come back later and fix inputs
         _id,
-        // this is all we care about from a transaction perspective
         probi,
-        firstId: new Date(createdAt),
+        firstId,
         transactionId
       }
 
@@ -105,10 +113,12 @@ module.exports.consumer = (runtime) => {
       only one client should be inserting a given message
       so we should not run into errors
       */
-      const { rows } = await runtime.postgres.query('select * from transactions where id = $1', [id], client)
-      if (!rows.length) {
-        await transaction.insertFromReferrals(runtime, client, referral)
+      const { rows } = await postgres.query(`
+      select * from transactions where id = $1`, [id], client)
+      if (rows.length) {
+        return
       }
+      await transaction.insertFromReferrals(runtime, client, referral)
     })
   })
 }

@@ -46,6 +46,12 @@ const Postgres = function (config, runtime) {
 }
 
 Postgres.prototype = {
+  quit: function () {
+    return Promise.all([
+      this.roPool && this.roPool.end(),
+      this.rwPool && this.rwPool.end()
+    ])
+  },
   connect: function (readOnly) {
     return this.pool(readOnly).connect()
   },

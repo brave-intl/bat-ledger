@@ -20,7 +20,7 @@ test('settlements should be insertable from the kafka queue', async (t) => {
   const msgs = 10
   for (let i = 0; i < msgs; i += 1) {
     const settlement = utils.settlement.create()
-    const buf = settlements.typeV1.toBuffer(settlement)
+    const buf = settlements.type.v1.toBuffer(settlement)
     await t.context.runtime.kafka.send(settlements.topic, buf)
   }
   await t.notThrowsAsync(
@@ -48,7 +48,7 @@ test('messages are deduplicated', async t => {
     await Promise.all(messages[i].map((msg) => (
       t.context.runtime.kafka.send(
         settlements.topic,
-        settlements.typeV1.toBuffer(msg)
+        settlements.type.v1.toBuffer(msg)
       )
     )))
     await timeout(0)

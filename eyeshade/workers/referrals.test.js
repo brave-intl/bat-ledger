@@ -275,7 +275,7 @@ test('referrals should be insertable from the kafka queue', async (t) => {
   const msgs = 10
   for (let i = 0; i < msgs; i += 1) {
     const referral = utils.referral.create()
-    const buf = referrals.typeV1.toBuffer(referral)
+    const buf = referrals.type.v1.toBuffer(referral)
     await t.context.runtime.kafka.send(referrals.topic, buf)
   }
   await t.notThrowsAsync(
@@ -298,17 +298,18 @@ test('messages are deduplicated', async t => {
   const endingReferral = utils.referral.create()
   messages.push([endingReferral])
 
+  await t.context.runtime.kafka.producer()
   for (let i = 0; i < messages.length; i += 1) {
     // send in blocks
     await Promise.all(messages[i].map((msg) => (
       t.context.runtime.kafka.send(
         referrals.topic,
-        referrals.typeV1.toBuffer(msg)
+        referrals.type.v1.toBuffer(msg)
       )
     )))
     await timeout(0)
   }
-  const normalizedChannel = normalizeChannel(endingReferral.publisher)
+  const normalizedChannel = normalizeChannel(endingReferral.channelId)
   const id = transaction.id.referral(endingReferral.transactionId, normalizedChannel)
   await t.notThrowsAsync(
     utils.transaction.ensureArrived(t, id)

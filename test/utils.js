@@ -588,25 +588,19 @@ function createLegacyReferral (timestamp, groupId) {
   }
 }
 
-function createReferral () {
-  return {
-    id: uuidV4(),
+function createReferral (options = {}) {
+  const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
+  return Object.assign({
     transactionId: uuidV4(),
-    owner: 'publishers#uuid:' + uuidV4().toLowerCase(),
-    publisher: braveYoutubePublisher,
-    altcurrency: 'BAT',
-    createdAt: (new Date()).toISOString(),
-    inputs: [{
-      finalized: (new Date()).toISOString(),
-      downloadId: uuidV4(),
-      downloadTimestamp: (new Date()).toISOString(),
-      countryGroupId: uuidV4(),
-      platform: 'desktop',
-      payoutRate: '4',
-      referralCode: 'ABC123',
-      probi: new BigNumber(Math.random() + '').times(1e18).toString()
-    }]
-  }
+    ownerId: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    channelId: braveYoutubePublisher,
+    finalizedTimestamp: (new Date()).toISOString(),
+    downloadId: uuidV4(),
+    downloadTimestamp: (new Date()).toISOString(),
+    countryGroupId: originalRateId,
+    platform: 'desktop',
+    referralCode: 'ABC123'
+  }, options)
 }
 
 async function ensureTransactionCount (t, expect) {
@@ -623,12 +617,14 @@ async function ensureTransactionArrived (t, id) {
     ;({ rows: seen } = await t.context.runtime.postgres.query(`
     select * from transactions where id = $1
     `, [id]))
+    console.log('checking for', id)
   } while (seen.length === 0 && (await timeout(1000) || true))
   return seen
 }
 
 function createSettlement (options) {
-  const probi = new BigNumber(Math.random() + '').times(10).times(1e18)
+  const amount = new BigNumber(Math.random() + '').times(10)
+  const probi = amount.times(1e18)
   return Object.assign({
     id: uuidV4(),
     settlementId: uuidV4(),
@@ -639,6 +635,9 @@ function createSettlement (options) {
     createdAt: (new Date()).toISOString(),
     owner: braveYoutubeOwner,
     probi: probi.times(0.95).toFixed(0),
+    amount: probi.dividedBy('1e18').toFixed(18),
+    commission: '0',
+    fee: '0',
     fees: probi.times(0.05).toFixed(0),
     type: 'contribution'
   }, options || {})
@@ -652,12 +651,14 @@ function createLegacySettlement (options) {
   return Object.assign({
     altcurrency: 'BAT',
     currency: 'USD',
-    amount: probi.dividedBy('1e18').toFixed(18),
     address: uuidV4(),
     publisher: braveYoutubePublisher,
     owner: braveYoutubeOwner,
+    amount: probi.dividedBy('1e18').toFixed(18),
     probi: probi.toFixed(0),
     fees: fees.toFixed(0),
+    fee: (new BigNumber(0)).toString(),
+    commission: (new BigNumber(0)).toString(),
     transactionId: uuidV4(),
     type: 'contribution',
     hash: uuidV4()

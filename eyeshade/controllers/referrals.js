@@ -3,10 +3,8 @@ const bson = require('bson')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 const _ = underscore
-const referrals = require('../lib/referrals')
 
 const utils = require('bat-utils')
-const uuidV4 = require('uuid/v4')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const extrasUtils = utils.extras.utils
@@ -14,18 +12,9 @@ const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
 const countries = require('../lib/countries')
+const referrals = require('../lib/referrals')
 
 const v1 = {}
-
-const getActiveGroups = `
-SELECT
-  id,
-  amount,
-  currency,
-  active_at as "activeAt"
-FROM geo_referral_groups
-WHERE
-  active_at <= current_timestamp;`
 
 const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 
@@ -256,23 +245,20 @@ v1.getReferralsStatement = {
 v1.createReferrals = {
   handler: (runtime) => {
     return async (request, h) => {
-      if (runtime.config.forward.referrals) {
-        return createReferralsOnKafka(runtime, request)
-      }
       const { payload, params } = request
       const { transactionId } = params
       const debug = braveHapi.debug(module, request)
       const { database, postgres, currency, queue, prometheus, config } = runtime
       const { altcurrency = 'BAT' } = config
-      const referrals = database.get('referrals', debug)
+      const referralsCollection = database.get('referrals', debug)
       const factor = currency.alt2scale(altcurrency)
       const referralsToInsert = []
       // get rates once at beginning (uses cache too)
       const {
         rows: referralGroups
-      } = await postgres.query(getActiveGroups, [], true)
-      referralGroups.sort((a) => a.activeAt)
+      } = await postgres.query(queries.getActiveCountryGroups(), [], true)
 
+      const referralsToSendToKafka = []
       for (let i = 0; i < payload.length; i += 1) {
         const referral = payload[i]
         const {
@@ -280,30 +266,29 @@ v1.createReferrals = {
           finalized,
           downloadId,
           downloadTimestamp,
-          ownerId: owner,
+          ownerId,
           referralCode = '',
-          channelId: publisher,
+          channelId,
           groupId: passedGroupId
         } = referral
 
-        const groupId = passedGroupId || originalRateId
-        const config = _.findWhere(referralGroups, {
-          // no group has falsey id
-          id: groupId
-        })
-        if (!config) {
-          throw boom.notFound('referral group not found')
-        }
         const {
-          amount: groupAmount,
-          currency: groupCurrency
-        } = config
+          countryGroupId,
+          value: countryAmount,
+          probi
+        } = await countries.computeValue(runtime, passedGroupId, referralGroups)
 
-        const probiString = await currency.fiat2alt(groupCurrency, groupAmount, altcurrency)
-        let probi = new BigNumber(probiString)
-        const payoutRate = probi.dividedBy(factor).dividedBy(groupAmount).toString()
-        probi = bson.Decimal128.fromString(probi.toString())
-
+        referralsToSendToKafka.push({
+          downloadId,
+          downloadTimestamp,
+          countryGroupId,
+          referralCode,
+          finalizedTimestamp: finalized,
+          channelId,
+          ownerId,
+          platform,
+          transactionId
+        })
         referralsToInsert.push({
           // previous upsert was redundant
           updateOne: {
@@ -318,15 +303,15 @@ v1.createReferrals = {
               $setOnInsert: {
                 downloadId,
                 downloadTimestamp,
-                groupId,
+                groupId: countryGroupId,
                 referralCode,
                 altcurrency,
                 finalized: new Date(finalized),
-                owner,
-                publisher: publisher || null,
+                owner: ownerId,
+                publisher: channelId || null,
                 transactionId,
-                payoutRate,
-                probi,
+                payoutRate: probi.dividedBy(factor).dividedBy(countryAmount).toString(),
+                probi: bson.Decimal128.fromString(probi.toString()),
                 platform,
                 exclude: false
               }
@@ -334,7 +319,10 @@ v1.createReferrals = {
           }
         })
       }
-      const bulkResult = await referrals.bulkWrite(referralsToInsert)
+      if (runtime.config.forward.referrals) {
+        await runtime.kafka.sendMany(referrals, referralsToSendToKafka)
+      }
+      const bulkResult = await referralsCollection.bulkWrite(referralsToInsert)
       if (!bulkResult.ok) {
         // insert failed
         const err = new Error('failed to insert')
@@ -347,9 +335,11 @@ v1.createReferrals = {
         throw err
       }
 
-      await queue.send(debug, 'referral-report', {
-        transactionId
-      })
+      if (!runtime.config.forward.referrals) {
+        await queue.send(debug, 'referral-report', {
+          transactionId
+        })
+      }
       prometheus.getMetric('referral_received_counter').inc(bulkResult.upsertedCount)
 
       return {}
@@ -377,180 +367,12 @@ v1.createReferrals = {
     { schema: Joi.object().length(0) }
 }
 
-async function createReferralsOnKafka (runtime, request) {
-  const { payload, params } = request
-  const { transactionId } = params
-  const debug = braveHapi.debug(module, request)
-  const { database, postgres, currency, prometheus, config } = runtime
-  const { altcurrency = 'BAT' } = config
-  const referralsCollection = database.get('referrals', debug)
-  const factor = currency.alt2scale(altcurrency)
-  const referralsToInsert = []
-  // get rates once at beginning (uses cache too)
-  const {
-    rows: referralGroups
-  } = await postgres.query(getActiveGroups, [], true)
-  referralGroups.sort((a) => a.activeAt)
-
-  for (let i = 0; i < payload.length; i += 1) {
-    const referral = payload[i]
-    const {
-      platform,
-      finalized,
-      downloadId,
-      downloadTimestamp = new Date(),
-      ownerId: owner,
-      referralCode = '',
-      channelId: publisher,
-      groupId: passedGroupId
-    } = referral
-
-    const countryGroupId = passedGroupId || originalRateId
-    const config = _.findWhere(referralGroups, {
-      // no group has falsey id
-      id: countryGroupId
-    })
-    if (!config) {
-      throw boom.notFound('referral group not found')
-    }
-    const {
-      amount: groupAmount,
-      currency: groupCurrency
-    } = config
-
-    const probiString = await currency.fiat2alt(groupCurrency, groupAmount, altcurrency)
-    let probi = new BigNumber(probiString)
-    const payoutRate = probi.dividedBy(factor).dividedBy(groupAmount).toString()
-    probi = probi.toString()
-
-    referralsToInsert.push({
-      altcurrency,
-      owner,
-      publisher: publisher || null,
-      transactionId,
-      finalized: new Date(finalized),
-      referralCode,
-      downloadId,
-      downloadTimestamp: new Date(downloadTimestamp),
-      countryGroupId,
-      platform,
-      payoutRate,
-      probi
-    })
-  }
-  const referralsToInsertIntoMongo = referralsToInsert.map(({
-    downloadId,
-    downloadTimestamp,
-    finalized,
-    countryGroupId,
-    referralCode,
-    altcurrency,
-    owner,
-    publisher,
-    transactionId,
-    probi,
-    payoutRate,
-    platform
-  }) => ({
-    // previous upsert was redundant
-    updateOne: {
-      upsert: true,
-      filter: {
-        downloadId
-      },
-      update: {
-        $currentDate: {
-          timestamp: { $type: 'timestamp' }
-        },
-        $setOnInsert: {
-          downloadId,
-          downloadTimestamp,
-          groupId: countryGroupId,
-          referralCode,
-          altcurrency,
-          finalized,
-          owner,
-          publisher: publisher || null,
-          transactionId,
-          payoutRate,
-          probi: bson.Decimal128.fromString(probi),
-          platform,
-          exclude: false
-        }
-      }
-    }
-  }))
-  const referralGroupsToInsert = groupReferrals(referralsToInsert)
-  for (let i = 0; i < referralGroupsToInsert.length; i += 1) {
-    const referralSet = referralGroupsToInsert[i]
-    const bufferedReferralSet = referrals.typeV1.toBuffer(referralSet)
-    // replaces redis queue message
-    await runtime.kafka.send(referrals.topic, bufferedReferralSet)
-  }
-
-  const bulkResult = await referralsCollection.bulkWrite(referralsToInsertIntoMongo)
-  if (!bulkResult.ok) {
-    // insert failed
-    const err = new Error('failed to insert')
-    runtime.captureException(err, {
-      extra: {
-        bulkResult,
-        transactionId
-      }
-    })
-    throw err
-  }
-
-  const counter = prometheus.getMetric('referral_received_counter')
-  counter.inc(referralsToInsert.length)
-
-  return {}
-}
-
 module.exports.routes = [
   braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
   braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement),
   braveHapi.routes.async().path('/v1/referrals/{transactionId}').whitelist().config(v1.findReferrals),
   braveHapi.routes.async().put().path('/v1/referrals/{transactionId}').whitelist().config(v1.createReferrals)
 ]
-
-module.exports.groupReferrals = groupReferrals
-
-function groupReferrals (objects) {
-  return objects.reduce((memo, obj) => {
-    const pub = obj.publisher || ''
-    const key = `${pub},${obj.owner}`
-    let cached = memo.hash[key]
-    if (!cached) {
-      cached = {
-        id: uuidV4(),
-        createdAt: memo.now,
-        transactionId: obj.transactionId,
-        publisher: pub,
-        owner: obj.owner,
-        altcurrency: obj.altcurrency,
-        inputs: []
-      }
-      memo.hash[key] = cached
-      memo.groups.push(cached)
-    }
-    cached.inputs.push({
-      finalized: obj.finalized.toISOString(),
-      referralCode: obj.referralCode,
-      downloadId: obj.downloadId,
-      downloadTimestamp: obj.downloadTimestamp.toISOString(),
-      countryGroupId: obj.countryGroupId,
-      platform: obj.platform,
-      payoutRate: obj.payoutRate,
-      probi: obj.probi
-    })
-    return memo
-  }, {
-    now: (new Date()).toISOString(),
-    hash: {},
-    groups: []
-  }).groups
-}
 
 module.exports.initialize = async (debug, runtime) => {
   await runtime.database.checkIndices(debug, [

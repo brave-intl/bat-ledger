@@ -99,6 +99,7 @@ services:
       - ledger
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
+      - ./bin:/usr/src/app/bin
   eyeshade-web:
     container_name: eyeshade-web
     ports:

@@ -21,24 +21,31 @@ class Kafka {
     this.runtime = runtime
     this.config = kafka
     this.topicHandlers = {}
+    this.topicConsumers = {}
   }
 
   async connect () {
-    // testing only
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Kafka producer not allowed in production')
-    }
-
     const partitionCount = 1
 
-    this._producer = new NProducer(this.config, null, partitionCount)
-    this._producer.on('error', error => {
+    const producer = new NProducer(this.config, null, partitionCount)
+    this._producer = producer
+    producer.on('error', error => {
       console.error(error)
       if (this.runtime.captureException) {
         this.runtime.captureException(error)
       }
     })
-    await this._producer.connect()
+    await producer.connect()
+    // DEBUGGING
+    // const analytics = await producer.enableAnalytics()
+    // await new Promise((resolve) => {
+    //   producer.once("analytics", resolve)
+    // })
+    // const health = await producer.checkHealth()
+    // console.log(
+    //   analytics,
+    //   health
+    // )
   }
 
   async producer () {
@@ -47,6 +54,63 @@ class Kafka {
     }
     await this.connect()
     return this._producer
+  }
+
+  async quit () {
+    let producerClose
+    try {
+      producerClose = await this._producer && this._producer.close()
+    } catch (e) {}
+    return Promise.all(
+      [
+        producerClose
+      ].concat(
+        Object.keys(this.topicConsumers).reduce((memo, key) =>
+          memo.concat(
+            this.topicConsumers[key].map((consumer) =>
+              consumer.close()
+            )
+          ), [])
+      )
+    )
+  }
+
+  addTopicConsumer (topic, consumer) {
+    const { topicConsumers } = this
+    let consumers = topicConsumers[topic]
+    if (!consumers) {
+      consumers = []
+      topicConsumers[topic] = consumers
+    }
+    consumers.push(consumer)
+  }
+
+  async sendMany ({ topic, encode }, messages) {
+    // map twice to err quickly on input errors
+    // use map during send to increase batching on network
+    return Promise.all(
+      messages.map(encode)
+        .map((msg) => this.send(topic, msg))
+    )
+  }
+
+  async mapMessages ({ decode, topic }, messages, fn) {
+    const results = []
+    const msgs = messages.map((msg) => {
+      const buf = Buffer.from(msg.value, 'binary')
+      try {
+        const { message } = decode(buf)
+        return message
+      } catch (e) {
+        // If the event is not well formed, capture the error and continue
+        this.runtime.captureException(e, { extra: { topic, message: msg } })
+        throw e
+      }
+    })
+    for (let i = 0; i < msgs.length; i += 1) {
+      results.push(await fn(msgs[i]))
+    }
+    return results
   }
 
   async send (topicName, message, _partition = null, _key = null, _partitionKey = null) {
@@ -64,6 +128,7 @@ class Kafka {
       const handler = this.topicHandlers[topic]
       const consumer = new NConsumer([topic], this.config)
       await consumer.connect()
+      this.addTopicConsumer(topic, consumer)
       consumer.consume(async (batchOfMessages, callback) => {
         // parallel processing on topic level
         const { runtime } = this
@@ -84,6 +149,7 @@ class Kafka {
           await consumer.commitLocalOffsetsForTopic(topic)
           callback()
         } catch (e) {
+          console.log(e)
           runtime.captureException(e, { extra: { topic } })
           debug('discontinuing topic processing', { topic })
         }
