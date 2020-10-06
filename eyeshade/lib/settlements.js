@@ -15,7 +15,6 @@ const v1 = avro.parse({
     { name: 'publisher', type: 'string' },
     { name: 'altcurrency', type: 'string' },
     { name: 'currency', type: 'string' },
-    { name: 'createdAt', type: 'string' },
     { name: 'owner', type: 'string' },
     { name: 'probi', type: 'string' },
     { name: 'amount', type: 'string' },

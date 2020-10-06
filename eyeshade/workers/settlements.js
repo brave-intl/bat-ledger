@@ -11,9 +11,8 @@ function consumer (runtime) {
   const { kafka, postgres } = runtime
   kafka.on(settlements.topic, async (messages, client) => {
     const inserting = {}
-    await kafka.mapMessages(settlements, messages, async (settlement) => {
+    await kafka.mapMessages(settlements, messages, async (settlement, timestamp) => {
       const {
-        createdAt,
         publisher,
         settlementId,
         altcurrency,
@@ -38,7 +37,7 @@ function consumer (runtime) {
         return
       }
       await transaction.insertFromSettlement(runtime, client, {
-        _id: ObjectID.createFromTime(+(new Date(createdAt)) / 1000),
+        _id: ObjectID.createFromTime(+(new Date(timestamp)) / 1000),
         publisher,
         address,
         settlementId,

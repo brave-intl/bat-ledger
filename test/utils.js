@@ -632,7 +632,6 @@ function createSettlement (options) {
     publisher: braveYoutubePublisher,
     altcurrency: 'BAT',
     currency: 'USD',
-    createdAt: (new Date()).toISOString(),
     owner: braveYoutubeOwner,
     probi: probi.times(0.95).toFixed(0),
     amount: probi.dividedBy('1e18').toFixed(18),

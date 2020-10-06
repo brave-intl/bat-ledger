@@ -97,10 +97,14 @@ class Kafka {
   async mapMessages ({ decode, topic }, messages, fn) {
     const results = []
     const msgs = messages.map((msg) => {
-      const buf = Buffer.from(msg.value, 'binary')
+      const { value, timestamp } = msg
+      const buf = Buffer.from(value, 'binary')
       try {
         const { message } = decode(buf)
-        return message
+        return {
+          value: message,
+          timestamp: new Date(timestamp)
+        }
       } catch (e) {
         // If the event is not well formed, capture the error and continue
         this.runtime.captureException(e, { extra: { topic, message: msg } })
@@ -108,7 +112,7 @@ class Kafka {
       }
     })
     for (let i = 0; i < msgs.length; i += 1) {
-      results.push(await fn(msgs[i]))
+      results.push(await fn(msgs[i].value, msgs[i].timestamp))
     }
     return results
   }

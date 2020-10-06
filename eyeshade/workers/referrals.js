@@ -73,9 +73,8 @@ module.exports.consumer = (runtime) => {
     const {
       rows: referralGroups
     } = await postgres.query(queries.getActiveCountryGroups(), [], true)
-    const firstId = new Date()
 
-    await kafka.mapMessages(referrals, messages, async (ref) => {
+    await kafka.mapMessages(referrals, messages, async (ref, timestamp) => {
       const {
         ownerId: owner,
         channelId: publisher,
@@ -96,7 +95,7 @@ module.exports.consumer = (runtime) => {
       const referral = {
         _id,
         probi,
-        firstId,
+        firstId: timestamp,
         transactionId
       }
 
