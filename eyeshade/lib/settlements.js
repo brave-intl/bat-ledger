@@ -9,7 +9,6 @@ const v1 = avro.parse({
   name: 'payout',
   doc: 'This message is sent when settlement message is to be sent',
   fields: [
-    { name: 'id', type: 'string' },
     { name: 'address', type: 'string' },
     { name: 'settlementId', type: 'string' },
     { name: 'publisher', type: 'string' },

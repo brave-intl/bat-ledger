@@ -1,4 +1,4 @@
-const { BigNumber, normalizeChannel } = require('bat-utils/lib/extras-utils')
+const { normalizeChannel } = require('bat-utils/lib/extras-utils')
 const _ = require('underscore')
 const { Runtime } = require('bat-utils')
 const transaction = require('../eyeshade/lib/transaction')
@@ -19,7 +19,7 @@ main().catch(console.error)
 
 async function main () {
   try {
-    // await runtime.kafka.producer()
+    await runtime.kafka.producer()
     await Promise.all([
       transferFailedReferrals(),
       transferFailedSettlements()
@@ -33,16 +33,21 @@ async function main () {
 
 async function transferFailedReferrals () {
   return connectToKafka('referrals', 'transactionId', referrals, async (queried) => {
-    const { publisher, transactionId } = queried[0]
-    const normalizedChannel = normalizeChannel(publisher)
-    const id = transaction.id.referral(transactionId, normalizedChannel)
+    const ids = queried.map(({
+      publisher,
+      transactionId
+    }) => {
+      const normalizedChannel = normalizeChannel(publisher)
+      return transaction.id.referral(transactionId, normalizedChannel)
+    })
     const { rows } = await runtime.postgres.query(`
-    select * from transactions where id = $1`, [id])
-    if (!rows.length) {
+    select count(*)
+    from transactions
+    where id = any($1::uuid[])`, [ids], true)
+    console.log('count', rows[0].count)
+    if (!(+rows[0].count)) {
       return []
     }
-    const altcurrency = 'BAT'
-    const scale = runtime.currency.alt2scale(altcurrency)
     return queried.map(({
       downloadId,
       downloadTimestamp,
@@ -52,22 +57,17 @@ async function transferFailedReferrals () {
       publisher,
       transactionId,
       groupId,
-      platform,
-      probi,
-      payoutRate
+      platform
     }) => ({
       downloadId,
       downloadTimestamp: new Date((downloadTimestamp || finalized).toISOString()),
-      finalized: new Date(finalized.toISOString()),
+      finalizedTimestamp: new Date(finalized.toISOString()),
       referralCode,
-      altcurrency,
-      owner,
-      publisher: publisher || null,
+      ownerId: owner,
+      channelId: publisher || null,
       transactionId,
       countryGroupId: groupId || originalRateId,
-      platform,
-      probi: probi.toString(),
-      payoutRate: payoutRate || (new BigNumber(probi)).dividedBy(scale).dividedBy(5).toString()
+      platform
     }))
   }, async ({ publisher, owner, transactionId }) => {
     return {
@@ -80,12 +80,20 @@ async function transferFailedReferrals () {
 
 async function transferFailedSettlements () {
   return connectToKafka('settlements', 'settlementId', settlements, async (queried) => {
-    const { publisher, transactionId, type } = queried[0]
-    const normalizedChannel = normalizeChannel(publisher)
-    const id = transaction.id.settlement(transactionId, normalizedChannel, type)
+    const ids = queried.map(({
+      publisher,
+      settlementId,
+      type
+    }) => {
+      const normalizedChannel = normalizeChannel(publisher)
+      return transaction.id.settlement(settlementId, normalizedChannel, type)
+    })
     const { rows } = await runtime.postgres.query(`
-    select * from transactions where id = $1`, [id])
-    if (!rows.length) {
+    select count(*)
+    from transactions
+    where id = any($1::uuid[])`, [ids], true)
+    console.log('count', rows[0].count)
+    if (!(+rows[0].count)) {
       return []
     }
     return queried.map(({
@@ -101,7 +109,6 @@ async function transferFailedSettlements () {
       probi,
       fees,
       fee,
-      timestamp,
       commission
     }) => ({
       publisher,
@@ -112,17 +119,16 @@ async function transferFailedSettlements () {
       hash,
       owner,
       type,
-      createdAt: (new Date(timestamp.getTime() * 1000)).toISOString(),
       amount: amount.toString(),
       probi: probi.toString(),
       fees: fees.toString(),
       fee: fee.toString(),
       commission: commission.toString()
     }))
-  }, async ({ publisher, owner, settlementId }) => {
+  }, async ({ channelId, ownerId, settlementId }) => {
     return {
-      publisher,
-      owner,
+      publisher: channelId,
+      owner: ownerId,
       settlementId
     }
   })
@@ -133,44 +139,31 @@ async function connectToKafka (collectionName, key, coder, transform, filter) {
   const ids = await collection.distinct(key)
   // filter out the empty strings
   const distinct = ids.filter((item) => item)
-  console.log('distinct', distinct)
   for (let i = 0; i < distinct.length; i += 1) {
-    console.log('finding', collectionName, distinct[i])
+    const targetId = distinct[i]
     const documents = await collection.find({
-      [key]: distinct[i],
+      [key]: targetId,
       migrated: { $ne: true }
     })
-    console.log('transforming', collectionName, distinct[i])
+    if (!documents.length) {
+      console.log('no documents found', collectionName)
+      continue
+    }
     const messages = await transform(documents)
-    console.log('transformed', messages.length, distinct[i])
     if (!messages.length) {
+      console.log('no messages transformed', collectionName)
       continue
     }
     // check for any buffer errors
-    console.log('encoding', collectionName, distinct[i])
-    const msgs = messages.map((msg) => coder.typeV1.toBuffer(msg))
-    console.log('sending', collectionName, distinct[i])
-    for (let j = 0; j < msgs.length; j += 1) {
-      await runtime.kafka.send(
-        coder.topic,
-        msgs[j]
-      )
-    }
-    // const toUpdate = messages.map((msg) => ({
-    //   updateMany: {
-    //     upsert: false,
-    //     filter: filter(msg),
-    //     update: {
-    //       $set: {
-    //         migrated: true
-    //       }
-    //     }
-    //   }
-    // }))
-    console.log('bulkwriting', collectionName, distinct[i])
-    // const result = await collection.bulkWrite(toUpdate)
-    // if (!result.ok) {
-    //   console.error(result)
-    // }
+    console.log('sending many', collectionName, targetId, messages.length)
+    await runtime.kafka.sendMany(coder, messages)
+    console.log('setting migrated', collectionName, targetId)
+    await collection.update({
+      [key]: targetId
+    }, {
+      $set: { migrated: true }
+    }, {
+      multi: true
+    })
   }
 }
