@@ -69,12 +69,6 @@ async function transferFailedReferrals () {
       countryGroupId: groupId || originalRateId,
       platform
     }))
-  }, async ({ publisher, owner, transactionId }) => {
-    return {
-      publisher,
-      owner,
-      transactionId
-    }
   })
 }
 
@@ -125,16 +119,10 @@ async function transferFailedSettlements () {
       fee: fee.toString(),
       commission: commission.toString()
     }))
-  }, async ({ channelId, ownerId, settlementId }) => {
-    return {
-      publisher: channelId,
-      owner: ownerId,
-      settlementId
-    }
   })
 }
 
-async function connectToKafka (collectionName, key, coder, transform, filter) {
+async function connectToKafka (collectionName, key, coder, transform) {
   const collection = runtime.database.get(collectionName, () => {})
   const ids = await collection.distinct(key)
   // filter out the empty strings
