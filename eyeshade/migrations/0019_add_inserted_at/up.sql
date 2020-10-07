@@ -7,6 +7,4 @@ inserted_at timestamp with time zone
 not null
 default current_timestamp;
 
-update transactions set inserted_at = created_at;
-
 $$) where not exists (select * from migrations where id = '0019');
