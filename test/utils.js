@@ -626,7 +626,6 @@ function createSettlement (options) {
   const amount = new BigNumber(Math.random() + '').times(10)
   const probi = amount.times(1e18)
   return Object.assign({
-    id: uuidV4(),
     settlementId: uuidV4(),
     address: uuidV4(),
     publisher: braveYoutubePublisher,
