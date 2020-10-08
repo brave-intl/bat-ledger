@@ -153,7 +153,6 @@ class Kafka {
           await consumer.commitLocalOffsetsForTopic(topic)
           callback()
         } catch (e) {
-          console.log(e)
           runtime.captureException(e, { extra: { topic } })
           debug('discontinuing topic processing', { topic })
         }
