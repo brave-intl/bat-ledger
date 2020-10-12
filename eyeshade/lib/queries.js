@@ -95,9 +95,9 @@ function getActiveCountryGroups () {
     id,
     amount,
     currency,
-    active_at as "activeAt"
+    active_at AS "activeAt"
   FROM geo_referral_groups
   WHERE
-    active_at <= current_timestamp
-  ORDER BY active_at desc;`
+    active_at <= CURRENT_TIMESTAMP
+  ORDER BY active_at DESC;`
 }

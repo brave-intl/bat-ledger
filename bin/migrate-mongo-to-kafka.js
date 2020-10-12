@@ -1,4 +1,4 @@
-const { normalizeChannel } = require('bat-utils/lib/extras-utils')
+const { normalizeChannel, dateToISO } = require('bat-utils/lib/extras-utils')
 const _ = require('underscore')
 const { Runtime } = require('bat-utils')
 const transaction = require('../eyeshade/lib/transaction')
@@ -40,10 +40,7 @@ async function transferFailedReferrals () {
       const normalizedChannel = normalizeChannel(publisher)
       return transaction.id.referral(transactionId, normalizedChannel)
     })
-    const { rows } = await runtime.postgres.query(`
-    select count(*)
-    from transactions
-    where id = any($1::uuid[])`, [ids], true)
+    const rows = await getTransactionsFromIds(ids)
     console.log('count', rows[0].count)
     if (!(+rows[0].count)) {
       return []
@@ -60,8 +57,8 @@ async function transferFailedReferrals () {
       platform
     }) => ({
       downloadId,
-      downloadTimestamp: new Date((downloadTimestamp || finalized).toISOString()),
-      finalizedTimestamp: new Date(finalized.toISOString()),
+      downloadTimestamp: dateToISO(downloadTimestamp || finalized),
+      finalizedTimestamp: dateToISO(finalized),
       referralCode,
       ownerId: owner,
       channelId: publisher || null,
@@ -82,10 +79,7 @@ async function transferFailedSettlements () {
       const normalizedChannel = normalizeChannel(publisher)
       return transaction.id.settlement(settlementId, normalizedChannel, type)
     })
-    const { rows } = await runtime.postgres.query(`
-    select count(*)
-    from transactions
-    where id = any($1::uuid[])`, [ids], true)
+    const rows = await getTransactionsFromIds(ids)
     console.log('count', rows[0].count)
     if (!(+rows[0].count)) {
       return []
@@ -122,7 +116,7 @@ async function transferFailedSettlements () {
   })
 }
 
-async function connectToKafka (collectionName, key, coder, transform) {
+async function connectToKafka (collectionName, key, coder, transformForKafka) {
   const collection = runtime.database.get(collectionName, () => {})
   const ids = await collection.distinct(key)
   // filter out the empty strings
@@ -134,12 +128,12 @@ async function connectToKafka (collectionName, key, coder, transform) {
       migrated: { $ne: true }
     })
     if (!documents.length) {
-      console.log('no documents found', collectionName)
+      console.log('no documents found', collectionName, targetId)
       continue
     }
-    const messages = await transform(documents)
+    const messages = await transformForKafka(documents)
     if (!messages.length) {
-      console.log('no messages transformed', collectionName)
+      console.log('no messages transformed', collectionName, targetId)
       continue
     }
     // check for any buffer errors
@@ -154,4 +148,12 @@ async function connectToKafka (collectionName, key, coder, transform) {
       multi: true
     })
   }
+}
+
+async function getTransactionsFromIds (ids) {
+  const { rows } = await runtime.postgres.query(`
+  select count(*)
+  from transactions
+  where id = any($1::uuid[])`, [ids], true)
+  return rows
 }

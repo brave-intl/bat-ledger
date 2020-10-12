@@ -49,10 +49,11 @@ class Kafka {
   }
 
   async producer () {
-    if (this._producer) {
+    if (!this._producer) {
+      await this.connect()
       return this._producer
     }
-    await this.connect()
+    await this._producer.connect()
     return this._producer
   }
 
