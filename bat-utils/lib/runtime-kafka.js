@@ -53,7 +53,6 @@ class Kafka {
       await this.connect()
       return this._producer
     }
-    await this._producer.connect()
     return this._producer
   }
 
