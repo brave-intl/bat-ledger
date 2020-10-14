@@ -1,3 +1,4 @@
+const fs = require('fs')
 const { getPublisherProps } = require('./extras-publisher')
 // this can be abstracted elsewhere as soon as we finish #274
 const BigNumber = require('bignumber.js')
@@ -13,6 +14,7 @@ const PROBI_FACTOR = 1e18
 
 module.exports = {
   PROBI_FACTOR,
+  setupKafkaCert,
   postgresToBoom,
   backfillDateRange,
   changeMonth,
@@ -28,6 +30,8 @@ module.exports = {
   normalizeChannel,
   justDate,
   btoa,
+  isPostgresConflict,
+  dateToISO,
   BigNumber
 }
 
@@ -37,8 +41,12 @@ function timeout (msec) {
   return new Promise((resolve) => setTimeout(resolve, msec))
 }
 
+function isPostgresConflict (e) {
+  return e && e.code === '23505'
+}
+
 function postgresToBoom (e) {
-  if (e && e.code === '23505') { // Unique constraint violation
+  if (isPostgresConflict(e)) { // Unique constraint violation
     return boom.conflict('Row with that id exists, updates are not allowed')
   } else {
     return boom.boomify(e)
@@ -56,7 +64,7 @@ function backfillDateRange ({
     }
   }
   return {
-    start,
+    start: new Date(start),
     until: changeMonth(start)
   }
 }
@@ -101,6 +109,9 @@ function documentOlderThan (olderThanDays, anchorTime, _id) {
 }
 
 function createdTimestamp (id) {
+  if (id instanceof Date) {
+    return id
+  }
   return new Date(parseInt(id.toHexString().substring(0, 8), 16) * 1000).getTime()
 }
 
@@ -166,4 +177,32 @@ function btoa (str) {
     buffer = Buffer.from(str.toString(), 'binary')
   }
   return buffer.toString('base64')
+}
+
+function setupKafkaCert () {
+  let kafkaSslCertificate = process.env.KAFKA_SSL_CERTIFICATE
+  const kafkaSslCertificateLocation = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+  let kafkaSslKey = process.env.KAFKA_SSL_KEY
+  const kafkaSslKeyLocation = process.env.KAFKA_SSL_KEY_LOCATION
+
+  if (kafkaSslCertificate) {
+    if (kafkaSslCertificateLocation && !fs.existsSync(kafkaSslCertificateLocation)) {
+      if (kafkaSslCertificate[0] === '{') {
+        const tmp = JSON.parse(kafkaSslCertificate)
+        kafkaSslCertificate = tmp.certificate
+        kafkaSslKey = tmp.key
+      }
+      fs.writeFileSync(kafkaSslCertificateLocation, kafkaSslCertificate)
+    }
+  }
+
+  if (kafkaSslKey) {
+    if (kafkaSslKeyLocation && !fs.existsSync(kafkaSslKeyLocation)) {
+      fs.writeFileSync(kafkaSslKeyLocation, kafkaSslKey)
+    }
+  }
+}
+
+function dateToISO (d) {
+  return d instanceof Date ? d.toISOString() : d
 }

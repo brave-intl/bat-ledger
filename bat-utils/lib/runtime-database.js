@@ -31,6 +31,10 @@ const Database = function (config, runtime) {
   this.db.addMiddleware(this.middleware)
 }
 
+Database.prototype.quit = function () {
+  return this.db._client.close()
+}
+
 Database.prototype.middleware = function (context) {
   const collection = context.collection
 
