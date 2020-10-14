@@ -36,16 +36,6 @@ class Kafka {
       }
     })
     await producer.connect()
-    // DEBUGGING
-    // const analytics = await producer.enableAnalytics()
-    // await new Promise((resolve) => {
-    //   producer.once("analytics", resolve)
-    // })
-    // const health = await producer.checkHealth()
-    // console.log(
-    //   analytics,
-    //   health
-    // )
   }
 
   async producer () {
