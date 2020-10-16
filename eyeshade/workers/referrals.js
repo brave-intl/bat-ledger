@@ -1,4 +1,9 @@
-const { insertFromReferrals } = require('../lib/transaction.js')
+const { normalizeChannel } = require('bat-utils/lib/extras-utils')
+
+const transaction = require('../lib/transaction')
+const referrals = require('../lib/referrals')
+const queries = require('../lib/queries')
+const countries = require('../lib/countries')
 
 exports.initialize = async (debug, runtime) => {
   await runtime.queue.create('referral-report')
@@ -46,7 +51,7 @@ exports.workers = {
                 }
               }
             }
-            await insertFromReferrals(runtime, client, Object.assign(doc, { transactionId }))
+            await transaction.insertFromReferrals(runtime, client, Object.assign(doc, { transactionId }))
           }
         } catch (e) {
           await client.query('ROLLBACK')
@@ -59,4 +64,60 @@ exports.workers = {
         client.release()
       }
     }
+}
+
+module.exports.consumer = (runtime) => {
+  const { kafka, postgres, config } = runtime
+  kafka.on(referrals.topic, async (messages, client) => {
+    const inserting = {}
+    const {
+      rows: referralGroups
+    } = await postgres.query(queries.getActiveCountryGroups(), [], true)
+
+    await kafka.mapMessages(referrals, messages, async (ref, timestamp) => {
+      const {
+        ownerId: owner,
+        channelId: publisher,
+        transactionId,
+        countryGroupId
+      } = ref
+
+      const {
+        probi
+      } = await countries.computeValue(runtime, countryGroupId, referralGroups)
+
+      const _id = {
+        owner,
+        // take care of empty string case
+        publisher: publisher || null,
+        altcurrency: config.altcurrency || 'BAT'
+      }
+      const referral = {
+        _id,
+        probi,
+        firstId: timestamp,
+        transactionId
+      }
+
+      const normalizedChannel = normalizeChannel(referral._id.publisher)
+      const id = transaction.id.referral(transactionId, normalizedChannel)
+      if (inserting[id]) {
+        return
+      }
+      inserting[id] = true
+      /*
+      because of this error
+      error: current transaction is aborted, commands ignored until end of transaction block
+      we have to check first
+      only one client should be inserting a given message
+      so we should not run into errors
+      */
+      const { rows } = await postgres.query(`
+      select * from transactions where id = $1`, [id], client)
+      if (rows.length) {
+        return
+      }
+      await transaction.insertFromReferrals(runtime, client, referral)
+    })
+  })
 }
