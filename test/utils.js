@@ -208,8 +208,49 @@ const cleanGrantDb = async () => {
     client.release()
   }
 }
+const agents = {
+  grants: {
+    global: grantGlobalAgent
+  },
+  redeemer: {
+    global: redeemerGlobalAgent
+  },
+  walletMigration: {
+    global: walletMigrationGlobalAgent
+  },
+  eyeshade: {
+    global: eyeshadeGlobalAgent,
+    referrals: eyeshadeReferralsAgent,
+    ads: eyeshadeAdsAgent,
+    publishers: eyeshadePublishersAgent,
+    stats: eyeshadeStatsAgent
+  },
+  ledger: {
+    global: ledgerGlobalAgent,
+    stats: ledgerStatsAgent
+  },
+  balance: {
+    global: balanceGlobalAgent
+  }
+}
 
 module.exports = {
+  transaction: {
+    ensureCount: ensureTransactionCount,
+    ensureArrived: ensureTransactionArrived
+  },
+  referral: {
+    create: createReferral,
+    sendLegacy: sendLegacyReferral,
+    createLegacy: createLegacyReferral
+  },
+  settlement: {
+    create: createSettlement,
+    sendLegacy: sendSettlement,
+    sendLegacySubmit: sendSettlementSubmit,
+    createLegacy: createLegacySettlement
+  },
+  token,
   signTxn,
   cleanRedeemerRedisDb,
   setupForwardingServer,
@@ -224,31 +265,7 @@ module.exports = {
   ok,
   debug,
   status,
-  agents: {
-    grants: {
-      global: grantGlobalAgent
-    },
-    redeemer: {
-      global: redeemerGlobalAgent
-    },
-    walletMigration: {
-      global: walletMigrationGlobalAgent
-    },
-    eyeshade: {
-      global: eyeshadeGlobalAgent,
-      referrals: eyeshadeReferralsAgent,
-      ads: eyeshadeAdsAgent,
-      publishers: eyeshadePublishersAgent,
-      stats: eyeshadeStatsAgent
-    },
-    ledger: {
-      global: ledgerGlobalAgent,
-      stats: ledgerStatsAgent
-    },
-    balance: {
-      global: balanceGlobalAgent
-    }
-  },
+  agents,
   assertWithinBounds,
   connectToDb,
   dbUri,
@@ -552,4 +569,124 @@ function signTxn (keypair, body, _octets) {
     octets,
     body
   }
+}
+
+function createLegacyReferral (timestamp, groupId) {
+  const txId = uuidV4().toLowerCase()
+  return {
+    txId,
+    referral: {
+      downloadId: uuidV4().toLowerCase(),
+      channelId: braveYoutubePublisher,
+      platform: 'ios',
+      referralCode: uuidV4().toLowerCase(),
+      finalized: timestamp || new Date(),
+      groupId,
+      downloadTimestamp: timestamp || new Date(),
+      ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
+    }
+  }
+}
+
+function createReferral (options = {}) {
+  const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
+  return Object.assign({
+    transactionId: uuidV4(),
+    ownerId: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    channelId: braveYoutubePublisher,
+    finalizedTimestamp: (new Date()).toISOString(),
+    downloadId: uuidV4(),
+    downloadTimestamp: (new Date()).toISOString(),
+    countryGroupId: originalRateId,
+    platform: 'desktop',
+    referralCode: 'ABC123'
+  }, options)
+}
+
+async function ensureTransactionCount (t, expect) {
+  let rows = []
+  do {
+    ;({ rows } = await t.context.runtime.postgres.query('select * from transactions'))
+  } while (rows.length !== expect && (await timeout(1000) || true))
+  return rows
+}
+
+async function ensureTransactionArrived (t, id) {
+  let seen = []
+  do {
+    ;({ rows: seen } = await t.context.runtime.postgres.query(`
+    select * from transactions where id = $1
+    `, [id]))
+    console.log('checking for', id)
+  } while (seen.length === 0 && (await timeout(1000) || true))
+  return seen
+}
+
+function createSettlement (options) {
+  const amount = new BigNumber(Math.random() + '').times(10)
+  const probi = amount.times(1e18)
+  return Object.assign({
+    settlementId: uuidV4(),
+    address: uuidV4(),
+    publisher: braveYoutubePublisher,
+    altcurrency: 'BAT',
+    currency: 'USD',
+    owner: braveYoutubeOwner,
+    probi: probi.times(0.95).toFixed(0),
+    amount: probi.dividedBy('1e18').toFixed(18),
+    commission: '0',
+    fee: '0',
+    fees: probi.times(0.05).toFixed(0),
+    type: 'contribution'
+  }, options || {})
+}
+
+function createLegacySettlement (options) {
+  const amount = new BigNumber(Math.random() + '').times(10)
+  const probiTotal = amount.times(1e18)
+  const probi = probiTotal.times(0.95)
+  const fees = probiTotal.times(0.05)
+  return Object.assign({
+    altcurrency: 'BAT',
+    currency: 'USD',
+    address: uuidV4(),
+    publisher: braveYoutubePublisher,
+    owner: braveYoutubeOwner,
+    amount: probi.dividedBy('1e18').toFixed(18),
+    probi: probi.toFixed(0),
+    fees: fees.toFixed(0),
+    fee: (new BigNumber(0)).toString(),
+    commission: (new BigNumber(0)).toString(),
+    transactionId: uuidV4(),
+    type: 'contribution',
+    hash: uuidV4()
+  }, options || {})
+}
+
+async function sendSettlement (
+  settlements,
+  agent = agents.eyeshade.publishers
+) {
+  return agent.post('/v2/publishers/settlement')
+    .send(settlements)
+    .expect(ok)
+}
+
+async function sendSettlementSubmit (
+  identifiers,
+  agent = agents.eyeshade.publishers
+) {
+  return agent.post('/v2/publishers/settlement/submit')
+    .send(identifiers)
+    .expect(ok)
+}
+
+async function sendLegacyReferral (
+  txId,
+  referrals,
+  agent = agents.eyeshade.referrals
+) {
+  return agent.put(`/v1/referrals/${txId}`)
+    .send(referrals)
+    .expect(ok)
 }

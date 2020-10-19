@@ -48,6 +48,7 @@ const services = {
       module.exports.postgres =
         { url                   : process.env.DATABASE_URL || 'postgres://localhost/test'
         , roURL                 : process.env.DATABASE_RO_URL || false
+        , schemaVersion         : require('./eyeshade/migrations/current')
         , schemaVersionCheck    : true
         }
 
@@ -99,6 +100,8 @@ module.exports =
     grants: process.env.DISABLE_GRANTS || false
   },
   forward: {
+    settlements: process.env.FORWARD_SETTLEMENTS_TO_KAFKA || false,
+    referrals: process.env.FORWARD_REFERRALS_TO_KAFKA || false,
     wallets: process.env.FORWARD_WALLET_TO_GRANTS || false,
     grants: process.env.FORWARD_TO_GRANTS || false
   },

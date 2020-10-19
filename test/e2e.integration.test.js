@@ -226,7 +226,7 @@ WHERE
     rows
   } = await runtime.postgres.query(select)
 
-  t.deepEqual(rows.map((entry) => _.omit(entry, ['from_account', 'to_account', 'document_id', 'id'])), [{
+  t.deepEqual(rows.map((entry) => _.omit(entry, ['from_account', 'to_account', 'document_id', 'id', 'inserted_at'])), [{
     created_at: newYear,
     description: 'payout for contribution',
     transaction_type: 'contribution_settlement',

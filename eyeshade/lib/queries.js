@@ -5,6 +5,7 @@ module.exports = {
   timeConstraintSettlements,
   earnings,
   referralGroups,
+  getActiveCountryGroups,
   votesId
 }
 
@@ -86,4 +87,17 @@ FROM geo_referral_groups, (
 WHERE
     geo_referral_groups.active_at <= $1
 AND countries.group_id = geo_referral_groups.id;`
+}
+
+function getActiveCountryGroups () {
+  return `
+  SELECT
+    id,
+    amount,
+    currency,
+    active_at AS "activeAt"
+  FROM geo_referral_groups
+  WHERE
+    active_at <= CURRENT_TIMESTAMP
+  ORDER BY active_at DESC;`
 }
