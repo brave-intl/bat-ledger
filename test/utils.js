@@ -323,7 +323,6 @@ function cleanPgDb (postgres) {
     const client = await postgres.connect()
     try {
       await Promise.all([
-        client.query('DELETE from payout_reports_ads;'),
         client.query('DELETE from transactions;'),
         client.query('DELETE from surveyor_groups;'),
         client.query('DELETE from geo_referral_countries;'),
