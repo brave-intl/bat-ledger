@@ -10,12 +10,13 @@ const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuidV4 = require('uuid/v4')
-const BigNumber = require('bignumber.js')
 const pg = require('pg')
 const {
   timeout,
+  BigNumber,
   uint8tohex
 } = require('bat-utils/lib/extras-utils')
+const Postgres = require('bat-utils/lib/runtime-postgres')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
 const Pool = pg.Pool
@@ -36,7 +37,9 @@ const {
   BAT_MONGODB_URI,
   BAT_REDEEMER_REDIS_URL,
   GRANT_TOKEN,
-  REDEEMER_TOKEN
+  REDEEMER_TOKEN,
+  BAT_WALLET_MIGRATION_SERVER,
+  WALLET_MIGRATION_TOKEN
 } = process.env
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
@@ -96,6 +99,7 @@ const eyeshadePublishersAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(A
 const grantGlobalAgent = agent(BAT_GRANT_SERVER).set(AUTH_KEY, token(GRANT_TOKEN))
 
 const redeemerGlobalAgent = agent(BAT_REDEEMER_SERVER).set(AUTH_KEY, token(REDEEMER_TOKEN))
+const walletMigrationGlobalAgent = agent(BAT_WALLET_MIGRATION_SERVER).set(AUTH_KEY, WALLET_MIGRATION_TOKEN)
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -204,8 +208,49 @@ const cleanGrantDb = async () => {
     client.release()
   }
 }
+const agents = {
+  grants: {
+    global: grantGlobalAgent
+  },
+  redeemer: {
+    global: redeemerGlobalAgent
+  },
+  walletMigration: {
+    global: walletMigrationGlobalAgent
+  },
+  eyeshade: {
+    global: eyeshadeGlobalAgent,
+    referrals: eyeshadeReferralsAgent,
+    ads: eyeshadeAdsAgent,
+    publishers: eyeshadePublishersAgent,
+    stats: eyeshadeStatsAgent
+  },
+  ledger: {
+    global: ledgerGlobalAgent,
+    stats: ledgerStatsAgent
+  },
+  balance: {
+    global: balanceGlobalAgent
+  }
+}
 
 module.exports = {
+  transaction: {
+    ensureCount: ensureTransactionCount,
+    ensureArrived: ensureTransactionArrived
+  },
+  referral: {
+    create: createReferral,
+    sendLegacy: sendLegacyReferral,
+    createLegacy: createLegacyReferral
+  },
+  settlement: {
+    create: createSettlement,
+    sendLegacy: sendSettlement,
+    sendLegacySubmit: sendSettlementSubmit,
+    createLegacy: createLegacySettlement
+  },
+  token,
   signTxn,
   cleanRedeemerRedisDb,
   setupForwardingServer,
@@ -214,35 +259,13 @@ module.exports = {
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
-  createSurveyor,
   getSurveyor,
   fetchReport,
   formURL,
   ok,
   debug,
   status,
-  agents: {
-    grants: {
-      global: grantGlobalAgent
-    },
-    redeemer: {
-      global: redeemerGlobalAgent
-    },
-    eyeshade: {
-      global: eyeshadeGlobalAgent,
-      referrals: eyeshadeReferralsAgent,
-      ads: eyeshadeAdsAgent,
-      publishers: eyeshadePublishersAgent,
-      stats: eyeshadeStatsAgent
-    },
-    ledger: {
-      global: ledgerGlobalAgent,
-      stats: ledgerStatsAgent
-    },
-    balance: {
-      global: balanceGlobalAgent
-    }
-  },
+  agents,
   assertWithinBounds,
   connectToDb,
   dbUri,
@@ -263,8 +286,36 @@ function cleanDbs () {
     cleanEyeshadeDb(),
     cleanLedgerDb(),
     cleanGrantDb(),
+    cleanEyeshadePgDb(),
+    cleanWalletMigrationDb(),
     cleanRedeemerRedisDb()
   ])
+}
+
+async function cleanWalletMigrationDb () {
+  const url = process.env.BAT_WALLET_MIGRATION_POSTGRES_URL
+  const pool = new Pool({ connectionString: url, ssl: false })
+  const client = await pool.connect()
+  try {
+    await Promise.all([
+      client.query('DELETE from claim_creds'),
+      client.query('DELETE from claims'),
+      client.query('DELETE from wallets'),
+      client.query('DELETE from promotions')
+    ])
+  } finally {
+    client.release()
+  }
+}
+
+async function cleanEyeshadePgDb () {
+  const postgres = new Postgres({
+    postgres: {
+      url: process.env.BAT_POSTGRES_URL
+    }
+  })
+  const cleaner = cleanPgDb(postgres)
+  return cleaner()
 }
 
 function cleanPgDb (postgres) {
@@ -293,25 +344,6 @@ function getSurveyor (id) {
   return ledgerGlobalAgent
     .get(`/v2/surveyor/contribution/${id || 'current'}`)
     .expect(ok)
-}
-
-function createSurveyor (options = {}) {
-  const {
-    votes = 1,
-    rate = 1,
-    // probi is optional
-    probi
-  } = options
-  const url = '/v2/surveyor/contribution'
-  const data = {
-    adFree: {
-      fee: { USD: 5 },
-      votes,
-      altcurrency: 'BAT',
-      probi: probi || new BigNumber(votes * rate).times('1e18').toString()
-    }
-  }
-  return ledgerGlobalAgent.post(url).send(data).expect(ok)
 }
 
 function setupCreatePayload ({
@@ -400,7 +432,7 @@ async function setupForwardingServer ({
   routes,
   config,
   initers = [],
-  token
+  token = uuidV4()
 }) {
   const conf = _.extend({
     sentry: {},
@@ -425,6 +457,19 @@ async function setupForwardingServer ({
       grants: '1'
     },
     wreck: {
+      walletMigration: {
+        baseUrl: process.env.BAT_WALLET_MIGRATION_SERVER,
+        headers: {
+          Authorization: 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
+          'Content-Type': 'application/json'
+        }
+      },
+      rewards: {
+        baseUrl: process.env.BAT_REWARDS_SERVER,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      },
       grants: {
         baseUrl: process.env.BAT_GRANT_SERVER,
         headers: {
@@ -482,6 +527,7 @@ async function setupForwardingServer ({
   }
   const agent = agentAutoAuth(server.listener, token)
   return {
+    server,
     runtime,
     agent
   }
@@ -502,7 +548,8 @@ async function cleanRedeemerRedisDb () {
   })
 }
 
-function signTxn (keypair, body, octets) {
+function signTxn (keypair, body, _octets) {
+  let octets = _octets
   if (!octets) {
     octets = JSON.stringify(body)
   }
@@ -519,6 +566,127 @@ function signTxn (keypair, body, octets) {
   })
   return {
     headers,
-    octets
+    octets,
+    body
   }
+}
+
+function createLegacyReferral (timestamp, groupId) {
+  const txId = uuidV4().toLowerCase()
+  return {
+    txId,
+    referral: {
+      downloadId: uuidV4().toLowerCase(),
+      channelId: braveYoutubePublisher,
+      platform: 'ios',
+      referralCode: uuidV4().toLowerCase(),
+      finalized: timestamp || new Date(),
+      groupId,
+      downloadTimestamp: timestamp || new Date(),
+      ownerId: 'publishers#uuid:' + uuidV4().toLowerCase()
+    }
+  }
+}
+
+function createReferral (options = {}) {
+  const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
+  return Object.assign({
+    transactionId: uuidV4(),
+    ownerId: 'publishers#uuid:' + uuidV4().toLowerCase(),
+    channelId: braveYoutubePublisher,
+    finalizedTimestamp: (new Date()).toISOString(),
+    downloadId: uuidV4(),
+    downloadTimestamp: (new Date()).toISOString(),
+    countryGroupId: originalRateId,
+    platform: 'desktop',
+    referralCode: 'ABC123'
+  }, options)
+}
+
+async function ensureTransactionCount (t, expect) {
+  let rows = []
+  do {
+    ;({ rows } = await t.context.runtime.postgres.query('select * from transactions'))
+  } while (rows.length !== expect && (await timeout(1000) || true))
+  return rows
+}
+
+async function ensureTransactionArrived (t, id) {
+  let seen = []
+  do {
+    ;({ rows: seen } = await t.context.runtime.postgres.query(`
+    select * from transactions where id = $1
+    `, [id]))
+    console.log('checking for', id)
+  } while (seen.length === 0 && (await timeout(1000) || true))
+  return seen
+}
+
+function createSettlement (options) {
+  const amount = new BigNumber(Math.random() + '').times(10)
+  const probi = amount.times(1e18)
+  return Object.assign({
+    settlementId: uuidV4(),
+    address: uuidV4(),
+    publisher: braveYoutubePublisher,
+    altcurrency: 'BAT',
+    currency: 'USD',
+    owner: braveYoutubeOwner,
+    probi: probi.times(0.95).toFixed(0),
+    amount: probi.dividedBy('1e18').toFixed(18),
+    commission: '0',
+    fee: '0',
+    fees: probi.times(0.05).toFixed(0),
+    type: 'contribution'
+  }, options || {})
+}
+
+function createLegacySettlement (options) {
+  const amount = new BigNumber(Math.random() + '').times(10)
+  const probiTotal = amount.times(1e18)
+  const probi = probiTotal.times(0.95)
+  const fees = probiTotal.times(0.05)
+  return Object.assign({
+    altcurrency: 'BAT',
+    currency: 'USD',
+    address: uuidV4(),
+    publisher: braveYoutubePublisher,
+    owner: braveYoutubeOwner,
+    amount: probi.dividedBy('1e18').toFixed(18),
+    probi: probi.toFixed(0),
+    fees: fees.toFixed(0),
+    fee: (new BigNumber(0)).toString(),
+    commission: (new BigNumber(0)).toString(),
+    transactionId: uuidV4(),
+    type: 'contribution',
+    hash: uuidV4()
+  }, options || {})
+}
+
+async function sendSettlement (
+  settlements,
+  agent = agents.eyeshade.publishers
+) {
+  return agent.post('/v2/publishers/settlement')
+    .send(settlements)
+    .expect(ok)
+}
+
+async function sendSettlementSubmit (
+  identifiers,
+  agent = agents.eyeshade.publishers
+) {
+  return agent.post('/v2/publishers/settlement/submit')
+    .send(identifiers)
+    .expect(ok)
+}
+
+async function sendLegacyReferral (
+  txId,
+  referrals,
+  agent = agents.eyeshade.referrals
+) {
+  return agent.put(`/v1/referrals/${txId}`)
+    .send(referrals)
+    .expect(ok)
 }

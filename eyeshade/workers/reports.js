@@ -74,7 +74,7 @@ async function waitForTransacted (runtime, surveyorId) {
   let row
   const start = new Date()
   do {
-    await timeout(60 * 1000)
+    await timeout(5 * 1000)
     const statement = `
     select *
     from votes

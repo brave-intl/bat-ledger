@@ -1,6 +1,5 @@
 const boom = require('boom')
 const bson = require('bson')
-const BigNumber = require('bignumber.js')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 const _ = underscore
@@ -9,20 +8,13 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const extrasUtils = utils.extras.utils
+const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
+const countries = require('../lib/countries')
+const referrals = require('../lib/referrals')
 
 const v1 = {}
-
-const getActiveGroups = `
-SELECT
-  id,
-  amount,
-  currency,
-  active_at as "activeAt"
-FROM geo_referral_groups
-WHERE
-  active_at <= current_timestamp;`
 
 const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 
@@ -130,12 +122,17 @@ v1.findReferrals = {
 
 v1.getReferralGroups = {
   handler: (runtime) => async (request, h) => {
-    let { fields } = request.query
-    const statement = queries.referralGroups()
+    let { fields, resolve, activeAt } = request.query
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
     const allFields = ['id'].concat(fields)
 
-    const { rows } = await runtime.postgres.query(statement, [], true)
+    const statement = queries.referralGroups()
+    let { rows } = await runtime.postgres.query(statement, [activeAt || new Date()], true)
+
+    if (resolve && fields.includes('codes')) {
+      rows = countries.resolve(rows)
+    }
+
     return rows.map((row) => _.pick(row, allFields))
   },
 
@@ -153,7 +150,8 @@ v1.getReferralGroups = {
       authorization: Joi.string().required()
     }).unknown(),
     query: Joi.object().keys({
-      active: Joi.boolean().optional().description('optionally filter active or inactive groups'),
+      resolve: Joi.boolean().optional().description('optionally resolve groups so that only the active categorization shows'),
+      activeAt: Joi.date().iso().optional().description('a parameter to get active group state at a given point in time'),
       fields: Joi.alternatives().try(
         fieldValidator,
         Joi.array().items(fieldValidator)
@@ -252,15 +250,15 @@ v1.createReferrals = {
       const debug = braveHapi.debug(module, request)
       const { database, postgres, currency, queue, prometheus, config } = runtime
       const { altcurrency = 'BAT' } = config
-      const referrals = database.get('referrals', debug)
+      const referralsCollection = database.get('referrals', debug)
       const factor = currency.alt2scale(altcurrency)
       const referralsToInsert = []
       // get rates once at beginning (uses cache too)
       const {
         rows: referralGroups
-      } = await postgres.query(getActiveGroups, [], true)
-      referralGroups.sort((a) => a.activeAt)
+      } = await postgres.query(queries.getActiveCountryGroups(), [], true)
 
+      const referralsToSendToKafka = []
       for (let i = 0; i < payload.length; i += 1) {
         const referral = payload[i]
         const {
@@ -268,30 +266,29 @@ v1.createReferrals = {
           finalized,
           downloadId,
           downloadTimestamp,
-          ownerId: owner,
+          ownerId,
           referralCode = '',
-          channelId: publisher,
+          channelId,
           groupId: passedGroupId
         } = referral
 
-        const groupId = passedGroupId || originalRateId
-        const config = _.findWhere(referralGroups, {
-          // no group has falsey id
-          id: groupId
-        })
-        if (!config) {
-          throw boom.notFound('referral group not found')
-        }
         const {
-          amount: groupAmount,
-          currency: groupCurrency
-        } = config
+          countryGroupId,
+          value: countryAmount,
+          probi
+        } = await countries.computeValue(runtime, passedGroupId, referralGroups)
 
-        const probiString = await currency.fiat2alt(groupCurrency, groupAmount, altcurrency)
-        let probi = new BigNumber(probiString)
-        const payoutRate = probi.dividedBy(factor).dividedBy(groupAmount).toString()
-        probi = bson.Decimal128.fromString(probi.toString())
-
+        referralsToSendToKafka.push({
+          downloadId,
+          downloadTimestamp,
+          countryGroupId,
+          referralCode,
+          finalizedTimestamp: finalized,
+          channelId,
+          ownerId,
+          platform,
+          transactionId
+        })
         referralsToInsert.push({
           // previous upsert was redundant
           updateOne: {
@@ -306,15 +303,15 @@ v1.createReferrals = {
               $setOnInsert: {
                 downloadId,
                 downloadTimestamp,
-                groupId,
+                groupId: countryGroupId,
                 referralCode,
                 altcurrency,
                 finalized: new Date(finalized),
-                owner,
-                publisher: publisher || null,
+                owner: ownerId,
+                publisher: channelId || null,
                 transactionId,
-                payoutRate,
-                probi,
+                payoutRate: probi.dividedBy(factor).dividedBy(countryAmount).toString(),
+                probi: bson.Decimal128.fromString(probi.toString()),
                 platform,
                 exclude: false
               }
@@ -322,7 +319,10 @@ v1.createReferrals = {
           }
         })
       }
-      const bulkResult = await referrals.bulkWrite(referralsToInsert)
+      if (runtime.config.forward.referrals) {
+        await runtime.kafka.sendMany(referrals, referralsToSendToKafka)
+      }
+      const bulkResult = await referralsCollection.bulkWrite(referralsToInsert)
       if (!bulkResult.ok) {
         // insert failed
         const err = new Error('failed to insert')
@@ -335,9 +335,11 @@ v1.createReferrals = {
         throw err
       }
 
-      await queue.send(debug, 'referral-report', {
-        transactionId
-      })
+      if (!runtime.config.forward.referrals) {
+        await queue.send(debug, 'referral-report', {
+          transactionId
+        })
+      }
       prometheus.getMetric('referral_received_counter').inc(bulkResult.upsertedCount)
 
       return {}

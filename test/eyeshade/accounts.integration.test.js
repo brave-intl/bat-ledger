@@ -78,6 +78,32 @@ const referralsBar = {
   }
 }
 
+const manualTransaction = (ownerId) => ({
+  id: uuidV4(),
+  createdAt: +(new Date()) / 1000,
+  description: 'a random manual tx',
+  transactionType: 'manual',
+  documentId: uuidV4(),
+  fromAccount: toOwnerId,
+  fromAccountType: 'uphold',
+  toAccount: ownerId,
+  toAccountType: 'uphold',
+  amount: 1
+})
+
+const manualTransactionSettlement = (ownerId) => ({
+  probi: '1000000000000000000',
+  fees: '0',
+  altcurrency: 'BAT',
+  _id: docId,
+  type: 'manual',
+  owner: ownerId,
+  settlementId: settlementId,
+  address: uuidV4().toLowerCase(),
+  amount: '10',
+  currency: 'BAT'
+})
+
 test.afterEach.always(cleanPgDb(runtime.postgres))
 test.afterEach.always(cleanGrantDb)
 
@@ -154,8 +180,6 @@ test('check settlement totals', async t => {
 })
 
 test('check earnings total', async t => {
-  t.plan(4)
-
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
@@ -193,16 +217,20 @@ test('check earnings total', async t => {
     throw e
   }
 
-  try {
-    const { body } = await agents.eyeshade.publishers.get(`/v1/accounts/${encodeURIComponent(ownerId)}/transactions`)
-    t.true(body.length >= 1)
-    const count = body.reduce((memo, transaction) => _.keys(transaction).reduce((memo, key) => {
-      return memo + (transaction[key] == null ? 1 : 0)
-    }, memo), 0)
-    t.is(count, 0)
-  } finally {
-    client.release()
-  }
+  await insertFromSettlement(runtime, client, referralSettlement)
+  await insertFromSettlement(runtime, client, _.assign({}, referralSettlement, {
+    publisher: 'bar.com',
+    amount: '12',
+    probi: '12000000000000000000'
+  }))
+
+  const transactionsURL = `/v1/accounts/${encodeURIComponent(ownerId)}/transactions`
+  const { body } = await agents.eyeshade.publishers.get(transactionsURL).expect(ok)
+  t.true(body.length >= 1)
+  const count = body.reduce((memo, transaction) => _.keys(transaction).reduce((memo, key) => {
+    return memo + (transaction[key] == null ? 1 : 0)
+  }, memo), 0)
+  t.is(count, 0)
 })
 
 test('create ads payment fails if bad values are given', async (t) => {
@@ -250,7 +278,6 @@ test('ads payment api inserts a transaction into the table and errs on subsequen
 })
 
 test('a uuid can be sent as an account id', async (t) => {
-  t.plan(2)
   let response
 
   const uuid = uuidV4()
@@ -258,48 +285,17 @@ test('a uuid can be sent as an account id', async (t) => {
   response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   t.deepEqual(response.body, [], 'no txs matched')
 
-  const transaction = {
-    id: uuidV4(),
-    createdAt: +(new Date()) / 1000,
-    description: 'a random manual tx',
-    transactionType: 'manual',
-    documentId: uuidV4(),
-    fromAccount: toOwnerId,
-    fromAccountType: 'uphold',
-    toAccount: uuid,
-    toAccountType: 'uphold',
-    amount: 1
-  }
-  await insertTransaction(runtime, null, transaction)
+  await insertTransaction(runtime, null, manualTransaction(uuid))
+
+  response = await agents.eyeshade.publishers.get(url).send().expect(ok)
+  const { body: empty } = response
+  t.is(empty.length, 1, 'zero txs are matched')
+
+  await insertFromSettlement(runtime, null, manualTransactionSettlement(uuid))
+
   response = await agents.eyeshade.publishers.get(url).send().expect(ok)
   const { body } = response
-  t.is(body.length, 1, 'one tx is matched')
-})
-
-test('an empty channel can exist', async (t) => {
-  t.plan(3)
-  let response
-
-  const url = `/v1/accounts/${encodeURIComponent(ownerId)}/transactions`
-  response = await agents.eyeshade.publishers.get(url).send().expect(ok)
-  t.deepEqual(response.body, [], 'no tx matched')
-
-  const transaction = {
-    id: uuidV4(),
-    createdAt: +(new Date()) / 1000,
-    description: 'a random manual tx',
-    transactionType: 'manual',
-    documentId: uuidV4(),
-    fromAccount: toOwnerId,
-    fromAccountType: 'uphold',
-    toAccount: ownerId,
-    toAccountType: 'uphold',
-    amount: 1
-  }
-  await insertTransaction(runtime, null, transaction)
-  response = await agents.eyeshade.publishers.get(url).send().expect(ok)
-  const { body } = response
+  t.is(body.length, 3, 'three txs matched')
   const tx = body[0]
-  t.is(body.length, 1, 'only one tx')
   t.is(tx.channel, '', 'channel can be empty')
 })

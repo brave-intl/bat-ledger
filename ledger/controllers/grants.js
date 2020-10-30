@@ -7,56 +7,16 @@ const v3 = {}
 const v4 = {}
 const v5 = {}
 
-const safetynetPassthrough = (handler) => (runtime) => async (request, h) => {
-  const endpoint = '/v1/attestations/safetynet'
-  const {
-    config
-  } = runtime
-  const {
-    captcha
-  } = config
-
-  const url = captcha.url + endpoint
-  const headers = {
-    Authorization: 'Bearer ' + captcha.access_token,
-    'Content-Type': 'application/json'
-  }
-  const body = JSON.stringify({
-    token: request.headers['safetynet-token']
-  })
-
-  try {
-    await braveHapi.wreck.post(url, {
-      headers,
-      payload: body
-    })
-  } catch (e) {
-    let errPayload = e
-    try {
-      if (e && e.data && e.data.payload && e.data.payload.toString) {
-        const parsed = JSON.parse(e.data.payload.toString())
-        errPayload = parsed.message
-      }
-    } catch (err) {}
-    if (errPayload.isBoom) {
-      throw errPayload
-    }
-    throw boom.badData(errPayload)
-  }
-  const curried = handler(runtime)
-  return curried(request, h)
-}
-
 v3.read = {
-  handler: safetynetPassthrough(() => async () => {
-    throw boom.resourceGone()
-  })
+  handler: () => async () => {
+    throw boom.badData()
+  }
 }
 
 v5.read = {
-  handler: safetynetPassthrough(() => async () => {
-    throw boom.resourceGone()
-  })
+  handler: () => async () => {
+    throw boom.badData()
+  }
 }
 
 v4.read = {

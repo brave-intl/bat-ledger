@@ -21,29 +21,96 @@ class Kafka {
     this.runtime = runtime
     this.config = kafka
     this.topicHandlers = {}
+    this.topicConsumers = {}
   }
 
   async connect () {
-    // testing only
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Kafka producer not allowed in production')
-    }
-
     const partitionCount = 1
 
-    this.producer = new NProducer(this.config, null, partitionCount)
-    this.producer.on('error', error => {
+    const producer = new NProducer(this.config, null, partitionCount)
+    this._producer = producer
+    producer.on('error', error => {
       console.error(error)
       if (this.runtime.captureException) {
         this.runtime.captureException(error)
       }
     })
-    await this.producer.connect()
+    await producer.connect()
+  }
+
+  async producer () {
+    if (!this._producer) {
+      await this.connect()
+      return this._producer
+    }
+    return this._producer
+  }
+
+  async quit () {
+    let producerClose
+    try {
+      producerClose = await this._producer && this._producer.close()
+    } catch (e) {}
+    return Promise.all(
+      [
+        producerClose
+      ].concat(
+        Object.keys(this.topicConsumers).reduce((memo, key) =>
+          memo.concat(
+            this.topicConsumers[key].map((consumer) =>
+              consumer.close()
+            )
+          ), [])
+      )
+    )
+  }
+
+  addTopicConsumer (topic, consumer) {
+    const { topicConsumers } = this
+    let consumers = topicConsumers[topic]
+    if (!consumers) {
+      consumers = []
+      topicConsumers[topic] = consumers
+    }
+    consumers.push(consumer)
+  }
+
+  async sendMany ({ topic, encode }, messages) {
+    // map twice to err quickly on input errors
+    // use map during send to increase batching on network
+    return Promise.all(
+      messages.map(encode)
+        .map((msg) => this.send(topic, msg))
+    )
+  }
+
+  async mapMessages ({ decode, topic }, messages, fn) {
+    const results = []
+    const msgs = messages.map((msg) => {
+      const { value, timestamp } = msg
+      const buf = Buffer.from(value, 'binary')
+      try {
+        const { message } = decode(buf)
+        return {
+          value: message,
+          timestamp: new Date(timestamp)
+        }
+      } catch (e) {
+        // If the event is not well formed, capture the error and continue
+        this.runtime.captureException(e, { extra: { topic, message: msg } })
+        throw e
+      }
+    })
+    for (let i = 0; i < msgs.length; i += 1) {
+      results.push(await fn(msgs[i].value, msgs[i].timestamp))
+    }
+    return results
   }
 
   async send (topicName, message, _partition = null, _key = null, _partitionKey = null) {
     // return await producer.send("my-topic", "my-message", 0, "my-key", "my-partition-key")
-    return this.producer.send(topicName, message, _partition, _key, _partitionKey)
+    const producer = await this.producer()
+    return producer.send(topicName, message, _partition, _key, _partitionKey)
   }
 
   on (topic, handler) {
@@ -55,6 +122,7 @@ class Kafka {
       const handler = this.topicHandlers[topic]
       const consumer = new NConsumer([topic], this.config)
       await consumer.connect()
+      this.addTopicConsumer(topic, consumer)
       consumer.consume(async (batchOfMessages, callback) => {
         // parallel processing on topic level
         const { runtime } = this

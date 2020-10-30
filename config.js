@@ -33,7 +33,6 @@ const services = {
         , bypass            : process.env.CAPTCHA_BYPASS_TOKEN || '00000000-0000-4000-0000-000000000000'
         }
       }
-      publishers()
       uphold()
     }
   },
@@ -49,10 +48,10 @@ const services = {
       module.exports.postgres =
         { url                   : process.env.DATABASE_URL || 'postgres://localhost/test'
         , roURL                 : process.env.DATABASE_RO_URL || false
+        , schemaVersion         : require('./eyeshade/migrations/current')
         , schemaVersionCheck    : true
         }
 
-      publishers()
       uphold()
     }
   },
@@ -67,18 +66,6 @@ const services = {
 
       uphold()
     }
-  }
-}
-
-const publishers = () => {
-  module.exports.publishers = {}
-  if (process.env.PUBLISHERS_URL) {
-    const takeover = process.env.PUBLISHERS_TAKEOVER
-    module.exports.publishers =
-      { url                 : process.env.PUBLISHERS_URL    || 'http://127.0.0.1:3000'
-      , access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
-      , takeover            : takeover ? ({ true: true, false: false })[takeover] : false
-      }
   }
 }
 
@@ -109,12 +96,29 @@ new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHAN
 module.exports =
 {
   disable: {
+    wallets: process.env.DISABLE_WALLET_TO_GRANTS || false,
     grants: process.env.DISABLE_GRANTS || false
   },
   forward: {
+    settlements: process.env.FORWARD_SETTLEMENTS_TO_KAFKA || false,
+    referrals: process.env.FORWARD_REFERRALS_TO_KAFKA || false,
+    wallets: process.env.FORWARD_WALLET_TO_GRANTS || false,
     grants: process.env.FORWARD_TO_GRANTS || false
   },
   wreck: {
+    rewards: {
+      baseUrl: process.env.REWARD_SERVER,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    },
+    walletMigration: {
+      baseUrl: process.env.WALLET_MIGRATION_SERVER,
+      headers: {
+        'Authorization': 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
+        'Content-Type': 'application/json'
+      }
+    },
     grants: {
       baseUrl: process.env.GRANT_SERVER,
       headers: {

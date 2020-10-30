@@ -2,21 +2,21 @@ const Joi = require('@hapi/joi')
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
 const boom = require('boom')
 const utils = require('bat-utils')
-const BigNumber = require('bignumber.js')
 const _ = require('underscore')
 const extrasUtils = require('bat-utils/lib/extras-utils')
 const queries = require('../lib/queries')
 const transactions = require('../lib/transaction')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { BigNumber } = utils.extras.utils
 
 const v1 = {}
 
 const settlementDestinationTypes = ['uphold']
 const accountTypes = ['channel', 'owner'].concat(settlementDestinationTypes)
 const transactionTypes = ['contribution', 'referral', 'contribution_settlement', 'referral_settlement', 'fees', 'scaleup', 'manual', 'user_deposit', 'manual_settlement']
-
 const stringValidator = Joi.string()
+const transactionTypesValidator = stringValidator.valid.apply(stringValidator, transactionTypes).description('type of the transaction')
 const accountTypeValidation = stringValidator.valid.apply(stringValidator, accountTypes)
 const orderParam = Joi.string().valid('asc', 'desc').optional().default('desc').description('order')
 const joiChannel = Joi.string().description('The channel that earned or paid the transaction')
@@ -53,27 +53,79 @@ v1.getTransactions =
   handler: (runtime) => {
     return async (request, h) => {
       const account = request.params.account
-      const query1 = `select
+      let { type } = request.query
+      const args = [account]
+      let typeExtension = ''
+      type = _.isString(type) ? [type] : (type || [])
+      if (type.length) {
+        args.push(type)
+        typeExtension = 'AND transaction_type = ANY($2::text[])'
+      }
+      const query1 = `SELECT
   created_at,
   description,
   channel,
   amount,
+  from_account,
+  to_account,
+  to_account_type,
   settlement_currency,
   settlement_amount,
-  settlement_destination_type,
-  settlement_destination,
   transaction_type
-from account_transactions
-where account_id = $1
+FROM transactions
+WHERE (
+  from_account = $1
+  OR to_account = $1
+) ${typeExtension}
 ORDER BY created_at
 `
 
-      const result = await runtime.postgres.query(query1, [account], true)
-      const transactions = result.rows
+      const {
+        rows: transactions
+      } = await runtime.postgres.query(query1, args, true)
 
-      return _.map(transactions, (tx) => {
-        const omitted = _.omit(tx, (value) => value == null)
-        return Object.assign({ channel: '' }, omitted)
+      const settlementTypes = {
+        contribution_settlement: true,
+        referral_settlement: true
+      }
+      return _.map(transactions, ({
+        channel = '',
+        created_at: createdAt,
+        description,
+        from_account: fromAccount,
+        to_account: toAccount,
+        to_account_type: toAccountType,
+        amount: _amount,
+        settlement_currency: settlementCurrency,
+        settlement_amount: settlementAmount,
+        transaction_type: transactionType
+      }) => {
+        let amount = new BigNumber(_amount)
+        if (fromAccount === account) {
+          amount = amount.negated()
+        }
+        const transaction = {
+          channel: channel || '',
+          created_at: createdAt,
+          description,
+          amount: amount.toFixed(18)
+        }
+        if (settlementCurrency) {
+          transaction.settlement_currency = settlementCurrency
+        }
+        if (settlementAmount) {
+          transaction.settlement_amount = settlementAmount
+        }
+        if (settlementTypes[transactionType]) {
+          if (toAccountType) {
+            transaction.settlement_destination_type = toAccountType
+          }
+          if (toAccount) {
+            transaction.settlement_destination = toAccount
+          }
+        }
+        transaction.transaction_type = transactionType
+        return transaction
       })
     }
   },
@@ -88,6 +140,12 @@ ORDER BY created_at
   tags: ['api', 'publishers'],
 
   validate: {
+    query: Joi.object().keys({
+      type: Joi.alternatives().try(
+        transactionTypesValidator,
+        Joi.array().items(transactionTypesValidator)
+      )
+    }),
     params: Joi.object().keys({
       account: Joi.alternatives().try(
         braveJoi.string().owner(),
@@ -109,7 +167,7 @@ ORDER BY created_at
       settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
       settlement_destination_type: stringValidator.valid.apply(stringValidator, settlementDestinationTypes).optional().description('type of address settlement was paid to'),
       settlement_destination: Joi.string().optional().description('destination address of the settlement'),
-      transaction_type: stringValidator.valid.apply(stringValidator, transactionTypes).required().description('type of the transaction')
+      transaction_type: transactionTypesValidator.required()
     }))
   }
 }

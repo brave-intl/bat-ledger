@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const SDebug = require('sdebug')
 const crypto = require('crypto')
 const underscore = require('underscore')
@@ -8,7 +7,7 @@ const Joi = require('@hapi/joi')
 const UpholdSDK = require('./runtime-uphold')
 const braveJoi = require('./extras-joi')
 const braveUtils = require('./extras-utils')
-
+const { BigNumber } = braveUtils
 const Currency = require('./runtime-currency')
 
 const debug = new SDebug('wallet')
@@ -68,13 +67,13 @@ Wallet.prototype.createCard = async function () {
   return f.apply(this, arguments)
 }
 
-Wallet.prototype.create = async function (requestType, request) {
+Wallet.prototype.create = async function (requestType, request, id) {
   let f = Wallet.providers.mock.create
   if (this.config.uphold) {
     f = Wallet.providers.uphold.create
   }
   if (!f) return {}
-  return f.bind(this)(requestType, request)
+  return f.bind(this)(requestType, request, id)
 }
 
 Wallet.prototype.balances = async function (info) {
@@ -272,15 +271,26 @@ Wallet.providers.uphold = {
       authenticate: true
     }, options))
   },
-  create: async function (requestType, request) {
+  create: async function (requestType, request, _id) {
     if (requestType === 'httpSignature') {
       const altcurrency = request.body.currency
       if (altcurrency === 'BAT') {
         let btcAddr, ethAddr, ltcAddr, wallet
-
+        let id = _id
         try {
-          wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
-          const { id } = wallet
+          if (!id) {
+            wallet = await this.uphold.api('/me/cards', { body: request.octets, method: 'post', headers: request.headers })
+            id = wallet.id
+          }
+        } catch (ex) {
+          debug('create', {
+            provider: 'uphold',
+            reason: ex.toString(),
+            operation: '/me/cards'
+          })
+          throw ex
+        }
+        try {
           ethAddr = await this.uphold.createCardAddress(id, 'ethereum')
           btcAddr = await this.uphold.createCardAddress(id, 'bitcoin')
           ltcAddr = await this.uphold.createCardAddress(id, 'litecoin')
@@ -288,7 +298,7 @@ Wallet.providers.uphold = {
           debug('create', {
             provider: 'uphold',
             reason: ex.toString(),
-            operation: btcAddr ? 'litecoin' : ethAddr ? 'bitcoin' : wallet ? 'ethereum' : '/me/cards'
+            operation: btcAddr ? 'litecoin' : (ethAddr ? 'bitcoin' : 'ethereum')
           })
           throw ex
         }
@@ -297,12 +307,12 @@ Wallet.providers.uphold = {
             addresses: {
               BAT: ethAddr.id,
               BTC: btcAddr.id,
-              CARD_ID: wallet.id,
+              CARD_ID: id,
               ETH: ethAddr.id,
               LTC: ltcAddr.id
             },
             provider: 'uphold',
-            providerId: wallet.id,
+            providerId: id,
             httpSigningPubKey: request.body.publicKey,
             altcurrency: 'BAT'
           }

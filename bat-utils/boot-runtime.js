@@ -35,6 +35,14 @@ const hash = {
 module.exports = Object.assign(Runtime, hash)
 
 Runtime.prototype = {
+  quit: async function () {
+    await Promise.all(_.keys(hash).map(async (key) => {
+      const target = this[key]
+      if (target && target.quit) {
+        await target.quit()
+      }
+    }))
+  },
   setup: function (config) {
     const debug = new SDebug('boot')
     _.assign(this, {

@@ -132,7 +132,6 @@ test('can post a manual settlement from publisher app using token auth', async t
     .expect(ok)
 
   const subset = _.map(body, (item) => _.omit(item, ['created_at']))
-  const manualResponse = _.findWhere(subset, { transaction_type: 'manual' })
   const manualSettlementResponse = _.findWhere(subset, { transaction_type: 'manual_settlement' })
 
   t.deepEqual({
@@ -143,12 +142,6 @@ test('can post a manual settlement from publisher app using token auth', async t
     settlement_amount: '5.000000000000000000',
     transaction_type: 'manual_settlement'
   }, manualSettlementResponse, 'a manual settlement is sent back with the appropriate data')
-  t.deepEqual({
-    channel: '',
-    description: 'handshake agreement with business developement',
-    amount: '5.000000000000000000',
-    transaction_type: 'manual'
-  }, manualResponse, 'a manual transaction is sent back with the appropriate data')
 })
 
 test('only can post settlement files under to 20mbs', async t => {

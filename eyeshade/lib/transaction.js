@@ -1,8 +1,8 @@
-const BigNumber = require('bignumber.js')
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
 const uuidv5 = require('uuid/v5')
 const {
   createdTimestamp,
+  BigNumber,
   normalizeChannel
 } = require('bat-utils/lib/extras-utils')
 
@@ -17,6 +17,10 @@ const SETTLEMENT_NAMESPACE = {
   manual: 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
 module.exports = {
+  id: {
+    referral: referralId,
+    settlement: settlementId
+  },
   allSettlementStats,
   settlementStatsByCurrency,
   knownChains: Object.assign({}, knownChains),
@@ -26,6 +30,14 @@ module.exports = {
   insertFromVoting,
   insertFromReferrals,
   insertFromAd
+}
+
+function referralId (id, normalizedChannel) {
+  return uuidv5(id + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536')
+}
+
+function settlementId (id, normalizedChannel, type) {
+  return uuidv5(id + normalizedChannel, SETTLEMENT_NAMESPACE[type])
 }
 
 async function insertTransaction (runtime, client, options = {}) {
@@ -194,7 +206,7 @@ async function insertFromSettlement (runtime, client, settlement) {
         `
       await runtime.postgres.query(query3, [
         // settlementId and channel pair should be unique per settlement type
-        uuidv5(settlement.settlementId + normalizedChannel, SETTLEMENT_NAMESPACE[settlement.type]),
+        settlementId(settlement.settlementId, normalizedChannel, settlement.type),
         (created / 1000),
         `payout for ${settlement.type}`,
         `${settlement.type}_settlement`,
@@ -305,7 +317,7 @@ async function insertFromReferrals (runtime, client, referrals) {
       `
       await runtime.postgres.query(query, [
         // transactionId and channel pair should be unique
-        uuidv5(referrals.transactionId + normalizedChannel, '3d3e7966-87c3-44ed-84c3-252458f99536'),
+        referralId(referrals.transactionId, normalizedChannel),
         created / 1000,
         `referrals through ${month}`,
         'referral',

@@ -1,4 +1,3 @@
-const BigNumber = require('bignumber.js')
 const uuidV5 = require('uuid/v5')
 const Joi = require('@hapi/joi')
 const anonize = require('node-anonize2-relic')
@@ -11,6 +10,7 @@ const surveyorsLib = require('../lib/surveyor')
 const {
   createComposite,
   promotionIdExclusions,
+  reformWalletGet,
   promotionIdBonuses
 } = require('../lib/wallet')
 
@@ -18,6 +18,7 @@ const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
+const { btoa, BigNumber } = braveUtils
 
 const defaultTipChoices = (process.env.DEFAULT_TIP_CHOICES && process.env.DEFAULT_TIP_CHOICES.split(',')) || [1, 5, 10]
 const defaultMonthlyChoices = (process.env.DEFAULT_MONTHLY_CHOICES && process.env.DEFAULT_MONTHLY_CHOICES.split(',')) || [1, 5, 10]
@@ -44,10 +45,35 @@ v2.readInfo = {
   handler: (runtime) => {
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
-      const wallets = runtime.database.get('wallets', debug)
       const paymentId = request.params.paymentId.toLowerCase()
 
-      const wallet = await wallets.findOne({ paymentId: paymentId })
+      let wallet
+      if (runtime.config.forward.wallets) {
+        const { payload } = await runtime.wreck.walletMigration.get(debug, `/v3/wallet/${paymentId}`)
+        wallet = JSON.parse(payload.toString())
+        const { walletProvider, publicKey, depositAccountProvider } = wallet
+        wallet.httpSigningPubKey = publicKey
+        wallet.provider = walletProvider.name
+        if (walletProvider.name === 'uphold') {
+          wallet.addresses = {
+            CARD_ID: walletProvider.id
+          }
+          wallet.anonymousAddress = null
+          wallet.providerId = walletProvider.id
+        } else {
+          if (depositAccountProvider !== null && depositAccountProvider !== undefined) {
+            wallet.addresses = {
+              CARD_ID: depositAccountProvider.id
+            }
+            wallet.anonymousAddress = depositAccountProvider.anonymousAddress
+            wallet.providerLinkingId = depositAccountProvider.providerLinkingId
+            wallet.providerId = depositAccountProvider.id
+          }
+        }
+      } else {
+        const wallets = runtime.database.get('wallets', debug)
+        wallet = await wallets.findOne({ paymentId })
+      }
       if (!wallet) {
         throw boom.notFound('no such wallet: ' + paymentId)
       }
@@ -71,7 +97,7 @@ v2.readInfo = {
       addresses: Joi.object().keys({
         BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
         BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
-        CARD_ID: Joi.string().guid().optional().description('Card id'),
+        CARD_ID: Joi.string().allow('').optional().description('Card id'),
         ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
       })
@@ -153,7 +179,16 @@ const read = function (runtime, apiVersion) {
     let currency = request.query.currency
     let balances, result, state
 
-    const wallet = await wallets.findOne({ paymentId: paymentId })
+    if (runtime.config.disable.wallets) {
+      throw boom.serverUnavailable()
+    }
+    let wallet
+    if (runtime.config.forward.wallets) {
+      return reformWalletGet(debug, runtime, { paymentId })
+    } else {
+      wallet = await wallets.findOne({ paymentId })
+    }
+
     if (!wallet) {
       throw boom.notFound('no such wallet: ' + paymentId)
     }
@@ -316,7 +351,7 @@ v2.read = {
       addresses: Joi.object().keys({
         BTC: braveJoi.string().altcurrencyAddress('BTC').optional().description('BTC address'),
         BAT: braveJoi.string().altcurrencyAddress('BAT').optional().description('BAT address'),
-        CARD_ID: Joi.string().guid().optional().description('Card id'),
+        CARD_ID: Joi.string().allow('').optional().description('Card id'),
         ETH: braveJoi.string().altcurrencyAddress('ETH').optional().description('ETH address'),
         LTC: braveJoi.string().altcurrencyAddress('LTC').optional().description('LTC address')
       }),
@@ -508,8 +543,18 @@ v2.lookup = {
   handler: (runtime) => {
     return async (request, h) => {
       const debug = braveHapi.debug(module, request)
-      const wallets = runtime.database.get('wallets', debug)
       const publicKey = request.query.publicKey
+      if (runtime.config.disable.wallets) {
+        throw boom.serverUnavailable()
+      }
+      if (runtime.config.forward.wallets) {
+        const url = `/v3/wallet/recover/${publicKey}`
+        const { payload } = await runtime.wreck.walletMigration.get(debug, url)
+        return {
+          paymentId: JSON.parse(payload.toString()).paymentId
+        }
+      }
+      const wallets = runtime.database.get('wallets', debug)
       const wallet = await wallets.findOne({ httpSigningPubKey: publicKey })
       if (!wallet) {
         throw boom.notFound('no such wallet with publicKey: ' + publicKey)
@@ -871,6 +916,29 @@ function claimWalletHandler (runtime) {
     const { paymentId } = params
     const wallets = runtime.database.get('wallets', debug)
     const members = runtime.database.get('members', debug)
+
+    if (runtime.config.disable.wallets) {
+      throw boom.serverUnavailable()
+    }
+
+    if (runtime.config.forward.wallets) {
+      try {
+        await runtime.wreck.walletMigration.post(debug, `/v3/wallet/uphold/${paymentId}/claim`, {
+          payload: {
+            signedLinkingRequest: btoa(JSON.stringify(signedTx)),
+            anonymousAddress
+          }
+        })
+        return {}
+      } catch (err) {
+        if (!err.data) {
+          debug('erred no data', err)
+          throw err
+        }
+        debug('erred from wallet migration claim', err.data.payload.toString())
+        throw err
+      }
+    }
 
     const wallet = await wallets.findOne({ paymentId })
     if (!wallet) {

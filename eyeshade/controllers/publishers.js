@@ -1,12 +1,14 @@
-const BigNumber = require('bignumber.js')
 const boom = require('boom')
 const bson = require('bson')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
+const settlement = require('../lib/settlements')
+const uuidV4 = require('uuid/v4')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
+const { BigNumber } = utils.extras.utils
 
 const v2 = {}
 
@@ -22,9 +24,56 @@ const settlementGroupsValidator = Joi.object().pattern(
   )
 )
 
+async function addSettlementsToKafkaQueue (runtime, request) {
+  const { payload } = request
+
+  const producer = await runtime.kafka.producer()
+  for (let i = 0; i < payload.length; i += 1) {
+    const {
+      id,
+      transactionId,
+      address,
+      publisher,
+      altcurrency,
+      currency,
+      owner,
+      probi,
+      fee,
+      amount,
+      commission,
+      fees,
+      type
+    } = payload[i]
+    const msg = {
+      id: id || uuidV4().toLowerCase(),
+      settlementId: transactionId,
+      address,
+      publisher,
+      altcurrency,
+      currency,
+      owner,
+      fee,
+      commission,
+      amount,
+      probi,
+      fees,
+      type
+    }
+
+    await producer.send(
+      settlement.topic,
+      settlement.encode(msg)
+    )
+  }
+  return {}
+}
+
 v2.settlement = {
   handler: (runtime) => {
     return async (request, h) => {
+      if (runtime.config.forward.settlements) {
+        return addSettlementsToKafkaQueue(runtime, request)
+      }
       const {
         payload
       } = request
