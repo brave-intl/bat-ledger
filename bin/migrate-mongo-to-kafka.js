@@ -147,6 +147,8 @@ async function connectToKafka (collectionName, key, coder, transformForKafka) {
     }, {
       multi: true
     })
+    // first tests showed ~62.5/second
+    await new Promise((resolve) => setTimeout(resolve, messages.length * (1000 / 60)))
   }
 }
 
