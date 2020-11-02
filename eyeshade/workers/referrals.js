@@ -79,8 +79,10 @@ module.exports.consumer = (runtime) => {
         ownerId: owner,
         channelId: publisher,
         transactionId,
+        downloadId,
         countryGroupId
       } = ref
+      const txId = transactionId || downloadId
 
       const {
         probi
@@ -96,11 +98,11 @@ module.exports.consumer = (runtime) => {
         _id,
         probi,
         firstId: timestamp,
-        transactionId
+        transactionId: txId
       }
 
       const normalizedChannel = normalizeChannel(referral._id.publisher)
-      const id = transaction.id.referral(transactionId, normalizedChannel)
+      const id = transaction.id.referral(txId, normalizedChannel)
       if (inserting[id]) {
         return
       }
