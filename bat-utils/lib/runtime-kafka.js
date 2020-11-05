@@ -75,12 +75,14 @@ class Kafka {
     consumers.push(consumer)
   }
 
-  async sendMany ({ topic, encode }, messages) {
+  async sendMany ({ topic, encode }, messages, _partition = null, _key = null, _partitionKey = null) {
     // map twice to err quickly on input errors
     // use map during send to increase batching on network
     return Promise.all(
       messages.map(encode)
-        .map((msg) => this.send(topic, msg))
+        .map((msg) =>
+          this.send(topic, msg, _partition, _key, _partitionKey)
+        )
     )
   }
 
