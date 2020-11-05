@@ -138,7 +138,7 @@ async function connectToKafka (collectionName, key, coder, transformForKafka) {
     }
     // check for any buffer errors
     console.log('sending many', collectionName, targetId, messages.length)
-    await runtime.kafka.sendMany(coder, messages)
+    await runtime.kafka.sendMany(coder, messages, 1)
     console.log('setting migrated', collectionName, targetId)
     await collection.update({
       [key]: targetId
@@ -147,10 +147,6 @@ async function connectToKafka (collectionName, key, coder, transformForKafka) {
     }, {
       multi: true
     })
-    // first tests showed ~900/second
-    const ms = messages.length * (1000 / 900)
-    console.log('waiting', ms)
-    await new Promise((resolve) => setTimeout(resolve, ms))
   }
 }
 
