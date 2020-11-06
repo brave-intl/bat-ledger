@@ -125,6 +125,7 @@ async function connectToKafka (collectionName, key, coder, transformForKafka) {
     const targetId = distinct[i]
     const documents = await collection.find({
       [key]: targetId,
+      owner: { $ne: null },
       migrated: { $ne: true }
     })
     if (!documents.length) {
@@ -141,7 +142,8 @@ async function connectToKafka (collectionName, key, coder, transformForKafka) {
     await runtime.kafka.sendMany(coder, messages, 1)
     console.log('setting migrated', collectionName, targetId)
     await collection.update({
-      [key]: targetId
+      [key]: targetId,
+      owner: { $ne: null }
     }, {
       $set: { migrated: true }
     }, {
