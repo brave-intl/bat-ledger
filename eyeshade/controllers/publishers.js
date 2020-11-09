@@ -3,7 +3,6 @@ const bson = require('bson')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 const settlement = require('../lib/settlements')
-const uuidV4 = require('uuid/v4')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -30,7 +29,6 @@ async function addSettlementsToKafkaQueue (runtime, request) {
   await runtime.kafka.producer()
   const msgs = payload.map((payload) => {
     const {
-      id,
       transactionId,
       hash,
       address,
@@ -46,7 +44,6 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       type
     } = payload
     return {
-      id: id || uuidV4().toLowerCase(),
       settlementId: transactionId,
       address,
       publisher,
