@@ -34,7 +34,7 @@ const v2 = avro.parse({
     { name: 'address', type: 'string' },
     { name: 'settlementId', type: 'string' },
     { name: 'publisher', type: 'string' },
-    { name: 'hash', type: 'string' },
+    { name: 'hash', type: 'string', default: '' },
     { name: 'altcurrency', type: 'string' },
     { name: 'currency', type: 'string' },
     { name: 'owner', type: 'string' },
