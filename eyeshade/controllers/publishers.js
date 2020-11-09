@@ -27,11 +27,12 @@ const settlementGroupsValidator = Joi.object().pattern(
 async function addSettlementsToKafkaQueue (runtime, request) {
   const { payload } = request
 
-  const producer = await runtime.kafka.producer()
-  for (let i = 0; i < payload.length; i += 1) {
+  await runtime.kafka.producer()
+  const msgs = payload.map((payload) => {
     const {
       id,
       transactionId,
+      hash,
       address,
       publisher,
       altcurrency,
@@ -43,8 +44,8 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       commission,
       fees,
       type
-    } = payload[i]
-    const msg = {
+    } = payload
+    return {
       id: id || uuidV4().toLowerCase(),
       settlementId: transactionId,
       address,
@@ -57,14 +58,14 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       amount,
       probi,
       fees,
+      hash,
       type
     }
-
-    await producer.send(
-      settlement.topic,
-      settlement.encode(msg)
-    )
-  }
+  })
+  await runtime.kafka.sendMany(
+    settlement,
+    msgs
+  )
   return {}
 }
 
