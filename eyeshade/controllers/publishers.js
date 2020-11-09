@@ -3,7 +3,6 @@ const bson = require('bson')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 const settlement = require('../lib/settlements')
-const uuidV4 = require('uuid/v4')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
@@ -27,11 +26,10 @@ const settlementGroupsValidator = Joi.object().pattern(
 async function addSettlementsToKafkaQueue (runtime, request) {
   const { payload } = request
 
-  const producer = await runtime.kafka.producer()
-  for (let i = 0; i < payload.length; i += 1) {
+  const msgs = payload.map((payload) => {
     const {
-      id,
       transactionId,
+      hash,
       address,
       publisher,
       altcurrency,
@@ -43,9 +41,8 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       commission,
       fees,
       type
-    } = payload[i]
-    const msg = {
-      id: id || uuidV4().toLowerCase(),
+    } = payload
+    return {
       settlementId: transactionId,
       address,
       publisher,
@@ -57,14 +54,14 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       amount,
       probi,
       fees,
+      hash,
       type
     }
-
-    await producer.send(
-      settlement.topic,
-      settlement.encode(msg)
-    )
-  }
+  })
+  await runtime.kafka.sendMany(
+    settlement,
+    msgs
+  )
   return {}
 }
 
