@@ -26,6 +26,7 @@ const settlementGroupsValidator = Joi.object().pattern(
 async function addSettlementsToKafkaQueue (runtime, request) {
   const { payload } = request
 
+  await this.producer()
   const msgs = payload.map((payload) => {
     const {
       transactionId,
