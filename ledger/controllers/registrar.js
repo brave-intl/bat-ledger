@@ -1,7 +1,6 @@
 const Joi = require('@hapi/joi')
 const anonize = require('node-anonize2-relic')
 const boom = require('boom')
-const bson = require('bson')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const uuidV4 = require('uuid/v4')
@@ -418,25 +417,6 @@ module.exports.initialize = async (debug, runtime) => {
   const registrars = runtime.database.get('registrars', debug)
 
   altcurrency = runtime.config.altcurrency || 'BAT'
-
-  await runtime.database.checkIndices(debug, [
-    {
-      category: registrars,
-      name: 'registrars',
-      property: 'registrarId',
-      empty: { registrarId: '', registrarType: '', payload: {}, timestamp: bson.Timestamp.ZERO },
-      unique: [{ registrarId: 1 }],
-      others: [{ registrarType: 1 }, { timestamp: 1 }]
-    },
-    {
-      category: runtime.database.get('credentials', debug),
-      name: 'credentials',
-      property: 'registrarId_1_uId',
-      empty: { uId: '', registrarId: 0, timestamp: bson.Timestamp.ZERO },
-      unique: [{ registrarId: 1, uId: 1 }],
-      others: [{ timestamp: 1 }]
-    }
-  ])
 
   try {
     await runtime.queue.create('persona-report')
