@@ -89,7 +89,7 @@ if (!service) {
 process.env.PORT = process.env.PORT  || service.portno
 
 const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('MONGODB_URI', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
+new Array('GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
   process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
 })
 
@@ -135,8 +135,6 @@ module.exports =
 , currency              :
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',')
                                                         : [ 'BAT', 'BTC', 'ETH', 'LTC' ] }
-, database              :
-  { mongo               : process.env.MONGODB_URI               || 'localhost/test' }
 , login                 : { github: false }
 , queue                 :
   { rsmq                : process.env.REDIS_URL                 || 'redis://localhost:6379' }
