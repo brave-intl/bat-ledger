@@ -28,7 +28,6 @@ const {
   cleanDbs,
   setupForwardingServer,
   braveYoutubePublisher,
-  braveYoutubeOwner,
   debug,
   makeSettlement,
   ok
@@ -237,46 +236,6 @@ WHERE
     settlement_currency: 'USD',
     settlement_amount: '1.000000000000000000'
   }])
-
-  // ensure referral balances are computed correctly
-  let transactions
-  const referralKey = uuidV4().toLowerCase()
-  const referralURL = '/v1/referrals/' + referralKey
-  const referral = {
-    ownerId: braveYoutubeOwner,
-    channelId: braveYoutubePublisher,
-    downloadId: uuidV4(),
-    platform: 'android',
-    finalized: (new Date()).toISOString()
-  }
-  const referrals = [referral]
-
-  transactions = await getReferrals()
-  t.deepEqual(transactions, [])
-
-  await agents.eyeshade.referrals
-    .put(referralURL)
-    .send(referrals)
-    .expect(ok)
-
-  transactions = []
-  do {
-    await timeout(1000)
-    transactions = await getReferrals()
-  } while (!transactions.length)
-
-  const [tx] = transactions
-  const amount = tx.amount
-  t.true(amount.length > 1)
-  t.true(amount > 0)
-
-  async function getReferrals () {
-    const { rows } = await runtime.postgres.query(`
-    select *
-    from transactions
-    where transaction_type = 'referral'`)
-    return rows
-  }
 })
 
 // allows us to use legacy version

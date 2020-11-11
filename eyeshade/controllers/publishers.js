@@ -1,17 +1,11 @@
-const boom = require('boom')
-const bson = require('bson')
 const Joi = require('@hapi/joi')
-const underscore = require('underscore')
 const settlement = require('../lib/settlements')
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
-const { BigNumber } = utils.extras.utils
 
 const v2 = {}
-
-let altcurrency
 
 /*
    POST /v2/publishers/settlement
@@ -26,11 +20,12 @@ const settlementGroupsValidator = Joi.object().pattern(
 async function addSettlementsToKafkaQueue (runtime, request) {
   const { payload } = request
 
-  await this.producer()
+  await runtime.kafka.producer()
   const msgs = payload.map((payload) => {
     const {
       transactionId,
       hash,
+      documentId,
       address,
       publisher,
       altcurrency,
@@ -56,6 +51,7 @@ async function addSettlementsToKafkaQueue (runtime, request) {
       probi,
       fees,
       hash,
+      documentId,
       type
     }
   })
@@ -68,71 +64,7 @@ async function addSettlementsToKafkaQueue (runtime, request) {
 
 v2.settlement = {
   handler: (runtime) => {
-    return async (request, h) => {
-      if (runtime.config.forward.settlements) {
-        return addSettlementsToKafkaQueue(runtime, request)
-      }
-      const {
-        payload
-      } = request
-      const { fromString } = bson.Decimal128
-      const debug = braveHapi.debug(module, request)
-      const settlements = runtime.database.get('settlements', debug)
-      const numberFields = ['probi', 'amount', 'fee', 'fees', 'commission']
-      const mappedFields = ['address', 'altcurrency', 'currency', 'hash', 'type', 'owner', 'documentId']
-
-      if (payload.find((entry) => entry.altcurrency !== altcurrency)) {
-        throw boom.badData('altcurrency should be ' + altcurrency)
-      }
-
-      const $currentDate = { timestamp: { $type: 'timestamp' } }
-      const executedTime = new Date()
-      const settlementGroups = {}
-      for (let i = 0; i < payload.length; i += 1) {
-        const entry = payload[i]
-        const {
-          commission,
-          fee,
-          type,
-          publisher,
-          executedAt,
-          transactionId: settlementId
-        } = entry
-
-        const bigFee = new BigNumber(fee)
-        const bigCom = new BigNumber(commission)
-        const bigComPlusFee = bigCom.plus(bigFee)
-
-        const picked = underscore.pick(entry, mappedFields)
-        picked.commission = fromString(bigComPlusFee.toString())
-        picked.executedAt = new Date(executedAt || executedTime)
-        const $set = numberFields.reduce((memo, field) => {
-          memo[field] = fromString(entry[field].toString())
-          return memo
-        }, picked)
-
-        const state = {
-          $set,
-          $currentDate
-        }
-
-        await settlements.update({
-          settlementId,
-          publisher
-        }, state, { upsert: true })
-
-        let entries = settlementGroups[type]
-        if (!entries) {
-          entries = []
-          settlementGroups[type] = entries
-        }
-        if (!entries.includes(settlementId)) {
-          entries.push(settlementId)
-        }
-      }
-
-      return settlementGroups
-    }
+    return async (request, h) => addSettlementsToKafkaQueue(runtime, request)
   },
 
   auth: {
@@ -172,21 +104,6 @@ v2.settlement = {
 
 v2.submitSettlement = {
   handler: (runtime) => async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const { payload: settlementGroups } = request
-    const settlementGroupKeys = underscore.keys(settlementGroups)
-    for (let i = 0; i < settlementGroupKeys.length; i += 1) {
-      const type = settlementGroupKeys[i]
-      const settlementIds = underscore.uniq(settlementGroups[type])
-      for (let j = 0; j < settlementIds.length; j += 1) {
-        const settlementId = settlementIds[j]
-        await runtime.queue.send(debug, 'settlement-report', {
-          type,
-          settlementId
-        })
-      }
-    }
-
     return {}
   },
 
@@ -216,5 +133,4 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  altcurrency = runtime.config.altcurrency || 'BAT'
 }

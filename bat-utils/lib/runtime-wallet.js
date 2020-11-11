@@ -191,25 +191,6 @@ Wallet.prototype.isGrantExpired = function (info, grant) {
   return Date.now() > (expiryTime * 1000)
 }
 
-Wallet.prototype.expireGrant = async function (info, wallet, grant) {
-  const { runtime } = this
-  const { database } = runtime
-  const { paymentId } = wallet
-  const { grantId } = grant
-
-  const wallets = database.get('wallets', debug)
-
-  const $set = {
-    'grants.$.status': 'expired'
-  }
-  const state = { $set }
-  const where = {
-    paymentId,
-    'grants.grantId': grantId
-  }
-  await wallets.update(where, state)
-}
-
 Wallet.selectGrants = selectGrants
 
 Wallet.prototype.purchaseBAT = async function (info, amount, currency, language) {

@@ -1,5 +1,4 @@
 const avro = require('avro-js')
-const { dateToISO } = require('bat-utils/lib/extras-utils')
 
 const topic = process.env.ENV + '.settlement.payout'
 const v1 = avro.parse({
@@ -34,7 +33,6 @@ const v2 = avro.parse({
     { name: 'address', type: 'string' },
     { name: 'settlementId', type: 'string' },
     { name: 'publisher', type: 'string' },
-    { name: 'hash', type: 'string', default: '' },
     { name: 'altcurrency', type: 'string' },
     { name: 'currency', type: 'string' },
     { name: 'owner', type: 'string' },
@@ -43,7 +41,9 @@ const v2 = avro.parse({
     { name: 'fee', type: 'string' },
     { name: 'commission', type: 'string' },
     { name: 'fees', type: 'string' },
-    { name: 'type', type: 'string' }
+    { name: 'type', type: 'string' },
+    { name: 'hash', type: 'string' },
+    { name: 'documentId', type: 'string' }
   ]
 })
 
@@ -53,7 +53,7 @@ const hashOnly = avro.parse({
   name: 'payoutHash',
   aliases: ['payout'],
   fields: [
-    { name: 'hash', type: 'string', default: '' }
+    { name: 'hash', type: 'string' }
   ]
 })
 
@@ -70,22 +70,42 @@ module.exports = {
 }
 
 function encode (obj) {
-  return v2.toBuffer(Object.assign({}, obj, {
-    createdAt: dateToISO(obj.createdAt)
-  }))
+  if (!obj.documentId) {
+    obj.documentId = ''
+  }
+  if (obj.hash) {
+    return v2.toBuffer(obj)
+  }
+  return v1.toBuffer(obj)
 }
 
 function decode (buf) {
-  const hashRecord = hashOnly.fromBuffer(buf, resolverV2, true)
-  if (hashRecord !== '') {
-    return {
-      version: 2,
-      message: v2.fromBuffer(buf)
+  try {
+    const hashRecord = hashOnly.fromBuffer(buf, resolverV2, true)
+    if (hashRecord.hash) {
+      return decodeV2(buf)
+    }
+    return decodeV1(buf)
+  } catch (e) {
+    try {
+      return decodeV1(buf)
+    } catch (e) {
+      return decodeV2(buf)
     }
   }
+}
+
+function decodeV1 (buf) {
   return {
     version: 1,
     message: v1.fromBuffer(buf)
+  }
+}
+
+function decodeV2 (buf) {
+  return {
+    version: 2,
+    message: v2.fromBuffer(buf)
   }
 }
 
