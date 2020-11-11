@@ -1,5 +1,4 @@
 const boom = require('boom')
-const bson = require('bson')
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const v2 = {}
@@ -81,51 +80,5 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  await runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('grants', debug),
-      name: 'grants',
-      property: 'grantId',
-      empty: {
-        token: '',
-
-        // duplicated from "token" for unique
-        grantId: '',
-        // duplicated from "token" for filtering
-        promotionId: '',
-
-        status: '', // active, completed, expired
-
-        batchId: '',
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [{ grantId: 1 }],
-      others: [{ promotionId: 1 }, { altcurrency: 1 }, { probi: 1 },
-        { status: 1 },
-        { batchId: 1 }, { timestamp: 1 }]
-    },
-    {
-      category: runtime.database.get('promotions', debug),
-      name: 'promotions',
-      property: 'promotionId',
-      empty: {
-        promotionId: '',
-        priority: 99999,
-
-        active: false,
-        count: 0,
-
-        batchId: '',
-        timestamp: bson.Timestamp.ZERO,
-
-        protocolVersion: 2
-      },
-      unique: [{ promotionId: 1 }],
-      others: [{ active: 1 }, { count: 1 },
-        { batchId: 1 }, { timestamp: 1 },
-        { protocolVersion: 2 }]
-    }
-  ])
-
   await runtime.queue.create('redeem-report')
 }

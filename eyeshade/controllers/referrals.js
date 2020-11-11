@@ -1,5 +1,4 @@
 const boom = require('boom')
-const bson = require('bson')
 const Joi = require('@hapi/joi')
 const underscore = require('underscore')
 const _ = underscore
@@ -12,7 +11,6 @@ const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
 const countries = require('../lib/countries')
-const referrals = require('../lib/referrals')
 
 const v1 = {}
 
@@ -33,19 +31,6 @@ const referral = Joi.object().keys({
   platform: Joi.string().token().required().description('the download platform'),
   finalized: Joi.date().iso().required().description('timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
 })
-const manyReferrals = Joi.array().min(1).items(referral).required().description('list of finalized referrals')
-const groupStampedReferral = referral.keys({
-  downloadTimestamp: Joi.date().iso().optional().description('the timestamp when the referral was downloaded to apply correct payout to it'),
-  groupId: groupIdValidator.allow('', null).optional(),
-  referralCode: referralCodeValidator
-})
-const manyGroupStampedReferrals = Joi.array().min(1).items(groupStampedReferral).required().description('list of finalized referrals to be shown to publishers')
-
-const anyReferralVersion = Joi.alternatives().try(
-  manyGroupStampedReferrals,
-  manyReferrals
-)
-
 const referralGroupCountriesValidator = Joi.object().keys({
   id: Joi.string().guid().required().description('the group id to report back for correct value categorization'),
   activeAt: Joi.date().iso().optional().description('the download cut off time to honor the amount'),
@@ -243,128 +228,9 @@ v1.getReferralsStatement = {
  */
 
 v1.createReferrals = {
-  handler: (runtime) => {
-    return async (request, h) => {
-      const { payload, params } = request
-      const { transactionId } = params
-      const debug = braveHapi.debug(module, request)
-      const { database, postgres, currency, queue, prometheus, config } = runtime
-      const { altcurrency = 'BAT' } = config
-      const referralsCollection = database.get('referrals', debug)
-      const factor = currency.alt2scale(altcurrency)
-      const referralsToInsert = []
-      // get rates once at beginning (uses cache too)
-      const {
-        rows: referralGroups
-      } = await postgres.query(queries.getActiveCountryGroups(), [], true)
-
-      const referralsToSendToKafka = []
-      for (let i = 0; i < payload.length; i += 1) {
-        const referral = payload[i]
-        const {
-          platform,
-          finalized,
-          downloadId,
-          downloadTimestamp,
-          ownerId,
-          referralCode = '',
-          channelId,
-          groupId: passedGroupId
-        } = referral
-
-        const {
-          countryGroupId,
-          value: countryAmount,
-          probi
-        } = await countries.computeValue(runtime, passedGroupId, referralGroups)
-
-        referralsToSendToKafka.push({
-          downloadId,
-          downloadTimestamp,
-          countryGroupId,
-          referralCode,
-          finalizedTimestamp: finalized,
-          channelId,
-          ownerId,
-          platform,
-          transactionId
-        })
-        referralsToInsert.push({
-          // previous upsert was redundant
-          updateOne: {
-            upsert: true,
-            filter: {
-              downloadId
-            },
-            update: {
-              $currentDate: {
-                timestamp: { $type: 'timestamp' }
-              },
-              $setOnInsert: {
-                downloadId,
-                downloadTimestamp,
-                groupId: countryGroupId,
-                referralCode,
-                altcurrency,
-                finalized: new Date(finalized),
-                owner: ownerId,
-                publisher: channelId || null,
-                transactionId,
-                payoutRate: probi.dividedBy(factor).dividedBy(countryAmount).toString(),
-                probi: bson.Decimal128.fromString(probi.toString()),
-                platform,
-                exclude: false
-              }
-            }
-          }
-        })
-      }
-      if (runtime.config.forward.referrals) {
-        await runtime.kafka.sendMany(referrals, referralsToSendToKafka)
-      }
-      const bulkResult = await referralsCollection.bulkWrite(referralsToInsert)
-      if (!bulkResult.ok) {
-        // insert failed
-        const err = new Error('failed to insert')
-        runtime.captureException(err, {
-          extra: {
-            bulkResult,
-            transactionId
-          }
-        })
-        throw err
-      }
-
-      if (!runtime.config.forward.referrals) {
-        await queue.send(debug, 'referral-report', {
-          transactionId
-        })
-      }
-      prometheus.getMetric('referral_received_counter').inc(bulkResult.upsertedCount)
-
-      return {}
-    }
-  },
-
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['global', 'referrals'],
-    mode: 'required'
-  },
-
-  description: 'Records referral transactions for a publisher',
-  tags: ['api', 'referrals'],
-
-  validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: Joi.object().keys({
-      transactionId: Joi.string().guid().required().description('the transaction identity')
-    }).unknown(true),
-    payload: anyReferralVersion
-  },
-
-  response:
-    { schema: Joi.object().length(0) }
+  handler: (runtime) => () => {
+    throw boom.resourceGone()
+  }
 }
 
 module.exports.routes = [
@@ -375,39 +241,4 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  await runtime.database.checkIndices(debug, [
-    {
-      category: runtime.database.get('referrals', debug),
-      name: 'referrals',
-      property: 'downloadId',
-      empty: {
-        downloadId: '',
-
-        transactionId: '',
-        publisher: '',
-        owner: '',
-        platform: '',
-        finalized: bson.Timestamp.ZERO,
-
-        altcurrency: '',
-        probi: bson.Decimal128.POSITIVE_ZERO,
-
-        // added by administrator
-        exclude: false,
-        hash: '',
-        groupId: '',
-        payoutRate: '',
-        referralCode: '',
-
-        timestamp: bson.Timestamp.ZERO
-      },
-      unique: [{ downloadId: 1 }],
-      others: [{ transactionId: 1 }, { publisher: 1 }, { owner: 1 }, { finalized: 1 },
-        { altcurrency: 1 }, { probi: 1 }, { exclude: 1 }, { hash: 1 }, { timestamp: 1 },
-        { altcurrency: 1, probi: 1 },
-        { altcurrency: 1, exclude: 1, probi: 1 },
-        { owner: 1, altcurrency: 1, exclude: 1, probi: 1 },
-        { publisher: 1, altcurrency: 1, exclude: 1, probi: 1 }]
-    }
-  ])
 }

@@ -15,6 +15,7 @@ function consumer (runtime) {
       const {
         publisher,
         settlementId,
+        documentId,
         altcurrency,
         currency,
         address,
@@ -43,6 +44,7 @@ function consumer (runtime) {
         settlementId,
         altcurrency,
         currency,
+        documentId,
         probi: new BigNumber(probi),
         amount: new BigNumber(amount),
         fees: new BigNumber(fees),

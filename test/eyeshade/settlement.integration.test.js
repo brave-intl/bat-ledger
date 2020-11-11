@@ -43,8 +43,7 @@ test.beforeEach(cleanDbs)
 test('settlements inserted using old methodology will match new insertion methodology', async (t) => {
   const settlement = utils.settlement.createLegacy(null, '71341fc9-aeab-4766-acf0-d91d3ffb0bfa')
 
-  const { body: ids } = await utils.settlement.sendLegacy([settlement])
-  await utils.settlement.sendLegacySubmit(ids)
+  await utils.settlement.sendLegacy([settlement])
   const rowsLegacy = await utils.transaction.ensureCount(t, 3)
 
   await cleanDbs()

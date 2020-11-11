@@ -8,14 +8,11 @@ const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 const feePercent = 0.05
 
 const daily = async (debug, runtime) => {
-  const { database } = runtime
-
   debug('daily', 'running')
 
   try {
     const midnight = new Date()
     midnight.setHours(0, 0, 0, 0)
-    await database.purgeSince(debug, runtime, midnight)
 
     await freezeOldSurveyors(debug, runtime)
   } catch (ex) {

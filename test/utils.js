@@ -241,13 +241,11 @@ module.exports = {
   },
   referral: {
     create: createReferral,
-    sendLegacy: sendLegacyReferral,
     createLegacy: createLegacyReferral
   },
   settlement: {
     create: createSettlement,
     sendLegacy: sendSettlement,
-    sendLegacySubmit: sendSettlementSubmit,
     createLegacy: createLegacySettlement
   },
   token,
@@ -628,6 +626,8 @@ function createSettlement (options) {
   return Object.assign({
     settlementId: uuidV4(),
     address: uuidV4(),
+    hash: uuidV4(),
+    documentId: uuidV4(),
     publisher: braveYoutubePublisher,
     altcurrency: 'BAT',
     currency: 'USD',
@@ -669,24 +669,5 @@ async function sendSettlement (
 ) {
   return agent.post('/v2/publishers/settlement')
     .send(settlements)
-    .expect(ok)
-}
-
-async function sendSettlementSubmit (
-  identifiers,
-  agent = agents.eyeshade.publishers
-) {
-  return agent.post('/v2/publishers/settlement/submit')
-    .send(identifiers)
-    .expect(ok)
-}
-
-async function sendLegacyReferral (
-  txId,
-  referrals,
-  agent = agents.eyeshade.referrals
-) {
-  return agent.put(`/v1/referrals/${txId}`)
-    .send(referrals)
     .expect(ok)
 }
