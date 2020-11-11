@@ -27,7 +27,6 @@ function consumer (runtime) {
       } = settlement
       const normalizedChannel = normalizeChannel(publisher)
       const id = transaction.id.settlement(settlementId, normalizedChannel, type)
-      console.log('computed', id, settlementId, normalizedChannel, type, settlement)
       if (inserting[id]) {
         return
       }
