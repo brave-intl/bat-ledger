@@ -71,8 +71,7 @@ test('can post a manual settlement from publisher app using token auth', async t
     hash: uuidV4().toLowerCase()
   }
 
-  const response = await agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(200)
-  await agents.eyeshade.publishers.post(url + '/submit').send(response.body).expect(200)
+  await agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(200)
 
   // ensure both transactions were entered into transactions table
   const manualTxsQuery = 'select * from transactions where transaction_type = \'manual\';'
@@ -172,11 +171,10 @@ test('only can post settlement files under to 20mbs', async t => {
   }
 
   // ensure settlement files > 20mb fail
-  let response = await agents.eyeshade.publishers.post(url).send([bigSettlement])
+  const response = await agents.eyeshade.publishers.post(url).send([bigSettlement])
   t.is(413, response.statusCode)
   t.true(response.body.message === 'Payload content length greater than maximum allowed: 20971520')
 
   // ensure small settlement files succeed
-  response = await agents.eyeshade.publishers.post(url).send([smallSettlement]).expect(200)
-  await agents.eyeshade.publishers.post(url + '/submit').send(response.body).expect(200)
+  await agents.eyeshade.publishers.post(url).send([smallSettlement]).expect(200)
 })

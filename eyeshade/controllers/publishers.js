@@ -1,4 +1,5 @@
 const Joi = require('@hapi/joi')
+const boom = require('boom')
 const settlement = require('../lib/settlements')
 
 const utils = require('bat-utils')
@@ -103,27 +104,8 @@ v2.settlement = {
 }
 
 v2.submitSettlement = {
-  handler: (runtime) => async (request, h) => {
-    return {}
-  },
-
-  auth: {
-    strategies: ['simple-scoped-token', 'session'],
-    scope: ['ledger', 'publishers'],
-    mode: 'required'
-  },
-  payload: {
-    maxBytes: 1024 * 1024 * 20 // 20 MB
-  },
-  description: 'Posts a list of settlement ids and types to trigger the worker',
-  tags: ['api'],
-
-  validate: {
-    payload: settlementGroupsValidator
-  },
-
-  response: {
-    schema: Joi.object().length(0)
+  handler: () => async () => {
+    throw boom.resourceGone()
   }
 }
 

@@ -246,7 +246,6 @@ module.exports = {
   settlement: {
     create: createSettlement,
     sendLegacy: sendSettlement,
-    sendLegacySubmit: sendSettlementSubmit,
     createLegacy: createLegacySettlement
   },
   token,
@@ -670,14 +669,5 @@ async function sendSettlement (
 ) {
   return agent.post('/v2/publishers/settlement')
     .send(settlements)
-    .expect(ok)
-}
-
-async function sendSettlementSubmit (
-  identifiers,
-  agent = agents.eyeshade.publishers
-) {
-  return agent.post('/v2/publishers/settlement/submit')
-    .send(identifiers)
     .expect(ok)
 }

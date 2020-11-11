@@ -12,14 +12,6 @@ const { btoa } = utils.extras.utils
 const v1 = {}
 const v2 = {}
 
-let altcurrency
-
-const server = (request, runtime) => {
-  const registrarType = request.params.registrarType
-
-  return runtime.registrars[registrarType]
-}
-
 /*
    GET /v1/registrar/{registrarType}
    GET /v2/registrar/{registrarType}
@@ -27,32 +19,8 @@ const server = (request, runtime) => {
 
 v2.read =
 {
-  handler: (runtime) => {
-    return async (request, h) => {
-      const registrar = server(request, runtime)
-      if (!registrar) {
-        throw boom.notFound('unknown registrar')
-      }
-
-      return underscore.extend({ payload: registrar.payload }, registrar.publicInfo())
-    }
-  },
-
-  description: 'Returns information about the registrar',
-  tags: ['api'],
-
-  validate: {
-    params: Joi.object().keys({
-      registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-      apiV: Joi.string().required().description('the api version')
-    }).unknown(true)
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      registrarVK: Joi.string().required().description('public key'),
-      payload: Joi.object().required().description('additional information')
-    })
+  handler: () => async () => {
+    throw boom.resourceGone()
   }
 }
 
@@ -63,64 +31,8 @@ v2.read =
 
 v2.update =
 {
-  handler: (runtime) => {
-    return async (request, h) => {
-      const debug = braveHapi.debug(module, request)
-      const payload = request.payload || {}
-      const registrars = runtime.database.get('registrars', debug)
-
-      const registrar = server(request, runtime)
-      if (!registrar) {
-        throw boom.notFound('unknown registrar')
-      }
-
-      const keys = {}
-      keys[altcurrency] = Joi.number().min(1).required()
-      const schema = {
-        persona: Joi.object().keys({
-          adFree: Joi.object().keys({
-            currency: braveJoi.string().altcurrencyCode().optional(),
-            days: Joi.number().integer().min(1).max(365).required(),
-            fee: Joi.object().keys(keys).unknown(true).required()
-          }).unknown(true)
-        }).required()
-      }[registrar.registrarType] || Joi.object().max(0)
-
-      const validity = schema.validate(payload)
-      if (validity.error) {
-        throw boom.badData(validity.error)
-      }
-
-      const state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { payload: payload } }
-      await registrars.update({ registrarId: registrar.registrarId }, state, { upsert: false })
-
-      registrar.payload = payload
-      return underscore.extend({ payload: payload }, registrar.publicInfo())
-    }
-  },
-
-  auth: {
-    strategy: 'session',
-    scope: ['ledger'],
-    mode: 'required'
-  },
-
-  description: 'Updates a registrar',
-  tags: ['api'],
-
-  validate: {
-    params: Joi.object().keys({
-      registrarType: Joi.string().valid('persona', 'viewing').required().description('the type of the registrar'),
-      apiV: Joi.string().required().description('the api version')
-    }).unknown(true),
-    payload: Joi.object().optional().description('additional information')
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      registrarVK: Joi.string().required().description('public key'),
-      payload: Joi.object().required().description('additional information')
-    })
+  handler: () => async () => {
+    throw boom.resourceGone()
   }
 }
 
@@ -205,34 +117,15 @@ const createPersona = function (runtime) {
    POST /v1/registrar/viewing/{uId}
    POST /v2/registrar/viewing/{uId}
  */
-const createViewing = function (runtime) {
-  return async (request, h) => {
-    return {}
+const createViewing = function () {
+  return async () => {
+    throw boom.resourceGone()
   }
 }
 
 v2.createViewing =
 {
-  handler: (runtime) => createViewing(runtime),
-  description: 'Registers a user viewing',
-  tags: ['api'],
-
-  validate: {
-    params: Joi.object().keys({
-      uId: Joi.string().hex().length(31).required().description('the universally-unique identifier'),
-      apiV: Joi.string().required().description('the api version')
-    }).unknown(true),
-    payload: Joi.object().keys({
-      proof: Joi.string().required().description('credential registration request')
-    }).unknown(true).required()
-  },
-
-  response: {
-    schema: Joi.object().keys({
-      verification: Joi.string().required().description('credential registration response'),
-      surveyorIds: Joi.array().min(1).items(Joi.string()).required().description('allowed surveyors')
-    })
-  }
+  handler: createViewing
 }
 
 const keychainSchema = Joi.object().keys({
@@ -313,8 +206,6 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  altcurrency = runtime.config.altcurrency || 'BAT'
-
   try {
     await runtime.queue.create('persona-report')
   } catch (e) {
