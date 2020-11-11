@@ -10,7 +10,6 @@ const surveyorsLib = require('../lib/surveyor')
 const {
   createComposite,
   promotionIdExclusions,
-  reformWalletGet,
   promotionIdBonuses
 } = require('../lib/wallet')
 
@@ -19,9 +18,6 @@ const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const braveUtils = utils.extras.utils
 const { btoa, BigNumber } = braveUtils
-
-const defaultTipChoices = (process.env.DEFAULT_TIP_CHOICES && process.env.DEFAULT_TIP_CHOICES.split(',')) || [1, 5, 10]
-const defaultMonthlyChoices = (process.env.DEFAULT_MONTHLY_CHOICES && process.env.DEFAULT_MONTHLY_CHOICES.split(',')) || [1, 5, 10]
 
 const v1 = {}
 const v2 = {}
@@ -166,155 +162,9 @@ v2.readMembersInfo = {
    GET /v2/wallet/{paymentId}
  */
 
-const read = function (runtime, apiVersion) {
-  return async (request, h) => {
-    const amount = request.query.amount
-    const balanceP = request.query.balance
-    const debug = braveHapi.debug(module, request)
-    const paymentId = request.params.paymentId.toLowerCase()
-    const refreshP = request.query.refresh
-    const wallets = runtime.database.get('wallets', debug)
-    const altcurrency = request.query.altcurrency
-
-    let currency = request.query.currency
-    let balances, result, state
-
-    if (runtime.config.disable.wallets) {
-      throw boom.serverUnavailable()
-    }
-    let wallet
-    if (runtime.config.forward.wallets) {
-      return reformWalletGet(debug, runtime, { paymentId })
-    } else {
-      wallet = await wallets.findOne({ paymentId })
-    }
-
-    if (!wallet) {
-      throw boom.notFound('no such wallet: ' + paymentId)
-    }
-
-    if (altcurrency && altcurrency !== wallet.altcurrency) {
-      throw boom.badData('the altcurrency of the transaction must match that of the wallet')
-    }
-
-    const subset = currency ? [currency.toUpperCase()] : null
-    const rates = await runtime.currency.rates(wallet.altcurrency, subset)
-    result = {
-      altcurrency: wallet.altcurrency,
-      paymentStamp: wallet.paymentStamp || 0,
-      httpSigningPubKey: wallet.httpSigningPubKey,
-      rates: underscore.mapObject(rates, (value) => +value)
-    }
-
-    result = underscore.extend(result, { addresses: wallet.addresses })
-    if (runtime.registrars.persona) {
-      const { payload } = runtime.registrars.persona
-      underscore.extend(payload, { defaultTipChoices, defaultMonthlyChoices })
-      result = underscore.extend(result, { parameters: payload || {} })
-    }
-
-    if ((refreshP) || (balanceP && !wallet.balances)) {
-      balances = await runtime.wallet.balances(wallet)
-
-      if (!underscore.isEqual(balances, wallet.balances)) {
-        state = { $currentDate: { timestamp: { $type: 'timestamp' } }, $set: { balances: balances } }
-        await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-
-        await runtime.queue.send(debug, 'wallet-report', underscore.extend({ paymentId: paymentId }, state.$set))
-        state = null
-      }
-    } else {
-      balances = wallet.balances
-    }
-    if (balances) {
-      balances.cardBalance = balances.confirmed
-
-      const { grants: grantsConfig } = runtime.config.wreck
-      const payload = await braveHapi.wreck.get(grantsConfig.baseUrl + '/v1/grants/active?paymentId=' + paymentId, {
-        headers: grantsConfig.headers,
-        useProxyP: true
-      })
-      const { grants } = JSON.parse(payload.toString())
-      if (grants.length > 0) {
-        const total = grants.reduce((total, grant) => {
-          return total.plus(grant.probi)
-        }, new BigNumber(0))
-        balances.confirmed = new BigNumber(balances.confirmed).plus(total)
-
-        result.grants = grants.map((grant) => {
-          return underscore.pick(grant, ['altcurrency', 'expiryTime', 'probi', 'type'])
-        })
-      }
-
-      underscore.extend(result, {
-        balance: new BigNumber(balances.confirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4),
-        cardBalance: new BigNumber(balances.cardBalance).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toString(),
-        probi: balances.confirmed.toString(),
-        unconfirmed: new BigNumber(balances.unconfirmed).dividedBy(runtime.currency.alt2scale(wallet.altcurrency)).toFixed(4)
-      })
-    } else {
-      underscore.extend(result, {
-        balance: new BigNumber(0).toFixed(4),
-        cardBalance: new BigNumber(0).toString(),
-        probi: '0',
-        unconfirmed: new BigNumber(0).toFixed(4)
-      })
-    }
-
-    if (amount) {
-      if (refreshP) {
-        if (currency) {
-          try {
-            await runtime.currency.ratio('USD', currency)
-          } catch (e) {
-            throw boom.notFound('no such currency: ' + currency)
-          }
-          const rates = await runtime.currency.rates(wallet.altcurrency)
-          if (!rates || !rates[currency.toUpperCase()]) {
-            const errMsg = `There is not yet a conversion rate for ${wallet.altcurrency} to ${currency.toUpperCase()}`
-            const resp = boom.serverUnavailable(errMsg)
-            resp.output.headers['retry-after'] = '5'
-            throw resp
-          }
-        } else if (altcurrency) {
-          currency = altcurrency
-        } else {
-          throw boom.badData('must pass at least one of currency or altcurrency')
-        }
-        result = underscore.extend(result, await runtime.wallet.unsignedTx(wallet, amount, currency, balances.confirmed))
-
-        if (result.unsignedTx) {
-          if (result.requestType === 'bitcoinMultisig') {
-            state = {
-              $currentDate: { timestamp: { $type: 'timestamp' } },
-              $set: { unsignedTx: result.unsignedTx.transactionHex }
-            }
-          } else {
-            state = {
-              $currentDate: { timestamp: { $type: 'timestamp' } },
-              $set: { unsignedTx: result.unsignedTx }
-            }
-          }
-        }
-      }
-
-      const info = await runtime.wallet.purchaseBAT(wallet, amount, currency, request.headers['accept-language'])
-      const wallet2 = info && info.extend && underscore.extend({}, info.extend, wallet)
-      if ((wallet2) && (!underscore.isEqual(wallet, wallet2))) {
-        if (!state) {
-          state = {
-            $currentDate: { timestamp: { $type: 'timestamp' } },
-            $set: {}
-          }
-        }
-        underscore.extend(state.$set, info.quotes)
-      }
-      underscore.extend(result, underscore.omit(info, ['quotes']))
-
-      if (state) await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-    }
-
-    return result
+const read = function () {
+  return async () => {
+    throw boom.serverUnavailable()
   }
 }
 
