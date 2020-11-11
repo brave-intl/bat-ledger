@@ -2,7 +2,6 @@ const Joi = require('@hapi/joi')
 const boom = require('boom')
 const crypto = require('crypto')
 const underscore = require('underscore')
-const uuidV4 = require('uuid/v4')
 const { verify } = require('http-request-signature')
 
 const utils = require('bat-utils')
@@ -135,21 +134,8 @@ const createPersona = function (runtime) {
       throw boom.serverUnavailable()
     }
     const debug = braveHapi.debug(module, request)
-    const uId = request.params.uId.toLowerCase()
-    const proof = request.payload.proof
     const response = {}
-    const credentials = runtime.database.get('credentials', debug)
-    let state, verification, requestSchema
-
-    const registrar = runtime.registrars.persona
-    if (!registrar) {
-      throw boom.notFound('unknown registrar')
-    }
-
-    const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
-    if (entry) {
-      throw boom.badData('persona credential exists: ' + uId)
-    }
+    let requestSchema
 
     const requestType = request.payload.requestType
 
@@ -194,19 +180,6 @@ const createPersona = function (runtime) {
       }
     }
 
-    const registerEnd = runtime.prometheus.timedRequest('anonizeRegister_request_buckets_milliseconds')
-    try {
-      verification = registrar.register(proof)
-      registerEnd({ erred: false })
-    } catch (ex) {
-      registerEnd({ erred: true })
-      throw boom.badData('invalid registrar proof: ' + JSON.stringify(proof))
-    }
-
-    const paymentId = uuidV4().toLowerCase()
-    const wallets = runtime.database.get('wallets', debug)
-    let result, wallet
-
     const requestBody = request.payload.request
 
     let id
@@ -221,37 +194,10 @@ const createPersona = function (runtime) {
       const paymentId = body.paymentId
       // skip all other collection updates
       return {
-        verification,
-        payload: registrar.payload,
         wallet: { paymentId, addresses: { CARD_ID: id } }
       }
     }
-    try {
-      result = await runtime.wallet.create(requestType, requestBody, id)
-      wallet = result.wallet
-    } catch (ex) {
-      runtime.captureException(ex, { req: request })
-      debug('wallet error', { reason: ex.toString(), stack: ex.stack })
-      throw boom.boomify(ex)
-    }
-
-    state = {
-      $currentDate: { timestamp: { $type: 'timestamp' } },
-      $set: underscore.pick(wallet, ['addresses', 'provider', 'altcurrency', 'httpSigningPubKey', 'providerId'])
-    }
-    await wallets.update({ paymentId: paymentId }, state, { upsert: true })
-
-    await runtime.queue.send(debug, 'persona-report', underscore.extend({ paymentId: paymentId }, state.$set))
-
-    underscore.extend(response, {
-      wallet: { paymentId: paymentId, addresses: wallet.addresses },
-      payload: registrar.payload
-    })
-
-    state = { $currentDate: { timestamp: { $type: 'timestamp' } } }
-    await credentials.update({ uId: uId, registrarId: registrar.registrarId }, state, { upsert: true })
-
-    return underscore.extend(response, { verification })
+    return underscore.extend(response)
   }
 }
 
@@ -261,52 +207,7 @@ const createPersona = function (runtime) {
  */
 const createViewing = function (runtime) {
   return async (request, h) => {
-    const debug = braveHapi.debug(module, request)
-    const uId = request.params.uId.toLowerCase()
-    const proof = request.payload.proof
-    const response = {}
-    const credentials = runtime.database.get('credentials', debug)
-    let verification
-
-    const registrar = runtime.registrars.viewing
-    if (!registrar) {
-      throw boom.notFound('unknown registrar')
-    }
-
-    const entry = await credentials.findOne({ uId: uId, registrarId: registrar.registrarId })
-    if (entry) {
-      throw boom.badData('viewing credential exists: ' + uId)
-    }
-
-    const viewings = runtime.database.get('viewings', debug)
-
-    const viewing = await viewings.findOne({ uId: uId })
-    if (!viewing) {
-      throw boom.notFound('viewingId not valid: ' + uId)
-    }
-
-    const surveyorIds = viewing.surveyorIds || []
-    if (surveyorIds.length !== viewing.count) {
-      const diagnostic = 'surveyorIds invalid found ' + surveyorIds.length + ', expecting ' + viewing.count +
-                   ', surveyorId=' + viewing.surveyorId
-      runtime.captureException(diagnostic, { req: request, extra: { viewing: uId } })
-
-      const resp = boom.serverUnavailable(diagnostic)
-      resp.output.headers['retry-after'] = '5'
-      throw resp
-    }
-    underscore.extend(response, { surveyorIds: viewing.surveyorIds })
-
-    try {
-      verification = registrar.register(proof)
-    } catch (ex) {
-      throw boom.badData('invalid registrar proof: ' + JSON.stringify(proof))
-    }
-
-    const state = { $currentDate: { timestamp: { $type: 'timestamp' } } }
-    await credentials.update({ uId: uId, registrarId: registrar.registrarId }, state, { upsert: true })
-
-    return underscore.extend(response, { verification })
+    return {}
   }
 }
 
