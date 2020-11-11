@@ -1,5 +1,4 @@
 const Joi = require('@hapi/joi')
-const anonize = require('node-anonize2-relic')
 const boom = require('boom')
 const crypto = require('crypto')
 const underscore = require('underscore')
@@ -413,9 +412,6 @@ module.exports.routes = [
 ]
 
 module.exports.initialize = async (debug, runtime) => {
-  const configurations = process.env.REGISTRARS || 'persona:1,viewing:2'
-  const registrars = runtime.database.get('registrars', debug)
-
   altcurrency = runtime.config.altcurrency || 'BAT'
 
   try {
@@ -427,35 +423,4 @@ module.exports.initialize = async (debug, runtime) => {
   }
 
   runtime.registrars = []
-
-  const services = configurations.split(',')
-  for (let i = services.length - 1; i >= 0; i--) {
-    let payload, registrar
-    const service = services[i].split(':')
-    const registrarType = service[0]
-    const registrarId = parseInt(service[1], 10)
-
-    const entry = await registrars.findOne({ registrarId: registrarId })
-    if (entry) {
-      if (entry.registrarType !== registrarType) {
-        throw new Error('registrar #' + registrarId + ': mismatch, expecting ' + registrarType + ', found ' +
-                        entry.registrarType)
-      }
-      registrar = new anonize.Registrar(entry.parameters)
-      payload = entry.payload
-    } else {
-      registrar = new anonize.Registrar()
-      payload = (registrarType === 'persona') ? { adFree: { fee: { USD: 5.00 }, days: 30 } } : {}
-      const state = {
-        $currentDate: { timestamp: { $type: 'timestamp' } },
-        $set: underscore.extend({ registrarType: registrarType, payload: payload }, registrar)
-      }
-      await registrars.update({ registrarId: registrarId }, state, { upsert: true })
-    }
-
-    registrar.registrarId = registrarId
-    registrar.registrarType = registrarType
-    registrar.payload = payload
-    runtime.registrars[registrarType] = registrar
-  }
 }

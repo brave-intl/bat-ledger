@@ -6,8 +6,8 @@ set -o nounset \
     -o xtrace
 
 # Generate CA key
-openssl req -new -x509 -keyout snakeoil-ca-1.key -out snakeoil-ca-1.crt -days 9999 -subj '/CN=ca1.test.confluent.io/OU=TEST/O=CONFLUENT/L=PaloAlto/S=Ca/C=US' -passin pass:confluent -passout pass:confluent
-# openssl req -new -x509 -keyout snakeoil-ca-2.key -out snakeoil-ca-2.crt -days 9999 -subj '/CN=ca2.test.confluent.io/OU=TEST/O=CONFLUENT/L=PaloAlto/S=Ca/C=US' -passin pass:confluent -passout pass:confluent
+openssl req -new -x509 -keyout snakeoil-ca-1.key -out snakeoil-ca-1.crt -days 365 -subj '/CN=ca1.test.confluent.io/OU=TEST/O=CONFLUENT/L=PaloAlto/S=Ca/C=US' -passin pass:confluent -passout pass:confluent
+# openssl req -new -x509 -keyout snakeoil-ca-2.key -out snakeoil-ca-2.crt -days 365 -subj '/CN=ca2.test.confluent.io/OU=TEST/O=CONFLUENT/L=PaloAlto/S=Ca/C=US' -passin pass:confluent -passout pass:confluent
 
 # # Kafkacat
 # openssl genrsa -des3 -passout "pass:confluent" -out kafkacat.client.key 1024
@@ -16,7 +16,7 @@ openssl req -new -x509 -keyout snakeoil-ca-1.key -out snakeoil-ca-1.crt -days 99
 
 # used to be
 # broker1 producer consumer
-for i in broker1
+for i in broker1 producer consumer
 do
 	echo $i
 	# Create keystores
