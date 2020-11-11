@@ -43,6 +43,7 @@ function pushTokens (map) {
       const envTokens = process.env[key]
       const TOKENS = envTokens ? envTokens.split(',') : []
       const has = braveHapi.isSimpleTokenValid(TOKENS, token)
+      console.log(TOKENS, has, value)
       return memo.concat(has ? [value] : [])
     }, memo)
   }
