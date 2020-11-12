@@ -27,16 +27,45 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # add docker compose
-      - name: Docker Compose Action
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2.1.2
+        with:
+          # Set always-auth in npmrc
+          always-auth: true
+          # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
+          node-version: 12.x
+          # Set this option if you want the action to check for the latest available version that satisfies the version spec
+          check-latest: true
+
+      - name: Docker Compose Install
         uses: isbang/compose-action@v0.1.1
 
       # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
+      - name: Run security checks (audit + lint)
+        run: npm run security
+      
       # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Stand up Postgres
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          docker-compose up -d eyeshade-postgres
+          docker-compose up -d wallet-migration-postgres
+          sleep 3
+
+      - name: Migrate DBs
+        run: npm run docker-migrate-up
+      - name: Bring Up App Containers
+        run: npm run docker-up-detached
+      - name: Print Checks
+        run: |
+          sleep 20
+          docker ps
+
+      - name: Test
+        run: npm run docker-test
+      - name: Check Migrating Down
+        run: npm run docker-migrate-down-all
+
+      - name: Coverage
+        run: npm run coverage
+      - name: Submit Code Coverage
+        run: npx codecov --file=./coverage/lcov.info
