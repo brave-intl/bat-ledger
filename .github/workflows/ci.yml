@@ -90,7 +90,7 @@ jobs:
       - name: Check Migrating Down
         run: npm run docker-migrate-down-all
 
-      - name: Coverage
-        run: npm run coverage
-      - name: Submit Code Coverage
-        run: npx codecov --file=./coverage/lcov.info
+#       - name: Coverage
+#         run: npm run coverage
+#       - name: Submit Code Coverage
+#         run: npx codecov --file=./coverage/lcov.info
