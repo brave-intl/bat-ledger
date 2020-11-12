@@ -56,7 +56,9 @@ jobs:
       - run: npm --version
 
       - name: Docker Compose Install
-        uses: isbang/compose-action@v0.1.1
+        uses: KengoTODA/actions-setup-docker-compose@main
+        with:
+          version: '1.25.4'
 
       - name: Cache node modules
         uses: actions/cache@v2 
@@ -65,17 +67,14 @@ jobs:
           key: v1-npm-deps-${{ hashFiles('**/package-lock.json') }}
           restore-keys: v1-npm-deps-
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Cache Docker layers
-        uses: actions/cache@v2
+      - run: docker-compose pull
+      - uses: satackey/action-docker-layer-caching@v0.0.8
+        # Ignore the failure of a step and avoid terminating the job.
+        continue-on-error: true
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: docker-cache-{hash}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            docker-cache-
 
       # Runs a single command using the runners shell
       - name: Run security checks (audit + lint)
