@@ -117,7 +117,7 @@ module.exports.consumer = (runtime) => {
       const { rows } = await postgres.query(`
       select * from transactions where id = $1`, [id], client)
       if (rows.length) {
-        console.log(ref)
+        console.log(ref, { id, txId, normalizedChannel })
         return
       }
       await transaction.insertFromReferrals(runtime, client, referral)
