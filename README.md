@@ -52,7 +52,7 @@ For linting we use StandardJS. It's recommended that you install the necessary I
 ### Prepare .env file
 
 1. Copy example over: `cp .env.example .env`.
-2. Confirm .env vars match the contents of `.travis.yml` section env.global.
+2. Confirm .env vars match the contents of `.github/workflows/ci.yaml` section `env`.
 3. Fill in the remaining `{CHANGE_ME}` .env vars appropriately; please consult your local BAT dev to find the answers.
 
 ### Build local servers

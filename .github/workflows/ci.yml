@@ -1,0 +1,108 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - master
+      - prod
+      - dev
+  pull_request:
+    branches:
+      - master
+      - prod
+
+env:
+  REDEEMER_SIGNATOR_PUBLIC_KEY: bbe028009e744422bfc39b0e226633324d8c5fe0744c87c1018b88a488bc5899
+  REDEEMER_WALLET_CARD_ID: f042845f-fa62-4022-8117-a476ec583a7b
+  GRANT_SIGNATOR_PUBLIC_KEY: bbe028009e744422bfc39b0e226633324d8c5fe0744c87c1018b88a488bc5899
+  GRANT_WALLET_CARD_ID: f042845f-fa62-4022-8117-a476ec583a7b
+  BAT_RATIOS_URL: https://ratios-staging.mercury.basicattentiontoken.org
+  TOKEN_LIST: 697ee69b-13b4-4a37-9cb6-923e7deaab9d
+  BAT_RATIOS_TOKEN: ${{ secrets.BAT_RATIOS_TOKEN }}
+  CAPTCHA_TOKEN: ${{ secrets.CAPTCHA_TOKEN }}
+  GRANT_WALLET_PRIVATE_KEY: ${{ secrets.GRANT_WALLET_PRIVATE_KEY }}
+  GRANT_WALLET_PUBLIC_KEY: ${{ secrets.GRANT_WALLET_PUBLIC_KEY }}
+  REDEEMER_WALLET_PRIVATE_KEY: ${{ secrets.REDEEMER_WALLET_PRIVATE_KEY }}
+  REDEEMER_WALLET_PUBLIC_KEY: ${{ secrets.REDEEMER_WALLET_PUBLIC_KEY }}
+  UPHOLD_ACCESS_TOKEN: ${{ secrets.UPHOLD_ACCESS_TOKEN }}
+  DEBUG: DEBUG=*,-babel*,-eslint*,mongo,ava,-kafka*,-sinek*,-postgres*,-superagent*
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  ci:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2.1.2
+        with:
+          # Set always-auth in npmrc
+          always-auth: true
+          # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
+          node-version: 8.9.2
+          # Set this option if you want the action to check for the latest available version that satisfies the version spec
+          check-latest: true
+
+      - run: npm i --global npm@5.10.0
+      - run: npm --version
+
+      - name: Docker Compose Install
+        uses: KengoTODA/actions-setup-docker-compose@main
+        with:
+          version: '1.25.4'
+
+      - name: Cache node modules
+        uses: actions/cache@v2 
+        with:
+          path: ~/.npm
+          key: v1-npm-deps-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: v1-npm-deps-
+
+      - run: docker-compose pull
+      - uses: satackey/action-docker-layer-caching@v0.0.8
+        # Ignore the failure of a step and avoid terminating the job.
+        continue-on-error: true
+        with:
+          key: docker-cache-{hash}
+          restore-keys: |
+            docker-cache-
+
+      # Runs a single command using the runners shell
+      - name: Run security checks (audit + lint)
+        run: npm run security
+      
+      # Runs a set of commands using the runners shell
+      - name: Stand up Postgres
+        run: |
+          docker-compose up -d eyeshade-postgres
+          docker-compose up -d wallet-migration-postgres
+          sleep 3
+
+      - name: Migrate DBs
+        run: npm run docker-migrate-up
+      - name: Bring Up App Containers
+        run: npm run docker-up-detached
+      - name: Print Checks
+        run: |
+          sleep 20
+          docker ps
+
+      - name: Test
+        run: npm run docker-test
+      - name: Check Migrating Down
+        run: npm run docker-migrate-down-all
+
+#       - name: Coverage
+#         run: npm run coverage
+#       - name: Submit Code Coverage
+#         run: npx codecov --file=./coverage/lcov.info
