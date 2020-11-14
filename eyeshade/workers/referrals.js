@@ -66,6 +66,11 @@ exports.workers = {
     }
 }
 
+const getTransactionsById = `
+SELECT id
+FROM transactions
+WHERE id = any($1::UUID[])`
+
 module.exports.consumer = (runtime) => {
   const { kafka, postgres, config } = runtime
   kafka.on(referrals.topic, async (messages, client) => {
@@ -108,14 +113,10 @@ module.exports.consumer = (runtime) => {
         referral
       }
     })
+    const ids = docs.map(({ id }) => id)
     const {
       rows: previouslyInserted
-    } = await postgres.query(`
-    select id
-    from transactions
-    where id = any($1::text[])`,
-    [docs.map(({ id }) => id)]
-    )
+    } = await postgres.query(getTransactionsById, [ids])
     return Promise.all(docs.map(async ({ id: targetId, referral }) => {
       // this part will still be checked serially and first,
       // even if one of the referrals hits the await at the bottom
