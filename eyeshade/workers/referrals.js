@@ -72,9 +72,9 @@ module.exports.consumer = (runtime) => {
     const inserting = {}
     const {
       rows: referralGroups
-    } = await postgres.query(queries.getActiveCountryGroups(), [], true)
+    } = await postgres.query(queries.getActiveCountryGroups(), [], client)
 
-    await kafka.mapMessages(referrals, messages, async (ref, timestamp) => {
+    const docs = await kafka.mapMessages(referrals, messages, async (ref, timestamp) => {
       const {
         ownerId: owner,
         channelId: publisher,
@@ -103,24 +103,34 @@ module.exports.consumer = (runtime) => {
 
       const normalizedChannel = normalizeChannel(referral._id.publisher)
       const id = transaction.id.referral(txId, normalizedChannel)
-      if (inserting[id]) {
+      return {
+        id,
+        referral
+      }
+    })
+    const {
+      rows: previouslyInserted
+    } = await postgres.query(`
+    select id
+    from transactions
+    where id = any($1::text[])`,
+    [docs.map(({ id }) => id)]
+    )
+    return Promise.all(docs.map(async ({ id: targetId, referral }) => {
+      // this part will still be checked serially and first,
+      // even if one of the referrals hits the await at the bottom
+      // AsyncFunction(s) run syncronously as long as possible.
+      // they do not start out async. which can be a little confusing
+      if (inserting[targetId]) {
         return
       }
-      inserting[id] = true
-      /*
-      because of this error
-      error: current transaction is aborted, commands ignored until end of transaction block
-      we have to check first
-      only one client should be inserting a given message
-      so we should not run into errors
-      */
-      const { rows } = await postgres.query(`
-      select * from transactions where id = $1`, [id], client)
-      if (rows.length) {
-        console.log(ref, { id, txId, normalizedChannel })
+      inserting[targetId] = true
+      if (previouslyInserted.find(({
+        id
+      }) => id === targetId)) {
         return
       }
       await transaction.insertFromReferrals(runtime, client, referral)
-    })
+    }))
   })
 }
