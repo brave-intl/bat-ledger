@@ -146,7 +146,12 @@ class Kafka {
           callback()
         } catch (e) {
           runtime.captureException(e, { extra: { topic } })
-          debug('discontinuing topic processing', { topic })
+          debug('discontinuing topic processing', {
+            topic,
+            e,
+            message: e.message,
+            stack: e.stack
+          })
         }
       }, false, false, batchOptions)
       return consumer
