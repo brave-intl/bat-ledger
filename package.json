@@ -95,6 +95,7 @@
     "proxy-agent": "^4.0.0",
     "rate-limiter-flexible": "^2.1.13",
     "redis": "^3.0.2",
+    "sdebug": "^1.0.0",
     "sinek": "^10.0.0-alpha.0",
     "tldjs": "^2.3.1",
     "tweetnacl": "^1.0.3",
