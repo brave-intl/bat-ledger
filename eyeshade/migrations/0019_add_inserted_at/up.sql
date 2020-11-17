@@ -8,7 +8,7 @@ not null
 default current_timestamp;
 
 /* NOTE: This index was created in production CONCURRENTLY. However */
-/* because we we run migrations in a single transaction (see bin/migrate-up.sh) */
+/* because we we run migrations in a single transaction (see bin/migrate-dbs.sh) */
 /* and you cannot use CONCURRENTLY in a transaction, we have to remove CONCURRENTLY */
 /* for the sake of our dev and test environments */
 

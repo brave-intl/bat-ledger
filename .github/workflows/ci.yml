@@ -83,18 +83,15 @@ jobs:
 
       # Runs a set of commands using the runners shell
       - name: Stand up Postgres
-        run: |
-          docker-compose up -d eyeshade-postgres
-          docker-compose up -d wallet-migration-postgres
-          sleep 3
+        run: npm run docker-up-db
 
       - name: Migrate DBs
-        run: npm run docker-migrate-up
+        run: npm run docker-migrate-dbs
       - name: Bring Up App Containers
         run: npm run docker-up-detached
       - name: Print Checks
         run: |
-          sleep 20
+          sleep 5
           docker ps
 
       - name: Test

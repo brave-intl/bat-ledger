@@ -1,4 +1,3 @@
-const moment = require('moment')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
@@ -6,25 +5,6 @@ const {
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
 const feePercent = 0.05
-
-const daily = async (debug, runtime) => {
-  debug('daily', 'running')
-
-  try {
-    const midnight = new Date()
-    midnight.setHours(0, 0, 0, 0)
-
-    await freezeOldSurveyors(debug, runtime)
-  } catch (ex) {
-    runtime.captureException(ex)
-    debug('daily', { reason: ex.toString(), stack: ex.stack })
-  }
-
-  const tomorrow = new Date()
-  tomorrow.setHours(24, 0, 0, 0)
-  setTimeout(() => { daily(debug, runtime) }, tomorrow - new Date())
-  debug('daily', 'running again ' + moment(tomorrow).fromNow())
-}
 
 exports.name = 'reports'
 exports.freezeOldSurveyors = freezeOldSurveyors
@@ -111,11 +91,13 @@ const mixer = async (runtime, client, surveyorId) => {
 exports.mixer = mixer
 
 exports.initialize = async (debug, runtime) => {
-  if (typeof freezeInterval === 'undefined' || isNaN(parseFloat(freezeInterval))) {
-    throw new Error('FREEZE_SURVEYORS_AGE_DAYS is not set or not numeric')
-  }
-
-  if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
-    setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
+  try {
+    await freezeOldSurveyors(debug, runtime)
+  } catch (ex) {
+    runtime.captureException(ex)
+    debug('freeze old surveyors failed', {
+      message: ex.message,
+      stack: ex.stack
+    })
   }
 }

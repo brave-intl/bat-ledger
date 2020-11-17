@@ -270,23 +270,12 @@ services:
       - "TOKEN_LIST=98f27f2e-239b-40e9-8f62-bf1a55ea530c"
       - UPHOLD_ACCESS_TOKEN
     depends_on:
-      - wallet-migration-postgres
       - kafka
       - challenge-bypass
     networks:
       - ledger
     volumes:
       - ./test/secrets:/etc/kafka/secrets
-  wallet-migration-postgres:
-    container_name: wallet-migration-postgres
-    image: postgres:11.9
-    environment:
-      - "POSTGRES_USER=wallet-migration"
-      - "POSTGRES_PASSWORD=password"
-    ports:
-      - "3015:5432"
-    networks:
-      - ledger
   challenge-bypass-postgres:
     container_name: challenge-bypass-postgres
     image: postgres:11.9

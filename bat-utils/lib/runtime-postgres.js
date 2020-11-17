@@ -58,7 +58,7 @@ Postgres.prototype = {
   pool: function (readOnly) {
     return (readOnly ? this.roPool : this.rwPool) || this.rwPool
   },
-  query: async function (text, params = [], readOnly) {
+  query: async function (text, params = [], readOnly = false) {
     const start = Date.now()
     let client = null
     if (_.isBoolean(readOnly)) {

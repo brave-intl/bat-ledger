@@ -71,7 +71,7 @@ npm run docker-up
 You can run all migrations to upgrade the schema to the latest version using:
 
 ```sh
-npm run docker-migrate-up
+npm run docker-migrate-dbs
 ```
 
 You can reverse a particular migration by running:
