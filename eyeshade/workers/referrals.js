@@ -115,7 +115,7 @@ module.exports.consumer = (runtime) => {
       }
     })
 
-    // drop documents that do not start with 'publishers#uuid:' or have a 'removed' id
+    // drop documents that do not start with 'removed' id
     const ownerPrefix = 'publishers#uuid:'
     const filteredDocs = docs.map((doc) => {
       if (doc.referral._id.owner.slice(0, 16) !== ownerPrefix) {
