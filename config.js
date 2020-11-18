@@ -1,42 +1,6 @@
 /* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
 
 const services = {
-  ledger: {
-    portno: 3001,
-
-    f: () => {
-      if (process.env.COINBASE_WIDGET_CODE) {
-        module.exports.wallet.coinbase = { widgetCode : process.env.COINBASE_WIDGET_CODE }
-      }
-
-      if (process.env.REDEEMER_SERVER) {
-        module.exports.redeemer =
-        { url               : process.env.REDEEMER_SERVER || 'http://127.0.0.1:3333'
-        , access_token      : process.env.REDEEMER_TOKEN  || '00000000-0000-4000-0000-000000000000'
-        }
-      }
-      if (process.env.REDEEMER_CARD_ID) {
-        module.exports.redeemer =
-        { cardId               : process.env.REDEEMER_CARD_ID
-        }
-      }
-      if (process.env.BALANCE_URL) {
-        module.exports.balance =
-          { url                 : process.env.BALANCE_URL    || 'http://127.0.0.1:3000'
-          , access_token        : process.env.BALANCE_TOKEN  || '00000000-0000-4000-0000-000000000000'
-          }
-      }
-      if (process.env.CAPTCHA_URL) {
-        module.exports.captcha =
-        { url               : process.env.CAPTCHA_URL   || 'http://127.0.0.1:3334'
-        , access_token      : process.env.CAPTCHA_TOKEN || '00000000-0000-4000-0000-000000000000'
-        , bypass            : process.env.CAPTCHA_BYPASS_TOKEN || '00000000-0000-4000-0000-000000000000'
-        }
-      }
-      uphold()
-    }
-  },
-
   eyeshade: {
     portno: 3002,
 
@@ -51,18 +15,6 @@ const services = {
         , schemaVersion         : require('./eyeshade/migrations/current')
         , schemaVersionCheck    : true
         }
-
-      uphold()
-    }
-  },
-
-  balance: {
-    portno: 3003,
-
-    f: () => {
-      module.exports.ledger = {
-        url : process.env.LEDGER_URL  || 'http://127.0.0.1:3001'
-      }
 
       uphold()
     }

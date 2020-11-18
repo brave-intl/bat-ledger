@@ -11,7 +11,4 @@ services:
       - "IGNORE_APK_DIGEST=1"
       - TOKEN_LIST
     networks:
-      - ledger
-  ledger-web:
-    depends_on:
-      - captcha-web
+      - eyeshade

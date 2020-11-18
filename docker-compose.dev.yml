@@ -1,15 +1,6 @@
 version: "2.1"
 
 services:
-  ledger-web:
-    volumes:
-      - "./bat-utils:/usr/src/app/bat-utils"
-      - "./ledger:/usr/src/app/ledger"
-      - "./eyeshade:/usr/src/app/eyeshade"
-      - "./package.json:/usr/src/app/package.json"
-      - "./config.js:/usr/src/app/config.js"
-      - "./test:/usr/src/app/test"
-    command: "npm run start-ledger"
   eyeshade-web:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
@@ -17,17 +8,10 @@ services:
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
     command: "npm run start-eyeshade"
-  eyeshade-worker:
+  eyeshade-consumer:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
       - "./eyeshade:/usr/src/app/eyeshade"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-    command: "npm run start-eyeshade-worker"
-  balance-web:
-    volumes:
-      - "./bat-utils:/usr/src/app/bat-utils"
-      - "./balance:/usr/src/app/balance"
-      - "./package.json:/usr/src/app/package.json"
-      - "./config.js:/usr/src/app/config.js"
-    command: "npm run start-balance"
+    command: "npm run start-eyeshade-consumer"

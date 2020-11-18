@@ -97,9 +97,9 @@ async function Server (options, runtime) {
       rateLimiter(runtime)
     ], process.env.NODE_ENV === 'production'
       ? [{
-          plugin: hapiRequireHTTPS,
-          options: { proxy: true }
-        }]
+        plugin: hapiRequireHTTPS,
+        options: { proxy: true }
+      }]
       : []
   )
   await server.register(plugins)

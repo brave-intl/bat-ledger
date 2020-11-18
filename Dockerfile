@@ -13,4 +13,4 @@ RUN yarn install
 
 COPY . /usr/src/app
 
-CMD npm run eyeshade-server
+CMD npm run start-eyeshade-server
