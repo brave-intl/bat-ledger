@@ -121,7 +121,7 @@ module.exports.consumer = (runtime) => {
     const filteredDocs = docs.map((doc) => {
       if (doc.referral._id.owner.slice(0, 16) !== ownerPrefix) {
         doc.referral._id.owner = ownerPrefix + doc.referral._id.owner
-        wasMissingPrefix[doc.referral._id.owner] = true
+        wasMissingPrefix[doc.id] = true
       }
       return doc
     }).filter((doc) => {
