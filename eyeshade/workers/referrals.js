@@ -79,13 +79,14 @@ module.exports.consumer = (runtime) => {
       rows: referralGroups
     } = await postgres.query(queries.getActiveCountryGroups(), [], client)
 
-    const docs = await kafka.mapMessages(referrals, messages, async (ref, timestamp) => {
+    const docs = await kafka.mapMessages(referrals, messages, async (ref) => {
       const {
         ownerId: owner,
         channelId: publisher,
         transactionId,
         downloadId,
-        countryGroupId
+        countryGroupId,
+        finalizedTimestamp
       } = ref
       const txId = transactionId || downloadId
 
@@ -102,7 +103,7 @@ module.exports.consumer = (runtime) => {
       const referral = {
         _id,
         probi,
-        firstId: timestamp,
+        firstId: new Date(finalizedTimestamp),
         transactionId: txId
       }
 
@@ -113,11 +114,16 @@ module.exports.consumer = (runtime) => {
         referral
       }
     })
-    const ids = docs.map(({ id }) => id)
+
+    // drop documents that do not start with 'publishers#uuid:' or have a 'removed' id
+    const filteredDocs = docs.filter(({ referral: { _id: { owner } } }) => {
+      return !owner || (owner.slice(0, 16) === 'publishers#uuid:' && owner.slice(16) !== 'removed')
+    })
+    const ids = filteredDocs.map(({ id }) => id)
     const {
       rows: previouslyInserted
     } = await postgres.query(getTransactionsById, [ids])
-    return Promise.all(docs.map(async ({ id: targetId, referral }) => {
+    return Promise.all(filteredDocs.map(async ({ id: targetId, referral }) => {
       // this part will still be checked serially and first,
       // even if one of the referrals hits the await at the bottom
       // AsyncFunction(s) run syncronously as long as possible.
