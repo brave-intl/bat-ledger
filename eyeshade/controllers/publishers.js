@@ -1,5 +1,5 @@
 const Joi = require('@hapi/joi')
-const boom = require('boom')
+const boom = require('@hapi/boom')
 const settlement = require('../lib/settlements')
 
 const utils = require('bat-utils')

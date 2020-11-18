@@ -1,6 +1,6 @@
 const Joi = require('@hapi/joi')
 const utils = require('bat-utils')
-const boom = require('boom')
+const boom = require('@hapi/boom')
 const braveHapi = utils.extras.hapi
 const braveUtils = utils.extras.utils
 const braveJoi = utils.extras.joi
