@@ -116,8 +116,15 @@ module.exports.consumer = (runtime) => {
     })
 
     // drop documents that do not start with 'publishers#uuid:' or have a 'removed' id
-    const filteredDocs = docs.filter(({ referral: { _id: { owner } } }) => {
-      return !owner || owner.slice(0, 16) === 'publishers#uuid:' || owner.slice(16) !== 'removed'
+    const filteredDocs = docs.filter((doc) => {
+      const { referral: { _id: { owner } } } = doc
+      const result = !owner || owner.slice(0, 16) === 'publishers#uuid:' || owner.slice(16) !== 'removed'
+      if (!result) {
+        runtime.captureException(new Error('malformed referral'), {
+          extra: doc
+        })
+      }
+      return result
     })
     const ids = filteredDocs.map(({ id }) => id)
     const {
