@@ -148,9 +148,12 @@ module.exports.consumer = (runtime) => {
       if (previouslyInserted.find(({
         id
       }) => id === targetId)) {
-        return
+        return postgres.query(`
+        update transactions
+        set to_account = $2
+        where id = $1`, [targetId, referral._id.owner])
       }
-      await transaction.insertFromReferrals(runtime, client, referral)
+      return transaction.insertFromReferrals(runtime, client, referral)
     }))
   })
 }
