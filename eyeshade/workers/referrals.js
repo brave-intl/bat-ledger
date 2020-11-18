@@ -154,7 +154,7 @@ module.exports.consumer = (runtime) => {
           await postgres.query(`
           update transactions
           set to_account = $2
-          where id = $1`, [targetId, referral._id.owner])
+          where id = $1`, [targetId, referral._id.owner], client)
         }
         return
       }
