@@ -24,7 +24,7 @@
     "lint": "npx standard",
     "lint-fix": "npm run lint -- --fix",
     "security": "npm run lint && npm run moderate-audit",
-    "moderate-audit": "npm audit --audit-level=moderate; echo $?",
+    "moderate-audit": "yarn audit; echo $?",
     "test-integration": "ava -v -s test/*/*.integration.test.js",
     "test-grant": "ava -v -s test/ledger/grants.integration.test.js",
     "test-suggestions": "ava -v -s test/eyeshade/suggestions.integration.test.js",
