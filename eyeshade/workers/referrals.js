@@ -117,9 +117,11 @@ module.exports.consumer = (runtime) => {
 
     // drop documents that do not start with 'removed' id
     const ownerPrefix = 'publishers#uuid:'
+    const wasMissingPrefix = {}
     const filteredDocs = docs.map((doc) => {
       if (doc.referral._id.owner.slice(0, 16) !== ownerPrefix) {
         doc.referral._id.owner = ownerPrefix + doc.referral._id.owner
+        wasMissingPrefix[doc.referral._id.owner] = true
       }
       return doc
     }).filter((doc) => {
@@ -148,10 +150,13 @@ module.exports.consumer = (runtime) => {
       if (previouslyInserted.find(({
         id
       }) => id === targetId)) {
-        return postgres.query(`
-        update transactions
-        set to_account = $2
-        where id = $1`, [targetId, referral._id.owner])
+        if (wasMissingPrefix[targetId]) {
+          await postgres.query(`
+          update transactions
+          set to_account = $2
+          where id = $1`, [targetId, referral._id.owner])
+        }
+        return
       }
       return transaction.insertFromReferrals(runtime, client, referral)
     }))
