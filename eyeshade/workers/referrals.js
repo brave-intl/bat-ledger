@@ -79,13 +79,14 @@ module.exports.consumer = (runtime) => {
       rows: referralGroups
     } = await postgres.query(queries.getActiveCountryGroups(), [], client)
 
-    const docs = await kafka.mapMessages(referrals, messages, async (ref, timestamp) => {
+    const docs = await kafka.mapMessages(referrals, messages, async (ref) => {
       const {
         ownerId: owner,
         channelId: publisher,
         transactionId,
         downloadId,
-        countryGroupId
+        countryGroupId,
+        finalizedTimestamp
       } = ref
       const txId = transactionId || downloadId
 
@@ -102,7 +103,7 @@ module.exports.consumer = (runtime) => {
       const referral = {
         _id,
         probi,
-        firstId: timestamp,
+        firstId: new Date(finalizedTimestamp),
         transactionId: txId
       }
 
@@ -113,11 +114,31 @@ module.exports.consumer = (runtime) => {
         referral
       }
     })
-    const ids = docs.map(({ id }) => id)
+
+    // drop documents that do not start with 'removed' id
+    const ownerPrefix = 'publishers#uuid:'
+    const wasMissingPrefix = {}
+    const filteredDocs = docs.map((doc) => {
+      if (doc.referral._id.owner.slice(0, 16) !== ownerPrefix) {
+        doc.referral._id.owner = ownerPrefix + doc.referral._id.owner
+        wasMissingPrefix[doc.id] = true
+      }
+      return doc
+    }).filter((doc) => {
+      const { referral: { _id: { owner } } } = doc
+      const throwAway = owner && owner.slice(16) === 'removed'
+      if (throwAway) {
+        runtime.captureException(new Error('referral owner removed'), {
+          extra: doc
+        })
+      }
+      return !throwAway
+    })
+    const ids = filteredDocs.map(({ id }) => id)
     const {
       rows: previouslyInserted
     } = await postgres.query(getTransactionsById, [ids])
-    return Promise.all(docs.map(async ({ id: targetId, referral }) => {
+    return Promise.all(filteredDocs.map(async ({ id: targetId, referral }) => {
       // this part will still be checked serially and first,
       // even if one of the referrals hits the await at the bottom
       // AsyncFunction(s) run syncronously as long as possible.
@@ -129,9 +150,15 @@ module.exports.consumer = (runtime) => {
       if (previouslyInserted.find(({
         id
       }) => id === targetId)) {
+        if (wasMissingPrefix[targetId]) {
+          await postgres.query(`
+          update transactions
+          set to_account = $2
+          where id = $1`, [targetId, referral._id.owner], client)
+        }
         return
       }
-      await transaction.insertFromReferrals(runtime, client, referral)
+      return transaction.insertFromReferrals(runtime, client, referral)
     }))
   })
 }
