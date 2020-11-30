@@ -25,6 +25,9 @@ class Kafka {
   }
 
   async connect () {
+    if (this.connecting) {
+      return this.connecting
+    }
     const partitionCount = 1
 
     const producer = new NProducer(this.config, null, partitionCount)
@@ -35,14 +38,13 @@ class Kafka {
         this.runtime.captureException(error)
       }
     })
-    await producer.connect()
+    const connecting = producer.connect()
+    this.connecting = connecting
+    return connecting
   }
 
   async producer () {
-    if (!this._producer) {
-      await this.connect()
-      return this._producer
-    }
+    await this.connect()
     return this._producer
   }
 

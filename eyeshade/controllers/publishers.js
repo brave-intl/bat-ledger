@@ -1,4 +1,4 @@
-const Joi = require('@hapi/joi')
+const Joi = require('joi')
 const boom = require('@hapi/boom')
 const settlement = require('../lib/settlements')
 
@@ -69,7 +69,7 @@ v2.settlement = {
   },
 
   auth: {
-    strategies: ['simple-scoped-token', 'session'],
+    strategies: ['simple-scoped-token'],
     scope: ['ledger', 'publishers'],
     mode: 'required'
   },

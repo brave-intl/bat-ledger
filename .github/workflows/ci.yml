@@ -49,12 +49,11 @@ jobs:
           # Set always-auth in npmrc
           always-auth: true
           # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
-          node-version: 8.9.2
+          node-version: 14.15.1
           # Set this option if you want the action to check for the latest available version that satisfies the version spec
           check-latest: true
 
-      - run: npm i --global npm@5.10.0
-      - run: npm --version
+      - run: npm install -g yarn
 
       - name: Docker Compose Install
         uses: KengoTODA/actions-setup-docker-compose@92cbaf8ac8c113c35e1cedd1182f217043fbdd00
@@ -79,27 +78,22 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run security checks (audit + lint)
-        run: npm run security
+        run: yarn run security
 
       # Runs a set of commands using the runners shell
       - name: Stand up Postgres
-        run: npm run docker-up-db
+        run: yarn run docker-up-db
 
       - name: Migrate DBs
-        run: npm run docker-migrate-dbs
+        run: yarn run docker-migrate-dbs
       - name: Bring Up App Containers
-        run: npm run docker-up-detached
+        run: yarn run docker-up-detached
       - name: Print Checks
         run: |
           sleep 5
           docker ps
 
       - name: Test
-        run: npm run docker-test
+        run: yarn run docker-test
       - name: Check Migrating Down
-        run: npm run docker-migrate-down-all
-
-#       - name: Coverage
-#         run: npm run coverage
-#       - name: Submit Code Coverage
-#         run: npx codecov --file=./coverage/lcov.info
+        run: yarn run docker-migrate-down-all

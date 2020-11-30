@@ -1,4 +1,4 @@
-const Joi = require('@hapi/joi')
+const Joi = require('joi')
 const _ = require('underscore')
 const braveJoi = require('bat-utils/lib/extras-joi')
 const braveHapi = require('bat-utils/lib/extras-hapi')

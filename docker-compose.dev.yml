@@ -7,11 +7,11 @@ services:
       - "./eyeshade:/usr/src/app/eyeshade"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-    command: "npm run start-eyeshade"
+    command: "yarn run start-eyeshade-web"
   eyeshade-consumer:
     volumes:
       - "./bat-utils:/usr/src/app/bat-utils"
       - "./eyeshade:/usr/src/app/eyeshade"
       - "./package.json:/usr/src/app/package.json"
       - "./config.js:/usr/src/app/config.js"
-    command: "npm run start-eyeshade-consumer"
+    command: "yarn run start-eyeshade-consumer"

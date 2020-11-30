@@ -2,13 +2,8 @@ const dns = require('dns')
 const os = require('os')
 const _ = require('underscore')
 const authBearerToken = require('hapi-auth-bearer-token')
-const hapiCookie = require('@hapi/cookie')
-const cryptiles = require('cryptiles')
-const bell = require('@hapi/bell')
 const hapi = require('@hapi/hapi')
-const inert = require('@hapi/inert')
 const underscore = require('underscore')
-const vision = require('@hapi/vision')
 const hapiRequireHTTPS = require('hapi-require-https')
 const SDebug = require('sdebug')
 
@@ -83,86 +78,24 @@ async function Server (options, runtime) {
   }
 
   const { prometheus } = runtime
+  const requireHTTPS = {
+    plugin: hapiRequireHTTPS,
+    options: { proxy: true }
+  }
   const plugins = [].concat(
-    prometheus ? [prometheus.plugin()] : [],
+    process.env.NODE_ENV === 'production' ? [requireHTTPS] : [],
     [
-      bell,
       authBearerToken,
-      hapiCookie,
       {
         plugin: whitelist.plugin
       },
-      inert,
-      vision,
       rateLimiter(runtime)
-    ], process.env.NODE_ENV === 'production'
-      ? [{
-        plugin: hapiRequireHTTPS,
-        options: { proxy: true }
-      }]
-      : []
+    ],
+    prometheus ? [prometheus.plugin()] : []
   )
   await server.register(plugins)
 
   debug('extensions registered')
-
-  if (runtime.login) {
-    if (runtime.login.github) {
-      const { github } = runtime.login
-      server.auth.strategy('github', 'bell', {
-        provider: 'github',
-        password: cryptiles.randomString(64),
-        clientId: github.clientId,
-        clientSecret: github.clientSecret,
-        isSecure: github.isSecure,
-        forceHttps: github.isSecure,
-        scope: ['user:email', 'read:org'],
-        location: (process.env.HOST.startsWith('127.0.0.1') ? 'http://' : 'https://') + process.env.HOST
-      })
-
-      debug('github authentication: forceHttps=' + github.isSecure)
-
-      server.auth.strategy('session', 'cookie', {
-        redirectTo: '/v1/login',
-        cookie: {
-          password: github.ironKey,
-          isSecure: github.isSecure
-        }
-      })
-
-      debug('session authentication strategy via cookie')
-    } else {
-      debug('github authentication disabled')
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('github authentication was not enabled yet we are in production mode')
-      }
-
-      const bearerAccessTokenConfig = {
-        allowQueryToken: true,
-        allowMultipleHeaders: false,
-        allowChaining: true,
-        validate: (request, token, h) => {
-          const scope = ['devops', 'ledger', 'QA']
-          const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-          const isValid = typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)
-          return {
-            isValid,
-            artifacts: null,
-            credentials: {
-              token,
-              scope
-            }
-          }
-        }
-      }
-
-      server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
-      server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
-
-      debug('session authentication strategy via bearer-access-token')
-      debug('github authentication strategy via bearer-access-token')
-    }
-  }
 
   server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
     allowQueryToken: true,

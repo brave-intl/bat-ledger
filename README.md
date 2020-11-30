@@ -58,33 +58,33 @@ For linting we use StandardJS. It's recommended that you install the necessary I
 ### Build local servers
 
 ```sh
-npm run docker-build
+yarn run docker-build
 ```
 
 ### Start local servers
 
 ```sh
-npm run docker-up
+yarn run docker-up
 ```
 ### Postgres migrations
 
 You can run all migrations to upgrade the schema to the latest version using:
 
 ```sh
-npm run docker-migrate-dbs
+yarn run docker-migrate-dbs
 ```
 
 You can reverse a particular migration by running:
 
 ```sh
-npm run docker-migrate-down -- migrations/0001_transactions/down.sql
+yarn run docker-migrate-down -- migrations/0001_transactions/down.sql
 ```
 
 ### Run tests
 best to do in another terminal
 
 ```sh
-npm run docker-test
+yarn run docker-test
 ```
 
 ## Testing contribution
@@ -97,5 +97,5 @@ curl -X POST --header 'Authorization: Bearer foobarfoobar' --header 'Content-Typ
 
 ## Debugging
 ```sh
-docker-compose run --rm -p 9229:9229 eyeshade-web npm run start-eyeshade -- --inspect=0.0.0.0
+docker-compose run --rm -p 9229:9229 eyeshade-web yarn run start-eyeshade -- --inspect=0.0.0.0
 ```

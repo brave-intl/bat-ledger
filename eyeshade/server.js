@@ -33,7 +33,6 @@ const options = {
   remoteP: true
 }
 
-config.cache = false
 config.postgres.schemaVersion = require('./migrations/current')
 
 module.exports = server(options, new Runtime(config))

@@ -2,7 +2,7 @@ const SDebug = require('sdebug')
 const crypto = require('crypto')
 const underscore = require('underscore')
 const { verify } = require('http-request-signature')
-const Joi = require('@hapi/joi')
+const Joi = require('joi')
 
 const UpholdSDK = require('./runtime-uphold')
 const braveJoi = require('./extras-joi')

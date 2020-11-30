@@ -47,38 +47,14 @@ new Array('GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_IC
 
 module.exports =
 {
-  disable: {
-    wallets: process.env.DISABLE_WALLET_TO_GRANTS || false,
-    grants: process.env.DISABLE_GRANTS || false
-  },
-  forward: {
-    settlements: process.env.FORWARD_SETTLEMENTS_TO_KAFKA || false,
-    referrals: process.env.FORWARD_REFERRALS_TO_KAFKA || false,
-    wallets: process.env.FORWARD_WALLET_TO_GRANTS || false,
-    grants: process.env.FORWARD_TO_GRANTS || false
-  },
-  wreck: {
-    rewards: {
-      baseUrl: process.env.REWARD_SERVER,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    },
-    walletMigration: {
-      baseUrl: process.env.WALLET_MIGRATION_SERVER,
-      headers: {
-        'Authorization': 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
-        'Content-Type': 'application/json'
-      }
-    },
-    grants: {
-      baseUrl: process.env.GRANT_SERVER,
-      headers: {
-        'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN  || '00000000-0000-4000-0000-000000000000'),
-        'Content-Type': 'application/json'
-      }
-    }
-  },
+  // wreck: {
+  //   rewards: {
+  //     baseUrl: process.env.REWARD_SERVER,
+  //     headers: {
+  //       'Content-Type': 'application/json'
+  //     }
+  //   }
+  // },
   altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :
@@ -88,8 +64,6 @@ module.exports =
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',')
                                                         : [ 'BAT', 'BTC', 'ETH', 'LTC' ] }
 , login                 : { github: false }
-, queue                 :
-  { rsmq                : process.env.REDIS_URL                 || 'redis://localhost:6379' }
 , sentry                :
   { dsn: process.env.SENTRY_DSN          || false
   , slug: process.env.HEROKU_SLUG_COMMIT || 'test'
