@@ -82,7 +82,7 @@ jobs:
 
       # Runs a set of commands using the runners shell
       - name: Stand up Postgres
-        run: yarn run docker-up-db
+        run: yarn run docker-up-dbs
 
       - name: Migrate DBs
         run: yarn run docker-migrate-dbs
