@@ -1,6 +1,6 @@
 const { serial: test } = require('ava')
 const _ = require('underscore')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const {
   justDate,
   timeout

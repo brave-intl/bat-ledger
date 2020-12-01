@@ -3,7 +3,7 @@ const _ = require('underscore')
 const dotenv = require('dotenv')
 const tweetnacl = require('tweetnacl')
 const test = require('ava')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const { sign } = require('http-request-signature')
 
 const Wallet = require('./runtime-wallet')

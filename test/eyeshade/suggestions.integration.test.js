@@ -3,7 +3,7 @@
 const Kafka = require('bat-utils/lib/runtime-kafka')
 const Runtime = require('bat-utils/boot-runtime')
 const test = require('ava')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
