@@ -12,7 +12,7 @@
     "coverage": "npx nyc report --reporter=text-lcov",
     "test-all": "yarn run test-isup && yarn run test-unit && yarn run test-integration",
     "test-isup": "ava -v -s test/isup.integration.test.js",
-    "docker-test": "docker-compose run --rm -v $(pwd)/test:/usr/src/app/test -v $(pwd)/eyeshade:/usr/src/app/eyeshade -v $(pwd)/ledger:/usr/src/app/ledger -v $(pwd)/bat-utils:/usr/src/app/bat-utils ledger-web yarn run test",
+    "docker-test": "docker-compose run --rm -v $(pwd)/test:/usr/src/app/test -v $(pwd)/eyeshade:/usr/src/app/eyeshade -v $(pwd)/ledger:/usr/src/app/ledger -v $(pwd)/bat-utils:/usr/src/app/bat-utils eyeshade-web yarn run test",
     "lint": "npx standard",
     "lint-fix": "yarn run lint -- --fix",
     "security": "yarn run lint && yarn run audit",
