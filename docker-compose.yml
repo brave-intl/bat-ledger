@@ -16,15 +16,19 @@ services:
     networks:
       - eyeshade
   kafka:
-    container_name: kafka
+    container_name: broker1
     image: confluentinc/cp-kafka:5.2.2 # kafka version 2.2.1
     depends_on:
       - zookeeper
+    networks:
+      eyeshade:
+        aliases:
+          - broker1.local
     ports:
       - "29092:29092"
     environment:
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: "SSL://kafka:19092,SSL2://localhost:29092"
+      KAFKA_ADVERTISED_LISTENERS: "SSL://broker1.test.confluent.io:19092,SSL2://localhost:29092"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,SSL2:SSL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_SSL_KEYSTORE_FILENAME: kafka.broker1.keystore.jks

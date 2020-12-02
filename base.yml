@@ -5,6 +5,7 @@ services:
     image: bat-eyeshade
     build: .
     restart: always
+    dns_search: test.confluent.io
     volumes:
       - ./test/secrets:/etc/kafka/secrets
     environment:
@@ -12,12 +13,12 @@ services:
       - "BAT_EYESHADE_SERVER=http://eyeshade-web:3002"
       - "BAT_POSTGRES_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
-      - "BAT_REDIS_URL=redis://redis:6379"
+      - "BAT_REDIS_URL=redis://eyeshade-redis:6379"
       - "DEBUG=${DEBUG-*,-babel,-eslint:*,-mongo:*,mongo:queries}"
       - "ENABLE_ADS_PAYOUT=1"
       - "ENV=local"
       - "FASTLY_TOKEN_LIST=421b31c3-57ac-4719-a40a-193d998d93c3"
-      - "KAFKA_BROKERS=kafka:19092"
+      - "KAFKA_BROKERS=broker1.test.confluent.io:19092"
       - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/snakeoil-ca-1.crt"
       - "KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/consumer-ca1-signed.pem"
       - "KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/consumer.client.key"
@@ -27,7 +28,7 @@ services:
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"
       - "NODE_ENV=${NODE_ENV-development}"
       - "PER_MEMBER_CLAIM_LIMIT=4"
-      - "REDIS_URL=${REDIS_URL-redis://redis:6379}"
+      - "REDIS_URL=${REDIS_URL-redis://eyeshade-redis:6379}"
       - "GRANT_TOKEN=596fde96-cc80-40e5-b81f-a21c81bb101a"
       - "ALLOWED_ADS_TOKENS=78102ca7-454d-4f6c-b74d-4e1e38e7e40b"
       - "GRANT_SIGNATOR_PUBLIC_KEY=bbe028009e744422bfc39b0e226633324d8c5fe0744c87c1018b88a488bc5899"

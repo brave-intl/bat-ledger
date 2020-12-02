@@ -236,9 +236,9 @@ async function Server (options, runtime) {
   })
 
   server.route(await options.routes.routes(debug, runtime, options))
-  server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './documentation/favicon.ico' } })
-  server.route({ method: 'GET', path: '/favicon.png', handler: { file: './documentation/favicon.png' } })
-  server.route({ method: 'GET', path: '/robots.txt', handler: { file: './documentation/robots.txt' } })
+  server.route({ method: 'GET', path: '/favicon.ico', handler: (request, h) => h.file('documentation/favicon.ico') })
+  server.route({ method: 'GET', path: '/favicon.png', handler: (request, h) => h.file('documentation/favicon.png') })
+  server.route({ method: 'GET', path: '/robots.txt', handler: (request, h) => h.file('documentation/robots.txt') })
   if (process.env.ACME_CHALLENGE) {
     server.route({
       method: 'GET',
@@ -247,7 +247,7 @@ async function Server (options, runtime) {
     })
   }
   // automated fishing expeditions shouldn't result in devops alerts...
-  server.route({ method: 'GET', path: '/{path*}', handler: { file: './documentation/robots.txt' } })
+  server.route({ method: 'GET', path: '/{path*}', handler: (request, h) => h.file('documentation/robots.txt') })
 
   try {
     debug('starting server')

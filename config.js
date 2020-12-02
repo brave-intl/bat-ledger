@@ -122,12 +122,14 @@ if (process.env.KAFKA_BROKERS) {
     noptions:
     { 'metadata.broker.list': process.env.KAFKA_BROKERS
     , 'group.id': process.env.ENV + '.' + process.env.SERVICE
+    , 'client.id': process.env.ENV + '.' + process.env.SERVICE
     , 'socket.keepalive.enable': true
+    , 'compression.codec': 'none'
     , 'api.version.request': true
     , 'socket.blocking.max.ms': 100
-    , "security.protocol": "SSL"
-    , "ssl.certificate.location": process.env.KAFKA_SSL_CERTIFICATE_LOCATION
-    , "ssl.key.location": process.env.KAFKA_SSL_KEY_LOCATION
+    , "security.protocol": 'SSL'
+    , 'ssl.certificate.location': process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+    , 'ssl.key.location': process.env.KAFKA_SSL_KEY_LOCATION
     },
     tconf:
     { 'request.required.acks': +process.env.KAFKA_REQUIRED_ACKS

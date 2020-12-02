@@ -72,7 +72,6 @@ function Cache (config, runtime) {
   } = config
   const { redis } = cache
 
-  console.log('cache config', config)
   if (!redis) {
     return
   }

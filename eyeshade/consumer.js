@@ -21,8 +21,6 @@ if (!process.env.BATUTIL_SPACES) {
 Runtime.newrelic.setupNewrelic(config, __filename)
 
 config.cache = false
-config.database = false
-config.queue = false
 config.prometheus = false
 config.postgres.schemaVersion = require('./migrations/current')
 

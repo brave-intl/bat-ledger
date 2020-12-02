@@ -1,6 +1,8 @@
-const { NConsumer, NProducer } = require('sinek')
+const { EventEmitter } = require('events')
+const { JSConsumer, JSProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
+const ev = new EventEmitter()
 
 const batchOptions = {
   batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
@@ -22,6 +24,8 @@ class Kafka {
     this.config = kafka
     this.topicHandlers = {}
     this.topicConsumers = {}
+    this.timers = {}
+    ev.on('kafkaisalive', (topic) => console.log(topic))
   }
 
   async connect () {
@@ -30,7 +34,7 @@ class Kafka {
     }
     const partitionCount = 1
 
-    const producer = new NProducer(this.config, null, partitionCount)
+    const producer = new JSProducer(this.config, null, partitionCount)
     this._producer = producer
     producer.on('error', error => {
       console.error(error)
@@ -64,7 +68,15 @@ class Kafka {
             )
           ), [])
       )
-    )
+    ).then(() => {
+      return Promise.all(Object.keys(this.timers).map((key) => {
+        const timer = this.timers[key]
+        if (timer && timer.unref) {
+          timer.unref()
+        }
+        return true
+      }))
+    })
   }
 
   addTopicConsumer (topic, consumer) {
@@ -122,9 +134,11 @@ class Kafka {
   }
 
   consume () {
-    return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
+    const keys = Object.keys(this.topicHandlers)
+    debug('consuming', keys, this.config)
+    return Promise.all(keys.map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = new NConsumer([topic], this.config)
+      const consumer = new JSConsumer([topic], this.config)
       await consumer.connect()
       this.addTopicConsumer(topic, consumer)
       consumer.consume(async (batchOfMessages, callback) => {
@@ -156,6 +170,9 @@ class Kafka {
           })
         }
       }, false, false, batchOptions)
+      consumer.timers[topic] = setInterval(() => {
+        ev.emit('kafkaisalive', topic)
+      }, 60000)
       return consumer
     }))
   }

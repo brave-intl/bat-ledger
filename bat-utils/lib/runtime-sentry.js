@@ -55,5 +55,6 @@ function Sentry (config, runtime) {
       optional.extra = underscore.extend(optional.extra, { timestamp: request.info.received, id: request.id })
     }
     Raven.captureException(ex, optional)
+    debug(ex)
   }
 }
