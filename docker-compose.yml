@@ -23,7 +23,7 @@ services:
     networks:
       eyeshade:
         aliases:
-          - broker1.local
+          - broker1.test.confluent.io
     ports:
       - "29092:29092"
     environment:
@@ -41,8 +41,6 @@ services:
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
     volumes:
       - ./test/secrets:/etc/kafka/secrets
-    networks:
-      - eyeshade
   eyeshade-redis:
     container_name: eyeshade-redis
     image: redis:latest
