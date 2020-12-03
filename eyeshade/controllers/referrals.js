@@ -6,15 +6,11 @@ const _ = underscore
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
-const extrasUtils = utils.extras.utils
-const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
 const countries = require('../lib/countries')
 
 const v1 = {}
-
-const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 
 const amountValidator = braveJoi.string().numeric()
 const groupNameValidator = Joi.string().optional().description('the name given to the group')
@@ -40,19 +36,6 @@ const referralGroupCountriesValidator = Joi.object().keys({
   amount: amountValidator.optional().description('the amount to pay out per referral in the given currency')
 })
 const referralGroupsCountriesValidator = Joi.array().items(referralGroupCountriesValidator)
-
-const groupedReferralValidator = Joi.object().keys({
-  publisher: publisherValidator,
-  groupId: groupIdValidator.required().description('group id'),
-  amount: amountValidator.description('the amount to be paid out in BAT'),
-  referralCode: referralCodeValidator.allow(''),
-  payoutRate: amountValidator.description('the rate of BAT per USD')
-})
-
-const dateRangeParams = Joi.object().keys({
-  start: Joi.date().iso().required().description('the date to start the query'),
-  until: Joi.date().iso().optional().description('the date to query until')
-})
 
 const fieldValidator = Joi.string().description('whether the field should be included or not')
 
@@ -155,7 +138,7 @@ v1.getReferralGroups = {
 
 
 v1.getReferralsStatement = {
-  handler: (runtime) => async (request, h) => {
+  handler: () => async () => {
     throw boom.resourceGone()
   }
 }
