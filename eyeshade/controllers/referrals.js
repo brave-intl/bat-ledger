@@ -153,72 +153,10 @@ v1.getReferralGroups = {
   GET /v1/referrals/statement/{owner}
 */
 
+
 v1.getReferralsStatement = {
   handler: (runtime) => async (request, h) => {
-    const { database, currency } = runtime
-    const { params, query } = request
-    const { owner } = params
-    const { start: qStart, until: qUntil } = query
-    const {
-      start,
-      until
-    } = extrasUtils.backfillDateRange({
-      start: qStart || new Date((new Date()).toISOString().split('-').slice(0, 2).join('-')),
-      until: qUntil
-    })
-    const debug = braveHapi.debug(module, request)
-    const referrals = database.get('referrals', debug)
-    const refs = await referrals.find({
-      owner,
-      finalized: {
-        $gte: start,
-        $lt: until
-      }
-    }, {
-      _id: 0,
-      publisher: 1,
-      groupId: 1,
-      probi: 1,
-      payoutRate: 1,
-      referralCode: 1
-    })
-    const scale = currency.alt2scale('BAT')
-    return refs.map(({
-      publisher,
-      groupId,
-      referralCode,
-      payoutRate,
-      probi
-    }) => {
-      const bat = (new BigNumber(probi)).dividedBy(scale)
-      return {
-        publisher,
-        referralCode: referralCode || '',
-        groupId: _.isUndefined(groupId) ? originalRateId : groupId,
-        payoutRate: payoutRate || bat.dividedBy(5).toString(),
-        amount: bat.toString()
-      }
-    })
-  },
-
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['global', 'referrals'],
-    mode: 'required'
-  },
-
-  description: 'Get the referral details for a publisher',
-  tags: ['api', 'referrals'],
-
-  validate: {
-    headers: Joi.object({
-      authorization: Joi.string().required()
-    }).unknown(),
-    query: dateRangeParams
-  },
-
-  response: {
-    schema: Joi.array().items(groupedReferralValidator).description('the list of referrals attributed to a given owner')
+    throw boom.resourceGone()
   }
 }
 
