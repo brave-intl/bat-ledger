@@ -1,8 +1,7 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-if (process.env.KAFKA_SSL_CERTIFICATE_LOCATION) {
-  process.env.NODE_EXTRA_CA_CERTS = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
-}
-console.log('process.env.NODE_EXTRA_CA_CERTS', process.env.NODE_EXTRA_CA_CERTS)
+// if (process.env.KAFKA_SSL_CERTIFICATE_LOCATION) {
+//   process.env.NODE_EXTRA_CA_CERTS = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+// }
 const { JSConsumer, HighLevelProducer: NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
@@ -45,6 +44,8 @@ class Kafka {
     })
     const connecting = producer.connect()
     this.connecting = connecting
+    console.log('awaiting connection')
+    await new Promise((resolve) => setTimeout(resolve, 10000000))
     return connecting
   }
 

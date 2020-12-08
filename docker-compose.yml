@@ -12,35 +12,32 @@ services:
       - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-    #network_mode: "host"
     networks:
       - eyeshade
   kafka:
-    container_name: broker1
+    container_name: kafka
     image: confluentinc/cp-kafka:5.2.2 # kafka version 2.2.1
     depends_on:
       - zookeeper
-    networks:
-      eyeshade:
-        aliases:
-          - broker1.test.confluent.io
     ports:
       - "29092:29092"
     environment:
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: "SSL://broker1.test.confluent.io:19092,SSL2://localhost:29092"
+      KAFKA_ADVERTISED_LISTENERS: "SSL://kafka:19092,SSL2://localhost:29092"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,SSL2:SSL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_SSL_KEYSTORE_FILENAME: docker.kafka.server.keystore.jks
-      # KAFKA_SSL_KEYSTORE_CREDENTIALS: broker1_keystore_creds
-      # KAFKA_SSL_KEY_CREDENTIALS: broker1_sslkey_creds
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: password
+      KAFKA_SSL_KEY_CREDENTIALS: password
       KAFKA_SSL_TRUSTSTORE_FILENAME: docker.kafka.server.truststore.jks
-      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: broker1_truststore_creds
-      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: password
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
       KAFKA_SSL_CLIENT_AUTH: requested
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
     volumes:
       - ./certs:/etc/kafka/secrets
+    networks:
+      - eyeshade
   eyeshade-redis:
     container_name: eyeshade-redis
     image: redis:latest
