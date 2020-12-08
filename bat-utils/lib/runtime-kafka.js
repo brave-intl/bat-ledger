@@ -1,6 +1,7 @@
 const { JSConsumer, HighLevelProducer: NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 const batchOptions = {
   batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
