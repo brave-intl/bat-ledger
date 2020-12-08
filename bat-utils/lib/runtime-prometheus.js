@@ -53,7 +53,7 @@ Prometheus.prototype.maintenance = async function () {
   const { interval, timeout, client, register } = this
   this.interval = interval || client.collectDefaultMetrics({
     labels: {
-      HOSTNAME: process.env.HOSTNAME || 'web'
+      instance: process.env.HOSTNAME || 'web'
     },
     timeout,
     register
