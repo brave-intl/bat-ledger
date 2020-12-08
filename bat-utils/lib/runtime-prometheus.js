@@ -50,15 +50,12 @@ Prometheus.prototype.cache = function () {
 }
 
 Prometheus.prototype.maintenance = async function () {
-  const { interval, timeout, client, register } = this
-  this.interval = interval || client.collectDefaultMetrics({
-    labels: {
-      instance: process.env.HOSTNAME || 'web'
-    },
-    timeout,
-    register
-  })
-  await this.merge()
+  // const { interval, timeout, client, register } = this
+  // this.interval = interval || client.collectDefaultMetrics({
+  //   timeout,
+  //   register
+  // })
+  // await this.merge()
 }
 
 Prometheus.prototype.duration = function (start) {
