@@ -1,8 +1,6 @@
-const { EventEmitter } = require('events')
 const { NConsumer, HighLevelProducer: NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
-const ev = new EventEmitter()
 
 const batchOptions = {
   batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
@@ -24,8 +22,6 @@ class Kafka {
     this.config = kafka
     this.topicHandlers = {}
     this.topicConsumers = {}
-    this.timers = {}
-    ev.on('kafkaisalive', (topic) => console.log(topic))
   }
 
   async connect () {
@@ -68,15 +64,7 @@ class Kafka {
             )
           ), [])
       )
-    ).then(() => {
-      return Promise.all(Object.keys(this.timers).map((key) => {
-        const timer = this.timers[key]
-        if (timer && timer.unref) {
-          timer.unref()
-        }
-        return true
-      }))
-    })
+    )
   }
 
   addTopicConsumer (topic, consumer) {
@@ -170,9 +158,6 @@ class Kafka {
           })
         }
       }, false, false, batchOptions)
-      consumer.timers[topic] = setInterval(() => {
-        ev.emit('kafkaisalive', topic)
-      }, 60000)
       return consumer
     }))
   }
