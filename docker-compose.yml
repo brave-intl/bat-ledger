@@ -31,16 +31,16 @@ services:
       KAFKA_ADVERTISED_LISTENERS: "SSL://broker1.test.confluent.io:19092,SSL2://localhost:29092"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,SSL2:SSL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_SSL_KEYSTORE_FILENAME: kafka.broker1.keystore.jks
-      KAFKA_SSL_KEYSTORE_CREDENTIALS: broker1_keystore_creds
-      KAFKA_SSL_KEY_CREDENTIALS: broker1_sslkey_creds
-      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.broker1.truststore.jks
+      KAFKA_SSL_KEYSTORE_FILENAME: docker.kafka.server.keystore.jks
+      # KAFKA_SSL_KEYSTORE_CREDENTIALS: broker1_keystore_creds
+      # KAFKA_SSL_KEY_CREDENTIALS: broker1_sslkey_creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: docker.kafka.server.truststore.jks
       KAFKA_SSL_TRUSTSTORE_CREDENTIALS: broker1_truststore_creds
       KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
       KAFKA_SSL_CLIENT_AUTH: requested
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
     volumes:
-      - ./test/secrets:/etc/kafka/secrets
+      - ./certs:/etc/kafka/secrets
   eyeshade-redis:
     container_name: eyeshade-redis
     image: redis:latest

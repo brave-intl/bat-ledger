@@ -7,7 +7,7 @@ services:
     restart: always
     dns_search: test.confluent.io
     volumes:
-      - ./test/secrets:/etc/kafka/secrets
+      - ./certs:/etc/kafka/secrets
     environment:
       - "ANON_RATE_LIMIT_PER_M=60000"
       - "BAT_EYESHADE_SERVER=http://eyeshade-web:3002"

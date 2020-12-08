@@ -1,7 +1,11 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+if (process.env.KAFKA_SSL_CERTIFICATE_LOCATION) {
+  process.env.NODE_EXTRA_CA_CERTS = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
+}
+console.log('process.env.NODE_EXTRA_CA_CERTS', process.env.NODE_EXTRA_CA_CERTS)
 const { JSConsumer, HighLevelProducer: NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 const batchOptions = {
   batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
