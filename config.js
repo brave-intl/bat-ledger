@@ -137,6 +137,6 @@ if (process.env.KAFKA_BROKERS) {
 }
 
 module.exports.prometheus =
-  { label              : process.env.SERVICE + '.' + (process.env.DYNO || 1)
+  { label              : process.env.HOSTNAME || 'web'
   , redis              : process.env.REDIS2_URL               || process.env.REDIS_URL               ||  false
   }

@@ -126,7 +126,7 @@ class Kafka {
     debug('consuming', keys, this.config)
     return Promise.all(keys.map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = new NConsumer([topic], this.config)
+      const consumer = NConsumer([topic], this.config)
       await consumer.connect()
       this.addTopicConsumer(topic, consumer)
       consumer.consume(async (batchOfMessages, callback) => {
