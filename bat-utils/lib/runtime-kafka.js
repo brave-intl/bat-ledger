@@ -1,4 +1,4 @@
-const { NConsumer, HighLevelProducer: NProducer } = require('sinek')
+const { JSConsumer, HighLevelProducer: NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
 
@@ -126,7 +126,7 @@ class Kafka {
     debug('consuming', keys, this.config)
     return Promise.all(keys.map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = NConsumer([topic], this.config)
+      const consumer = new JSConsumer([topic], this.config)
       await consumer.connect()
       this.addTopicConsumer(topic, consumer)
       consumer.consume(async (batchOfMessages, callback) => {
