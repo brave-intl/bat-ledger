@@ -47,14 +47,6 @@ new Array('GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_IC
 
 module.exports =
 {
-  // wreck: {
-  //   rewards: {
-  //     baseUrl: process.env.REWARD_SERVER,
-  //     headers: {
-  //       'Content-Type': 'application/json'
-  //     }
-  //   }
-  // },
   altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :

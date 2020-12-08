@@ -1,5 +1,5 @@
 const { EventEmitter } = require('events')
-const { JSConsumer, JSProducer } = require('sinek')
+const { NConsumer, HighLevelProducer: NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
 const ev = new EventEmitter()
@@ -34,7 +34,7 @@ class Kafka {
     }
     const partitionCount = 1
 
-    const producer = new JSProducer(this.config, null, partitionCount)
+    const producer = new NProducer(this.config, null, partitionCount)
     this._producer = producer
     producer.on('error', error => {
       console.error(error)
@@ -138,7 +138,7 @@ class Kafka {
     debug('consuming', keys, this.config)
     return Promise.all(keys.map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = new JSConsumer([topic], this.config)
+      const consumer = new NConsumer([topic], this.config)
       await consumer.connect()
       this.addTopicConsumer(topic, consumer)
       consumer.consume(async (batchOfMessages, callback) => {
