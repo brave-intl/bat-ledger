@@ -6,7 +6,7 @@ services:
     build: .
     restart: always
     volumes:
-      - ./certs:/etc/kafka/secrets
+      - ./kafka/certs:/etc/kafka/secrets
     environment:
       - "ANON_RATE_LIMIT_PER_M=60000"
       - "BAT_EYESHADE_SERVER=http://eyeshade-web:3002"
@@ -17,11 +17,11 @@ services:
       - "ENABLE_ADS_PAYOUT=1"
       - "ENV=local"
       - "FASTLY_TOKEN_LIST=421b31c3-57ac-4719-a40a-193d998d93c3"
-      - "KAFKA_BROKERS=kafka:9092"
-      - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/ca-cert"
+      - "KAFKA_BROKERS=kafka1:9093"
+      - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/cert-signed"
       - "KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/cert-signed"
       - "KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/ca-key"
-      - "KAFKA_SSL_KEY_PASSWORD=nodesinek"
+      - "KAFKA_SSL_KEY_PASSWORD=testtest"
       - "KAFKA_REQUIRED_ACKS=1"
       - "FEATURE_WALLET=true"
       - "FREEZE_SURVEYORS_AGE_DAYS=${FREEZE_SURVEYORS_AGE_DAYS-7}"

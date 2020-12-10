@@ -6,7 +6,7 @@ const { BigNumber } = require('bat-utils/lib/extras-utils')
 const suggestionTopic = process.env.ENV + '.grant.suggestion'
 
 module.exports = (runtime) => {
-  runtime.kafka.on(suggestionTopic, async (messages, client) => {
+  runtime.kafka.on({ topic: suggestionTopic, decode: suggestions.decode }, async (messages, client) => {
     const date = moment().format('YYYY-MM-DD')
     for (let i = 0; i < messages.length; i += 1) {
       const message = messages[i]

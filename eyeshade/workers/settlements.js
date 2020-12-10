@@ -9,7 +9,7 @@ module.exports = {
 
 function consumer (runtime) {
   const { kafka, postgres } = runtime
-  kafka.on(settlements.topic, async (messages, client) => {
+  kafka.on(settlements, async (messages, client) => {
     const inserting = {}
     await kafka.mapMessages(settlements, messages, async (settlement, timestamp) => {
       const {

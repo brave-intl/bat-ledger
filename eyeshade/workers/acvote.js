@@ -5,19 +5,19 @@ const moment = require('moment')
 const voteTopic = process.env.ENV + '.payment.vote'
 
 module.exports = (runtime) => {
-  runtime.kafka.on(voteTopic, async (messages, client) => {
+  runtime.kafka.on({ topic: voteTopic, decode: voteType }, async (messages, client) => {
     const date = moment().format('YYYY-MM-DD')
     for (let i = 0; i < messages.length; i += 1) {
-      const message = messages[i]
-      const buf = Buffer.from(message.value, 'binary')
-      let vote
-      try {
-        vote = voteType.fromBuffer(buf)
-      } catch (e) {
-        // If the event is not well formed, capture the error and continue
-        runtime.captureException(e, { extra: { topic: voteTopic, message: message } })
-        continue
-      }
+      const vote = messages[i]
+      // const buf = Buffer.from(message.value, 'binary')
+      // let vote
+      // try {
+      //   vote = voteType.fromBuffer(buf)
+      // } catch (e) {
+      //   // If the event is not well formed, capture the error and continue
+      //   runtime.captureException(e, { extra: { topic: voteTopic, message: message } })
+      //   continue
+      // }
 
       const surveyorId = date + '_' + vote.fundingSource
       const cohort = 'control'

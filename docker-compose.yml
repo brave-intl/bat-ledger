@@ -10,35 +10,167 @@ services:
     image: confluentinc/cp-zookeeper:5.2.2
     ports:
       - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
     networks:
       - eyeshade
-  kafka:
-    container_name: kafka
+    environment:
+      ZOOKEEPER_CLIENT_PORT: '2181'
+      ZOOKEEPER_TICK_TIME: '2000'
+      KAFKA_OPTS: '-Djava.security.auth.login.config=/etc/kafka/conf/server-jaas.conf -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider'
+    volumes:
+      - ./kafka/conf/server-jaas.conf:/etc/kafka/conf/server-jaas.conf:ro,z
+
+  kafka1:
     image: confluentinc/cp-kafka:5.2.2 # kafka version 2.2.1
+    hostname: kafka1
+    container_name: kafka1
+    labels:
+      - 'custom.project=kafkajs'
+      - 'custom.service=kafka1'
+    networks:
+      - eyeshade
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: "SSL://kafka:29092,SSL2://localhost:9092"
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL,SSL2:SSL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_SSL_KEYSTORE_FILENAME: docker.kafka.server.keystore.jks
-      KAFKA_SSL_KEYSTORE_CREDENTIALS: password
-      KAFKA_SSL_KEY_CREDENTIALS: password
-      KAFKA_SSL_TRUSTSTORE_FILENAME: docker.kafka.server.truststore.jks
-      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: password
-      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
-      KAFKA_SSL_CLIENT_AUTH: requested
-      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      - '29092:29092'
+      - '9092:9092'
+      - '29093:29093'
+      - '9093:9093'
+      - '29094:29094'
+      - '9094:9094'
     volumes:
-      - ./certs:/etc/kafka/secrets
+      - ./kafka/certs/:/etc/kafka/secrets/:ro,z
+      - ./kafka/conf/server-jaas.conf:/opt/kafka/config/server-jaas.conf:ro,z
+    environment:
+      KAFKA_BROKER_ID: '0'
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SSL_HOST:SSL
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:29092,PLAINTEXT_HOST://localhost:9092,SSL://kafka1:29093,SSL_HOST://localhost:9093
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
+      KAFKA_SSL_KEYSTORE_FILENAME: 'kafka.server.keystore.jks'
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: 'keystore_creds'
+      KAFKA_SSL_KEY_CREDENTIALS: 'sslkey_creds'
+      KAFKA_SSL_TRUSTSTORE_FILENAME: 'kafka.server.truststore.jks'
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: 'truststore_creds'
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: 'PLAIN'
+      # KAFKA_SASL_ENABLED_MECHANISMS: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-512'
+      KAFKA_OPTS: '-Djava.security.auth.login.config=/opt/kafka/config/server-jaas.conf'
+      KAFKA_AUTHORIZER_CLASS_NAME: "kafka.security.auth.SimpleAclAuthorizer"
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'
+      # suppress verbosity
+      # https://github.com/confluentinc/cp-docker-images/blob/master/debian/kafka/include/etc/confluent/docker/log4j.properties.template
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
+      CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      # KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      # KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,SSL://localhost:9093"
+      # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT://:9092,SSL://:9093"
+      # KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # KAFKA_SSL_KEYSTORE_FILENAME: docker.kafka.server.keystore.jks
+      # KAFKA_SSL_KEYSTORE_CREDENTIALS: password
+      # KAFKA_SSL_KEY_CREDENTIALS: password
+      # KAFKA_SSL_TRUSTSTORE_FILENAME: docker.kafka.server.truststore.jks
+      # KAFKA_SSL_TRUSTSTORE_CREDENTIALS: password
+      # KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      # KAFKA_SSL_CLIENT_AUTH: requested
+      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+
+  kafka2:
+    image: confluentinc/cp-kafka:5.2.2
+    hostname: kafka2
+    container_name: kafka2
+    labels:
+      - 'custom.project=kafkajs'
+      - 'custom.service=kafka2'
     networks:
       - eyeshade
+    depends_on:
+      - zookeeper
+    ports:
+      - '29095:29095'
+      - '9095:9095'
+      - '29096:29096'
+      - '9096:9096'
+      - '29097:29097'
+      - '9097:9097'
+    environment:
+      KAFKA_BROKER_ID: '1'
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SSL_HOST:SSL,SASL_SSL:SASL_SSL,SASL_SSL_HOST:SASL_SSL
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29095,PLAINTEXT_HOST://localhost:9095,SSL://kafka2:29096,SSL_HOST://localhost:9096,SASL_SSL://kafka2:29097,SASL_SSL_HOST://localhost:9097
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
+      KAFKA_SSL_KEYSTORE_FILENAME: 'kafka.server.keystore.jks'
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: 'keystore_creds'
+      KAFKA_SSL_KEY_CREDENTIALS: 'sslkey_creds'
+      KAFKA_SSL_TRUSTSTORE_FILENAME: 'kafka.server.truststore.jks'
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: 'truststore_creds'
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: 'PLAIN'
+      KAFKA_SASL_ENABLED_MECHANISMS: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-512'
+      KAFKA_OPTS: '-Djava.security.auth.login.config=/opt/kafka/config/server-jaas.conf'
+      KAFKA_AUTHORIZER_CLASS_NAME: "kafka.security.auth.SimpleAclAuthorizer"
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'
+      # suppress verbosity
+      # https://github.com/confluentinc/cp-docker-images/blob/master/debian/kafka/include/etc/confluent/docker/log4j.properties.template
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
+      CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+    volumes:
+      - ./kafka/certs/kafka.server.keystore.jks:/etc/kafka/secrets/kafka.server.keystore.jks:ro,z
+      - ./kafka/certs/kafka.server.truststore.jks:/etc/kafka/secrets/kafka.server.truststore.jks:ro,z
+      - ./kafka/certs/keystore_creds:/etc/kafka/secrets/keystore_creds:ro,z
+      - ./kafka/certs/sslkey_creds:/etc/kafka/secrets/sslkey_creds:ro,z
+      - ./kafka/certs/truststore_creds:/etc/kafka/secrets/truststore_creds:ro,z
+      - ./kafka/conf/server-jaas.conf:/opt/kafka/config/server-jaas.conf:ro,z
+
+  kafka3:
+    image: confluentinc/cp-kafka:5.2.2
+    hostname: kafka3
+    container_name: kafka3
+    labels:
+      - 'custom.project=kafkajs'
+      - 'custom.service=kafka3'
+    networks:
+      - eyeshade
+    depends_on:
+      - zookeeper
+    ports:
+      - '29098:29098'
+      - '9098:9098'
+      - '29099:29099'
+      - '9099:9099'
+      - '29100:29100'
+      - '9100:9100'
+    environment:
+      KAFKA_BROKER_ID: '2'
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SSL_HOST:SSL,SASL_SSL:SASL_SSL,SASL_SSL_HOST:SASL_SSL
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29098,PLAINTEXT_HOST://localhost:9098,SSL://kafka3:29099,SSL_HOST://localhost:9099,SASL_SSL://kafka3:29100,SASL_SSL_HOST://localhost:9100
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
+      KAFKA_SSL_KEYSTORE_FILENAME: 'kafka.server.keystore.jks'
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: 'keystore_creds'
+      KAFKA_SSL_KEY_CREDENTIALS: 'sslkey_creds'
+      KAFKA_SSL_TRUSTSTORE_FILENAME: 'kafka.server.truststore.jks'
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: 'truststore_creds'
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: 'PLAIN'
+      KAFKA_SASL_ENABLED_MECHANISMS: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-512'
+      KAFKA_OPTS: '-Djava.security.auth.login.config=/opt/kafka/config/server-jaas.conf'
+      KAFKA_AUTHORIZER_CLASS_NAME: "kafka.security.auth.SimpleAclAuthorizer"
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'
+      # suppress verbosity
+      # https://github.com/confluentinc/cp-docker-images/blob/master/debian/kafka/include/etc/confluent/docker/log4j.properties.template
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
+      CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+    volumes:
+      - ./kafka/certs/kafka.server.keystore.jks:/etc/kafka/secrets/kafka.server.keystore.jks:ro,z
+      - ./kafka/certs/kafka.server.truststore.jks:/etc/kafka/secrets/kafka.server.truststore.jks:ro,z
+      - ./kafka/certs/keystore_creds:/etc/kafka/secrets/keystore_creds:ro,z
+      - ./kafka/certs/sslkey_creds:/etc/kafka/secrets/sslkey_creds:ro,z
+      - ./kafka/certs/truststore_creds:/etc/kafka/secrets/truststore_creds:ro,z
+      - ./kafka/conf/server-jaas.conf:/opt/kafka/config/server-jaas.conf:ro,z
+
   eyeshade-redis:
     container_name: eyeshade-redis
     image: redis:latest
@@ -58,7 +190,7 @@ services:
       - "POSTGRES_PASSWORD=password"
   eyeshade-consumer:
     container_name: eyeshade-consumer
-    command: "yarn run eyeshade-consumer"
+    command: "yarn run start-eyeshade-consumer"
     extends:
       file: base.yml
       service: eyeshade
@@ -68,11 +200,15 @@ services:
       - "DYNO=worker.1"
     depends_on:
       - eyeshade-postgres
-      - kafka
+      - kafka1
+      # - kafka2
+      # - kafka3
     networks:
       - eyeshade
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
+      - ./bat-utils:/usr/src/app/bat-utils
+      - ./kafka/certs:/etc/kafka/secrets
   eyeshade-web:
     container_name: eyeshade-web
     ports:
@@ -94,6 +230,7 @@ services:
       - eyeshade
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
+      - ./kafka/certs:/etc/kafka/secrets
 
   prometheus:
     image: prom/prometheus:latest

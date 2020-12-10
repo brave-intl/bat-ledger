@@ -29,7 +29,7 @@ env:
   REDEEMER_WALLET_PRIVATE_KEY: ${{ secrets.REDEEMER_WALLET_PRIVATE_KEY }}
   REDEEMER_WALLET_PUBLIC_KEY: ${{ secrets.REDEEMER_WALLET_PUBLIC_KEY }}
   UPHOLD_ACCESS_TOKEN: ${{ secrets.UPHOLD_ACCESS_TOKEN }}
-  DEBUG: DEBUG=*,-babel*,-eslint*,mongo,ava,-kafka*,-sinek*,-postgres*,-superagent*
+  DEBUG: DEBUG=*,-babel*,-eslint*,mongo,ava,-kafka*,-postgres*,-superagent*
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -49,7 +49,7 @@ jobs:
           # Set always-auth in npmrc
           always-auth: true
           # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
-          node-version: 14.15.1
+          node-version: 12.18.2
           # Set this option if you want the action to check for the latest available version that satisfies the version spec
           check-latest: true
 

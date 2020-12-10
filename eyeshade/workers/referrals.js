@@ -12,7 +12,7 @@ WHERE id = any($1::UUID[])`
 
 module.exports.consumer = (runtime) => {
   const { kafka, postgres, config } = runtime
-  kafka.on(referrals.topic, async (messages, client) => {
+  kafka.on(referrals, async (messages, client) => {
     const inserting = {}
     const {
       rows: referralGroups

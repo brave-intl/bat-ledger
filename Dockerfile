@@ -1,16 +1,16 @@
-FROM node:14.15-alpine
+FROM node:14.15
 
-RUN apk add yarn python g++ make postgresql postgresql-contrib
-
-RUN rm -rf /var/cache/apk/*
+RUN mkdir -p /usr/src/app \
+  && apt-get update && apt-get install -y build-essential python librdkafka-dev libsasl2-dev libsasl2-modules openssl postgresql postgresql-contrib \
+  && apt-get autoremove -y && apt-get autoclean -y \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /usr/src/app
 RUN mkdir /usr/src/app/bat-utils
 WORKDIR /usr/src/app
-
-COPY package*.json ./
-RUN yarn install
-
+COPY package.json ./
+COPY yarn.lock ./
+RUN yarn
 COPY . /usr/src/app
 
 CMD yarn start-eyeshade-web

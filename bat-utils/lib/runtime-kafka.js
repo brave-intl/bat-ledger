@@ -1,22 +1,12 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-// if (process.env.KAFKA_SSL_CERTIFICATE_LOCATION) {
-//   process.env.NODE_EXTRA_CA_CERTS = process.env.KAFKA_SSL_CERTIFICATE_LOCATION
-// }
-const { JSConsumer, HighLevelProducer: NProducer } = require('sinek')
+const { Kafka, logLevel } = require('kafkajs')
+const underscore = require('underscore')
+const fs = require('fs')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
 
-const batchOptions = {
-  batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
-  commitEveryNBatch: 1, // will be ignored
-  concurrency: 1, // will be ignored
-  commitSync: false, // will be ignored
-  noBatchCommits: true, // important, because we want to commit manually
-  manualBatching: true, // important, because we want to control the concurrency of batches ourselves
-  sortedManualBatch: true // important, because we want to receive the batch in a per-partition format for easier processing
-}
+const groupId = process.env.ENV + '.' + process.env.SERVICE
 
-class Kafka {
+class KafkaWrapper {
   constructor (config, runtime) {
     const { kafka } = config
     if (!kafka) {
@@ -26,15 +16,33 @@ class Kafka {
     this.config = kafka
     this.topicHandlers = {}
     this.topicConsumers = {}
+    const brokers = process.env.KAFKA_BROKERS.split(',').map((broker) => broker.trim())
+    const ssl = {
+      servername: 'localhost',
+      rejectUnauthorized: false,
+      ca: [fs.readFileSync(process.env.KAFKA_SSL_CA_LOCATION, 'utf-8')],
+      cert: fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8'),
+      key: fs.readFileSync(process.env.KAFKA_SSL_KEY_LOCATION, 'utf-8')
+    }
+    console.log(ssl)
+    this.kafka = new Kafka({
+      logLevel: logLevel.INFO,
+      // logCreator: debug,
+      brokers,
+      clientId: process.env.ENV + '.' + process.env.SERVICE,
+      ssl
+    })
   }
 
   async connect () {
-    if (this.connecting) {
-      return this.connecting
+    const { kafka, connecting } = this
+    if (connecting) {
+      return connecting
     }
-    const partitionCount = 1
+    // const partitionCount = 1
 
-    const producer = new NProducer(this.config, null, partitionCount)
+    // this.config, null, partitionCount
+    const producer = kafka.producer() // eslint-disable-line
     this._producer = producer
     producer.on('error', error => {
       console.error(error)
@@ -42,11 +50,10 @@ class Kafka {
         this.runtime.captureException(error)
       }
     })
-    const connecting = producer.connect()
-    this.connecting = connecting
+    const conn = producer.connect()
+    this.connecting = conn
     console.log('awaiting connection')
-    await new Promise((resolve) => setTimeout(resolve, 10000000))
-    return connecting
+    return conn
   }
 
   async producer () {
@@ -123,52 +130,77 @@ class Kafka {
     return producer.send(topicName, message, _partition, _key, _partitionKey)
   }
 
-  on (topic, handler) {
-    this.topicHandlers[topic] = handler
+  on ({ topic, decode }, handler) {
+    this.topicHandlers[topic] = {
+      handler,
+      decode
+    }
+    // this.decoders[topic] = decode
   }
 
   consume () {
+    const { runtime, kafka } = this
     const keys = Object.keys(this.topicHandlers)
     debug('consuming', keys, this.config)
     return Promise.all(keys.map(async (topic) => {
-      const handler = this.topicHandlers[topic]
-      const consumer = new JSConsumer([topic], this.config)
+      const { decode, handler } = this.topicHandlers[topic]
+      const consumer = kafka.consumer({ // eslint-disable-line
+        groupId,
+        heartbeatInterval: 1e4 // 10 seconds
+      })
       await consumer.connect()
+      await consumer.subscribe({ topic })
       this.addTopicConsumer(topic, consumer)
-      consumer.consume(async (batchOfMessages, callback) => {
-        // parallel processing on topic level
-        const { runtime } = this
-        try {
+      await consumer.run({
+        eachBatchAutoResolve: true,
+        autoCommit: false,
+        eachBatch: async ({
+          // commitOffsetsIfNecessary,
+          // uncommittedOffsets,
+          // isRunning,
+          // isStale,
+          batch,
+          resolveOffset,
+          heartbeat
+        }) => {
           await runtime.postgres.transact(async (client) => {
-            const partitions = batchOfMessages[topic]
-            // parallel processing on partition level
-            const partitionKeys = Object.keys(partitions)
-            for (let i = 0; i < partitionKeys.length; i += 1) {
-              const messages = partitions[partitionKeys[i]]
-              await handler(messages, client)
+            kafka.logger().info('batch', batch)
+            const {
+              messages,
+              topic,
+              partition,
+              highWatermark
+            } = batch
+            const msgs = messages.map(({
+              offset,
+              key,
+              value,
+              timestamp
+            }) => ({
+              offset,
+              key,
+              timestamp,
+              value: decode(value),
+              topic,
+              partition,
+              highWatermark
+            }))
+            await handler(msgs, client, beat)
+
+            async function beat (offset) {
+              if (underscore.isNumber(offset)) {
+                resolveOffset(offset)
+              }
+              return heartbeat()
             }
           })
-          // wait until all partitions of this topic are processed and commit its offset
-          // make sure to keep batch sizes large enough, you dont want to commit too often
-          // callback still controlls the "backpressure"
-          // as soon as you call it, it will fetch the next batch of messages
-          await consumer.commitLocalOffsetsForTopic(topic)
-          callback()
-        } catch (e) {
-          runtime.captureException(e, { extra: { topic } })
-          debug('discontinuing topic processing', {
-            topic,
-            e,
-            message: e.message,
-            stack: e.stack
-          })
         }
-      }, false, false, batchOptions)
+      })
       return consumer
     }))
   }
 }
 
 module.exports = function (config, runtime) {
-  if (!(this instanceof Kafka)) return new Kafka(config, runtime)
+  if (!(this instanceof KafkaWrapper)) return new KafkaWrapper(config, runtime)
 }
