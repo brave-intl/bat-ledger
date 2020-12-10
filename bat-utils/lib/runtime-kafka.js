@@ -17,20 +17,16 @@ class KafkaWrapper {
     this.topicHandlers = {}
     this.topicConsumers = {}
     const brokers = process.env.KAFKA_BROKERS.split(',').map((broker) => broker.trim())
-    const ssl = {
-      servername: 'localhost',
-      rejectUnauthorized: false,
-      ca: [fs.readFileSync(process.env.KAFKA_SSL_CA_LOCATION, 'utf-8')],
-      cert: fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8'),
-      key: fs.readFileSync(process.env.KAFKA_SSL_KEY_LOCATION, 'utf-8')
-    }
-    console.log(ssl)
     this.kafka = new Kafka({
       logLevel: logLevel.INFO,
       // logCreator: debug,
       brokers,
       clientId: process.env.ENV + '.' + process.env.SERVICE,
-      ssl
+      ssl: {
+        servername: 'localhost',
+        rejectUnauthorized: false,
+        ca: [fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8')]
+      }
     })
   }
 
