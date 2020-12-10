@@ -1,4 +1,4 @@
-const { normalizeChannel } = require('bat-utils/lib/extras-utils')
+const { normalizeChannel } = require('$/bat-utils/lib/extras-utils')
 
 const transaction = require('../lib/transaction')
 const referrals = require('../lib/referrals')

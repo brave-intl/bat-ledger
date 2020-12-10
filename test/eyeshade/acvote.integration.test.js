@@ -1,19 +1,19 @@
 'use strict'
 
-const Kafka = require('bat-utils/lib/runtime-kafka')
+const Kafka = require('$/bat-utils/lib/runtime-kafka')
 const test = require('ava')
 const _ = require('underscore')
 const fs = require('fs')
 const path = require('path')
 const {
   timeout
-} = require('bat-utils/lib/extras-utils')
+} = require('$/bat-utils/lib/extras-utils')
 const {
   agents,
   cleanPgDb,
   ok
 } = require('../utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
+const Postgres = require('$/bat-utils/lib/runtime-postgres')
 const { voteType } = require('../../eyeshade/lib/vote')
 const { votesId } = require('../../eyeshade/lib/queries.js')
 const moment = require('moment')

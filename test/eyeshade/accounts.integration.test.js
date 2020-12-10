@@ -14,7 +14,7 @@ const {
 const {
   Runtime,
   extras
-} = require('bat-utils')
+} = require('$/bat-utils')
 const {
   cleanPgDb,
   cleanGrantDb,

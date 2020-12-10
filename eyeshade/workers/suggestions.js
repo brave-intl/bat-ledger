@@ -1,7 +1,7 @@
 const { votesId } = require('../lib/queries.js')
 const suggestions = require('../lib/suggestions.js')
 const moment = require('moment')
-const { BigNumber } = require('bat-utils/lib/extras-utils')
+const { BigNumber } = require('$/bat-utils/lib/extras-utils')
 
 const suggestionTopic = process.env.ENV + '.grant.suggestion'
 

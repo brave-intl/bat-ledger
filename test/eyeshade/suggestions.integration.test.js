@@ -1,18 +1,18 @@
 'use strict'
 
-const Kafka = require('bat-utils/lib/runtime-kafka')
-const Runtime = require('bat-utils/boot-runtime')
+const Kafka = require('$/bat-utils/lib/runtime-kafka')
+const Runtime = require('$/bat-utils/boot-runtime')
 const test = require('ava')
 const { v4: uuidV4 } = require('uuid')
 const {
   timeout
-} = require('bat-utils/lib/extras-utils')
+} = require('$/bat-utils/lib/extras-utils')
 const {
   agents,
   cleanPgDb,
   ok
 } = require('../utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
+const Postgres = require('$/bat-utils/lib/runtime-postgres')
 const suggestions = require('../../eyeshade/lib/suggestions')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
@@ -98,7 +98,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     }).expect(ok))
   t.is(body.length, 1)
 
-  await producer.send(process.env.ENV + '.grant.suggestion', suggestions.typeV2.toBuffer(exampleWithOrderId))
+  await producer.send(suggestions, exampleWithOrderId)
 
   body = [{}]
   while (+body[0].balance !== 20) {
@@ -140,7 +140,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     }).expect(ok))
   t.is(body.length, 1)
 
-  await producer.send(process.env.ENV + '.grant.suggestion', suggestions.typeV2.toBuffer(exampleWithoutOrderId))
+  await producer.send(suggestions, exampleWithoutOrderId)
 
   body = [{}]
   while (+body[0].balance !== 30) {

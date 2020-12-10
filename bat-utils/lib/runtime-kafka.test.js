@@ -7,7 +7,7 @@ const _ = require('underscore')
 const { timeout } = require('./extras-utils')
 
 process.env.KAFKA_CONSUMER_GROUP = 'test-consumer'
-const Postgres = require('bat-utils/lib/runtime-postgres')
+const Postgres = require('$/bat-utils/lib/runtime-postgres')
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 const runtime = {
   config: require('../../config'),
@@ -18,18 +18,18 @@ const runtime = {
 }
 
 test('can create kafka consumer', async (t) => {
-  const producer = new Kafka(runtime.config, runtime)
-  await producer.connect()
+  const kafka = new Kafka(runtime.config, runtime)
+  await kafka.connect()
 
-  const consumer = new Kafka(runtime.config, runtime)
+  // const consumer = new Kafka(runtime.config, runtime)
   const messagePromise = new Promise(resolve => {
-    consumer.on('test-topic', async (messages) => {
+    kafka.on('test-topic', async (messages) => {
       resolve(Buffer.from(messages[0].value, 'binary').toString())
     })
   })
-  await consumer.consume()
+  await kafka.consume()
 
-  await producer.send('test-topic', 'hello world')
+  await kafka.send('test-topic', 'hello world')
 
   const message = await messagePromise
 

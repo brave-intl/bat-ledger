@@ -1,5 +1,5 @@
 const transaction = require('../lib/transaction')
-const { normalizeChannel, BigNumber } = require('bat-utils/lib/extras-utils')
+const { normalizeChannel, BigNumber } = require('$/bat-utils/lib/extras-utils')
 const { ObjectID } = require('bson')
 const settlements = require('../lib/settlements')
 

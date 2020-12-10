@@ -7,7 +7,7 @@ DEBUG=-* DATABASE_URL= MONGODB_URI= ./bin/migrate-wallets-to-grants.js
 */
 
 const bson = require('bson')
-const Postgres = require('bat-utils/lib/runtime-postgres')
+const Postgres = require('$/bat-utils/lib/runtime-postgres')
 const { MongoClient } = require('mongodb')
 const url = require('url')
 

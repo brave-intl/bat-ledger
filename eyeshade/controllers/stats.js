@@ -1,9 +1,9 @@
 const Joi = require('joi')
 const _ = require('underscore')
-const braveJoi = require('bat-utils/lib/extras-joi')
-const braveHapi = require('bat-utils/lib/extras-hapi')
+const braveJoi = require('$/bat-utils/lib/extras-joi')
+const braveHapi = require('$/bat-utils/lib/extras-hapi')
 const boom = require('@hapi/boom')
-const extrasUtils = require('bat-utils/lib/extras-utils')
+const extrasUtils = require('$/bat-utils/lib/extras-utils')
 const transactionsLib = require('../lib/transaction')
 const grantsLib = require('../lib/grants')
 

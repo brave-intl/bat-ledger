@@ -2,7 +2,7 @@ const Joi = require('joi')
 const boom = require('@hapi/boom')
 const settlement = require('../lib/settlements')
 
-const utils = require('bat-utils')
+const utils = require('$/bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 

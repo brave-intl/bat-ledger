@@ -13,13 +13,13 @@ const {
   timeout,
   BigNumber,
   uint8tohex
-} = require('bat-utils/lib/extras-utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
+} = require('$/bat-utils/lib/extras-utils')
+const Postgres = require('$/bat-utils/lib/runtime-postgres')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
 const Pool = pg.Pool
-const Server = require('bat-utils/lib/hapi-server')
-const { Runtime } = require('bat-utils')
+const Server = require('$/bat-utils/lib/hapi-server')
+const { Runtime } = require('$/bat-utils')
 
 const {
   TOKEN_LIST,

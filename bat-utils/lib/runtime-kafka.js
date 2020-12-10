@@ -35,20 +35,10 @@ class KafkaWrapper {
     if (connecting) {
       return connecting
     }
-    // const partitionCount = 1
-
-    // this.config, null, partitionCount
     const producer = kafka.producer() // eslint-disable-line
     this._producer = producer
-    producer.on('error', error => {
-      console.error(error)
-      if (this.runtime.captureException) {
-        this.runtime.captureException(error)
-      }
-    })
     const conn = producer.connect()
     this.connecting = conn
-    console.log('awaiting connection')
     return conn
   }
 
@@ -86,17 +76,6 @@ class KafkaWrapper {
     consumers.push(consumer)
   }
 
-  async sendMany ({ topic, encode }, messages, _partition = null, _key = null, _partitionKey = null) {
-    // map twice to err quickly on input errors
-    // use map during send to increase batching on network
-    return Promise.all(
-      messages.map(encode)
-        .map((msg) =>
-          this.send(topic, msg, _partition, _key, _partitionKey)
-        )
-    )
-  }
-
   async mapMessages ({ decode, topic }, messages, fn) {
     const results = []
     const msgs = messages.map((msg) => {
@@ -120,25 +99,61 @@ class KafkaWrapper {
     return results
   }
 
-  async send (topicName, message, _partition = null, _key = null, _partitionKey = null) {
-    // return await producer.send("my-topic", "my-message", 0, "my-key", "my-partition-key")
-    const producer = await this.producer()
-    return producer.send(topicName, message, _partition, _key, _partitionKey)
+  async sendMany (input, messages, partition = null, key = null) {
+    return this.send(input, messages, partition, key)
   }
 
-  on ({ topic, decode }, handler) {
+  async send (input, value, partition = null, key = null) {
+    // return producer.send("my-topic", "my-message", 0, "my-key", "my-partition-key")
+    const defaultEncode = (a) => a
+    let encode = defaultEncode
+    let topic = input
+    if (!underscore.isString(input)) {
+      ;({ topic, encode } = input)
+    }
+    let messages = [value]
+    if (underscore.isArray(value)) {
+      // still raw string values
+      messages = value
+    }
+    const producer = await this.producer()
+    const sending = {
+      topic,
+      messages: messages.map((value) => ({
+        value: Buffer.isBuffer(value) ? value : encode(value),
+        partition,
+        key
+      }))
+    }
+    console.log(sending)
+    return producer.send(sending).then(() => debug('messages', messages))
+  }
+
+  on (input, handler) {
+    const defaultDecode = (a) => a
+    let decode = defaultDecode
+    let topic = input
+    if (!underscore.isString(topic)) {
+      ;({ topic, decode = defaultDecode } = topic)
+    }
     this.topicHandlers[topic] = {
       handler,
       decode
     }
-    // this.decoders[topic] = decode
   }
 
-  consume () {
+  async consume () {
     const { runtime, kafka } = this
-    const keys = Object.keys(this.topicHandlers)
-    debug('consuming', keys, this.config)
-    return Promise.all(keys.map(async (topic) => {
+    const topics = Object.keys(this.topicHandlers)
+    const topicConfigs = topics.map((topic) => ({
+      topic,
+      replicationFactor: 3
+    }))
+    const admin = this.kafka.admin()
+    await admin.createTopics({
+      topics: topicConfigs
+    })
+    return Promise.all(topics.map(async (topic) => {
       const { decode, handler } = this.topicHandlers[topic]
       const consumer = kafka.consumer({ // eslint-disable-line
         groupId,
@@ -181,6 +196,7 @@ class KafkaWrapper {
               partition,
               highWatermark
             }))
+            await heartbeat()
             await handler(msgs, client, beat)
 
             async function beat (offset) {

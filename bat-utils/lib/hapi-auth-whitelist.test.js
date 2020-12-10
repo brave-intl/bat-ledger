@@ -41,12 +41,12 @@ test('validateHops', async (t) => {
     t.is(run('invalid'), '3.3.3.3', 'an invalid fastly token is ignored when no shift exists')
 
     setEnvs([null, '2'])
-    t.throws(run, Error, 'should throw when no token is sent but shift exists')
-    t.throws(() => run('invalid'), Error, 'an invalid fastly token throws when shift exists')
+    t.throws(run, { instanceOf: Error }, 'should throw when no token is sent but shift exists')
+    t.throws(() => run('invalid'), { instanceOf: Error }, 'an invalid fastly token throws when shift exists')
 
     setEnvs([validFastlyToken, '2'])
     t.is(run(), '2.2.2.2', 'should not throw when shift exists and fastly token matches')
-    t.throws(() => run('invalid'), Error, 'an invalid fastly token throws when shift exists')
+    t.throws(() => run('invalid'), { instanceOf: Error }, 'an invalid fastly token throws when shift exists')
   })
 })
 
@@ -64,7 +64,7 @@ test('shift amount can be retrieved', async (t) => {
     setEnvs(['3'])
     t.is(forwardedIPShift(), 3, 'but can be overwritten')
     setEnvs(['what'])
-    t.throws(forwardedIPShift, Error, 'non numeric values throw')
+    t.throws(forwardedIPShift, { instanceOf: Error }, 'non numeric values throw')
     setEnvs(['-2'])
     t.is(forwardedIPShift(), 1, 'negative numbers are clamped to 1')
   })

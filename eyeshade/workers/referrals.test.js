@@ -4,8 +4,8 @@ const _ = require('underscore')
 const {
   normalizeChannel,
   timeout
-} = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
+} = require('$/bat-utils/lib/extras-utils')
+const { Runtime } = require('$/bat-utils')
 const { kafka } = require('../../config')
 const transaction = require('../lib/transaction')
 const referrals = require('../lib/referrals')

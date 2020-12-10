@@ -3,7 +3,7 @@ const Joi = require('joi')
 const underscore = require('underscore')
 const _ = underscore
 
-const utils = require('bat-utils')
+const utils = require('$/bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
 const extrasUtils = utils.extras.utils

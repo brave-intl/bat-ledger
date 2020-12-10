@@ -86,16 +86,10 @@ jobs:
 
       - name: Migrate DBs
         run: yarn run docker-migrate-dbs
-      - name: Bring Up App Containers
-        run: yarn run docker-up-detached
-      - name: Print Checks
-        run: |
-          sleep 5
-          docker ps
-
-      # Runs a set of commands using the runners shell
       - name: Wait for kafka to stand up
         run: yarn run kafka:wait
+      - name: Bring Up App Containers
+        run: yarn run docker-up-detached
 
       - name: Test
         run: yarn run docker-test

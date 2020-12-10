@@ -1,6 +1,6 @@
 const {
   timeout
-} = require('bat-utils/lib/extras-utils')
+} = require('$/bat-utils/lib/extras-utils')
 const { insertFromVoting } = require('../lib/transaction.js')
 
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS

@@ -1,10 +1,10 @@
-const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
+const { getPublisherProps } = require('$/bat-utils/lib/extras-publisher')
 const { v5: uuidv5 } = require('uuid')
 const {
   createdTimestamp,
   BigNumber,
   normalizeChannel
-} = require('bat-utils/lib/extras-utils')
+} = require('$/bat-utils/lib/extras-utils')
 
 const knownChains = {
   ETH: 'ethereum',

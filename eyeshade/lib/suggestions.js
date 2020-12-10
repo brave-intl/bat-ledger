@@ -1,5 +1,5 @@
 const avro = require('avro-js')
-const { isUUID } = require('bat-utils/lib/extras-utils')
+const { isUUID } = require('$/bat-utils/lib/extras-utils')
 
 const typeV1 = avro.parse({
   namespace: 'brave.grants',

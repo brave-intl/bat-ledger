@@ -10,8 +10,8 @@ const {
 } = require('../utils')
 const {
   timeout
-} = require('bat-utils/lib/extras-utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
+} = require('$/bat-utils/lib/extras-utils')
+const Postgres = require('$/bat-utils/lib/runtime-postgres')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 

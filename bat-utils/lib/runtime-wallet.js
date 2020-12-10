@@ -354,7 +354,7 @@ Wallet.providers.uphold = {
 
       if (minimum.greaterThan(balance)) return
 
-      desired = desired.floor()
+      desired = desired.toFixed(0)
 
       if (desired.greaterThan(balance)) desired = new BigNumber(balance)
 

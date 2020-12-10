@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
-const Database = require('bat-utils/lib/runtime-database')
+const Database = require('$/bat-utils/lib/runtime-database')
 const SDebug = require('sdebug')
 const debug = new SDebug('migrate-transaction-table')
 const { v5: uuidv5 } = require('uuid')
 
-const Postgres = require('bat-utils/lib/runtime-postgres')
+const Postgres = require('$/bat-utils/lib/runtime-postgres')
 
 const {
   createdTimestamp,
   BigNumber,
   normalizeChannel
-} = require('bat-utils/lib/extras-utils')
+} = require('$/bat-utils/lib/extras-utils')
 
 async function consume (pg, votings) {
   return Promise.all(votings.map(async (voting) => {

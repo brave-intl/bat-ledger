@@ -213,7 +213,7 @@ Currency.prototype = {
       probi = probi.times(scale)
     }
 
-    return probi.floor().toString()
+    return probi.toFixed(0).toString()
   }
 }
 

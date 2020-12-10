@@ -6,8 +6,8 @@ const {
   PROBI_FACTOR,
   BigNumber,
   createdTimestamp
-} = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
+} = require('$/bat-utils/lib/extras-utils')
+const { Runtime } = require('$/bat-utils')
 const {
   allSettlementStats,
   settlementStatsByCurrency,

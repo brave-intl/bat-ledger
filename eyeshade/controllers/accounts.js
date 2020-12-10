@@ -1,9 +1,9 @@
 const Joi = require('joi')
-const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
+const { getPublisherProps } = require('$/bat-utils/lib/extras-publisher')
 const boom = require('@hapi/boom')
-const utils = require('bat-utils')
+const utils = require('$/bat-utils')
 const _ = require('underscore')
-const extrasUtils = require('bat-utils/lib/extras-utils')
+const extrasUtils = require('$/bat-utils/lib/extras-utils')
 const queries = require('../lib/queries')
 const transactions = require('../lib/transaction')
 const braveHapi = utils.extras.hapi

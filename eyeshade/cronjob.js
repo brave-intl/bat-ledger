@@ -1,5 +1,5 @@
 const dotenv = require('dotenv')
-const utils = require('bat-utils')
+const utils = require('$/bat-utils')
 const SDebug = require('sdebug')
 const config = require('../config.js')
 

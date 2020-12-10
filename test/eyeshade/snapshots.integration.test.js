@@ -4,8 +4,8 @@ const { v4: uuidV4 } = require('uuid')
 const {
   justDate,
   timeout
-} = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
+} = require('$/bat-utils/lib/extras-utils')
+const { Runtime } = require('$/bat-utils')
 const { insertFromSettlement } = require('../../eyeshade/lib/transaction')
 const {
   agents,
