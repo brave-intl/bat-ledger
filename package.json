@@ -12,6 +12,7 @@
     "coverage": "npx nyc report --reporter=text-lcov",
     "test-all": "yarn run test-isup && yarn run test-unit && yarn run test-integration",
     "test-isup": "ava -v -s test/isup.integration.test.js",
+    "kafka:wait": "./bin/wait-for-kafka.js",
     "docker-test": "docker-compose run --rm -v $(pwd)/test:/usr/src/app/test -v $(pwd)/eyeshade:/usr/src/app/eyeshade -v $(pwd)/ledger:/usr/src/app/ledger -v $(pwd)/bat-utils:/usr/src/app/bat-utils eyeshade-web yarn run test",
     "lint": "npx standard",
     "lint-fix": "yarn run lint -- --fix",
@@ -35,7 +36,7 @@
   "config": {
     "dockermonitors": "prometheus grafana",
     "dockerservices": "eyeshade-web eyeshade-consumer",
-    "dbs": "eyeshade-postgres",
+    "dbs": "eyeshade-postgres kafka1 kafka2 kafka3",
     "dockerfile": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml"
   },
   "repository": {
@@ -95,6 +96,7 @@
   },
   "devDependencies": {
     "ava": "^3.13.0",
+    "execa": "^5.0.0",
     "standard": "^16.0.2",
     "supertest": "^6.0.1"
   },

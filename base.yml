@@ -17,7 +17,7 @@ services:
       - "ENABLE_ADS_PAYOUT=1"
       - "ENV=local"
       - "FASTLY_TOKEN_LIST=421b31c3-57ac-4719-a40a-193d998d93c3"
-      - "KAFKA_BROKERS=kafka1:9093"
+      - "KAFKA_BROKERS=kafka1:29093,kafka2:29096,kafka3:29099"
       - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/ca-cert"
       - "KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/cert-signed"
       - "KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/ca-key"

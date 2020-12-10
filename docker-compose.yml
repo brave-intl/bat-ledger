@@ -62,18 +62,8 @@ services:
       # https://github.com/confluentinc/cp-docker-images/blob/master/debian/kafka/include/etc/confluent/docker/log4j.properties.template
       KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
       CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
-      # KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      # KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,SSL://localhost:9093"
-      # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT://:9092,SSL://:9093"
-      # KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      # KAFKA_SSL_KEYSTORE_FILENAME: docker.kafka.server.keystore.jks
-      # KAFKA_SSL_KEYSTORE_CREDENTIALS: password
-      # KAFKA_SSL_KEY_CREDENTIALS: password
-      # KAFKA_SSL_TRUSTSTORE_FILENAME: docker.kafka.server.truststore.jks
-      # KAFKA_SSL_TRUSTSTORE_CREDENTIALS: password
-      # KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
-      # KAFKA_SSL_CLIENT_AUTH: requested
-      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '3'
 
   kafka2:
     image: confluentinc/cp-kafka:5.2.2
@@ -96,8 +86,8 @@ services:
     environment:
       KAFKA_BROKER_ID: '1'
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SSL_HOST:SSL,SASL_SSL:SASL_SSL,SASL_SSL_HOST:SASL_SSL
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29095,PLAINTEXT_HOST://localhost:9095,SSL://kafka2:29096,SSL_HOST://localhost:9096,SASL_SSL://kafka2:29097,SASL_SSL_HOST://localhost:9097
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SSL_HOST:SSL
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29095,PLAINTEXT_HOST://localhost:9095,SSL://kafka2:29096,SSL_HOST://localhost:9096
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
@@ -106,8 +96,8 @@ services:
       KAFKA_SSL_KEY_CREDENTIALS: 'sslkey_creds'
       KAFKA_SSL_TRUSTSTORE_FILENAME: 'kafka.server.truststore.jks'
       KAFKA_SSL_TRUSTSTORE_CREDENTIALS: 'truststore_creds'
-      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: 'PLAIN'
-      KAFKA_SASL_ENABLED_MECHANISMS: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-512'
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: 'PLAIN'
+      # KAFKA_SASL_ENABLED_MECHANISMS: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-512'
       KAFKA_OPTS: '-Djava.security.auth.login.config=/opt/kafka/config/server-jaas.conf'
       KAFKA_AUTHORIZER_CLASS_NAME: "kafka.security.auth.SimpleAclAuthorizer"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'
@@ -115,6 +105,8 @@ services:
       # https://github.com/confluentinc/cp-docker-images/blob/master/debian/kafka/include/etc/confluent/docker/log4j.properties.template
       KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
       CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '3'
     volumes:
       - ./kafka/certs/kafka.server.keystore.jks:/etc/kafka/secrets/kafka.server.keystore.jks:ro,z
       - ./kafka/certs/kafka.server.truststore.jks:/etc/kafka/secrets/kafka.server.truststore.jks:ro,z
@@ -144,8 +136,8 @@ services:
     environment:
       KAFKA_BROKER_ID: '2'
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SSL_HOST:SSL,SASL_SSL:SASL_SSL,SASL_SSL_HOST:SASL_SSL
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29098,PLAINTEXT_HOST://localhost:9098,SSL://kafka3:29099,SSL_HOST://localhost:9099,SASL_SSL://kafka3:29100,SASL_SSL_HOST://localhost:9100
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SSL_HOST:SSL
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29098,PLAINTEXT_HOST://localhost:9098,SSL://kafka3:29099,SSL_HOST://localhost:9099,
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
@@ -154,11 +146,13 @@ services:
       KAFKA_SSL_KEY_CREDENTIALS: 'sslkey_creds'
       KAFKA_SSL_TRUSTSTORE_FILENAME: 'kafka.server.truststore.jks'
       KAFKA_SSL_TRUSTSTORE_CREDENTIALS: 'truststore_creds'
-      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: 'PLAIN'
-      KAFKA_SASL_ENABLED_MECHANISMS: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-512'
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: 'PLAIN'
+      # KAFKA_SASL_ENABLED_MECHANISMS: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-512'
       KAFKA_OPTS: '-Djava.security.auth.login.config=/opt/kafka/config/server-jaas.conf'
       KAFKA_AUTHORIZER_CLASS_NAME: "kafka.security.auth.SimpleAclAuthorizer"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true'
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '3'
       # suppress verbosity
       # https://github.com/confluentinc/cp-docker-images/blob/master/debian/kafka/include/etc/confluent/docker/log4j.properties.template
       KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
@@ -201,8 +195,8 @@ services:
     depends_on:
       - eyeshade-postgres
       - kafka1
-      # - kafka2
-      # - kafka3
+      - kafka2
+      - kafka3
     networks:
       - eyeshade
     volumes:

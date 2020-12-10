@@ -93,6 +93,10 @@ jobs:
           sleep 5
           docker ps
 
+      # Runs a set of commands using the runners shell
+      - name: Wait for kafka to stand up
+        run: yarn run kafka:wait
+
       - name: Test
         run: yarn run docker-test
       - name: Check Migrating Down
