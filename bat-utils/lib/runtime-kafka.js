@@ -1,4 +1,3 @@
-global.fs = require('fs')
 const { NConsumer, NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
@@ -121,8 +120,7 @@ class Kafka {
   }
 
   consume () {
-    const topics = Object.keys(this.topicHandlers)
-    return Promise.all(topics.map(async (topic) => {
+    return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
       const consumer = new NConsumer([topic], this.config)
       await consumer.connect()
