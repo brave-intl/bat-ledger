@@ -85,7 +85,6 @@ jobs:
       - name: Stand up Postgres
         run: |
           docker-compose up -d eyeshade-postgres
-          docker-compose up -d wallet-migration-postgres
           sleep 3
 
       - name: Migrate DBs

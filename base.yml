@@ -17,7 +17,6 @@ services:
       - "BAT_WALLET_MIGRATION_SERVER=http://wallet-migration-web:3333"
       - "WALLET_MIGRATION_SERVER=http://wallet-migration-web:3333"
       - "WALLET_MIGRATION_TOKEN=${WALLET_MIGRATION_TOKEN-98f27f2e-239b-40e9-8f62-bf1a55ea530c}"
-      - "BAT_WALLET_MIGRATION_POSTGRES_URL=${BAT_WALLET_MIGRATION_POSTGRES_URL-postgres://wallet-migration:password@wallet-migration-postgres/wallet-migration}"
       - "BAT_POSTGRES_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
       - "BAT_REDEEMER_REDIS_URL=redis://redeemer-redis:6379"
