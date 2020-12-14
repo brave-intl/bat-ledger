@@ -1,16 +1,13 @@
 const fs = require('fs')
-const redis = require('redis')
 const { sign } = require('http-request-signature')
 const crypto = require('crypto')
 const path = require('path')
 const dotenv = require('dotenv')
 dotenv.config()
 const agent = require('supertest').agent
-const mongodb = require('mongodb')
 const stringify = require('querystring').stringify
 const _ = require('underscore')
 const uuidV4 = require('uuid/v4')
-const pg = require('pg')
 const {
   timeout,
   BigNumber,
@@ -19,55 +16,20 @@ const {
 const Postgres = require('bat-utils/lib/runtime-postgres')
 const SDebug = require('sdebug')
 const debug = new SDebug('test')
-const Pool = pg.Pool
 const Server = require('bat-utils/lib/hapi-server')
 const { Runtime } = require('bat-utils')
 
 const {
   TOKEN_LIST,
   BAT_EYESHADE_SERVER,
-  BAT_LEDGER_SERVER,
-  BAT_BALANCE_SERVER,
-  BAT_GRANT_SERVER,
-  BAT_REDEEMER_SERVER,
   ALLOWED_REFERRALS_TOKENS,
   ALLOWED_STATS_TOKENS,
   ALLOWED_ADS_TOKENS,
-  ALLOWED_PUBLISHERS_TOKENS,
-  BAT_MONGODB_URI,
-  BAT_REDEEMER_REDIS_URL,
-  GRANT_TOKEN,
-  REDEEMER_TOKEN,
-  BAT_WALLET_MIGRATION_SERVER,
-  WALLET_MIGRATION_TOKEN
+  ALLOWED_PUBLISHERS_TOKENS
 } = process.env
 
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg'
-
-const eyeshadeCollections = [
-  'grants',
-  'owners',
-  'restricted',
-  'publishers',
-  'tokens',
-  'referrals',
-  'surveyors',
-  'settlements'
-]
-const ledgerCollections = [
-  'owners',
-  'referrals',
-  'publishers',
-  'tokens',
-  'grants',
-  'wallets',
-  'surveyors',
-  'settlements',
-  'publishersV2',
-  'publishersX',
-  'restricted'
-]
 
 const tkn = 'foobarfoobar'
 const token = (tkn) => `Bearer ${tkn}`
@@ -85,21 +47,11 @@ const formURL = createFormURL({
 
 const AUTH_KEY = 'Authorization'
 const GLOBAL_TOKEN = TOKEN_LIST.split(',')[0]
-const ledgerGlobalAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
-const ledgerStatsAgent = agent(BAT_LEDGER_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
-
-const balanceGlobalAgent = agent(BAT_BALANCE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
-
 const eyeshadeGlobalAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(GLOBAL_TOKEN))
 const eyeshadeReferralsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_REFERRALS_TOKENS))
 const eyeshadeStatsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_STATS_TOKENS))
 const eyeshadeAdsAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_ADS_TOKENS))
 const eyeshadePublishersAgent = agent(BAT_EYESHADE_SERVER).set(AUTH_KEY, token(ALLOWED_PUBLISHERS_TOKENS))
-
-const grantGlobalAgent = agent(BAT_GRANT_SERVER).set(AUTH_KEY, token(GRANT_TOKEN))
-
-const redeemerGlobalAgent = agent(BAT_REDEEMER_SERVER).set(AUTH_KEY, token(REDEEMER_TOKEN))
-const walletMigrationGlobalAgent = agent(BAT_WALLET_MIGRATION_SERVER).set(AUTH_KEY, WALLET_MIGRATION_TOKEN)
 
 const status = (expectation) => (res) => {
   if (!res) {
@@ -172,65 +124,13 @@ const assertWithinBounds = (t, v1, v2, tol, msg) => {
   }
 }
 
-const dbUri = (db) => `${BAT_MONGODB_URI}/${db}`
-const connectToDb = async (key) => {
-  const client = await mongodb.MongoClient.connect(dbUri(key), {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
-  return client.db(key)
-}
-
-const cleanDb = async (key, collections) => {
-  const db = await connectToDb(key)
-  await db.dropDatabase()
-  return db
-}
-const cleanLedgerDb = async (collections) => {
-  return cleanDb('ledger', collections || ledgerCollections)
-}
-const cleanEyeshadeDb = async (collections) => {
-  return cleanDb('eyeshade', collections || eyeshadeCollections)
-}
-
-const cleanGrantDb = async () => {
-  const url = process.env.BAT_GRANT_POSTGRES_URL
-  const pool = new Pool({ connectionString: url, ssl: false })
-  const client = await pool.connect()
-  try {
-    await Promise.all([
-      client.query('DELETE from claim_creds'),
-      client.query('DELETE from claims'),
-      client.query('DELETE from wallets'),
-      client.query('DELETE from promotions')
-    ])
-  } finally {
-    client.release()
-  }
-}
 const agents = {
-  grants: {
-    global: grantGlobalAgent
-  },
-  redeemer: {
-    global: redeemerGlobalAgent
-  },
-  walletMigration: {
-    global: walletMigrationGlobalAgent
-  },
   eyeshade: {
     global: eyeshadeGlobalAgent,
     referrals: eyeshadeReferralsAgent,
     ads: eyeshadeAdsAgent,
     publishers: eyeshadePublishersAgent,
     stats: eyeshadeStatsAgent
-  },
-  ledger: {
-    global: ledgerGlobalAgent,
-    stats: ledgerStatsAgent
-  },
-  balance: {
-    global: balanceGlobalAgent
   }
 }
 
@@ -250,14 +150,12 @@ module.exports = {
   },
   token,
   signTxn,
-  cleanRedeemerRedisDb,
   setupForwardingServer,
   agentAutoAuth,
   AUTH_KEY,
   readJSONFile,
   makeSettlement,
   insertReferralInfos,
-  getSurveyor,
   fetchReport,
   formURL,
   ok,
@@ -265,14 +163,8 @@ module.exports = {
   status,
   agents,
   assertWithinBounds,
-  connectToDb,
-  dbUri,
-  cleanDb,
   cleanDbs,
   cleanPgDb,
-  cleanLedgerDb,
-  cleanEyeshadeDb,
-  cleanGrantDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
   setupCreatePayload,
@@ -281,29 +173,8 @@ module.exports = {
 
 function cleanDbs () {
   return Promise.all([
-    cleanEyeshadeDb(),
-    cleanLedgerDb(),
-    cleanGrantDb(),
-    cleanEyeshadePgDb(),
-    cleanWalletMigrationDb(),
-    cleanRedeemerRedisDb()
+    cleanEyeshadePgDb()
   ])
-}
-
-async function cleanWalletMigrationDb () {
-  const url = process.env.BAT_WALLET_MIGRATION_POSTGRES_URL
-  const pool = new Pool({ connectionString: url, ssl: false })
-  const client = await pool.connect()
-  try {
-    await Promise.all([
-      client.query('DELETE from claim_creds'),
-      client.query('DELETE from claims'),
-      client.query('DELETE from wallets'),
-      client.query('DELETE from promotions')
-    ])
-  } finally {
-    client.release()
-  }
 }
 
 async function cleanEyeshadePgDb () {
@@ -321,27 +192,21 @@ function cleanPgDb (postgres) {
     const client = await postgres.connect()
     try {
       await Promise.all([
-        client.query('DELETE from payout_reports_ads;'),
-        client.query('DELETE from potential_payments_ads;'),
-        client.query('DELETE from transactions;'),
-        client.query('DELETE from surveyor_groups;'),
-        client.query('DELETE from geo_referral_countries;'),
-        client.query('DELETE from geo_referral_groups;'),
-        client.query('DELETE from votes;'),
-        client.query('DELETE from balance_snapshots;'),
-        client.query('DELETE from payout_reports;')
+        client.query('DELETE from payout_reports_ads'),
+        client.query('DELETE from potential_payments_ads'),
+        client.query('DELETE from transactions'),
+        client.query('DELETE from surveyor_groups'),
+        client.query('DELETE from geo_referral_countries'),
+        client.query('DELETE from geo_referral_groups'),
+        client.query('DELETE from votes'),
+        client.query('DELETE from balance_snapshots'),
+        client.query('DELETE from payout_reports')
       ])
       await insertReferralInfos(client)
     } finally {
       client.release()
     }
   }
-}
-
-function getSurveyor (id) {
-  return ledgerGlobalAgent
-    .get(`/v2/surveyor/contribution/${id || 'current'}`)
-    .expect(ok)
 }
 
 function setupCreatePayload ({
@@ -451,44 +316,12 @@ async function setupForwardingServer ({
     login: {
       github: false
     },
-    forward: {
-      grants: '1'
-    },
-    wreck: {
-      walletMigration: {
-        baseUrl: process.env.BAT_WALLET_MIGRATION_SERVER,
-        headers: {
-          Authorization: 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
-          'Content-Type': 'application/json'
-        }
-      },
-      rewards: {
-        baseUrl: process.env.BAT_REWARDS_SERVER,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      },
-      grants: {
-        baseUrl: process.env.BAT_GRANT_SERVER,
-        headers: {
-          Authorization: 'Bearer ' + (process.env.GRANT_TOKEN || '00000000-0000-4000-0000-000000000000'),
-          'Content-Type': 'application/json'
-        }
-      }
-    },
-    balance: {
-      url: process.env.BAT_BALANCE_URL || 'http://127.0.0.1:3000',
-      access_token: process.env.BALANCE_TOKEN || 'foobarfoobar'
-    },
     testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
     prometheus: {
       label: process.env.SERVICE + '.' + (process.env.DYNO || 1)
     },
     disable: {
       grants: false
-    },
-    database: {
-      mongo: process.env.BAT_MONGODB_URI + '/ledger'
     },
     wallet: {
       uphold: {
@@ -533,17 +366,6 @@ async function setupForwardingServer ({
 
 function agentAutoAuth (listener, token) {
   return agent(listener).set(AUTH_KEY, `Bearer ${token || tkn}`)
-}
-
-async function cleanRedeemerRedisDb () {
-  const client = redis.createClient(BAT_REDEEMER_REDIS_URL)
-  await new Promise((resolve, reject) => {
-    client.on('ready', () => {
-      client.flushdb((err) => {
-        err ? reject(err) : resolve()
-      })
-    }).on('error', (err) => reject(err))
-  })
 }
 
 function signTxn (keypair, body, _octets) {

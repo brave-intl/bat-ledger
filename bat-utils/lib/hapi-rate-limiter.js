@@ -26,7 +26,7 @@ if (graylist.addresses) {
 }
 
 module.exports = (runtime) => {
-  const redisClient = (runtime.cache && runtime.cache.cache) || runtime.queue.config.client
+  const redisClient = (runtime.cache && runtime.cache.cache)
 
   /*  access type            requests/minute per IP address
     -------------------    ------------------------------

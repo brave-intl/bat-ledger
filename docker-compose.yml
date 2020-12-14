@@ -90,7 +90,6 @@ services:
     environment:
       - "PORT=3002"
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
-      - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
       - "DYNO=web.1"
     depends_on:

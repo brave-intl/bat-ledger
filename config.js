@@ -40,11 +40,6 @@ if (!service) {
 
 process.env.PORT = process.env.PORT  || service.portno
 
-const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
-  process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
-})
-
 module.exports =
 {
   disable: {
@@ -121,26 +116,6 @@ if (process.env.BAT_SETTLEMENT_ADDRESS) {
 if (process.env.BAT_ADS_PAYOUT_ADDRESS) {
   module.exports.wallet.adsPayoutAddress =
   { BAT : process.env.BAT_ADS_PAYOUT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
-}
-
-if (process.env.SLACK_WEBHOOK) {
-  module.exports.slack =
-  { webhook             : process.env.SLACK_WEBHOOK
-  , channel             : process.env.SLACK_CHANNEL             || '#bat-bot'
-  , icon_url            : process.env.SLACK_ICON_URL            || 'https://github.com/brave-intl/bat-ledger/raw/master/documentation/favicon.png'
-  }
-}
-
-if (process.env.GITHUB_ORG) {
-  module.exports.login.github =
-  { organization        : process.env.GITHUB_ORG
-  , world               : process.env.GITHUB_LOGIN_WORLD        || '/documentation'
-  , bye                 : process.env.GITHUB_LOGIN_BYE          || 'https://example.com'
-  , clientId            : process.env.GITHUB_CLIENT_ID
-  , clientSecret        : process.env.GITHUB_CLIENT_SECRET
-  , ironKey             : process.env.IRON_KEYPASS              || 'cookie-encryption-password-at-least-32-octets'
-  , isSecure            : process.env.GITHUB_FORCE_HTTPS        || false
-  }
 }
 
 if (process.env.KAFKA_BROKERS) {

@@ -1,5 +1,5 @@
 global.fs = require('fs')
-const { JSConsumer: NConsumer, JSProducer: NProducer } = require('sinek')
+const { NConsumer, NProducer } = require('sinek')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
 
