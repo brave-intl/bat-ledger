@@ -5,6 +5,7 @@ services:
     image: bat-ledger
     build: .
     restart: always
+    dns_search: test.confluent.io
     volumes:
       - ./test/secrets:/etc/kafka/secrets
     environment:
@@ -31,7 +32,7 @@ services:
       - "ENABLE_ADS_PAYOUT=1"
       - "ENV=local"
       - "FASTLY_TOKEN_LIST=421b31c3-57ac-4719-a40a-193d998d93c3"
-      - "KAFKA_BROKERS=kafka:19092"
+      - "KAFKA_BROKERS=broker1.local:19092"
       - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/snakeoil-ca-1.crt"
       - "KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/consumer-ca1-signed.pem"
       - "KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/consumer.client.key"
