@@ -1,42 +1,6 @@
 /* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
 
 const services = {
-  ledger: {
-    portno: 3001,
-
-    f: () => {
-      if (process.env.COINBASE_WIDGET_CODE) {
-        module.exports.wallet.coinbase = { widgetCode : process.env.COINBASE_WIDGET_CODE }
-      }
-
-      if (process.env.REDEEMER_SERVER) {
-        module.exports.redeemer =
-        { url               : process.env.REDEEMER_SERVER || 'http://127.0.0.1:3333'
-        , access_token      : process.env.REDEEMER_TOKEN  || '00000000-0000-4000-0000-000000000000'
-        }
-      }
-      if (process.env.REDEEMER_CARD_ID) {
-        module.exports.redeemer =
-        { cardId               : process.env.REDEEMER_CARD_ID
-        }
-      }
-      if (process.env.BALANCE_URL) {
-        module.exports.balance =
-          { url                 : process.env.BALANCE_URL    || 'http://127.0.0.1:3000'
-          , access_token        : process.env.BALANCE_TOKEN  || '00000000-0000-4000-0000-000000000000'
-          }
-      }
-      if (process.env.CAPTCHA_URL) {
-        module.exports.captcha =
-        { url               : process.env.CAPTCHA_URL   || 'http://127.0.0.1:3334'
-        , access_token      : process.env.CAPTCHA_TOKEN || '00000000-0000-4000-0000-000000000000'
-        , bypass            : process.env.CAPTCHA_BYPASS_TOKEN || '00000000-0000-4000-0000-000000000000'
-        }
-      }
-      uphold()
-    }
-  },
-
   eyeshade: {
     portno: 3002,
 
@@ -51,18 +15,6 @@ const services = {
         , schemaVersion         : require('./eyeshade/migrations/current')
         , schemaVersionCheck    : true
         }
-
-      uphold()
-    }
-  },
-
-  balance: {
-    portno: 3003,
-
-    f: () => {
-      module.exports.ledger = {
-        url : process.env.LEDGER_URL  || 'http://127.0.0.1:3001'
-      }
 
       uphold()
     }
@@ -87,11 +39,6 @@ if (!service) {
 }
 
 process.env.PORT = process.env.PORT  || service.portno
-
-const SERVICE = process.env.SERVICE.toUpperCase()
-new Array('GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SLACK_CHANNEL', 'SLACK_ICON_URL').forEach((v) => {
-  process.env[v] = process.env[v]  || process.env[SERVICE + '_' + v]
-})
 
 module.exports =
 {
@@ -171,31 +118,12 @@ if (process.env.BAT_ADS_PAYOUT_ADDRESS) {
   { BAT : process.env.BAT_ADS_PAYOUT_ADDRESS                || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
 }
 
-if (process.env.SLACK_WEBHOOK) {
-  module.exports.slack =
-  { webhook             : process.env.SLACK_WEBHOOK
-  , channel             : process.env.SLACK_CHANNEL             || '#bat-bot'
-  , icon_url            : process.env.SLACK_ICON_URL            || 'https://github.com/brave-intl/bat-ledger/raw/master/documentation/favicon.png'
-  }
-}
-
-if (process.env.GITHUB_ORG) {
-  module.exports.login.github =
-  { organization        : process.env.GITHUB_ORG
-  , world               : process.env.GITHUB_LOGIN_WORLD        || '/documentation'
-  , bye                 : process.env.GITHUB_LOGIN_BYE          || 'https://example.com'
-  , clientId            : process.env.GITHUB_CLIENT_ID
-  , clientSecret        : process.env.GITHUB_CLIENT_SECRET
-  , ironKey             : process.env.IRON_KEYPASS              || 'cookie-encryption-password-at-least-32-octets'
-  , isSecure            : process.env.GITHUB_FORCE_HTTPS        || false
-  }
-}
-
 if (process.env.KAFKA_BROKERS) {
   module.exports.kafka = {
     noptions:
     { 'metadata.broker.list': process.env.KAFKA_BROKERS
     , 'group.id': process.env.ENV + '.' + process.env.SERVICE
+    // , 'client.id': process.env.ENV + '.' + process.env.SERVICE
     , 'socket.keepalive.enable': true
     , 'api.version.request': true
     , 'socket.blocking.max.ms': 100
