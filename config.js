@@ -39,6 +39,11 @@ if (!service) {
 }
 
 process.env.PORT = process.env.PORT  || service.portno
+let redisURL = process.env.REDIS_URL
+const redisPass = process.env.REDIS_PASSWORD
+if (redisPass) {
+  redisURL = `redis://user:${encodeURIComponent(redisPass)}@${process.env.REDIS_MASTER_SERVICE_HOST_REDIS}:${process.env.REDIS_MASTER_SERVICE_PORT_REDIS}`
+}
 
 module.exports =
 {
@@ -77,14 +82,14 @@ module.exports =
   altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :
-    { url               : process.env.REDIS_URL                 || 'redis://localhost:6379' }
+    { url               : redisURL                 || 'redis://localhost:6379' }
   }
 , currency              :
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',')
                                                         : [ 'BAT', 'BTC', 'ETH', 'LTC' ] }
 , login                 : { github: false }
 , queue                 :
-  { rsmq                : process.env.REDIS_URL                 || 'redis://localhost:6379' }
+  { rsmq                : redisURL                 || 'redis://localhost:6379' }
 , sentry                :
   { dsn: process.env.SENTRY_DSN          || false
   , slug: process.env.HEROKU_SLUG_COMMIT || 'test'
@@ -146,5 +151,5 @@ if (process.env.KAFKA_BROKERS) {
 
 module.exports.prometheus =
   { label              : process.env.SERVICE + '.' + (process.env.DYNO || 1)
-  , redis              : process.env.REDIS2_URL               || process.env.REDIS_URL               ||  false
+  , redis              : process.env.REDIS2_URL               || redisURL               ||  false
   }

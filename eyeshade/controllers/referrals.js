@@ -16,9 +16,7 @@ const amountValidator = braveJoi.string().numeric()
 const groupNameValidator = Joi.string().optional().description('the name given to the group')
 const publisherValidator = braveJoi.string().publisher().allow(null, '').optional().description('the publisher identity. e.g. youtube#VALUE, twitter#VALUE, reddit#value, etc., or null.  owner aka publishers#VALUE should not go here')
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
-const groupIdValidator = Joi.string().guid().description('the region from which this referral came')
 const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
-const referralCodeValidator = Joi.string().required().description('the referral code tied to the referral')
 
 const referral = Joi.object().keys({
   ownerId: braveJoi.string().owner().required().description('the owner'),
@@ -135,7 +133,6 @@ v1.getReferralGroups = {
 /*
   GET /v1/referrals/statement/{owner}
 */
-
 
 v1.getReferralsStatement = {
   handler: () => async () => {
