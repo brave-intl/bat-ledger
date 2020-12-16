@@ -42,7 +42,7 @@ process.env.PORT = process.env.PORT  || service.portno
 let redisURL = process.env.REDIS_URL
 const redisPass = process.env.REDIS_PASSWORD
 if (redisPass) {
-  redisURL = `redis://user:${redisPass}@${process.env.REDIS_MASTER_SERVICE_HOST_REDIS}:${process.env.REDIS_MASTER_SERVICE_PORT_REDIS}`
+  redisURL = `redis://user:${encodeURIComponent(redisPass)}@${process.env.REDIS_MASTER_SERVICE_HOST_REDIS}:${process.env.REDIS_MASTER_SERVICE_PORT_REDIS}`
 }
 
 module.exports =
