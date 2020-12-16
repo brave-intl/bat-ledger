@@ -68,13 +68,13 @@ jobs:
           restore-keys: v1-npm-deps-
 
       - run: docker-compose pull
-      # - uses: satackey/action-docker-layer-caching@da67a6cd88114ce3e232893dc6d946efa225aefb
-      #   # Ignore the failure of a step and avoid terminating the job.
-      #   continue-on-error: true
-      #   with:
-      #     key: docker-cache-{hash}
-      #     restore-keys: |
-      #       docker-cache-
+      - uses: satackey/action-docker-layer-caching@46d2c640b1d8ef50d185452ad6fb324e6bd1d052
+        # Ignore the failure of a step and avoid terminating the job.
+        continue-on-error: true
+        with:
+          key: docker-cache-{hash}
+          restore-keys: |
+            docker-cache-
 
       # Runs a single command using the runners shell
       - name: Run security checks (audit + lint)
