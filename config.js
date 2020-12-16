@@ -56,8 +56,6 @@ module.exports =
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',')
                                                         : [ 'BAT', 'BTC', 'ETH', 'LTC' ] }
 , login                 : { github: false }
-, queue                 :
-  { rsmq                : redisURL                 || 'redis://localhost:6379' }
 , sentry                :
   { dsn: process.env.SENTRY_DSN          || false
   , slug: process.env.HEROKU_SLUG_COMMIT || 'test'
@@ -118,5 +116,5 @@ if (process.env.KAFKA_BROKERS) {
 
 module.exports.prometheus =
   { label              : process.env.SERVICE + '.' + (process.env.DYNO || 1)
-  , redis              : process.env.REDIS_URL               ||  false
+  , redis              : redisURL               ||  false
   }
