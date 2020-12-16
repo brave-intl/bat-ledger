@@ -84,6 +84,9 @@ async function Server (options, runtime) {
     runtime = options
     options = {}
   }
+
+  goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
+
   underscore.defaults(options, { id: server.info.id, module: module, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
@@ -265,7 +268,6 @@ async function Server (options, runtime) {
   if (options.routes) {
     server.route(await options.routes.routes(debug, runtime, options))
   }
-  goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
   server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './favicon.ico' } })
   server.route({ method: 'GET', path: '/favicon.png', handler: { file: './favicon.png' } })
   server.route({ method: 'GET', path: '/robots.txt', handler: { file: './robots.txt' } })
