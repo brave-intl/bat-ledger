@@ -37,7 +37,40 @@ const goneRoutes = [
   { method: 'POST', path: '/v1/login' },
   { method: 'GET', path: '/v1/logout' },
   { method: 'GET', path: '/v1/ping' },
-  { method: 'GET', path: '/v1/referrals/{transactionId}' }
+  { method: 'GET', path: '/v1/referrals/{transactionId}' },
+  { method: 'POST', path: '/v1/snapshots/' },
+  { method: 'GET', path: '/v1/snapshots/{snapshotId}' },
+  { method: 'GET', path: '/v3/grants' },
+  { method: 'GET', path: '/v4/grants' },
+  { method: 'GET', path: '/v5/grants' },
+  { method: 'PUT', path: '/v2/grants/{paymentId}' },
+  { method: 'PUT', path: '/v3/grants/{paymentId}' },
+  { method: 'POST', path: '/v4/grants' },
+  { method: 'GET', path: '/v1/attestations/{paymentId}' },
+  { method: 'PUT', path: '/v2/grants/cohorts' },
+  { method: 'GET', path: '/v2/captchas/{paymentId}' },
+  { method: 'GET', path: '/v4/captchas/{paymentId}' },
+  { method: 'GET', path: '/{apiV}/registrar/{registrarType}' },
+  { method: 'PATCH', path: '/{apiV}/registrar/{registrarType}' },
+  { method: 'POST', path: '/v1/registrar/persona/{uId}' },
+  { method: 'POST', path: '/v2/registrar/persona/{uId}' },
+  { method: 'POST', path: '/{apiV}/registrar/viewing/{uId}' },
+  { method: 'GET', path: '/v1/surveyor/voterate/{surveyorType}/{surveyorId}' },
+  { method: 'GET', path: '/{apiV}/surveyor/{surveyorType}/{surveyorId}' },
+  { method: 'POST', path: '/{apiV}/surveyor/{surveyorType}' },
+  { method: 'PATCH', path: '/{apiV}/surveyor/{surveyorType}/{surveyorId}' },
+  { method: 'GET', path: '/{apiV}/surveyor/{surveyorType}/{surveyorId}/{uId}' },
+  { method: 'PUT', path: '/{apiV}/surveyor/{surveyorType}/{surveyorId}' },
+  { method: 'POST', path: '/{apiV}/batch/surveyor/voting' },
+  { method: 'GET', path: '/{apiV}/batch/surveyor/voting/{uId}' },
+  { method: 'GET', path: '/v2/wallet/{paymentId}/grants/{type}' },
+  { method: 'GET', path: '/v2/wallet/stats/{from}/{until?}' },
+  { method: 'POST', path: '/v2/wallet/{paymentId}/claim' },
+  { method: 'GET', path: '/v2/wallet/{paymentId}/info' },
+  { method: 'GET', path: '/v2/wallet/{paymentId}/members' },
+  { method: 'GET', path: '/v2/wallet/{paymentId}' },
+  { method: 'PUT', path: '/v2/wallet/{paymentId}' },
+  { method: 'GET', path: '/v2/wallet' }
 ]
 module.exports.goneRoutes = goneRoutes
 
@@ -265,9 +298,9 @@ async function Server (options, runtime) {
     server.route(await options.routes.routes(debug, runtime, options))
   }
   goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
-  server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './documentation/favicon.ico' } })
-  server.route({ method: 'GET', path: '/favicon.png', handler: { file: './documentation/favicon.png' } })
-  server.route({ method: 'GET', path: '/robots.txt', handler: { file: './documentation/robots.txt' } })
+  server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './favicon.ico' } })
+  server.route({ method: 'GET', path: '/favicon.png', handler: { file: './favicon.png' } })
+  server.route({ method: 'GET', path: '/robots.txt', handler: { file: './robots.txt' } })
   if (process.env.ACME_CHALLENGE) {
     server.route({
       method: 'GET',
