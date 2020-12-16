@@ -41,8 +41,8 @@ services:
     networks:
       - ledger
 
-  redis:
-    container_name: redis
+  eyeshade-redis:
+    container_name: eyeshade-redis
     image: redis:latest
     ports:
       - "3011:6379"
@@ -91,7 +91,7 @@ services:
       - "SERVICE=eyeshade"
       - "DYNO=web.1"
     depends_on:
-      - redis
+      - eyeshade-redis
       - eyeshade-postgres
     networks:
       - ledger

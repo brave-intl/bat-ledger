@@ -4,8 +4,7 @@ const { serial: test } = require('ava')
 const uuidV4 = require('uuid/v4')
 const {
   ok,
-  cleanDbs,
-  cleanPgDb,
+  cleanEyeshadePgDb,
   agents
 } = require('../utils')
 const {
@@ -15,10 +14,7 @@ const Postgres = require('bat-utils/lib/runtime-postgres')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 
-test.afterEach.always(async t => {
-  await cleanPgDb(postgres)()
-  await cleanDbs()
-})
+test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
 test('unauthed requests cannot post settlement', async t => {
   t.plan(0)

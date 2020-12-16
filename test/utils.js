@@ -144,9 +144,7 @@ module.exports = {
     createLegacy: createLegacyReferral
   },
   settlement: {
-    create: createSettlement,
-    sendLegacy: sendSettlement,
-    createLegacy: createLegacySettlement
+    create: createSettlement
   },
   token,
   signTxn,
@@ -163,7 +161,7 @@ module.exports = {
   status,
   agents,
   assertWithinBounds,
-  cleanDbs,
+  cleanEyeshadePgDb,
   cleanPgDb,
   braveYoutubeOwner,
   braveYoutubePublisher,
@@ -171,14 +169,8 @@ module.exports = {
   statsUrl
 }
 
-function cleanDbs () {
-  return Promise.all([
-    cleanEyeshadePgDb()
-  ])
-}
-
-async function cleanEyeshadePgDb () {
-  const postgres = new Postgres({
+async function cleanEyeshadePgDb (pg) {
+  const postgres = pg || new Postgres({
     postgres: {
       url: process.env.BAT_POSTGRES_URL
     }
@@ -300,39 +292,14 @@ async function setupForwardingServer ({
   const conf = _.extend({
     sentry: {},
     server: {},
-    queue: {
-      rsmq: process.env.BAT_REDIS_URL
-    },
     cache: {
       redis: {
         url: process.env.BAT_REDIS_URL
       }
     },
-    captcha: {
-      url: process.env.CAPTCHA_URL || 'http://127.0.0.1:3334',
-      access_token: process.env.CAPTCHA_TOKEN || '00000000-0000-4000-0000-000000000000',
-      bypass: process.env.CAPTCHA_BYPASS_TOKEN || '00000000-0000-4000-0000-000000000000'
-    },
-    login: {
-      github: false
-    },
     testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
     prometheus: {
       label: process.env.SERVICE + '.' + (process.env.DYNO || 1)
-    },
-    disable: {
-      grants: false
-    },
-    wallet: {
-      uphold: {
-        accessToken: process.env.UPHOLD_ACCESS_TOKEN || 'none',
-        clientId: process.env.UPHOLD_CLIENT_ID || 'none',
-        clientSecret: process.env.UPHOLD_CLIENT_SECRET || 'none',
-        environment: process.env.UPHOLD_ENVIRONMENT || 'sandbox'
-      },
-      settlementAddress: {
-        BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6'
-      }
     },
     currency: {
       url: process.env.BAT_RATIOS_URL,
@@ -461,35 +428,4 @@ function createSettlement (options) {
     fees: probi.times(0.05).toFixed(0),
     type: 'contribution'
   }, options || {})
-}
-
-function createLegacySettlement (options) {
-  const amount = new BigNumber(Math.random() + '').times(10)
-  const probiTotal = amount.times(1e18)
-  const probi = probiTotal.times(0.95)
-  const fees = probiTotal.times(0.05)
-  return Object.assign({
-    altcurrency: 'BAT',
-    currency: 'USD',
-    address: uuidV4(),
-    publisher: braveYoutubePublisher,
-    owner: braveYoutubeOwner,
-    amount: probi.dividedBy('1e18').toFixed(18),
-    probi: probi.toFixed(0),
-    fees: fees.toFixed(0),
-    fee: (new BigNumber(0)).toString(),
-    commission: (new BigNumber(0)).toString(),
-    transactionId: uuidV4(),
-    type: 'contribution',
-    hash: uuidV4()
-  }, options || {})
-}
-
-async function sendSettlement (
-  settlements,
-  agent = agents.eyeshade.publishers
-) {
-  return agent.post('/v2/publishers/settlement')
-    .send(settlements)
-    .expect(ok)
 }

@@ -1,9 +1,9 @@
 const dns = require('dns')
+const boom = require('boom')
 const os = require('os')
 const _ = require('underscore')
 const authBearerToken = require('hapi-auth-bearer-token')
 const hapiCookie = require('@hapi/cookie')
-const cryptiles = require('cryptiles')
 const bell = require('@hapi/bell')
 const hapi = require('@hapi/hapi')
 const inert = require('@hapi/inert')
@@ -25,6 +25,21 @@ module.exports = async (options, runtime) => {
     console.log(e)
   }
 }
+
+const goneRoutes = [
+  { method: 'POST', path: '/v2/publishers/settlement/submit' },
+  { method: 'GET', path: '/v1/referrals/statement/{owner}' },
+  { method: 'PUT', path: '/v1/referrals/{transactionId}' },
+  { method: 'GET', path: '/v2/wallet/{paymentId}/balance' },
+  { method: 'DELETE', path: '/v2/wallet/{paymentId}/balance' },
+  { method: 'POST', path: '/v2/card' },
+  { method: 'GET', path: '/v1/login' },
+  { method: 'POST', path: '/v1/login' },
+  { method: 'GET', path: '/v1/logout' },
+  { method: 'GET', path: '/v1/ping' },
+  { method: 'GET', path: '/v1/referrals/{transactionId}' }
+]
+module.exports.goneRoutes = goneRoutes
 
 const pushScopedTokens = pushTokens({
   TOKEN_LIST: 'global',
@@ -107,64 +122,6 @@ async function Server (options, runtime) {
   await server.register(plugins)
 
   debug('extensions registered')
-
-  if (runtime.login) {
-    if (runtime.login.github) {
-      const { github } = runtime.login
-      server.auth.strategy('github', 'bell', {
-        provider: 'github',
-        password: cryptiles.randomString(64),
-        clientId: github.clientId,
-        clientSecret: github.clientSecret,
-        isSecure: github.isSecure,
-        forceHttps: github.isSecure,
-        scope: ['user:email', 'read:org'],
-        location: (process.env.HOST.startsWith('127.0.0.1') ? 'http://' : 'https://') + process.env.HOST
-      })
-
-      debug('github authentication: forceHttps=' + github.isSecure)
-
-      server.auth.strategy('session', 'cookie', {
-        redirectTo: '/v1/login',
-        cookie: {
-          password: github.ironKey,
-          isSecure: github.isSecure
-        }
-      })
-
-      debug('session authentication strategy via cookie')
-    } else {
-      debug('github authentication disabled')
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('github authentication was not enabled yet we are in production mode')
-      }
-
-      const bearerAccessTokenConfig = {
-        allowQueryToken: true,
-        allowMultipleHeaders: false,
-        allowChaining: true,
-        validate: (request, token, h) => {
-          const scope = ['devops', 'ledger', 'QA']
-          const tokenlist = process.env.TOKEN_LIST ? process.env.TOKEN_LIST.split(',') : []
-          const isValid = typeof token === 'string' && braveHapi.isSimpleTokenValid(tokenlist, token)
-          return {
-            isValid,
-            artifacts: null,
-            credentials: {
-              token,
-              scope
-            }
-          }
-        }
-      }
-
-      server.auth.strategy('session', 'bearer-access-token', bearerAccessTokenConfig)
-      server.auth.strategy('github', 'bearer-access-token', bearerAccessTokenConfig)
-
-      debug('session authentication strategy via bearer-access-token')
-      debug('github authentication strategy via bearer-access-token')
-    }
-  }
 
   server.auth.strategy('simple-scoped-token', 'bearer-access-token', {
     allowQueryToken: true,
@@ -304,7 +261,10 @@ async function Server (options, runtime) {
     debug('end', { sdebug: params })
   })
 
-  server.route(await options.routes.routes(debug, runtime, options))
+  if (options.routes) {
+    server.route(await options.routes.routes(debug, runtime, options))
+  }
+  goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
   server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './documentation/favicon.ico' } })
   server.route({ method: 'GET', path: '/favicon.png', handler: { file: './documentation/favicon.png' } })
   server.route({ method: 'GET', path: '/robots.txt', handler: { file: './documentation/robots.txt' } })

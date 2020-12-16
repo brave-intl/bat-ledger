@@ -7,21 +7,18 @@ const {
 const {
   agents,
   ok,
-  cleanPgDb
+  cleanEyeshadePgDb
 } = require('../utils')
 
 const {
   BAT_REDIS_URL,
   BAT_POSTGRES_URL,
   BAT_RATIOS_URL,
-  BAT_RATIOS_TOKEN,
-  TESTING_COHORTS
+  BAT_RATIOS_TOKEN
 } = process.env
 
 const today = new Date('2018-07-30')
 const runtime = new Runtime({
-  testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
-  queue: BAT_REDIS_URL,
   prometheus: {
     label: 'eyeshade.worker.1'
   },
@@ -79,7 +76,7 @@ const referralSettlement = {
   currency: 'BAT'
 }
 
-test.afterEach.always(cleanPgDb(runtime.postgres))
+test.afterEach.always(cleanEyeshadePgDb.bind(null, runtime.postgres))
 
 test('check auth', async (t) => {
   const votingStatsEmpty = await getStatsFor('grants', 'ads', {

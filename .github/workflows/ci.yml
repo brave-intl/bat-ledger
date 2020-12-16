@@ -23,7 +23,6 @@ env:
   BAT_RATIOS_URL: https://ratios-staging.mercury.basicattentiontoken.org
   TOKEN_LIST: 697ee69b-13b4-4a37-9cb6-923e7deaab9d
   BAT_RATIOS_TOKEN: ${{ secrets.BAT_RATIOS_TOKEN }}
-  CAPTCHA_TOKEN: ${{ secrets.CAPTCHA_TOKEN }}
   GRANT_WALLET_PRIVATE_KEY: ${{ secrets.GRANT_WALLET_PRIVATE_KEY }}
   GRANT_WALLET_PUBLIC_KEY: ${{ secrets.GRANT_WALLET_PUBLIC_KEY }}
   REDEEMER_WALLET_PRIVATE_KEY: ${{ secrets.REDEEMER_WALLET_PRIVATE_KEY }}
