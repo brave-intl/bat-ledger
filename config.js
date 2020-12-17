@@ -47,38 +47,6 @@ if (redisPass) {
 
 module.exports =
 {
-  disable: {
-    wallets: process.env.DISABLE_WALLET_TO_GRANTS || false,
-    grants: process.env.DISABLE_GRANTS || false
-  },
-  forward: {
-    settlements: process.env.FORWARD_SETTLEMENTS_TO_KAFKA || false,
-    referrals: process.env.FORWARD_REFERRALS_TO_KAFKA || false,
-    wallets: process.env.FORWARD_WALLET_TO_GRANTS || false,
-    grants: process.env.FORWARD_TO_GRANTS || false
-  },
-  wreck: {
-    rewards: {
-      baseUrl: process.env.REWARD_SERVER,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    },
-    walletMigration: {
-      baseUrl: process.env.WALLET_MIGRATION_SERVER,
-      headers: {
-        'Authorization': 'Bearer ' + (process.env.WALLET_MIGRATION_TOKEN || '00000000-0000-4000-0000-000000000000'),
-        'Content-Type': 'application/json'
-      }
-    },
-    grants: {
-      baseUrl: process.env.GRANT_SERVER,
-      headers: {
-        'Authorization': 'Bearer ' + (process.env.GRANT_TOKEN  || '00000000-0000-4000-0000-000000000000'),
-        'Content-Type': 'application/json'
-      }
-    }
-  },
   altcurrency           : process.env.ALTCURRENCY               || 'BAT'
 , cache                 :
   { redis               :
@@ -88,8 +56,6 @@ module.exports =
   { altcoins            : process.env.CRYPTO_CURRENCIES ? process.env.CRYPTO_CURRENCIES.split(',')
                                                         : [ 'BAT', 'BTC', 'ETH', 'LTC' ] }
 , login                 : { github: false }
-, queue                 :
-  { rsmq                : redisURL                 || 'redis://localhost:6379' }
 , sentry                :
   { dsn: process.env.SENTRY_DSN          || false
   , slug: process.env.HEROKU_SLUG_COMMIT || 'test'
@@ -98,7 +64,6 @@ module.exports =
 , newrelic              : { key: process.env.NEW_RELIC_LICENSE_KEY
                                                                 || false }
 , wallet                : { }
-
 , testingCohorts        : process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : []
 , currency:
   { url: process.env.BAT_RATIOS_URL || false
@@ -151,5 +116,5 @@ if (process.env.KAFKA_BROKERS) {
 
 module.exports.prometheus =
   { label              : process.env.SERVICE + '.' + (process.env.DYNO || 1)
-  , redis              : process.env.REDIS2_URL               || redisURL               ||  false
+  , redis              : redisURL               ||  false
   }

@@ -13,7 +13,7 @@ const utils = require('../../test/utils')
 
 const {
   ok,
-  cleanDbs,
+  cleanEyeshadePgDb,
   agents,
   readJSONFile
 } = utils
@@ -40,7 +40,7 @@ test.before(async (t) => {
     })
   })
 })
-test.beforeEach(cleanDbs)
+test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
 
 test('referral groups are returned correctly', async (t) => {
   let body, fields

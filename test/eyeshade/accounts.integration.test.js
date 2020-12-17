@@ -16,7 +16,7 @@ const {
   extras
 } = require('bat-utils')
 const {
-  cleanPgDb,
+  cleanEyeshadePgDb,
   agents,
   ok
 } = require('../utils')
@@ -103,7 +103,7 @@ const manualTransactionSettlement = (ownerId) => ({
   currency: 'BAT'
 })
 
-test.afterEach.always(cleanPgDb(runtime.postgres))
+test.afterEach.always(cleanEyeshadePgDb.bind(null, runtime.postgres))
 
 test('check auth scope', async (t) => {
   t.plan(0)

@@ -21,7 +21,7 @@ const {
 const _ = require('underscore')
 
 const {
-  cleanPgDb
+  cleanEyeshadePgDb
 } = require('../utils')
 
 const runtime = new Runtime({
@@ -47,7 +47,7 @@ const runtime = new Runtime({
   }
 })
 
-test.beforeEach(cleanPgDb(runtime.postgres))
+test.beforeEach(cleanEyeshadePgDb.bind(null, runtime.postgres))
 
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z

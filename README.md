@@ -12,12 +12,6 @@ You can add any environment variables that need to be set by creating a `.env`
 file at the top of the repo. Docker compose will automatically load from this
 file when launching services.
 
-e.g. you might have the following in `.env`:
-```
-PUBLISHERS_TOKEN=foo
-PUBLISHERS_URL=http://docker.for.mac.localhost:3000
-```
-
 ```
 
 # To bring up all the services :

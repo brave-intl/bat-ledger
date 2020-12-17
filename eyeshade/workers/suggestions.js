@@ -8,6 +8,7 @@ const suggestionTopic = process.env.ENV + '.grant.suggestion'
 module.exports = (runtime) => {
   runtime.kafka.on(suggestionTopic, async (messages, client) => {
     const date = moment().format('YYYY-MM-DD')
+    console.log(suggestionTopic, messages)
     for (let i = 0; i < messages.length; i += 1) {
       const message = messages[i]
       const buf = Buffer.from(message.value, 'binary')
