@@ -76,6 +76,9 @@ jobs:
           restore-keys: |
             docker-cache-
 
+      - name: Build Docker Containers
+        run: npm run docker-build
+
       # Runs a single command using the runners shell
       - name: Run security checks (audit + lint)
         run: npm run security
