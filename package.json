@@ -52,9 +52,7 @@
   },
   "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
-    "@hapi/bell": "^11.1.0",
-    "@hapi/cookie": "^10.1.2",
-    "@hapi/hapi": "^18.4.1",
+    "@hapi/hapi": "^20.0.3",
     "@hapi/inert": "^5.2.2",
     "@hapi/joi": "^17.1.1",
     "@hapi/vision": "^5.5.4",

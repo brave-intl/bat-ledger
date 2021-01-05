@@ -3,8 +3,6 @@ const boom = require('boom')
 const os = require('os')
 const _ = require('underscore')
 const authBearerToken = require('hapi-auth-bearer-token')
-const hapiCookie = require('@hapi/cookie')
-const bell = require('@hapi/bell')
 const hapi = require('@hapi/hapi')
 const inert = require('@hapi/inert')
 const underscore = require('underscore')
@@ -107,9 +105,7 @@ async function Server (options, runtime) {
       prometheus.plugin()
     ] : [],
     [
-      bell,
       authBearerToken,
-      hapiCookie,
       {
         plugin: whitelist.plugin
       },
@@ -268,9 +264,17 @@ async function Server (options, runtime) {
   if (options.routes) {
     server.route(await options.routes.routes(debug, runtime, options))
   }
-  server.route({ method: 'GET', path: '/favicon.ico', handler: { file: './favicon.ico' } })
-  server.route({ method: 'GET', path: '/favicon.png', handler: { file: './favicon.png' } })
-  server.route({ method: 'GET', path: '/robots.txt', handler: { file: './robots.txt' } })
+  server.route({
+    method: 'GET',
+    path: '/{param*}',
+    handler: {
+      directory: {
+        path: './static',
+        redirectToSlash: true,
+        index: true
+      }
+    }
+  })
   if (process.env.ACME_CHALLENGE) {
     server.route({
       method: 'GET',
@@ -278,8 +282,6 @@ async function Server (options, runtime) {
       handler: (request, h) => process.env.ACME_CHALLENGE
     })
   }
-  // automated fishing expeditions shouldn't result in devops alerts...
-  server.route({ method: 'GET', path: '/{path*}', handler: { file: './documentation/robots.txt' } })
 
   try {
     debug('starting server')
