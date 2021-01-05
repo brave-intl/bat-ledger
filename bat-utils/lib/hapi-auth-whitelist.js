@@ -1,6 +1,6 @@
 const path = require('path')
 
-const boom = require('boom')
+const boom = require('@hapi/boom')
 const Netmask = require('netmask').Netmask
 const underscore = require('underscore')
 const braveHapi = require('./extras-hapi')

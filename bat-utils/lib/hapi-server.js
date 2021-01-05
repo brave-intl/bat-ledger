@@ -1,5 +1,5 @@
 const dns = require('dns')
-const boom = require('boom')
+const boom = require('@hapi/boom')
 const os = require('os')
 const _ = require('underscore')
 const authBearerToken = require('hapi-auth-bearer-token')
