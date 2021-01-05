@@ -62,6 +62,7 @@
     "@sentry/node": "^5.13.2",
     "@uphold/uphold-sdk-javascript": "^2.4.0",
     "accept-language-parser": "1.4.1",
+    "ava": "^3.15.0",
     "avro-js": "1.9.1",
     "bat-utils": "file:./bat-utils",
     "bignumber.js": "^4.1.0",
@@ -88,7 +89,7 @@
     "netmask": "1.0.6",
     "newrelic": "^4.1.1",
     "node-slack": "0.0.7",
-    "nyc": "^15.0.0",
+    "nyc": "^15.1.0",
     "pg": "^7.18.2",
     "prom-client": "11.5.3",
     "proxy-agent": "^2.3.1",
@@ -108,7 +109,6 @@
     "npm": "5.10.0"
   },
   "devDependencies": {
-    "ava": "github:brave-intl/ava#6a2f20f65668dc6ab6822fef6503ee885a1759fb",
     "coveralls": "^3.0.6",
     "parse-prometheus-text-format": "^1.1.1",
     "standard": "~14.0.1",

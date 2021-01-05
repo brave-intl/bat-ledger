@@ -17,8 +17,8 @@ test('isSimpleTokenValid', async t => {
 
   t.throws(() => {
     braveHapi.isSimpleTokenValid('foo', 'bar')
-  })
+  }, { instanceOf: Error })
   t.throws(() => {
     braveHapi.isSimpleTokenValid(['foo'], ['bar'])
-  })
+  }, { instanceOf: Error })
 })

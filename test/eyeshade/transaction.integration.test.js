@@ -156,7 +156,7 @@ test('settlement transaction throws on invalid altcurrency', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.altcurrency = 'ETH'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -168,7 +168,7 @@ test('settlement transaction throws on missing probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.probi
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -180,7 +180,7 @@ test('settlement transaction throws on 0 probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '0'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -192,7 +192,7 @@ test('settlement transaction throws on negative probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '-1'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -204,7 +204,7 @@ test('settlement transaction throws on missing owner', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.owner
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement))
+    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -328,10 +328,10 @@ test('can add transactions for different account types', async (t) => {
   t.plan(6)
 
   const client = await runtime.postgres.connect()
-  await t.throwsAsync(insertUserDepositFromChain(runtime, client), Error, 'amount is required')
+  await t.throwsAsync(insertUserDepositFromChain(runtime, client), { instanceOf: Error }, 'amount is required')
   await t.throwsAsync(insertUserDepositFromChain(runtime, client, {
     amount: {}
-  }), Error, 'amount goes through bignumber')
+  }), { instanceOf: Error }, 'amount goes through bignumber')
   const fakeAddress = '0xbloop'
   await insertUserDepositFromChain(runtime, client, {
     amount: '0'
@@ -409,7 +409,7 @@ test('common insertion fn', async (t) => {
   const negativeAmount = Object.assign({}, inputs, { amount: '-1' })
   await insertTransaction(runtime, null, negativeAmount)
   const noAmount = Object.assign({}, inputs, { amount: null })
-  await t.throwsAsync(() => insertTransaction(runtime, null, noAmount))
+  await t.throwsAsync(() => insertTransaction(runtime, null, noAmount), { instanceOf: Error })
   const expectedResults = [{
     id,
     amount,
