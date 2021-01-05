@@ -147,7 +147,7 @@
     ],
     "exclude": [
       "bin/**/*",
-      "eyeshade/bin/**/*"
+      "eyeshade/bin/**/*.js"
     ],
     "reporter": [
       "lcov",
