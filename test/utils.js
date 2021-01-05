@@ -7,7 +7,7 @@ dotenv.config()
 const agent = require('supertest').agent
 const stringify = require('querystring').stringify
 const _ = require('underscore')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const {
   timeout,
   BigNumber,

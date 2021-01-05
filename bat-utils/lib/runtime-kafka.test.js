@@ -2,7 +2,7 @@
 
 const Kafka = require('./runtime-kafka')
 const test = require('ava')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const _ = require('underscore')
 const { timeout } = require('./extras-utils')
 

@@ -2,7 +2,7 @@
 
 const { serial: test } = require('ava')
 const Postgres = require('bat-utils/lib/runtime-postgres')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 
