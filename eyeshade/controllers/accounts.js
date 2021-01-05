@@ -1,4 +1,4 @@
-const Joi = require('@hapi/joi')
+const Joi = require('joi')
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
 const boom = require('@hapi/boom')
 const utils = require('bat-utils')

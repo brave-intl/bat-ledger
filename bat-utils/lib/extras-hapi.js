@@ -2,7 +2,7 @@ const crypto = require('crypto')
 const ProxyAgent = require('proxy-agent')
 const SDebug = require('sdebug')
 const underscore = require('underscore')
-const wreck = require('wreck')
+const wreck = require('@hapi/wreck')
 
 const npminfo = require('../npminfo')
 const whitelist = require('./hapi-auth-whitelist')

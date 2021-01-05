@@ -1,4 +1,4 @@
-const Joi = require('@hapi/joi')
+const Joi = require('joi')
 const settlement = require('../lib/settlements')
 
 const utils = require('bat-utils')
