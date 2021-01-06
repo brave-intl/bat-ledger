@@ -6,7 +6,6 @@ const authBearerToken = require('hapi-auth-bearer-token')
 const hapi = require('@hapi/hapi')
 const inert = require('@hapi/inert')
 const underscore = require('underscore')
-const vision = require('@hapi/vision')
 const hapiRequireHTTPS = require('hapi-require-https')
 const SDebug = require('sdebug')
 
@@ -110,7 +109,6 @@ async function Server (options, runtime) {
         plugin: whitelist.plugin
       },
       inert,
-      vision,
       rateLimiter(runtime)
     ], process.env.NODE_ENV === 'production' ? [
       {
