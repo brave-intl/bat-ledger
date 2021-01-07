@@ -93,3 +93,7 @@ curl -X POST --header 'Authorization: Bearer foobarfoobar' --header 'Content-Typ
 ```sh
 docker-compose run --rm -p 9229:9229 eyeshade-web npm run start-eyeshade -- --inspect=0.0.0.0
 ```
+
+## gyp
+
+You may have to install `node-gyp` if you do not already have it on your machine. Use this document to install: https://github.com/nodejs/node-gyp#installation. Catalina users may have a longer road.

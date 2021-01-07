@@ -34,3 +34,4 @@ voteConsumer(runtime)
 referralsConsumer(runtime)
 settlementsConsumer(runtime)
 runtime.kafka.consume().catch(console.error)
+module.exports = runtime

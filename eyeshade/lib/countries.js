@@ -1,5 +1,5 @@
 const underscore = require('underscore')
-const boom = require('boom')
+const boom = require('@hapi/boom')
 const { BigNumber } = require('bat-utils/lib/extras-utils')
 
 module.exports = {

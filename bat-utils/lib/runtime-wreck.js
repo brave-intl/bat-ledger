@@ -1,6 +1,6 @@
 const querystring = require('querystring')
 const _ = require('underscore')
-const wreck = require('wreck')
+const wreck = require('@hapi/wreck')
 
 const { WreckProxy } = require('./extras-hapi')
 

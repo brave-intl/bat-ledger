@@ -3,7 +3,7 @@
 const Database = require('bat-utils/lib/runtime-database')
 const SDebug = require('sdebug')
 const debug = new SDebug('migrate-transaction-table')
-const uuidv5 = require('uuid/v5')
+const { v5: uuidv5 } = require('uuid')
 
 const Postgres = require('bat-utils/lib/runtime-postgres')
 
