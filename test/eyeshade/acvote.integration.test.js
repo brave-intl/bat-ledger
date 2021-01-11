@@ -10,7 +10,7 @@ const {
 } = require('bat-utils/lib/extras-utils')
 const {
   agents,
-  cleanPgDb,
+  cleanEyeshadePgDb,
   ok
 } = require('../utils')
 const Postgres = require('bat-utils/lib/runtime-postgres')
@@ -19,8 +19,8 @@ const { votesId } = require('../../eyeshade/lib/queries.js')
 const moment = require('moment')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-test.beforeEach(cleanPgDb(postgres))
-test.afterEach.always(cleanPgDb(postgres))
+test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
+test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
 const date = moment().format('YYYY-MM-DD')
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'

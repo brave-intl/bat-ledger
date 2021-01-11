@@ -3,7 +3,7 @@
 const {
   serial: test
 } = require('ava')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const _ = require('underscore')
 const {
   insertTransaction,
@@ -16,8 +16,7 @@ const {
   extras
 } = require('bat-utils')
 const {
-  cleanPgDb,
-  cleanGrantDb,
+  cleanEyeshadePgDb,
   agents,
   ok
 } = require('../utils')
@@ -104,8 +103,7 @@ const manualTransactionSettlement = (ownerId) => ({
   currency: 'BAT'
 })
 
-test.afterEach.always(cleanPgDb(runtime.postgres))
-test.afterEach.always(cleanGrantDb)
+test.afterEach.always(cleanEyeshadePgDb.bind(null, runtime.postgres))
 
 test('check auth scope', async (t) => {
   t.plan(0)

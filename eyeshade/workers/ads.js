@@ -1,5 +1,5 @@
 const cron = require('cron-parser')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const underscore = require('underscore')
 
 const createPayoutReportQuery = 'insert into payout_reports_ads (id) values ($1)'

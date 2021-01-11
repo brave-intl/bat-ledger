@@ -23,12 +23,6 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['prometheus:9090']
-  - job_name: 'ledger'
-    static_configs:
-      - targets: ['ledger-web:3001']
   - job_name: 'eyeshade'
     static_configs:
       - targets: ['eyeshade-web:3002']
-  - job_name: 'balance'
-    static_configs:
-      - targets: ['balance-web:3003']

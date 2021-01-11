@@ -1,5 +1,5 @@
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
-const uuidv5 = require('uuid/v5')
+const { v5: uuidv5 } = require('uuid')
 const {
   createdTimestamp,
   BigNumber,

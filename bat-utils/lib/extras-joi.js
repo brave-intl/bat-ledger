@@ -3,7 +3,7 @@ const batPublisher = require('./extras-publisher')
 const bitcoin = require('bitcoinjs-lib')
 const countryCodes = require('country-list')()
 const currencyCodes = require('currency-codes')
-const Joi = require('@hapi/joi')
+const Joi = require('joi')
 const ethereumAddress = require('ethereum-address')
 
 module.exports = Joi.extend((joi) => {

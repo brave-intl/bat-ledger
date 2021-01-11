@@ -1,36 +1,21 @@
-const boom = require('boom')
-const Joi = require('@hapi/joi')
+const Joi = require('joi')
 const underscore = require('underscore')
 const _ = underscore
 
 const utils = require('bat-utils')
 const braveHapi = utils.extras.hapi
 const braveJoi = utils.extras.joi
-const extrasUtils = utils.extras.utils
-const { BigNumber } = extrasUtils
 
 const queries = require('../lib/queries')
 const countries = require('../lib/countries')
 
 const v1 = {}
 
-const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
-
 const amountValidator = braveJoi.string().numeric()
 const groupNameValidator = Joi.string().optional().description('the name given to the group')
-const publisherValidator = braveJoi.string().publisher().allow(null, '').optional().description('the publisher identity. e.g. youtube#VALUE, twitter#VALUE, reddit#value, etc., or null.  owner aka publishers#VALUE should not go here')
 const currencyValidator = braveJoi.string().altcurrencyCode().description('the currency unit being paid out')
-const groupIdValidator = Joi.string().guid().description('the region from which this referral came')
 const countryCodeValidator = braveJoi.string().countryCode().allow('OT').description('a country code in iso 3166 format').example('CA')
-const referralCodeValidator = Joi.string().required().description('the referral code tied to the referral')
 
-const referral = Joi.object().keys({
-  ownerId: braveJoi.string().owner().required().description('the owner'),
-  channelId: publisherValidator,
-  downloadId: Joi.string().guid().required().description('the download identity'),
-  platform: Joi.string().token().required().description('the download platform'),
-  finalized: Joi.date().iso().required().description('timestamp in ISO 8601 format').example('2018-03-22T23:26:01.234Z')
-})
 const referralGroupCountriesValidator = Joi.object().keys({
   id: Joi.string().guid().required().description('the group id to report back for correct value categorization'),
   activeAt: Joi.date().iso().optional().description('the download cut off time to honor the amount'),
@@ -41,63 +26,7 @@ const referralGroupCountriesValidator = Joi.object().keys({
 })
 const referralGroupsCountriesValidator = Joi.array().items(referralGroupCountriesValidator)
 
-const groupedReferralValidator = Joi.object().keys({
-  publisher: publisherValidator,
-  groupId: groupIdValidator.required().description('group id'),
-  amount: amountValidator.description('the amount to be paid out in BAT'),
-  referralCode: referralCodeValidator.allow(''),
-  payoutRate: amountValidator.description('the rate of BAT per USD')
-})
-
-const dateRangeParams = Joi.object().keys({
-  start: Joi.date().iso().required().description('the date to start the query'),
-  until: Joi.date().iso().optional().description('the date to query until')
-})
-
 const fieldValidator = Joi.string().description('whether the field should be included or not')
-
-/*
-   GET /v1/referrals/{transactionID}
- */
-
-v1.findReferrals = {
-  handler: (runtime) => {
-    return async (request, h) => {
-      const transactionId = request.params.transactionId
-      const debug = braveHapi.debug(module, request)
-      const transactions = runtime.database.get('referrals', debug)
-
-      const entries = await transactions.find({ transactionId: transactionId })
-      if (entries.length === 0) {
-        throw boom.notFound('no such transaction-identifier: ' + transactionId)
-      }
-
-      return entries.map((entry) => {
-        return underscore.extend({ channelId: entry.publisher },
-          underscore.pick(entry, ['downloadId', 'platform', 'finalized']))
-      })
-    }
-  },
-
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['global', 'referrals'],
-    mode: 'required'
-  },
-
-  description: 'Returns referral transactions for a publisher',
-  tags: ['api', 'referrals'],
-
-  validate: {
-    headers: Joi.object({ authorization: Joi.string().required() }).unknown(),
-    params: Joi.object().keys({
-      transactionId: Joi.string().guid().required().description('the transaction identity')
-    }).unknown(true)
-  },
-
-  response:
-    { schema: referral }
-}
 
 /*
   GET /v1/referrals/groups
@@ -149,96 +78,6 @@ v1.getReferralGroups = {
   }
 }
 
-/*
-  GET /v1/referrals/statement/{owner}
-*/
-
-v1.getReferralsStatement = {
-  handler: (runtime) => async (request, h) => {
-    const { database, currency } = runtime
-    const { params, query } = request
-    const { owner } = params
-    const { start: qStart, until: qUntil } = query
-    const {
-      start,
-      until
-    } = extrasUtils.backfillDateRange({
-      start: qStart || new Date((new Date()).toISOString().split('-').slice(0, 2).join('-')),
-      until: qUntil
-    })
-    const debug = braveHapi.debug(module, request)
-    const referrals = database.get('referrals', debug)
-    const refs = await referrals.find({
-      owner,
-      finalized: {
-        $gte: start,
-        $lt: until
-      }
-    }, {
-      _id: 0,
-      publisher: 1,
-      groupId: 1,
-      probi: 1,
-      payoutRate: 1,
-      referralCode: 1
-    })
-    const scale = currency.alt2scale('BAT')
-    return refs.map(({
-      publisher,
-      groupId,
-      referralCode,
-      payoutRate,
-      probi
-    }) => {
-      const bat = (new BigNumber(probi)).dividedBy(scale)
-      return {
-        publisher,
-        referralCode: referralCode || '',
-        groupId: _.isUndefined(groupId) ? originalRateId : groupId,
-        payoutRate: payoutRate || bat.dividedBy(5).toString(),
-        amount: bat.toString()
-      }
-    })
-  },
-
-  auth: {
-    strategy: 'simple-scoped-token',
-    scope: ['global', 'referrals'],
-    mode: 'required'
-  },
-
-  description: 'Get the referral details for a publisher',
-  tags: ['api', 'referrals'],
-
-  validate: {
-    headers: Joi.object({
-      authorization: Joi.string().required()
-    }).unknown(),
-    query: dateRangeParams
-  },
-
-  response: {
-    schema: Joi.array().items(groupedReferralValidator).description('the list of referrals attributed to a given owner')
-  }
-}
-
-/*
-   PUT /v1/referrals/{transactionID}
-       [ used by promo ]
- */
-
-v1.createReferrals = {
-  handler: (runtime) => () => {
-    throw boom.resourceGone()
-  }
-}
-
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
-  braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement),
-  braveHapi.routes.async().path('/v1/referrals/{transactionId}').whitelist().config(v1.findReferrals),
-  braveHapi.routes.async().put().path('/v1/referrals/{transactionId}').whitelist().config(v1.createReferrals)
+  braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups)
 ]
-
-module.exports.initialize = async (debug, runtime) => {
-}

@@ -5,6 +5,7 @@ const { Runtime } = require('bat-utils')
 const transaction = require('../lib/transaction')
 const settlements = require('../lib/settlements')
 const utils = require('../../test/utils')
+const { cleanEyeshadePgDb } = require('../../test/utils')
 
 test.before((t) => {
   Object.assign(t.context, {
@@ -14,7 +15,7 @@ test.before((t) => {
     })
   })
 })
-test.beforeEach(utils.cleanDbs)
+test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
 
 test('settlements should be insertable from the kafka queue', async (t) => {
   const msgs = 10

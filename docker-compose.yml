@@ -21,6 +21,7 @@ services:
     depends_on:
       - zookeeper
     ports:
+      - "19092:19092"
       - "29092:29092"
     environment:
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
@@ -39,20 +40,15 @@ services:
       - ./test/secrets:/etc/kafka/secrets
     networks:
       - ledger
-  mongo:
-    container_name: ledger-mongo
-    image: mongo:3.6.7
-    ports:
-      - "3010:27017"
-    networks:
-      - ledger
-  redis:
-    container_name: ledger-redis
+
+  eyeshade-redis:
+    container_name: eyeshade-redis
     image: redis:latest
     ports:
       - "3011:6379"
     networks:
       - ledger
+
   eyeshade-postgres:
     container_name: eyeshade-postgres
     image: postgres:11.9
@@ -80,26 +76,7 @@ services:
       - ledger
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
-  eyeshade-worker:
-    container_name: eyeshade-worker
-    command: "npm run eyeshade-worker"
-    extends:
-      file: base.yml
-      service: ledger
-    environment:
-      - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
-      - "MONGODB_URI=mongodb://mongo/eyeshade"
-      - "SERVICE=eyeshade"
-      - "DYNO=worker.1"
-    depends_on:
-      - mongo
-      - redis
-      - eyeshade-postgres
-    networks:
-      - ledger
-    volumes:
-      - ./eyeshade:/usr/src/app/eyeshade
-      - ./bin:/usr/src/app/bin
+
   eyeshade-web:
     container_name: eyeshade-web
     ports:
@@ -111,204 +88,16 @@ services:
     environment:
       - "PORT=3002"
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
-      - "MONGODB_URI=mongodb://mongo/eyeshade"
       - "SERVICE=eyeshade"
       - "DYNO=web.1"
     depends_on:
-      - mongo
-      - redis
+      - eyeshade-redis
       - eyeshade-postgres
     networks:
       - ledger
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
-  ledger-web:
-    container_name: ledger-web
-    ports:
-      - "3001:3001"
-    command: "npm run ledger-server"
-    extends:
-      file: base.yml
-      service: ledger
-    environment:
-      - "GRANT_TOKEN=596fde96-cc80-40e5-b81f-a21c81bb101a"
-      - "CAPTCHA_URL=${CAPTCHA_URL-http://captcha-web:3334}"
-      - "PORT=3001"
-      - "SERVICE=ledger"
-      - "DYNO=web.1"
-    depends_on:
-      - mongo
-      - redis
-      - kafka
-    networks:
-      - ledger
-  balance-web:
-    container_name: balance-web
-    ports:
-      - "3003:3003"
-    command: "npm run balance-server"
-    extends:
-      file: base.yml
-      service: ledger
-    environment:
-      - "PORT=3003"
-      - "SERVICE=balance"
-      - "DYNO=web.1"
-    depends_on:
-      - redis
-    networks:
-      - ledger
-  redeemer-redis:
-    container_name: redeemer-redis
-    ports:
-      - "3013:6379"
-    image: redis:latest
-    networks:
-      - ledger
-  redeemer-web:
-    container_name: redeemer-web
-    image: brave/bat-go:latest
-    ports:
-      - "3335:3333"
-    environment:
-      - "REDIS_URL=redis://redeemer-redis:6379"
-      - BAT_SETTLEMENT_ADDRESS
-      - "GRANT_SIGNATOR_PUBLIC_KEY=${REDEEMER_SIGNATOR_PUBLIC_KEY}"
-      - "GRANT_WALLET_CARD_ID=${REDEEMER_WALLET_CARD_ID}"
-      - "GRANT_WALLET_PRIVATE_KEY=${REDEEMER_WALLET_PRIVATE_KEY}"
-      - "GRANT_WALLET_PUBLIC_KEY=${REDEEMER_WALLET_PUBLIC_KEY}"
-      - "TOKEN_LIST=b585e5c3-03f9-4aa1-a0af-7c6326cbc0c3"
-      - UPHOLD_ACCESS_TOKEN
-    depends_on:
-      - redeemer-redis
-    networks:
-      - ledger
-  grant-web:
-    container_name: grant-web
-    image: brave/bat-go:grants
-    ports:
-      - "3336:3333"
-    environment:
-      - "DATABASE_URL=postgres://grants:password@grant-postgres/grants?sslmode=disable"
-      - "LEDGER_SERVER=http://ledger-web:3001"
-      - "DATABASE_MIGRATIONS_URL=file:///migrations"
-      - BAT_SETTLEMENT_ADDRESS
-      - CHALLENGE_BYPASS_SERVER=http://challenge-bypass:2416
-      - CHALLENGE_BYPASS_TOKEN
-      - GRANT_SIGNATOR_PUBLIC_KEY
-      - GRANT_WALLET_CARD_ID
-      - GRANT_WALLET_PRIVATE_KEY
-      - GRANT_WALLET_PUBLIC_KEY
-      - "TOKEN_LIST=596fde96-cc80-40e5-b81f-a21c81bb101a"
-      - UPHOLD_ACCESS_TOKEN
-    depends_on:
-      - grant-postgres
-      - challenge-bypass
-      - kafka
-    networks:
-      - ledger
-  grant-postgres:
-    container_name: grant-postgres
-    image: postgres:11.9
-    environment:
-      - "POSTGRES_USER=grants"
-      - "POSTGRES_PASSWORD=password"
-    ports:
-      - "3014:5432"
-    networks:
-      - ledger
 
-  rewards-dev:
-    container_name: rewards-dev
-    image: brave/rewards-api:wallet-migration
-    ports:
-      - "3338:3333"
-    volumes:
-      - ../:/src
-    working_dir: /src
-    networks:
-      - ledger
-    environment:
-      - PPROF_ENABLED
-      - ENV=local
-      - ADDR=:3333
-      - "RATIOS_SERVICE=${BAT_RATIOS_URL}"
-      - "RATIOS_TOKEN=${BAT_RATIOS_TOKEN}"
-      - DEFAULT_TIP_CHOICES=1,10,100
-      - DEFAULT_MONTHLY_CHOICES=1,10,100
-      - DEFAULT_AC_CHOICES
-      - DEFAULT_CURRENCY=USD
-      - RATIOS_CACHE_EXPIRY=1m
-      - RATIOS_CACHE_PURGE=2m
-
-  wallet-migration-web:
-    container_name: wallet-migration-web
-    image: brave/bat-go:wallet-migration
-    ports:
-      - "3337:3333"
-      - "6061:6061"
-    environment:
-      - "FEATURE_WALLET=1"
-      - "DATABASE_URL=postgres://wallet-migration:password@wallet-migration-postgres/wallet-migration?sslmode=disable"
-      - "LEDGER_SERVER=http://ledger-web:3001"
-      - "DATABASE_MIGRATIONS_URL=file:///migrations"
-      - BAT_SETTLEMENT_ADDRESS
-      - CHALLENGE_BYPASS_SERVER=http://challenge-bypass:2416
-      - CHALLENGE_BYPASS_TOKEN
-      - GRANT_SIGNATOR_PUBLIC_KEY
-      - GRANT_WALLET_CARD_ID
-      - GRANT_WALLET_PRIVATE_KEY
-      - GRANT_WALLET_PUBLIC_KEY
-      - KAFKA_BROKERS=kafka:19092
-      - KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/snakeoil-ca-1.crt
-      - KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/consumer-ca1-signed.pem
-      - KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/consumer.client.key
-      - KAFKA_SSL_KEY_PASSWORD=confluent
-      - KAFKA_REQUIRED_ACKS=1
-      - "REPUTATION_SERVER=http://reputation-web-grant:3334"
-      - "REPUTATION_TOKEN=636765a9-1f92-4b40-ab0b-85ebd1e2c23d"
-      - "TOKEN_LIST=98f27f2e-239b-40e9-8f62-bf1a55ea530c"
-      - UPHOLD_ACCESS_TOKEN
-    depends_on:
-      - wallet-migration-postgres
-      - kafka
-      - challenge-bypass
-    networks:
-      - ledger
-    volumes:
-      - ./test/secrets:/etc/kafka/secrets
-  wallet-migration-postgres:
-    container_name: wallet-migration-postgres
-    image: postgres:11.9
-    environment:
-      - "POSTGRES_USER=wallet-migration"
-      - "POSTGRES_PASSWORD=password"
-    ports:
-      - "3015:5432"
-    networks:
-      - ledger
-  challenge-bypass-postgres:
-    container_name: challenge-bypass-postgres
-    image: postgres:11.9
-    environment:
-      - "POSTGRES_USER=btokens"
-      - "POSTGRES_PASSWORD=password"
-    networks:
-      - ledger
-  challenge-bypass:
-    container_name: challenge-bypass
-    image: brave/challenge-bypass
-    restart: always
-    ports:
-      - "2416:2416"
-    environment:
-      - "SENTRY_DSN"
-      - "DATABASE_URL=postgres://btokens:password@challenge-bypass-postgres/btokens?sslmode=disable"
-      - "DATABASE_MIGRATIONS_URL=file:///src/migrations"
-    depends_on:
-      - challenge-bypass-postgres
-    networks:
-      - ledger
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus

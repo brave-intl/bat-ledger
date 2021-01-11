@@ -1,34 +1,24 @@
 const { serial: test } = require('ava')
-const uuidV4 = require('uuid/v4')
-const {
-  BigNumber,
-  timeout
-} = require('bat-utils/lib/extras-utils')
+const { v4: uuidV4 } = require('uuid')
 const { Runtime } = require('bat-utils')
 const {
   insertFromSettlement
 } = require('../../eyeshade/lib/transaction')
-const { workers: walletWorkers } = require('../../eyeshade/workers/wallet')
-const { freezeOldSurveyors } = require('../../eyeshade/workers/reports')
 const {
-  debug,
   agents,
   ok,
-  cleanPgDb
+  cleanEyeshadePgDb
 } = require('../utils')
 
 const {
   BAT_REDIS_URL,
   BAT_POSTGRES_URL,
   BAT_RATIOS_URL,
-  BAT_RATIOS_TOKEN,
-  TESTING_COHORTS
+  BAT_RATIOS_TOKEN
 } = process.env
 
 const today = new Date('2018-07-30')
 const runtime = new Runtime({
-  testingCohorts: TESTING_COHORTS ? TESTING_COHORTS.split(',') : [],
-  queue: BAT_REDIS_URL,
   prometheus: {
     label: 'eyeshade.worker.1'
   },
@@ -86,7 +76,7 @@ const referralSettlement = {
   currency: 'BAT'
 }
 
-test.afterEach.always(cleanPgDb(runtime.postgres))
+test.afterEach.always(cleanEyeshadePgDb.bind(null, runtime.postgres))
 
 test('check auth', async (t) => {
   const votingStatsEmpty = await getStatsFor('grants', 'ads', {
@@ -100,53 +90,6 @@ test('check auth', async (t) => {
     agent: agents.eyeshade.global
   })
   t.deepEqual({ amount: '0' }, goldEmpty, 'an empty set of stats should return')
-})
-
-test('stats for grants', async (t) => {
-  const cohort = 'ads'
-  const surveyorId = uuidV4().toLowerCase()
-  const vote = {
-    cohort,
-    publisher: 'foo.com',
-    surveyorId
-  }
-  const surveyor = {
-    surveyorId,
-    altcurrency: 'BAT',
-    probi: (new BigNumber(1)).times(1e18).toString(),
-    votes: 2
-  }
-  const now = new Date()
-  const votingStatsEmpty = await getStatsFor('grants', cohort, {
-    start: now
-  })
-  t.deepEqual({ amount: '0', count: '0' }, votingStatsEmpty, 'an empty set of stats should return')
-
-  const client = await runtime.postgres.connect()
-  try {
-    const votingReport = walletWorkers['voting-report']
-    const surveyorReport = walletWorkers['surveyor-report']
-
-    await surveyorReport(debug, runtime, surveyor)
-    await votingReport(debug, runtime, vote)
-    const vote2 = Object.assign({}, vote, {
-      publisher: 'bar.com'
-    })
-    await votingReport(debug, runtime, vote2)
-    await freezeOldSurveyors(debug, runtime, -1)
-
-    let votingStats = {}
-    while (!(+votingStats.amount)) {
-      await timeout(2000)
-      votingStats = await getStatsFor('grants', cohort, {
-        start: now
-      })
-    }
-    const amount = (new BigNumber(0.95)).toPrecision(18).toString()
-    t.deepEqual({ amount, count: '2' }, votingStats, 'vote amounts are summed')
-  } finally {
-    await client.release()
-  }
 })
 
 test('stats for settlements', async (t) => {

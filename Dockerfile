@@ -1,24 +1,15 @@
-FROM node:8-jessie
-
-RUN wget https://cmake.org/files/v3.6/cmake-3.6.2-Linux-x86_64.tar.gz
-RUN tar -xf cmake-3.6.2-Linux-x86_64.tar.gz
-
-RUN ln -s /cmake-3.6.2-Linux-x86_64/bin/cmake /usr/local/bin/cmake
-RUN ln -s /cmake-3.6.2-Linux-x86_64/bin/ccmake /usr/local/bin/ccmake
-RUN ln -s /cmake-3.6.2-Linux-x86_64/bin/cmake-gui /usr/local/bin/cmake-gui
-RUN ln -s /cmake-3.6.2-Linux-x86_64/bin/cpack /usr/local/bin/cpack
-RUN ln -s /cmake-3.6.2-Linux-x86_64/bin/ctest /usr/local/bin/ctest
+FROM node:11.15-stretch
 
 RUN apt-get update && apt-get install -y postgresql-client
 
 RUN mkdir -p /usr/src/app && mkdir /usr/src/app/bat-utils
 WORKDIR /usr/src/app
 
-RUN npm install -g npm@6.11.3
+RUN npm install -g npm@6.7.0
 
-COPY package.json package-lock.json /usr/src/app/
+COPY package.json /usr/src/app/
 COPY bat-utils/package.json /usr/src/app/bat-utils/
-RUN npm ci
+RUN npm install
 COPY . /usr/src/app
 
 CMD npm run eyeshade-consumer

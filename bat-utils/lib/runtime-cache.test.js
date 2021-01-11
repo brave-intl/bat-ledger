@@ -3,7 +3,7 @@
 const { serial: test } = require('ava')
 const dotenv = require('dotenv')
 const Cache = require('./runtime-cache')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 
 dotenv.config()
 

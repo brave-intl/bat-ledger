@@ -75,11 +75,30 @@ class Kafka {
     consumers.push(consumer)
   }
 
+  encodeMessages (encoder, messages) {
+    const encoded = []
+    for (let i = 0; i < messages.length; i += 1) {
+      try {
+        encoded.push(encoder(messages[i]))
+      } catch (e) {
+        this.runtime.captureException(e, {
+          extra: {
+            index: i,
+            message: messages[i]
+          }
+        })
+        throw e
+      }
+    }
+    return encoded
+  }
+
   async sendMany ({ topic, encode }, messages, _partition = null, _key = null, _partitionKey = null) {
     // map twice to err quickly on input errors
     // use map during send to increase batching on network
+    const encoded = this.encodeMessages(encode, messages)
     return Promise.all(
-      messages.map(encode)
+      encoded
         .map((msg) =>
           this.send(topic, msg, _partition, _key, _partitionKey)
         )

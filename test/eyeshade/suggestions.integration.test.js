@@ -3,21 +3,21 @@
 const Kafka = require('bat-utils/lib/runtime-kafka')
 const Runtime = require('bat-utils/boot-runtime')
 const test = require('ava')
-const uuidV4 = require('uuid/v4')
+const { v4: uuidV4 } = require('uuid')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
 const {
   agents,
-  cleanPgDb,
+  cleanEyeshadePgDb,
   ok
 } = require('../utils')
 const Postgres = require('bat-utils/lib/runtime-postgres')
 const suggestions = require('../../eyeshade/lib/suggestions')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-test.beforeEach(cleanPgDb(postgres))
-test.afterEach.always(cleanPgDb(postgres))
+test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
+test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 const balanceURL = '/v1/accounts/balances'
@@ -26,7 +26,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
   let body
   const runtime = new Runtime(Object.assign({}, require('../../config'), {
-    queue: process.env.BAT_REDIS_URL,
+    testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
     postgres: {
       url: process.env.BAT_POSTGRES_URL
     }

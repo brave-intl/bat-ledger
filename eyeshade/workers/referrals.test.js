@@ -13,7 +13,7 @@ const utils = require('../../test/utils')
 
 const {
   ok,
-  cleanDbs,
+  cleanEyeshadePgDb,
   agents,
   readJSONFile
 } = utils
@@ -40,7 +40,7 @@ test.before(async (t) => {
     })
   })
 })
-test.beforeEach(cleanDbs)
+test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
 
 test('referral groups are returned correctly', async (t) => {
   let body, fields
@@ -117,7 +117,7 @@ test('unable to insert a row with the same country code and created_at twice', a
   insert into
   geo_referral_countries(country_code, created_at, name, group_id)
   values($1, $2, 'anyname', $3)`, ['US', +us.created_at, us.group_id])
-  })
+  }, { instanceOf: Error })
 })
 
 test('referrals should be insertable from the kafka queue', async (t) => {
