@@ -68,7 +68,7 @@ jobs:
           restore-keys: v1-npm-deps-
 
       - run: docker-compose pull
-      - uses: satackey/action-docker-layer-caching@46d2c640b1d8ef50d185452ad6fb324e6bd1d052
+        uses: satackey/action-docker-layer-caching@46d2c640b1d8ef50d185452ad6fb324e6bd1d052
         # Ignore the failure of a step and avoid terminating the job.
         continue-on-error: true
         with:
