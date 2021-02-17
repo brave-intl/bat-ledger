@@ -5,6 +5,7 @@ const _ = require('underscore')
 const authBearerToken = require('hapi-auth-bearer-token')
 const hapi = require('@hapi/hapi')
 const inert = require('@hapi/inert')
+const vision = require('vision')
 const underscore = require('underscore')
 const hapiRequireHTTPS = require('hapi-require-https')
 const SDebug = require('sdebug')
@@ -13,6 +14,7 @@ const rateLimiter = require('./hapi-rate-limiter')
 const braveHapi = require('./extras-hapi')
 const whitelist = require('./hapi-auth-whitelist')
 const npminfo = require('../npminfo')
+const swagger = require('./hapi-swagger')
 
 module.exports = async (options, runtime) => {
   try {
@@ -82,8 +84,6 @@ async function Server (options, runtime) {
     options = {}
   }
 
-  goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
-
   underscore.defaults(options, { id: server.info.id, module: module, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
@@ -100,24 +100,45 @@ async function Server (options, runtime) {
 
   const { prometheus } = runtime
   const plugins = [].concat(
-    prometheus ? [
-      prometheus.plugin()
-    ] : [],
+    prometheus
+      ? [
+          prometheus.plugin()
+        ]
+      : [],
     [
       authBearerToken,
       {
         plugin: whitelist.plugin
       },
       inert,
+      vision,
+      swagger(),
       rateLimiter(runtime)
-    ], process.env.NODE_ENV === 'production' ? [
-      {
-        plugin: hapiRequireHTTPS,
-        options: { proxy: true }
-      }
-    ] : []
+    ], process.env.NODE_ENV === 'production'
+      ? [
+          {
+            plugin: hapiRequireHTTPS,
+            options: { proxy: true }
+          }
+        ]
+      : []
   )
   await server.register(plugins)
+
+  goneRoutes.forEach(({ method, path }) => server.route({
+    method,
+    path,
+    options: {
+      handler: () => { throw boom.resourceGone() },
+      response: {
+        status: {
+          410: {
+            description: 'endpoint is dead'
+          }
+        }
+      }
+    }
+  }))
 
   debug('extensions registered')
 

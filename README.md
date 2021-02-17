@@ -30,6 +30,15 @@ docker-compose up -d eyeshade-web eyeshade-worker
 docker-compose stop
 ```
 
+### Install
+A simple `npm install` will get you setup, though if your machine is setup incorrectly you may run into a node-gyp, or rdkafka error on subsequent installs.
+
+To get around this simply install new packages inside of docker.
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml run -v $(pwd):/src -w /src eyeshade-web npm i uuid
+```
+
 ### Configuration
 Configuration variables are stored as environment preferences. See `config.js` for a list of these variables for ledger, eyeshade, and balance respectively.
 
