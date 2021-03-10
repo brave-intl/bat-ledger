@@ -6,6 +6,7 @@
   "scripts": {
     "ava": "ava",
     "eyeshade-server": "node eyeshade/server.js",
+    "eyeshade-worker": "node eyeshade/worker.js",
     "eyeshade-consumer": "node eyeshade/consumer.js",
     "eyeshade-producer": "node bin/migrate-mongo-to-kafka.js",
     "start": "echo use 'npm run start-eyeshade-web' or 'npm run start-eyeshade-consumer'",
