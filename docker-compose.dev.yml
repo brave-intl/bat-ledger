@@ -8,3 +8,10 @@ services:
       - "./test:/usr/src/app/test"
       - "./config.js:/usr/src/app/config.js"
     command: "npm run start-eyeshade"
+  eyeshade-worker:
+    volumes:
+      - "./bat-utils:/usr/src/app/bat-utils"
+      - "./eyeshade:/usr/src/app/eyeshade"
+      - "./package.json:/usr/src/app/package.json"
+      - "./config.js:/usr/src/app/config.js"
+    command: "npm run start-eyeshade-worker"

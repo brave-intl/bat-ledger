@@ -76,6 +76,24 @@ services:
       - ledger
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
+  eyeshade-worker:
+    container_name: eyeshade-worker
+    command: "npm run eyeshade-worker"
+    extends:
+      file: base.yml
+      service: ledger
+    environment:
+      - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
+      - "SERVICE=eyeshade"
+      - "DYNO=worker.1"
+    depends_on:
+      - eyeshade-redis
+      - eyeshade-postgres
+    networks:
+      - ledger
+    volumes:
+      - ./eyeshade:/usr/src/app/eyeshade
+      - ./bin:/usr/src/app/bin
 
   eyeshade-web:
     container_name: eyeshade-web

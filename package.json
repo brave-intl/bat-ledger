@@ -6,6 +6,7 @@
   "scripts": {
     "ava": "ava",
     "eyeshade-server": "node eyeshade/server.js",
+    "eyeshade-worker": "node --optimize_for_size --max_old_space_size=460 --gc_interval=100 eyeshade/worker.js",
     "eyeshade-consumer": "node eyeshade/consumer.js",
     "eyeshade-producer": "node bin/migrate-mongo-to-kafka.js",
     "start": "echo use 'npm run start-eyeshade-web' or 'npm run start-eyeshade-consumer'",
@@ -39,7 +40,7 @@
   },
   "config": {
     "dockermonitors": "prometheus grafana",
-    "dockerservices": "eyeshade-web eyeshade-consumer"
+    "dockerservices": "eyeshade-web eyeshade-consumer eyeshade-worker"
   },
   "repository": {
     "type": "git",

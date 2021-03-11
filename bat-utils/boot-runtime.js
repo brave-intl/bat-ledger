@@ -10,6 +10,7 @@ const kafka = require('./lib/runtime-kafka')
 const newrelic = require('./lib/runtime-newrelic')
 const postgres = require('./lib/runtime-postgres')
 const prometheus = require('./lib/runtime-prometheus')
+const queue = require('./lib/runtime-queue')
 const sentry = require('./lib/runtime-sentry')
 const wallet = require('./lib/runtime-wallet')
 const wreck = require('./lib/runtime-wreck')
@@ -21,6 +22,7 @@ const hash = {
   newrelic,
   postgres,
   prometheus,
+  queue,
   sentry,
   wallet,
   wreck
