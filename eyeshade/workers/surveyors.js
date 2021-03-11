@@ -85,5 +85,6 @@ exports.workers = {
         throw e
       } finally {
         client.release()
-
+      }
+    }
 }

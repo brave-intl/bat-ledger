@@ -3,13 +3,8 @@ const utils = require('bat-utils')
 
 const config = require('../config.js')
 
-const publishersWorker = require('./workers/publishers')
-const referralsWorker = require('./workers/referrals')
 const reportsWorker = require('./workers/reports')
 const surveyorsWorker = require('./workers/surveyors')
-const walletWorker = require('./workers/wallet')
-const adsWorker = require('./workers/ads')
-const snapshotsWorker = require('./workers/snapshots')
 
 const {
   Runtime,
@@ -25,13 +20,8 @@ if (!process.env.BATUTIL_SPACES) {
 Runtime.newrelic.setupNewrelic(config, __filename)
 
 const parentModules = [
-  publishersWorker,
-  referralsWorker,
   reportsWorker,
-  surveyorsWorker,
-  walletWorker,
-  adsWorker,
-  snapshotsWorker
+  surveyorsWorker
 ]
 
 const options = {
@@ -40,6 +30,7 @@ const options = {
 }
 
 config.cache = false
+config.queue = true
 
 const runtime = new Runtime(config)
 extras.worker(options, runtime)
