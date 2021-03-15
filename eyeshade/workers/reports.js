@@ -29,6 +29,7 @@ exports.freezeOldSurveyors = freezeOldSurveyors
   olderThanDays: int
 */
 async function freezeOldSurveyors (debug, runtime, olderThanDays) {
+  debug('freezing old surveyors')
   if (typeof olderThanDays === 'undefined') {
     olderThanDays = freezeInterval
   }
@@ -40,6 +41,7 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
   and created_at < current_date - $1 * interval '1d'
   `
 
+  debug('freezing older than ' + olderThanDays)
   const {
     rows: nonVirtualSurveyors
   } = await runtime.postgres.query(query, [olderThanDays], true)

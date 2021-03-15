@@ -7,6 +7,7 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
   const { postgres } = runtime
   const { mix, surveyorId } = payload
 
+  debug('freezing %o', payload)
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
