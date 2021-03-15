@@ -19,7 +19,6 @@ config.kafka = false
 config.postgres.schemaVersion = require('./migrations/current')
 
 const runtime = new Runtime(config)
-reports.debug('using config %o', config)
 
 main()
 
