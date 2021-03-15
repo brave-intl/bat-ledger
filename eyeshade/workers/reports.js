@@ -1,29 +1,26 @@
-const moment = require('moment')
 const {
   timeout
 } = require('bat-utils/lib/extras-utils')
 const { surveyorFrozenReport } = require('./surveyors')
+const SDebug = require('sdebug')
+const defaultDebug = new SDebug('worker')
+const options = { id: 1 }
+defaultDebug.initialize({ worker: { id: options.id } })
+
+exports.debug = defaultDebug
 
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
-const daily = async (debug, runtime) => {
-  debug('daily', 'running')
-
+async function runFreezeOldSurveyors (debug, runtime) {
   try {
-    const midnight = new Date()
-    midnight.setHours(0, 0, 0, 0)
-
     await freezeOldSurveyors(debug, runtime)
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
   }
-
-  const tomorrow = new Date()
-  tomorrow.setHours(24, 0, 0, 0)
-  setTimeout(() => { daily(debug, runtime) }, tomorrow - new Date())
-  debug('daily', 'running again ' + moment(tomorrow).fromNow())
 }
+
+exports.runFreezeOldSurveyors = runFreezeOldSurveyors
 
 exports.name = 'reports'
 exports.freezeOldSurveyors = freezeOldSurveyors
@@ -91,14 +88,4 @@ async function waitForTransacted (runtime, surveyorId) {
       return
     }
   } while (row) // when no row is returned, all votes have been transacted
-}
-
-exports.initialize = async (debug, runtime) => {
-  if (typeof freezeInterval === 'undefined' || isNaN(parseFloat(freezeInterval))) {
-    throw new Error('FREEZE_SURVEYORS_AGE_DAYS is not set or not numeric')
-  }
-
-  if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
-    setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
-  }
 }

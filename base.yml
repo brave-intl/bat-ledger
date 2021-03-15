@@ -16,7 +16,7 @@ services:
       - "BAT_EYESHADE_SERVER=http://eyeshade-web:3002"
       - "BAT_POSTGRES_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - BAT_RATIOS_TOKEN
-      - "BAT_RATIOS_URL=https://ratios-staging.mercury.basicattentiontoken.org"
+      - "BAT_RATIOS_URL=https://ratios.rewards.bravesoftware.com"
       - "BAT_REDIS_URL=redis://eyeshade-redis:6379"
       - "BAT_SETTLEMENT_ADDRESS=6654ecb0-6079-4f6c-ba58-791cc890a561"
       - "DEBUG=${DEBUG-*,-babel,-eslint:*,-mongo:*,mongo:queries}"
