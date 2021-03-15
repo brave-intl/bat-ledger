@@ -13,7 +13,8 @@ const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
 async function runFreezeOldSurveyors (debug, runtime) {
   try {
-    await freezeOldSurveyors(debug, runtime)
+    const frozen = await freezeOldSurveyors(debug, runtime)
+    return frozen
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
@@ -63,6 +64,7 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
     await surveyorFrozenReport(debug, runtime, { surveyorId, mix: true })
     await waitForTransacted(runtime, surveyorId)
   }
+  return toFreeze
 }
 
 async function waitForTransacted (runtime, surveyorId) {

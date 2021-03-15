@@ -23,6 +23,6 @@ reports.debug('using config %o', config)
 main()
 
 async function main () {
-  await reports.freezeOldSurveyors(reports.debug, runtime)
+  await reports.runFreezeOldSurveyors(reports.debug, runtime)
   await runtime.quit()
 }
