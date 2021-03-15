@@ -7,7 +7,6 @@ const suggestionsConsumer = require('./workers/suggestions')
 const voteConsumer = require('./workers/acvote')
 const { consumer: referralsConsumer } = require('./workers/referrals')
 const { consumer: settlementsConsumer } = require('./workers/settlements')
-const reports = require('./workers/reports')
 const {
   extras,
   Runtime
@@ -35,5 +34,4 @@ voteConsumer(runtime)
 referralsConsumer(runtime)
 settlementsConsumer(runtime)
 runtime.kafka.consume().catch(console.error)
-reports.initialize(reports.debug, runtime)
 module.exports = runtime
