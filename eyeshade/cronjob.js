@@ -1,3 +1,4 @@
+console.log('running cronjob')
 const dotenv = require('dotenv')
 const utils = require('bat-utils')
 
