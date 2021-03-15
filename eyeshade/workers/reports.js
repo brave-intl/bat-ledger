@@ -12,12 +12,15 @@ exports.debug = defaultDebug
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
 async function runFreezeOldSurveyors (debug, runtime) {
+  let frozen
   try {
-    const frozen = await freezeOldSurveyors(debug, runtime)
+    frozen = await freezeOldSurveyors(debug, runtime)
     return frozen
   } catch (ex) {
     runtime.captureException(ex)
     debug('daily', { reason: ex.toString(), stack: ex.stack })
+  } finally {
+    debug('frozen %o', frozen)
   }
 }
 
@@ -58,13 +61,15 @@ async function freezeOldSurveyors (debug, runtime, olderThanDays) {
     rows: virtualSurveyors
   } = await runtime.postgres.query(virtualQuery, [], true)
 
+  const frozen = []
   const toFreeze = nonVirtualSurveyors.concat(virtualSurveyors)
   for (let i = 0; i < toFreeze.length; i += 1) {
     const surveyorId = toFreeze[i].id
+    frozen.push(surveyorId)
     await surveyorFrozenReport(debug, runtime, { surveyorId, mix: true })
     await waitForTransacted(runtime, surveyorId)
   }
-  return toFreeze
+  return frozen
 }
 
 async function waitForTransacted (runtime, surveyorId) {
