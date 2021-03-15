@@ -37,9 +37,17 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
     }
     const docs = votingQ.rows
     try {
+      let inserting = []
       for (let i = 0; i < docs.length; i += 1) {
-        await insertFromVoting(runtime, client, Object.assign(docs[i], { surveyorId }), surveyorCreatedAt)
+        const inserted = insertFromVoting(runtime, client, Object.assign(docs[i], { surveyorId }), surveyorCreatedAt)
+        inserting.push(inserted)
+        if (inserting.length >= 25) {
+          await Promise.all(inserting)
+          inserting = []
+        }
       }
+      await Promise.all(inserting)
+
       const markVotesTransactedStatement = `
       update votes
         set transacted = true
