@@ -3,6 +3,12 @@ const {
   timeout
 } = require('bat-utils/lib/extras-utils')
 const { surveyorFrozenReport } = require('./surveyors')
+const SDebug = require('sdebug')
+const defaultDebug = new SDebug('worker')
+const options = { id: 1 }
+defaultDebug.initialize({ web: { id: options.id } })
+
+module.exports.debug = defaultDebug
 
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
@@ -93,12 +99,6 @@ async function waitForTransacted (runtime, surveyorId) {
   } while (row) // when no row is returned, all votes have been transacted
 }
 
-exports.initialize = async (debug, runtime) => {
-  if (typeof freezeInterval === 'undefined' || isNaN(parseFloat(freezeInterval))) {
-    throw new Error('FREEZE_SURVEYORS_AGE_DAYS is not set or not numeric')
-  }
-
-  if ((typeof process.env.DYNO === 'undefined') || (process.env.DYNO === 'worker.1')) {
-    setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
-  }
+exports.initialize = async (debug = defaultDebug, runtime) => {
+  setTimeout(() => { daily(debug, runtime) }, 5 * 1000)
 }
