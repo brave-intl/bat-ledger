@@ -5,7 +5,7 @@ const { surveyorFrozenReport } = require('./surveyors')
 const SDebug = require('sdebug')
 const defaultDebug = new SDebug('worker')
 const options = { id: 1 }
-defaultDebug.initialize({ web: { id: options.id } })
+defaultDebug.initialize({ worker: { id: options.id } })
 
 exports.debug = defaultDebug
 
