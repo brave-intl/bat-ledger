@@ -259,25 +259,6 @@ async function insertManual (runtime, client, settlementId, created, documentId,
   ], client)
 }
 
-function insertFromVotingQuery (rows) {
-  const longest = rows.reduce((memo, row) => row ? Math.max(row.length, memo) : memo, 0)
-  const filtered = rows.filter((row) => row)
-    .map((row) => {
-      const newRow = new Array(longest)
-      row.forEach((arg, index) => {
-        newRow[index] = arg
-      })
-      return newRow
-    })
-  const query = `
-insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
-VALUES`
-  return {
-    filtered,
-    query
-  }
-}
-
 function insertFromVotingArguments (settlementAddress, voteDoc, surveyorCreatedAt) {
   if (voteDoc.amount) {
     const amount = new BigNumber(voteDoc.amount.toString())
@@ -323,8 +304,14 @@ async function insertManyFromVoting (atOneTime, runtime, client, docs, surveyorC
         surveyorCreatedAt
       )
     )
-    const { filtered, query } = insertFromVotingQuery(mapped)
-    await runtime.postgres.insert(query, filtered, client)
+    const query = `
+    insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
+    VALUES`
+    await runtime.postgres.insert(
+      query,
+      runtime.postgres.prepInsert(mapped),
+      client
+    )
   }
 }
 

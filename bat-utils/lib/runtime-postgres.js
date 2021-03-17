@@ -85,6 +85,17 @@ Postgres.prototype = {
       length: params.length
     })
   },
+  prepInsert: function (rows) {
+    const filtered = rows.filter((row) => row)
+    const longest = filtered.reduce((memo, row) => row ? Math.max(row.length, memo) : memo, 0)
+    return filtered.map((row) => {
+      const newRow = new Array(longest)
+      row.forEach((arg, index) => {
+        newRow[index] = arg
+      })
+      return newRow
+    })
+  },
   transact: async function (fn) {
     const client = await this.connect()
     let res
