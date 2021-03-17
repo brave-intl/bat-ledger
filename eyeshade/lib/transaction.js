@@ -29,7 +29,10 @@ module.exports = {
   insertFromSettlement,
   insertFromVoting,
   insertFromReferrals,
-  insertFromAd
+  insertFromAd,
+  insertMany: {
+    fromVoting: insertManyFromVoting
+  }
 }
 
 function referralId (id, normalizedChannel) {
@@ -254,6 +257,75 @@ async function insertManual (runtime, client, settlementId, created, documentId,
     toAccountType,
     amountBAT
   ], client)
+}
+
+function insertFromVotingQuery (rows) {
+  const longest = rows.reduce((memo, row) => row ? Math.max(row.length, memo) : memo, 0)
+  const filtered = rows.filter((row) => row)
+    .map((row) => {
+      const newRow = new Array(longest)
+      row.forEach((arg, index) => {
+        newRow[index] = arg
+      })
+      return newRow
+    })
+  const query = `
+insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
+VALUES`
+  return {
+    filtered,
+    query
+  }
+}
+
+function insertFromVotingArguments (settlementAddress, voteDoc, surveyorCreatedAt) {
+  if (voteDoc.amount) {
+    const amount = new BigNumber(voteDoc.amount.toString())
+    const fees = new BigNumber(voteDoc.fees.toString())
+
+    if (amount.greaterThan(new BigNumber(0))) {
+      const normalizedChannel = normalizeChannel(voteDoc.channel)
+      const props = getPublisherProps(normalizedChannel)
+      if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
+        // skip for now
+        return
+      }
+
+      return [
+        // surveyorId and channel pair should be unique
+        uuidv5(voteDoc.surveyorId + normalizedChannel, 'be90c1a8-20a3-4f32-be29-ed3329ca8630'),
+        surveyorCreatedAt,
+        `votes from ${voteDoc.surveyorId}`,
+        'contribution',
+        voteDoc.surveyorId,
+        settlementAddress,
+        'uphold',
+        normalizedChannel,
+        'channel',
+        amount.plus(fees).toString(),
+        normalizedChannel
+      ]
+    }
+  } else {
+    throw new Error('Missing amount field')
+  }
+}
+
+async function insertManyFromVoting (atOneTime, runtime, client, docs, surveyorCreatedAt) {
+  if (!docs.length) {
+    return
+  }
+  for (let i = 0; i < docs.length; i += atOneTime) {
+    const mapped = docs.slice(i, i + atOneTime).map((doc) =>
+      insertFromVotingArguments(
+        runtime.config.wallet.settlementAddress.BAT,
+        doc,
+        surveyorCreatedAt
+      )
+    )
+    const { filtered, query } = insertFromVotingQuery(mapped)
+    await runtime.postgres.insert(query, filtered, client)
+  }
 }
 
 async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {

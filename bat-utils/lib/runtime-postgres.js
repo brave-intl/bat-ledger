@@ -59,7 +59,6 @@ Postgres.prototype = {
     return (readOnly ? this.roPool : this.rwPool) || this.rwPool
   },
   query: async function (text, params = [], readOnly) {
-    const start = Date.now()
     let client = null
     if (_.isBoolean(readOnly)) {
       client = this.pool(readOnly)
@@ -67,10 +66,24 @@ Postgres.prototype = {
       // passed the pool / client
       client = readOnly || this.pool() // nothing was passed so assume rw
     }
-    const ret = await client.query(text, params)
-    const duration = Date.now() - start
-    debug('executed query', { text, duration, rows: ret.rowCount })
-    return ret
+    return runQuery(text, params, client)
+  },
+  insert: async function (text, params = [], client = this.pool()) {
+    let query = text.trim()
+    let args = params
+    const values = 'values'
+    if (query.slice(query.length - values.length).toLowerCase() === values) {
+      // append row placeholders to the query
+      query = `${query} ${params.map((memo, row, rowIndex) => memo.concat(
+        `( ${row.map((_, argIndex) => `$${1 + argIndex + (row.length * rowIndex)}`).join(', ')} )`
+      ), []).join(',\n')}`
+      // flatten the rows into a single array
+      args = [].concat.apply([], params)
+    }
+    return runQuery(query, args, client, {
+      text,
+      length: params.length
+    })
   },
   transact: async function (fn) {
     const client = await this.connect()
@@ -87,6 +100,14 @@ Postgres.prototype = {
     }
     return res
   }
+}
+
+async function runQuery (query, args, client, logs = {}) {
+  const start = Date.now()
+  const ret = await client.query(query, args)
+  const duration = Date.now() - start
+  debug('executed query', Object.assign({ text: query, duration, rows: ret.rowCount }, logs))
+  return ret
 }
 
 module.exports = Postgres
