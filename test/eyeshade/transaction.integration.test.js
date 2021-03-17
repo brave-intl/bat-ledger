@@ -16,7 +16,8 @@ const {
   insertUserDepositFromChain,
   insertFromSettlement,
   insertFromReferrals,
-  insertFromVoting
+  insertFromVoting,
+  insertMany
 } = require('../../eyeshade/lib/transaction')
 const _ = require('underscore')
 
@@ -210,12 +211,12 @@ test('settlement transaction throws on missing owner', async t => {
   }
 })
 
-const voting = {
+const voting = () => ({
   amount: '9.5',
   fees: '0.5',
   surveyorId: uuidV4().toLowerCase(),
   channel: 'foo.com'
-}
+})
 
 test('voting transaction', async t => {
   t.plan(6)
@@ -223,7 +224,7 @@ test('voting transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromVoting(runtime, client, voting, new Date(createdTimestamp(docId)).toISOString())
+    await insertFromVoting(runtime, client, voting(), new Date(createdTimestamp(docId)).toISOString())
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -250,7 +251,7 @@ test('voting and contribution settlement transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromVoting(runtime, client, voting, new Date(createdTimestamp(docId)).toISOString())
+    await insertFromVoting(runtime, client, voting(), new Date(createdTimestamp(docId)).toISOString())
     await insertFromSettlement(runtime, client, contributionSettlement)
     await client.query('COMMIT')
 
@@ -482,6 +483,34 @@ test('transaction stats', async (t) => {
       until: tomorrow
     })
     t.is(referralAmount.toNumber(), +referralStats.amount, 'referrals are summed')
+  } finally {
+    client.release()
+  }
+})
+
+test('insert from many voting transaction', async t => {
+  t.plan(6)
+
+  const client = await runtime.postgres.connect()
+  const txs = 51
+  try {
+    await client.query('BEGIN')
+    await insertMany.fromVoting(25, runtime, client, [...new Array(txs)].map(voting), new Date(createdTimestamp(docId)).toISOString())
+    await client.query('COMMIT')
+
+    const txns = await client.query('select * from transactions order by created_at;')
+
+    t.is(txs, txns.rows.length)
+    // payout to uphold occurs
+    t.true(txns.rows[0].transaction_type === 'contribution')
+
+    const settlementBalance = await client.query('select * from account_balances where account_type = \'uphold\';')
+    t.true(settlementBalance.rows.length === 1)
+    t.true(Number(settlementBalance.rows[0].balance) === -10.0 * txs)
+
+    const channelBalance = await client.query('select * from account_balances where account_type = \'channel\';')
+    t.true(channelBalance.rows.length === 1)
+    t.true(Number(channelBalance.rows[0].balance) === 10.0 * txs)
   } finally {
     client.release()
   }

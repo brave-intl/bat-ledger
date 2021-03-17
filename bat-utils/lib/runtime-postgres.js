@@ -58,8 +58,7 @@ Postgres.prototype = {
   pool: function (readOnly) {
     return (readOnly ? this.roPool : this.rwPool) || this.rwPool
   },
-  query: async function (text, params = [], readOnly) {
-    const start = Date.now()
+  query: async function (text, params = [], readOnly, logs) {
     let client = null
     if (_.isBoolean(readOnly)) {
       client = this.pool(readOnly)
@@ -67,10 +66,7 @@ Postgres.prototype = {
       // passed the pool / client
       client = readOnly || this.pool() // nothing was passed so assume rw
     }
-    const ret = await client.query(text, params)
-    const duration = Date.now() - start
-    debug('executed query', { text, duration, rows: ret.rowCount })
-    return ret
+    return runQuery(text, params, client, logs)
   },
   transact: async function (fn) {
     const client = await this.connect()
@@ -87,6 +83,20 @@ Postgres.prototype = {
     }
     return res
   }
+}
+
+async function runQuery (query, args, client, logs = {}) {
+  let ret = null
+  try {
+    const start = Date.now()
+    ret = await client.query(query, args)
+    const duration = Date.now() - start
+    debug('executed query %o', Object.assign({ text: query, duration, rows: ret.rowCount }, logs))
+  } catch (err) {
+    debug('failed query %o', { text: query, err })
+    throw err
+  }
+  return ret
 }
 
 module.exports = Postgres

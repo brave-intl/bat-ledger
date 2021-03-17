@@ -1,4 +1,5 @@
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
+const format = require('pg-format')
 const { v5: uuidv5 } = require('uuid')
 const {
   createdTimestamp,
@@ -29,7 +30,10 @@ module.exports = {
   insertFromSettlement,
   insertFromVoting,
   insertFromReferrals,
-  insertFromAd
+  insertFromAd,
+  insertMany: {
+    fromVoting: insertManyFromVoting
+  }
 }
 
 function referralId (id, normalizedChannel) {
@@ -256,7 +260,7 @@ async function insertManual (runtime, client, settlementId, created, documentId,
   ], client)
 }
 
-async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
+function insertFromVotingArguments (settlementAddress, voteDoc, surveyorCreatedAt) {
   if (voteDoc.amount) {
     const amount = new BigNumber(voteDoc.amount.toString())
     const fees = new BigNumber(voteDoc.fees.toString())
@@ -269,28 +273,55 @@ async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
         return
       }
 
-      const query = `
-      insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
-      VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 )
-      `
-      await runtime.postgres.query(query, [
+      return [
         // surveyorId and channel pair should be unique
         uuidv5(voteDoc.surveyorId + normalizedChannel, 'be90c1a8-20a3-4f32-be29-ed3329ca8630'),
         surveyorCreatedAt,
         `votes from ${voteDoc.surveyorId}`,
         'contribution',
         voteDoc.surveyorId,
-        runtime.config.wallet.settlementAddress.BAT,
+        settlementAddress,
         'uphold',
         normalizedChannel,
         'channel',
         amount.plus(fees).toString(),
         normalizedChannel
-      ], client)
+      ]
     }
   } else {
     throw new Error('Missing amount field')
   }
+}
+
+async function insertManyFromVoting (batchSize, runtime, client, docs, surveyorCreatedAt) {
+  for (let i = 0; i < docs.length; i += batchSize) {
+    const mapped = docs.slice(i, i + batchSize).map((doc) =>
+      insertFromVotingArguments(
+        runtime.config.wallet.settlementAddress.BAT,
+        doc,
+        surveyorCreatedAt
+      )
+    )
+    const query = `
+    insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
+    VALUES %L`
+    await runtime.postgres.query(format(query, mapped), null, client, {
+      text: query,
+      length: mapped.length
+    })
+  }
+}
+
+async function insertFromVoting (runtime, client, voteDoc, surveyorCreatedAt) {
+  const query = `
+  insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
+  VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 )
+  `
+  await runtime.postgres.query(query, insertFromVotingArguments(
+    runtime.config.wallet.settlementAddress.BAT,
+    voteDoc,
+    surveyorCreatedAt
+  ), client)
 }
 
 async function insertFromReferrals (runtime, client, referrals) {

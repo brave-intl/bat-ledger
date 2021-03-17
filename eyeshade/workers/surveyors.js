@@ -1,4 +1,4 @@
-const { insertFromVoting } = require('../lib/transaction.js')
+const { insertMany } = require('../lib/transaction.js')
 
 const feePercent = 0.05
 
@@ -35,18 +35,8 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
     if (!votingQ.rowCount) {
       throw new Error('no votes for this surveyor!')
     }
-    const docs = votingQ.rows
     try {
-      let inserting = []
-      for (let i = 0; i < docs.length; i += 1) {
-        const inserted = insertFromVoting(runtime, client, Object.assign(docs[i], { surveyorId }), surveyorCreatedAt)
-        inserting.push(inserted)
-        if (inserting.length >= 25) {
-          await Promise.all(inserting)
-          inserting = []
-        }
-      }
-      await Promise.all(inserting)
+      await insertMany.fromVoting(25, runtime, client, votingQ.rows, surveyorCreatedAt)
 
       const markVotesTransactedStatement = `
       update votes
