@@ -1,4 +1,5 @@
 const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
+const format = require('pg-format')
 const { v5: uuidv5 } = require('uuid')
 const {
   createdTimestamp,
@@ -293,9 +294,6 @@ function insertFromVotingArguments (settlementAddress, voteDoc, surveyorCreatedA
 }
 
 async function insertManyFromVoting (atOneTime, runtime, client, docs, surveyorCreatedAt) {
-  if (!docs.length) {
-    return
-  }
   for (let i = 0; i < docs.length; i += atOneTime) {
     const mapped = docs.slice(i, i + atOneTime).map((doc) =>
       insertFromVotingArguments(
@@ -306,8 +304,11 @@ async function insertManyFromVoting (atOneTime, runtime, client, docs, surveyorC
     )
     const query = `
     insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
-    VALUES`
-    await runtime.postgres.insert(query, mapped, { client })
+    VALUES %L`
+    await runtime.postgres.query(format(query, mapped), null, client, {
+      text: query,
+      length: mapped.length
+    })
   }
 }
 

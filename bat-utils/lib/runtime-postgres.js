@@ -58,7 +58,7 @@ Postgres.prototype = {
   pool: function (readOnly) {
     return (readOnly ? this.roPool : this.rwPool) || this.rwPool
   },
-  query: async function (text, params = [], readOnly) {
+  query: async function (text, params = [], readOnly, logs) {
     let client = null
     if (_.isBoolean(readOnly)) {
       client = this.pool(readOnly)
@@ -66,35 +66,7 @@ Postgres.prototype = {
       // passed the pool / client
       client = readOnly || this.pool() // nothing was passed so assume rw
     }
-    return runQuery(text, params, client)
-  },
-  insert: async function (text, params = [], options) {
-    const { client = this.pool(), returnResults = false } = options
-    let query = text.trim()
-    let args = params
-    const values = 'values'
-    if (query.slice(query.length - values.length).toLowerCase() === values) {
-      // append row placeholders to the query
-      const preppedParams = this.prepInsert(params)
-      query = `${query} ${preppedParams.map((row, rowIndex) =>
-        `( ${row.map((_, argIndex) => `$${1 + argIndex + (row.length * rowIndex)}`).join(', ')} )`
-      ).join(',\n')}${returnResults ? '\nreturning *' : ''}`
-      // flatten the rows into a single array
-      args = [].concat.apply([], preppedParams)
-    }
-    return runQuery(query, args, client, {
-      text,
-      length: params.length
-    })
-  },
-  prepInsert: function (rows) {
-    const filtered = rows.filter((row) => row)
-    const longest = filtered.reduce((memo, row) => Math.max(row.length, memo), 0)
-    // the inverse of [...new Array(x)]
-    return filtered.map((row) => row.reduce((newRow, arg, index) => {
-      newRow[index] = arg
-      return newRow
-    }, new Array(longest)))
+    return runQuery(text, params, client, logs)
   },
   transact: async function (fn) {
     const client = await this.connect()
