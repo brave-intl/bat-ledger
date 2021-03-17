@@ -74,9 +74,9 @@ Postgres.prototype = {
     const values = 'values'
     if (query.slice(query.length - values.length).toLowerCase() === values) {
       // append row placeholders to the query
-      query = `${query} ${params.map((memo, row, rowIndex) => memo.concat(
+      query = `${query} ${params.map((row, rowIndex) =>
         `( ${row.map((_, argIndex) => `$${1 + argIndex + (row.length * rowIndex)}`).join(', ')} )`
-      ), []).join(',\n')}`
+      ).join(',\n')}`
       // flatten the rows into a single array
       args = [].concat.apply([], params)
     }
