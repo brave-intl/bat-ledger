@@ -68,7 +68,8 @@ Postgres.prototype = {
     }
     return runQuery(text, params, client)
   },
-  insert: async function (text, params = [], client = this.pool()) {
+  insert: async function (text, params = [], options) {
+    const { client = this.pool(), returnResults = false } = options
     let query = text.trim()
     let args = params
     const values = 'values'
@@ -76,7 +77,7 @@ Postgres.prototype = {
       // append row placeholders to the query
       query = `${query} ${params.map((row, rowIndex) =>
         `( ${row.map((_, argIndex) => `$${1 + argIndex + (row.length * rowIndex)}`).join(', ')} )`
-      ).join(',\n')}`
+      ).join(',\n')}${returnResults ? '\nreturning *' : ''}`
       // flatten the rows into a single array
       args = [].concat.apply([], params)
     }
@@ -88,13 +89,11 @@ Postgres.prototype = {
   prepInsert: function (rows) {
     const filtered = rows.filter((row) => row)
     const longest = filtered.reduce((memo, row) => Math.max(row.length, memo), 0)
-    return filtered.map((row) => {
-      const newRow = new Array(longest)
-      row.forEach((arg, index) => {
-        newRow[index] = arg
-      })
+    // the inverse of [...new Array(x)]
+    return filtered.map((row) => row.reduce((newRow, arg, index) => {
+      newRow[index] = arg
       return newRow
-    })
+    }, new Array(longest)))
   },
   transact: async function (fn) {
     const client = await this.connect()
@@ -114,10 +113,16 @@ Postgres.prototype = {
 }
 
 async function runQuery (query, args, client, logs = {}) {
-  const start = Date.now()
-  const ret = await client.query(query, args)
-  const duration = Date.now() - start
-  debug('executed query', Object.assign({ text: query, duration, rows: ret.rowCount }, logs))
+  let ret = null
+  try {
+    const start = Date.now()
+    ret = await client.query(query, args)
+    const duration = Date.now() - start
+    debug('executed query %o', Object.assign({ text: query, duration, rows: ret.rowCount }, logs))
+  } catch (err) {
+    debug('failed query %o', { text: query, err })
+    throw err
+  }
   return ret
 }
 
