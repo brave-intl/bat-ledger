@@ -307,11 +307,7 @@ async function insertManyFromVoting (atOneTime, runtime, client, docs, surveyorC
     const query = `
     insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
     VALUES`
-    await runtime.postgres.insert(
-      query,
-      runtime.postgres.prepInsert(mapped),
-      client
-    )
+    await runtime.postgres.insert(query, mapped, { client })
   }
 }
 

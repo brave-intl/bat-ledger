@@ -75,11 +75,12 @@ Postgres.prototype = {
     const values = 'values'
     if (query.slice(query.length - values.length).toLowerCase() === values) {
       // append row placeholders to the query
-      query = `${query} ${params.map((row, rowIndex) =>
+      const preppedParams = this.prepInsert(params)
+      query = `${query} ${preppedParams.map((row, rowIndex) =>
         `( ${row.map((_, argIndex) => `$${1 + argIndex + (row.length * rowIndex)}`).join(', ')} )`
       ).join(',\n')}${returnResults ? '\nreturning *' : ''}`
       // flatten the rows into a single array
-      args = [].concat.apply([], params)
+      args = [].concat.apply([], preppedParams)
     }
     return runQuery(query, args, client, {
       text,
