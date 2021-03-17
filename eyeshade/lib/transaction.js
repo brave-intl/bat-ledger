@@ -293,9 +293,9 @@ function insertFromVotingArguments (settlementAddress, voteDoc, surveyorCreatedA
   }
 }
 
-async function insertManyFromVoting (atOneTime, runtime, client, docs, surveyorCreatedAt) {
-  for (let i = 0; i < docs.length; i += atOneTime) {
-    const mapped = docs.slice(i, i + atOneTime).map((doc) =>
+async function insertManyFromVoting (batchSize, runtime, client, docs, surveyorCreatedAt) {
+  for (let i = 0; i < docs.length; i += batchSize) {
+    const mapped = docs.slice(i, i + batchSize).map((doc) =>
       insertFromVotingArguments(
         runtime.config.wallet.settlementAddress.BAT,
         doc,
