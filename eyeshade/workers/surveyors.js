@@ -33,7 +33,7 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
     `
     const votingQ = await runtime.postgres.query(countVotesStatement, [surveyorId], client)
     if (!votingQ.rowCount) {
-      throw new Error('no votes for this surveyor!')
+      throw new Error(`no votes for this surveyor! ${surveyorId}`)
     }
     try {
       const rows = votingQ.rows.map((row) => Object.assign(row, { surveyorId }))
