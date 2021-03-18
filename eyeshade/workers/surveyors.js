@@ -36,8 +36,8 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
       throw new Error('no votes for this surveyor!')
     }
     const docs = votingQ.rows
+    let inserting = []
     try {
-      let inserting = []
       for (let i = 0; i < docs.length; i += 1) {
         const inserted = insertFromVoting(runtime, client, Object.assign(docs[i], { surveyorId }), surveyorCreatedAt)
         inserting.push(inserted)
@@ -63,13 +63,14 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
 
       await client.query('COMMIT')
     } catch (e) {
-      console.log(e)
+      console.log('inner', e)
+      debug('failed to insert %o', { surveyorId, inserting })
       await client.query('ROLLBACK')
       runtime.captureException(e, { extra: { report: 'surveyor-frozen-report', surveyorId } })
       throw e
     }
   } catch (e) {
-    console.log(e)
+    console.log('outer', e)
     runtime.captureException(e, {
       extra: {
         surveyorId
