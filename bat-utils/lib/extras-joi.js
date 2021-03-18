@@ -96,7 +96,7 @@ module.exports = Joi.extend((joi) => {
           const { state } = helpers
           const entry = value
           const regexp = new RegExp(/^[0-9A-Z]{1,}$/)
-          if (!entry && regexp.test(entry)) {
+          if (!entry && !regexp.test(entry)) {
             return helpers.error('string.badCurrencyCode', { value }, state, options)
           }
           return value
