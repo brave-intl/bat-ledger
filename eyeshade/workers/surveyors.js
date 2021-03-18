@@ -36,7 +36,8 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
       throw new Error('no votes for this surveyor!')
     }
     try {
-      await insertMany.fromVoting(25, runtime, client, votingQ.rows, surveyorCreatedAt)
+      const rows = votingQ.rows.map((row) => Object.assign(row, { surveyorId }))
+      await insertMany.fromVoting(25, runtime, client, rows, surveyorCreatedAt)
 
       const markVotesTransactedStatement = `
       update votes
