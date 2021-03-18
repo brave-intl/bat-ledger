@@ -2,7 +2,6 @@ const base58check = require('bs58check')
 const batPublisher = require('./extras-publisher')
 const bitcoin = require('bitcoinjs-lib')
 const countryCodes = require('country-list')()
-const currencyCodes = require('currency-codes')
 const Joi = require('joi')
 const ethereumAddress = require('ethereum-address')
 
@@ -63,7 +62,7 @@ module.exports = Joi.extend((joi) => {
       anycurrencyCode: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const entry = currencyCodes.code(value)
+          const entry = value
           const regexp = new RegExp(/^[0-9A-Z]{1,}$/)
           if (!entry && !regexp.test(value)) {
             return helpers.error('string.badAnycurrencyCode', { value }, state, options)
@@ -95,7 +94,7 @@ module.exports = Joi.extend((joi) => {
       currencyCode: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const entry = currencyCodes.code(value)
+          const entry = value
           if (!entry) {
             return helpers.error('string.badCurrencyCode', { value }, state, options)
           }
