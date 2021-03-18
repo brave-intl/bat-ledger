@@ -53,7 +53,7 @@ module.exports = Joi.extend((joi) => {
       altcurrencyCode: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const regexp = new RegExp(/^[0-9A-Z]{2,}$/)
+          const regexp = new RegExp(/^[0-9A-Z]{1,}$/)
           if (!regexp.test(value)) {
             return helpers.error('string.badAltcurrencyCode', { value }, state, options)
           }
@@ -64,7 +64,7 @@ module.exports = Joi.extend((joi) => {
         validate (value, helpers, args, options) {
           const { state } = helpers
           const entry = currencyCodes.code(value)
-          const regexp = new RegExp(/^[0-9A-Z]{2,}$/)
+          const regexp = new RegExp(/^[0-9A-Z]{1,}$/)
           if (!entry && !regexp.test(value)) {
             return helpers.error('string.badAnycurrencyCode', { value }, state, options)
           }
