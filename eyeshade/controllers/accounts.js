@@ -106,6 +106,7 @@ ORDER BY created_at
         }
         const transaction = {
           from_account: fromAccount,
+          to_account: toAccount,
           channel: channel || '',
           created_at: createdAt,
           description,
