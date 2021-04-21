@@ -127,6 +127,8 @@ test('can post a manual settlement from publisher app using token auth', async t
     amount: '-5.000000000000000000',
     settlement_currency: 'BAT',
     settlement_amount: '5.000000000000000000',
+    to_account: manualSettlementResponse.to_account,
+    from_account: manualSettlementResponse.from_account,
     transaction_type: 'manual_settlement'
   }, manualSettlementResponse, 'a manual settlement is sent back with the appropriate data')
 })
