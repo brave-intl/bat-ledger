@@ -105,6 +105,8 @@ ORDER BY created_at
           amount = amount.negated()
         }
         const transaction = {
+          from_account: fromAccount,
+          to_account: toAccount,
           channel: channel || '',
           created_at: createdAt,
           description,
@@ -167,6 +169,8 @@ ORDER BY created_at
       settlement_amount: braveJoi.string().numeric().optional().description('amount in settlement_currency'),
       settlement_destination_type: stringValidator.valid.apply(stringValidator, settlementDestinationTypes).optional().description('type of address settlement was paid to'),
       settlement_destination: Joi.string().optional().description('destination address of the settlement'),
+      to_account: Joi.string().description('destination address of the settlement'),
+      from_account: Joi.string().description('destination address of the settlement'),
       transaction_type: transactionTypesValidator.required()
     }))
   }
