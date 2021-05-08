@@ -66,7 +66,7 @@
     "bitcoinjs-lib": "^3.2.0",
     "bluebird": "^3.7.2",
     "bs58check": "^2.0.2",
-    "bson": "1.0.5",
+    "bson": "1.1.4",
     "country-list": "1.1.0",
     "cron-parser": "2.4.1",
     "currency-codes": "1.1.2",
