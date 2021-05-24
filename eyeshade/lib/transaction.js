@@ -178,7 +178,8 @@ async function insertFromSettlement (runtime, client, settlement) {
         ], client)
 
         // owner -> brave for fees, only applies to contributions
-        if (fees.greaterThan(new BigNumber(0))) {
+        feesBAT = fees.dividedBy(BATtoProbi)
+        if (feesBAT.greaterThan(new BigNumber(0))) {
           const query2 = `
           insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
           VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11 )
@@ -194,7 +195,7 @@ async function insertFromSettlement (runtime, client, settlement) {
             'owner',
             'fees-account',
             'internal',
-            fees.dividedBy(BATtoProbi).toString(),
+            feesBAT.toString(),
             normalizedChannel
           ], client)
         }
