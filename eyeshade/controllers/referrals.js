@@ -52,7 +52,7 @@ v1.getReferralGroups = {
 
   auth: {
     strategy: 'simple-scoped-token',
-    scope: ['global', 'referrals'],
+    scope: ['global', 'referrals', 'publishers'],
     mode: 'required'
   },
 

@@ -178,7 +178,7 @@ async function insertFromSettlement (runtime, client, settlement) {
         ], client)
 
         // owner -> brave for fees, only applies to contributions
-        feesBAT = fees.dividedBy(BATtoProbi)
+        const feesBAT = fees.dividedBy(BATtoProbi)
         if (feesBAT.greaterThan(new BigNumber(0))) {
           const query2 = `
           insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
