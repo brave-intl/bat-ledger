@@ -239,14 +239,15 @@ v1.getTopBalances =
 
 /*
    GET /v1/accounts/balances
+   POST /v1/accounts/balances
 */
 
-v1.getBalances = {
+v1.getBalances = (getInputs) => ({
   handler: (runtime) => async (request, h) => {
     let {
       account: accounts,
       pending: includePending
-    } = request.query
+    } = getInputs(request)
     if (!accounts) {
       throw boom.badData()
     }
@@ -308,7 +309,7 @@ v1.getBalances = {
       })
     )
   }
-}
+})
 
 function mergeVotes (_memo, {
   channel: accountId,
@@ -524,7 +525,8 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
   braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').whitelist().config(v1.getTopBalances),
-  braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances),
+  braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances(request => request.query)),
+  braveHapi.routes.async().post().path('/v1/accounts/balances').whitelist().config(v1.getBalances(request => request.params)),
   braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
 ]
