@@ -32,7 +32,7 @@ module.exports = Joi.extend((joi) => {
             BAT: true
           }
           const key = Object.keys(parent).find((key) => {
-            if (skipKeys[key]) return
+            if (skipKeys[key]) return ''
             return parent[key] === value
           })
           if (key === 'BTC' || key === 'LTC') {
@@ -52,7 +52,7 @@ module.exports = Joi.extend((joi) => {
       altcurrencyCode: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const regexp = new RegExp(/^[0-9A-Z]{1,}$/)
+          const regexp = /^[0-9A-Z]{1,}$/
           if (!regexp.test(value)) {
             return helpers.error('string.badAltcurrencyCode', { value }, state, options)
           }
@@ -62,7 +62,7 @@ module.exports = Joi.extend((joi) => {
       anycurrencyCode: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const regexp = new RegExp(/^[0-9A-Z]{1,}$/)
+          const regexp = /^[0-9A-Z]{1,}$/
           if (!regexp.test(value)) {
             return helpers.error('string.badAnycurrencyCode', { value }, state, options)
           }
@@ -93,7 +93,7 @@ module.exports = Joi.extend((joi) => {
       currencyCode: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const regexp = new RegExp(/^[0-9A-Z]{1,}$/)
+          const regexp = /^[0-9A-Z]{1,}$/
           if (!regexp.test(value)) {
             return helpers.error('string.badCurrencyCode', { value }, state, options)
           }
@@ -103,7 +103,7 @@ module.exports = Joi.extend((joi) => {
       numeric: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const isNumeric = new RegExp(/^-?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i)
+          const isNumeric = /^-?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i
           if (!isNumeric.test(value)) {
             return helpers.error('string.badFormat', { value }, state, options)
           }

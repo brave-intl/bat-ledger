@@ -108,7 +108,7 @@ function objectIdFromTimestamp (_timestamp) {
   // Convert string date to Date object (otherwise assume timestamp is a date)
   const timestamp = new Date(_timestamp)
   // Convert date object to hex seconds since Unix epoch
-  var hexSeconds = Math.floor(timestamp / 1000).toString(16)
+  const hexSeconds = Math.floor(timestamp / 1000).toString(16)
   // Create an ObjectId with that hex timestamp
   return bson.ObjectID.createFromHexString(hexSeconds + '0000000000000000')
 }

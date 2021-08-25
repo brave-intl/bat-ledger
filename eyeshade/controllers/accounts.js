@@ -264,9 +264,11 @@ v1.getBalances = (getInputs) => ({
         return props.providerName !== 'publishers'
       }))
 
-    const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args, true) : {
-      rows: []
-    }
+    const votesPromise = checkVotes
+      ? runtime.postgres.query(selectPendingAccountVotes, args, true)
+      : {
+        rows: []
+      }
     const balancePromise = runtime.postgres.query(selectAccountBalances, args, true)
     const promises = [votesPromise, balancePromise]
     const results = await Promise.all(promises)
@@ -310,7 +312,7 @@ v1.getBalances = (getInputs) => ({
   }
 })
 
-function mergeVotes(_memo, {
+function mergeVotes (_memo, {
   channel: accountId,
   balance: voteBalance
 }) {

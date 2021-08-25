@@ -72,10 +72,12 @@ test('shift amount can be retrieved', async (t) => {
 
 function req (remoteAddress, XForwardedFor, token = validFastlyToken) {
   return {
-    headers: XForwardedFor ? {
-      'fastly-token': token,
-      'x-forwarded-for': XForwardedFor
-    } : {},
+    headers: XForwardedFor
+      ? {
+        'fastly-token': token,
+        'x-forwarded-for': XForwardedFor
+      }
+      : {},
     info: {
       remoteAddress
     }
