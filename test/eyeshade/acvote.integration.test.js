@@ -37,8 +37,8 @@ const balanceURL = '/v1/accounts/balances'
 
 test('votes kafka consumer enters into votes', async (t) => {
   const producer = await createProducer()
-  let { body } = await agents.eyeshade.publishers.get(balanceURL)
-    .query({
+  let { body } = await agents.eyeshade.publishers.post(balanceURL)
+    .send({
       pending: true,
       account: channel
     }).expect(ok)
@@ -49,14 +49,14 @@ test('votes kafka consumer enters into votes', async (t) => {
 
   while (!body.length) {
     await timeout(2000)
-    ;({
-      body
-    } = await agents.eyeshade.publishers.get(balanceURL)
-      .query({
-        pending: true,
-        account: channel
-      })
-      .expect(ok))
+      ; ({
+        body
+      } = await agents.eyeshade.publishers.post(balanceURL)
+        .send({
+          pending: true,
+          account: channel
+        })
+        .expect(ok))
   }
 
   const surveyorId = date + '_' + example.fundingSource
@@ -99,7 +99,7 @@ test('votes go through', async (t) => {
   t.deepEqual(sortedVoteInput, sortedVoteCounts)
 })
 
-function sort (array) {
+function sort(array) {
   return array.slice(0).sort((a, b) => {
     if (a.channel !== b.channel) {
       return a.channel > b.channel ? 1 : -1
@@ -108,7 +108,7 @@ function sort (array) {
   })
 }
 
-async function getVoteCounts () {
+async function getVoteCounts() {
   const { rows } = await postgres.query(`
   select
     surveyor_id as "surveyorId",
@@ -119,7 +119,7 @@ async function getVoteCounts () {
   return rows
 }
 
-function countMessage (memo, msg) {
+function countMessage(memo, msg) {
   const date = moment().format('YYYY-MM-DD')
   const { fundingSource, voteTally, channel } = msg
   const surveyorId = `${date}_${fundingSource}`
@@ -136,11 +136,11 @@ function countMessage (memo, msg) {
   return memo
 }
 
-async function sendVotes (producer, message) {
+async function sendVotes(producer, message) {
   await producer.send(process.env.ENV + '.payment.vote', voteType.toBuffer(message))
 }
 
-async function createProducer () {
+async function createProducer() {
   process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
   const runtime = {
     config: require('../../config')

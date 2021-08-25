@@ -238,7 +238,6 @@ v1.getTopBalances =
 }
 
 /*
-   GET /v1/accounts/balances
    POST /v1/accounts/balances
 */
 
