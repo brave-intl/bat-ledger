@@ -238,7 +238,6 @@ v1.getTopBalances =
 }
 
 /*
-   GET /v1/accounts/balances
    POST /v1/accounts/balances
 */
 
@@ -265,9 +264,11 @@ v1.getBalances = (getInputs) => ({
         return props.providerName !== 'publishers'
       }))
 
-    const votesPromise = checkVotes ? runtime.postgres.query(selectPendingAccountVotes, args, true) : {
-      rows: []
-    }
+    const votesPromise = checkVotes
+      ? runtime.postgres.query(selectPendingAccountVotes, args, true)
+      : {
+        rows: []
+      }
     const balancePromise = runtime.postgres.query(selectAccountBalances, args, true)
     const promises = [votesPromise, balancePromise]
     const results = await Promise.all(promises)
@@ -291,7 +292,7 @@ v1.getBalances = (getInputs) => ({
   tags: ['api', 'publishers'],
 
   validate: {
-    query: Joi.object().keys({
+    payload: Joi.object({
       pending: Joi.boolean().default(false).description('whether or not a query should be done for outstanding votes'),
       account: Joi.alternatives().try(
         Joi.string().description('account (channel or owner)'),
@@ -432,10 +433,10 @@ v1.getPaidTotals =
         const startDate = dates.start.toISOString()
         const untilDate = dates.until.toISOString()
         const query = queries.timeConstraintSettlements(options)
-        ;({ rows } = await postgres.query(query, [type, limit, startDate, untilDate], true))
+          ; ({ rows } = await postgres.query(query, [type, limit, startDate, untilDate], true))
       } else {
         const query = queries.allSettlements(options)
-        ;({ rows } = await postgres.query(query, [type, limit], true))
+          ; ({ rows } = await postgres.query(query, [type, limit], true))
       }
       return rows
     }
@@ -525,8 +526,7 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
   braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').whitelist().config(v1.getTopBalances),
-  braveHapi.routes.async().path('/v1/accounts/balances').whitelist().config(v1.getBalances(request => request.query)),
-  braveHapi.routes.async().post().path('/v1/accounts/balances').whitelist().config(v1.getBalances(request => request.params)),
+  braveHapi.routes.async().post().path('/v1/accounts/balances').whitelist().config(v1.getBalances(request => request.payload)),
   braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
 ]

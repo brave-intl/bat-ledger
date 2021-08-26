@@ -37,8 +37,8 @@ const balanceURL = '/v1/accounts/balances'
 
 test('votes kafka consumer enters into votes', async (t) => {
   const producer = await createProducer()
-  let { body } = await agents.eyeshade.publishers.get(balanceURL)
-    .query({
+  let { body } = await agents.eyeshade.publishers.post(balanceURL)
+    .send({
       pending: true,
       account: channel
     }).expect(ok)
@@ -49,10 +49,10 @@ test('votes kafka consumer enters into votes', async (t) => {
 
   while (!body.length) {
     await timeout(2000)
-    ;({
+    ; ({
       body
-    } = await agents.eyeshade.publishers.get(balanceURL)
-      .query({
+    } = await agents.eyeshade.publishers.post(balanceURL)
+      .send({
         pending: true,
         account: channel
       })

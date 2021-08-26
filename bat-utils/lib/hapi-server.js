@@ -100,9 +100,11 @@ async function Server (options, runtime) {
 
   const { prometheus } = runtime
   const plugins = [].concat(
-    prometheus ? [
-      prometheus.plugin()
-    ] : [],
+    prometheus
+      ? [
+        prometheus.plugin()
+      ]
+      : [],
     [
       authBearerToken,
       {
@@ -110,12 +112,14 @@ async function Server (options, runtime) {
       },
       inert,
       rateLimiter(runtime)
-    ], process.env.NODE_ENV === 'production' ? [
-      {
-        plugin: hapiRequireHTTPS,
-        options: { proxy: true }
-      }
-    ] : []
+    ], process.env.NODE_ENV === 'production'
+      ? [
+        {
+          plugin: hapiRequireHTTPS,
+          options: { proxy: true }
+        }
+      ]
+      : []
   )
   await server.register(plugins)
 
