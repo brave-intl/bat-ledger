@@ -49,8 +49,8 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       }
     ]
   }
-  ;({ body } = await agents.eyeshade.publishers.get(balanceURL)
-    .query({
+    ; ({ body } = await agents.eyeshade.publishers.post(balanceURL)
+    .send({
       pending: true,
       account: channel
     }).expect(ok))
@@ -60,10 +60,10 @@ test('suggestions kafka consumer enters into votes', async (t) => {
 
   while (!body.length) {
     await timeout(2000)
-    ;({
+    ; ({
       body
-    } = await agents.eyeshade.publishers.get(balanceURL)
-      .query({
+    } = await agents.eyeshade.publishers.post(balanceURL)
+      .send({
         pending: true,
         account: channel
       })
@@ -91,8 +91,8 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       }
     ]
   }
-  ;({ body } = await agents.eyeshade.publishers.get(balanceURL)
-    .query({
+    ; ({ body } = await agents.eyeshade.publishers.post(balanceURL)
+    .send({
       pending: true,
       account: channel
     }).expect(ok))
@@ -103,10 +103,10 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   body = [{}]
   while (+body[0].balance !== 20) {
     await timeout(2000)
-    ;({
+    ; ({
       body
-    } = await agents.eyeshade.publishers.get(balanceURL)
-      .query({
+    } = await agents.eyeshade.publishers.post(balanceURL)
+      .send({
         pending: true,
         account: channel
       })
@@ -133,8 +133,8 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       }
     ]
   }
-  ;({ body } = await agents.eyeshade.publishers.get(balanceURL)
-    .query({
+    ; ({ body } = await agents.eyeshade.publishers.post(balanceURL)
+    .send({
       pending: true,
       account: channel
     }).expect(ok))
@@ -145,10 +145,10 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   body = [{}]
   while (+body[0].balance !== 30) {
     await timeout(2000)
-    ;({
+    ; ({
       body
-    } = await agents.eyeshade.publishers.get(balanceURL)
-      .query({
+    } = await agents.eyeshade.publishers.post(balanceURL)
+      .send({
         pending: true,
         account: channel
       })
