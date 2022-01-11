@@ -26,7 +26,6 @@ module.exports = async (options, runtime) => {
 const goneRoutes = [
   // eyeshade
   { method: 'POST', path: '/v2/publishers/settlement/submit' },
-  { method: 'GET', path: '/v1/referrals/statement/{owner}' },
   { method: 'PUT', path: '/v1/referrals/{transactionId}' },
   { method: 'POST', path: '/v1/snapshots/' },
   { method: 'GET', path: '/v1/snapshots/{snapshotId}' },
