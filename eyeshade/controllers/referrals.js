@@ -152,7 +152,7 @@ v1.getReferralsStatement = {
 
   auth: {
     strategy: 'simple-scoped-token',
-    scope: ['global', 'referrals'],
+    scope: ['global', 'referrals', 'publishers'],
     mode: 'required'
   },
 
