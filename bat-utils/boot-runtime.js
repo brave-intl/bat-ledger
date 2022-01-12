@@ -13,12 +13,14 @@ const prometheus = require('./lib/runtime-prometheus')
 const sentry = require('./lib/runtime-sentry')
 const wallet = require('./lib/runtime-wallet')
 const wreck = require('./lib/runtime-wreck')
+const database = require('./lib/runtime-database')
 
 const hash = {
   cache,
   currency,
   kafka,
   newrelic,
+  database,
   postgres,
   prometheus,
   sentry,
