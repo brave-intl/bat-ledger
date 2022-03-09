@@ -30,6 +30,18 @@ docker-compose up -d eyeshade-web eyeshade-consumer
 docker-compose stop
 ```
 
+### Docker Compose Network Configuration
+
+All containers running within the legders docker-compose context are running in the default network named "ledger".  If you need to have other docker containers
+directly access other containers from within the network (i.e. from WITHIN the container itself, not on your local development context), you can configure your application (i.e. publishers) to join the external network "ledger" by adding the following to the network configuration of the appropriate application's docker compose file
+
+
+```
+networks:
+  ledger:
+      external: true
+```
+
 ### Configuration
 Configuration variables are stored as environment preferences. See `config.js` for a list of these variables for ledger, eyeshade, and balance respectively.
 

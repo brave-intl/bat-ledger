@@ -1,7 +1,8 @@
 version: "2.1"
 
 networks:
-  ledger:
+  default:
+    name: ledger
     driver: bridge
 
 services:
@@ -13,8 +14,6 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
     #network_mode: "host"
-    networks:
-      - ledger
   kafka:
     container_name: kafka
     image: confluentinc/cp-kafka:5.2.2 # kafka version 2.2.1
@@ -38,24 +37,18 @@ services:
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
     volumes:
       - ./test/secrets:/etc/kafka/secrets
-    networks:
-      - ledger
 
   eyeshade-redis:
     container_name: eyeshade-redis
     image: redis:latest
     ports:
       - "3011:6379"
-    networks:
-      - ledger
 
   eyeshade-postgres:
     container_name: eyeshade-postgres
     image: postgres:11.9
     ports:
       - "3012:5432"
-    networks:
-      - ledger
     environment:
       - "POSTGRES_USER=eyeshade"
       - "POSTGRES_PASSWORD=password"
@@ -72,8 +65,6 @@ services:
     depends_on:
       - eyeshade-postgres
       - kafka
-    networks:
-      - ledger
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
 
@@ -93,8 +84,6 @@ services:
     depends_on:
       - eyeshade-redis
       - eyeshade-postgres
-    networks:
-      - ledger
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
 
@@ -115,9 +104,6 @@ services:
       - 9090
     ports:
       - "9090:9090"
-    networks:
-      - ledger
-
   grafana:
     image: grafana/grafana:latest
     depends_on:
@@ -131,8 +117,6 @@ services:
       - ./grafana/provisioning/:/etc/grafana/provisioning/
     container_name: grafana
     restart: unless-stopped
-    networks:
-      - ledger
     environment:
       - "GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER-admin}"
       - "GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD-admin}"
