@@ -21,10 +21,10 @@ file when launching services.
 # Ledger listens on port 3001, eyeshade on 3002, and balance on 3003
 
 # Note you can run any subset of services (e.g. only eyeshade)
-docker-compose up eyeshade-web eyeshade-worker
+docker-compose up eyeshade-web eyeshade-consumer
 
 # You can also launch and run services in the background
-docker-compose up -d eyeshade-web eyeshade-worker
+docker-compose up -d eyeshade-web eyeshade-consumer
 
 # And stop running background services with
 docker-compose stop
