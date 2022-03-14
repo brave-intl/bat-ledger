@@ -12,6 +12,8 @@ You can add any environment variables that need to be set by creating a `.env`
 file at the top of the repo. Docker compose will automatically load from this
 file when launching services.
 
+# Testing build for sanity check
+
 ```
 
 # To bring up all the services :
