@@ -61,6 +61,15 @@ For linting we use StandardJS. It's recommended that you install the necessary I
 2. Confirm .env vars match the contents of `.github/workflows/ci.yaml` section `env`.
 3. Fill in the remaining `{CHANGE_ME}` .env vars appropriately; please consult your local BAT dev to find the answers.
 
+### Running Individial tests
+
+`bat-ledgers` is executing tests using `ava` which can be executed via `npm run ava` and the requires args for any individual test can be passed to the command using `npm` scripts args syntax.  See below:
+
+`npm run ava -- -v -s eyeshade/workers/referrals.test.js`
+
+See the [github issue where this ability was added](https://github.com/npm/npm/pull/5518)
+
+
 ### Build local servers
 
 ```sh
