@@ -71,7 +71,7 @@ if (service.f) service.f()
 if (process.env.NODE_ENV === 'production') {
   module.exports.server = require('url').parse('https://' + process.env.HOST)
 } else {
-  module.exports.server = require('url').parse('http://' + '127.0.0.1' + ':' + process.env.PORT)
+  module.exports.server = require('url').parse('http://localhost:' + process.env.PORT)
 }
 
 if (process.env.BAT_SETTLEMENT_ADDRESS) {
