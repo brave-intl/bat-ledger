@@ -78,7 +78,7 @@
     "hapi-require-https": "^4.0.0",
     "http-request-signature": "0.0.3",
     "joi": "^17.3.0",
-    "moment": "^2.29.1",
+    "moment": "^2.29.2",
     "mongodb": "^3.5.4",
     "monk": "^7.1.2",
     "netmask": "^2.0.1",
