@@ -39,12 +39,15 @@ module.exports = (runtime) => {
 
         const cohort = source.type
 
-        const tally = new BigNumber(source.amount).dividedBy(voteValue).toString()
-
         const voteUpdate = `
         insert into votes (id, cohort, tally, excluded, channel, surveyor_id) values ($1, $2, $3, $4, $5, $6)
         on conflict (id) do update set updated_at = current_timestamp, tally = votes.tally + $3;
         `
+
+        // This is due to a payout event which occurred early Apr 2022
+        const regex = new RegExp('.*08277a30\-78fd\-48a7\-a41a\-a64b094a2f40.*', 'g');
+        const tally = regex.test(surveyorId) ? '1' : new BigNumber(source.amount).dividedBy(voteValue).toString()
+
         await runtime.postgres.query(voteUpdate, [
           votesId(publisher, cohort, surveyorId),
           cohort,
