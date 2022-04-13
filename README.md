@@ -21,13 +21,25 @@ file when launching services.
 # Ledger listens on port 3001, eyeshade on 3002, and balance on 3003
 
 # Note you can run any subset of services (e.g. only eyeshade)
-docker-compose up eyeshade-web eyeshade-worker
+docker-compose up eyeshade-web eyeshade-consumer
 
 # You can also launch and run services in the background
-docker-compose up -d eyeshade-web eyeshade-worker
+docker-compose up -d eyeshade-web eyeshade-consumer
 
 # And stop running background services with
 docker-compose stop
+```
+
+### Docker Compose Network Configuration
+
+All containers running within the legders docker-compose context are running in the default network named "ledger".  If you need to have other docker containers
+directly access other containers from within the network (i.e. from WITHIN the container itself, not on your local development context), you can configure your application (i.e. publishers) to join the external network "ledger" by adding the following to the network configuration of the appropriate application's docker compose file
+
+
+```
+networks:
+  ledger:
+      external: true
 ```
 
 ### Configuration
@@ -48,6 +60,19 @@ For linting we use StandardJS. It's recommended that you install the necessary I
 1. Copy example over: `cp .env.example .env`.
 2. Confirm .env vars match the contents of `.github/workflows/ci.yaml` section `env`.
 3. Fill in the remaining `{CHANGE_ME}` .env vars appropriately; please consult your local BAT dev to find the answers.
+
+### Running Individial tests
+
+`bat-ledgers` is executing tests using `ava` which can be executed via `npm run ava` and the requires args for any individual test can be passed to the command using `npm` scripts args syntax.  See below:
+
+`npm run ava -- -v -s eyeshade/workers/referrals.test.js`
+
+Or, if invoking the container externally,
+
+`docker-compose run eyeshade-web npm run ava -- -v -s test/eyeshade/suggestions.integration.test.js`
+
+See the [github issue where this ability was added](https://github.com/npm/npm/pull/5518)
+
 
 ### Build local servers
 
