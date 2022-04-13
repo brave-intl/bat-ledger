@@ -67,6 +67,10 @@ For linting we use StandardJS. It's recommended that you install the necessary I
 
 `npm run ava -- -v -s eyeshade/workers/referrals.test.js`
 
+Or, if invoking the container externally,
+
+`docker-compose run eyeshade-web npm run ava -- -v -s test/eyeshade/suggestions.integration.test.js`
+
 See the [github issue where this ability was added](https://github.com/npm/npm/pull/5518)
 
 
