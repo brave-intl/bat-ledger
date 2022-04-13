@@ -159,4 +159,40 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     account_type: 'channel',
     balance: '30.000000000000000000'
   }], 'suggestion votes show up after small delay')
+
+  const examplePayoutError = {
+    id: uuidV4(),
+    type: 'errored-tip',
+    channel: channel,
+    createdAt: (new Date()).toISOString(),
+    totalAmount: '1000',
+    funding: [
+      {
+        type: 'ugp',
+        amount: '1000',
+        cohort: 'control',
+        promotion: '2022-1-208277a30-78fd-48a7-a41a-a64b094a2f40asdf'
+      }
+    ]
+  }
+
+  await producer.send(process.env.ENV + '.grant.suggestion', suggestions.typeV2.toBuffer(examplePayoutError))
+
+  while (+body[0].balance < 30.25) {
+    await timeout(2000)
+    ; ({
+      body
+    } = await agents.eyeshade.publishers.post(balanceURL)
+      .send({
+        pending: true,
+        account: channel
+      })
+      .expect(ok))
+  }
+  t.deepEqual(body, [{
+    account_id: channel,
+    account_type: 'channel',
+    balance: '30.250000000000000000'
+  }], 'suggestion votes show up after small delay')
+
 })
