@@ -243,6 +243,7 @@ v1.getTopBalances =
 
 v1.getBalances = (getInputs) => ({
   handler: (runtime) => async (request, h) => {
+    console.log("*****************************************************************************************************************")
     let {
       account: accounts,
       pending: includePending
