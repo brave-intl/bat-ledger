@@ -1,4 +1,4 @@
-const { NConsumer, NProducer } = require('sinek')
+const { Kafka } = require('kafkajs')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
 
@@ -12,29 +12,30 @@ const batchOptions = {
   sortedManualBatch: true // important, because we want to receive the batch in a per-partition format for easier processing
 }
 
-class Kafka {
+class RuntimeKafka {
   constructor (config, runtime) {
-    const { kafka } = config
-    if (!kafka) {
-      return
+    const { kafkaOptions } = config;
+    if (!kafkaOptions) {
+      return;
     }
-    this.runtime = runtime
-    this.config = kafka
-    this.topicHandlers = {}
-    this.topicConsumers = {}
+    this.runtime = runtime;
+    this.config = kafkaOptions;
+    this.topicHandlers = {};
+    this.topicConsumers = {};
+    this.kafka = new Kafka(kafkaOptions);
   }
 
   async connect () {
-    const partitionCount = 1
-
-    const producer = new NProducer(this.config, null, partitionCount)
+    const producer = kafka.producer();    
     this._producer = producer
+    
     producer.on('error', error => {
       console.error(error)
       if (this.runtime.captureException) {
         this.runtime.captureException(error)
       }
-    })
+    });
+    
     await producer.connect()
   }
 
@@ -49,7 +50,7 @@ class Kafka {
   async quit () {
     let producerClose
     try {
-      producerClose = await this._producer && this._producer.close()
+      producerClose = await this._producer && this._producer.disconnect()
     } catch (e) {}
     return Promise.all(
       [
@@ -58,7 +59,7 @@ class Kafka {
         Object.keys(this.topicConsumers).reduce((memo, key) =>
           memo.concat(
             this.topicConsumers[key].map((consumer) =>
-              consumer.close()
+              consumer.disconnect()
             )
           ), [])
       )
@@ -93,14 +94,14 @@ class Kafka {
     return encoded
   }
 
-  async sendMany ({ topic, encode }, messages, _partition = null, _key = null, _partitionKey = null) {
+  async sendMany ({ topic, encode }, messages, _partition = null, _key = null) {
     // map twice to err quickly on input errors
     // use map during send to increase batching on network
     const encoded = this.encodeMessages(encode, messages)
     return Promise.all(
       encoded
         .map((msg) =>
-          this.send(topic, msg, _partition, _key, _partitionKey)
+          this.send(topic, msg, _partition, _key)
         )
     )
   }
@@ -122,16 +123,20 @@ class Kafka {
         throw e
       }
     })
+    // ...why are we double looping here?
     for (let i = 0; i < msgs.length; i += 1) {
       results.push(await fn(msgs[i].value, msgs[i].timestamp))
     }
     return results
   }
 
-  async send (topicName, message, _partition = null, _key = null, _partitionKey = null) {
-    // return await producer.send("my-topic", "my-message", 0, "my-key", "my-partition-key")
+  async send (topicName, message, _partition = null, _key = null) {
+    // return await producer.send("my-topic", "my-message", 0, "my-key")
     const producer = await this.producer()
-    return producer.send(topicName, message, _partition, _key, _partitionKey)
+    return producer.send({topic: topicName, 
+                          messages: [{key: _key, value: message, partition: _partition}],
+                          acks: this.config['acks']
+                        });
   }
 
   on (topic, handler) {
@@ -141,43 +146,37 @@ class Kafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = new NConsumer([topic], this.config)
-      await consumer.connect()
+      const consumer = kafka.consumer(this.config.clientId);
+      await consumer.connect();
+      await consumer.subscribe({ topics: [topic] });
       this.addTopicConsumer(topic, consumer)
-      consumer.consume(async (batchOfMessages, callback) => {
-        // parallel processing on topic level
-        const { runtime } = this
-        try {
-          await runtime.postgres.transact(async (client) => {
-            const partitions = batchOfMessages[topic]
-            // parallel processing on partition level
-            const partitionKeys = Object.keys(partitions)
-            for (let i = 0; i < partitionKeys.length; i += 1) {
-              const messages = partitions[partitionKeys[i]]
-              await handler(messages, client)
-            }
-          })
-          // wait until all partitions of this topic are processed and commit its offset
-          // make sure to keep batch sizes large enough, you dont want to commit too often
-          // callback still controlls the "backpressure"
-          // as soon as you call it, it will fetch the next batch of messages
-          await consumer.commitLocalOffsetsForTopic(topic)
-          callback()
-        } catch (e) {
-          runtime.captureException(e, { extra: { topic } })
-          debug('discontinuing topic processing', {
-            topic,
-            e,
-            message: e.message,
-            stack: e.stack
-          })
-        }
-      }, false, false, batchOptions)
-      return consumer
+      
+      await consumer.run({
+        partitionsConsumedConcurrently: 1,
+        eachBatch: (async ({batch, resolveOffset, heartbeat, commitOffsetsIfNecessary, uncommittedOffsets, isRunning, isStale}) => {
+          const { runtime } = this;
+          try {
+            await runtime.postgres.transact(async (client) => {
+              await handler(batch.messages, client);
+              await heartbeat();
+            })
+          } catch (e) {
+            runtime.captureException(e, { extra: { topic } })
+            debug('discontinuing topic processing', {
+              topic,
+              e,
+              message: e.message,
+              stack: e.stack
+            })
+          }
+        })
+      });
+      
+      return consumer;
     }))
   }
 }
 
 module.exports = function (config, runtime) {
-  if (!(this instanceof Kafka)) return new Kafka(config, runtime)
+  if (!(this instanceof RuntimeKafka)) return new RuntimeKafka(config, runtime)
 }
