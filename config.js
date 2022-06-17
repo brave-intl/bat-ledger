@@ -88,9 +88,10 @@ if (process.env.KAFKA_BROKERS) {
   const isDev = process.env.ENV !== "development";
 
   let kafkaOptions = {
-    'brokers': process.env.KAFKA_BROKERS,
+    'brokers': [process.env.KAFKA_BROKERS],
     'clientId': process.env.ENV + '.' + process.env.SERVICE,
-    'acks': +process.env.KAFKA_REQUIRED_ACKS
+    'acks': +process.env.KAFKA_REQUIRED_ACKS,
+    enforceRequestTimeout: false
   };
 
   if (!isDev) {
@@ -104,7 +105,7 @@ if (process.env.KAFKA_BROKERS) {
     }
   }
 
-  module.exports.kafkaOptions = { ...kafkaOptions };
+  module.exports.kafka = { ...kafkaOptions };
 }
 
 module.exports.prometheus =

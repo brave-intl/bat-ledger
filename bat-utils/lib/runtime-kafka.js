@@ -1,4 +1,4 @@
-const { Kafka } = require('kafkajs')
+const { Kafka, logLevel } = require('kafkajs')
 const SDebug = require('sdebug')
 const debug = new SDebug('kafka')
 
@@ -14,19 +14,29 @@ const batchOptions = {
 
 class RuntimeKafka {
   constructor (config, runtime) {
-    const { kafkaOptions } = config;
-    if (!kafkaOptions) {
+    const { kafka } = config;
+    if (!kafka) {
       return;
     }
+    
     this.runtime = runtime;
-    this.config = kafkaOptions;
+    this.config = kafka;
     this.topicHandlers = {};
     this.topicConsumers = {};
-    this.kafka = new Kafka(kafkaOptions);
+    console.log(process.env.KAFKA_BROKERS)
+    this.kafka = new Kafka({
+      'brokers': ['kafka1:19092', 'kafka1:9092'],
+      'clientId': process.env.ENV + '.' + process.env.SERVICE,
+      'acks': +process.env.KAFKA_REQUIRED_ACKS,
+      'enforceRequestTimeout': false,
+      'logLevel': logLevel.DEBUG,
+      'ssl': { rejectUnauthorized: false },
+      'sasl': {}
+    });
   }
 
   async connect () {
-    const producer = kafka.producer();    
+    const producer = this.kafka.producer();    
     this._producer = producer
     
     producer.on('error', error => {
@@ -146,7 +156,7 @@ class RuntimeKafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = kafka.consumer(this.config.clientId);
+      const consumer = this.kafka.consumer({ groupId: this.config.clientId });
       await consumer.connect();
       await consumer.subscribe({ topics: [topic] });
       this.addTopicConsumer(topic, consumer)
