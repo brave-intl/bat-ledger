@@ -1,16 +1,16 @@
 const { Kafka, logLevel } = require('kafkajs')
-const SDebug = require('sdebug')
-const debug = new SDebug('kafka')
+const net = require('net')
+const tls = require('tls')
 
-const batchOptions = {
-  batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
-  commitEveryNBatch: 1, // will be ignored
-  concurrency: 1, // will be ignored
-  commitSync: false, // will be ignored
-  noBatchCommits: true, // important, because we want to commit manually
-  manualBatching: true, // important, because we want to control the concurrency of batches ourselves
-  sortedManualBatch: true // important, because we want to receive the batch in a per-partition format for easier processing
-}
+// const batchOptions = {
+//   batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
+//   commitEveryNBatch: 1, // will be ignored
+//   concurrency: 1, // will be ignored
+//   commitSync: false, // will be ignored
+//   noBatchCommits: true, // important, because we want to commit manually
+//   manualBatching: true, // important, because we want to control the concurrency of batches ourselves
+//   sortedManualBatch: true // important, because we want to receive the batch in a per-partition format for easier processing
+// }
 
 class RuntimeKafka {
   constructor (config, runtime) {
@@ -23,15 +23,11 @@ class RuntimeKafka {
     this.config = kafka;
     this.topicHandlers = {};
     this.topicConsumers = {};
-    console.log(process.env.KAFKA_BROKERS)
     this.kafka = new Kafka({
-      'brokers': ['kafka1:19092', 'kafka1:9092'],
-      'clientId': process.env.ENV + '.' + process.env.SERVICE,
-      'acks': +process.env.KAFKA_REQUIRED_ACKS,
-      'enforceRequestTimeout': false,
-      'logLevel': logLevel.DEBUG,
-      'ssl': { rejectUnauthorized: false },
-      'sasl': {}
+      ...kafka,
+      // 'logLevel': logLevel.DEBUG,
+      // socketFactory: myCustomSocketFactory,
+      // ssl: true,
     });
   }
 
@@ -45,8 +41,9 @@ class RuntimeKafka {
         this.runtime.captureException(error)
       }
     });
-    
+    console.log("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
     await producer.connect()
+    console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
   }
 
   async producer () {
@@ -156,6 +153,8 @@ class RuntimeKafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
+      console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+
       const consumer = this.kafka.consumer({ groupId: this.config.clientId });
       await consumer.connect();
       await consumer.subscribe({ topics: [topic] });
@@ -164,6 +163,8 @@ class RuntimeKafka {
       await consumer.run({
         partitionsConsumedConcurrently: 1,
         eachBatch: (async ({batch, resolveOffset, heartbeat, commitOffsetsIfNecessary, uncommittedOffsets, isRunning, isStale}) => {
+          console.log("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ")
+          console.log(batch)
           const { runtime } = this;
           try {
             await runtime.postgres.transact(async (client) => {

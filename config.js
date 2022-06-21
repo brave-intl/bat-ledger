@@ -91,7 +91,6 @@ if (process.env.KAFKA_BROKERS) {
     'brokers': [process.env.KAFKA_BROKERS],
     'clientId': process.env.ENV + '.' + process.env.SERVICE,
     'acks': +process.env.KAFKA_REQUIRED_ACKS,
-    enforceRequestTimeout: false
   };
 
   if (!isDev) {

@@ -39,6 +39,7 @@ services:
       KAFKA_JMX_PORT: 9999
       KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_ADVERTISED_HOST_NAME: 'kafka1'
     volumes:
       - ./test/secrets:/etc/kafka/secrets
 
