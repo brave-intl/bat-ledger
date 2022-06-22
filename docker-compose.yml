@@ -92,3 +92,4 @@ services:
       - eyeshade-postgres
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
+      - ./test:/usr/src/app/test

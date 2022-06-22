@@ -5,18 +5,20 @@ const Netmask = require('netmask').Netmask
 const underscore = require('underscore')
 const braveHapi = require('./extras-hapi')
 
-const whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
+// const whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
 
-const authorizedAddrs = whitelist && ['127.0.0.1']
-const authorizedBlocks = whitelist && []
+const authorizedAddrs = ['127.0.0.1']
+// const authorizedAddrs = whitelist && ['127.0.0.1']
+// const authorizedBlocks = whitelist && []
+const authorizedBlocks = []
 
-if (whitelist) {
-  whitelist.forEach((entry) => {
-    if ((entry.indexOf('/') !== -1) || (entry.split('.').length !== 4)) return authorizedBlocks.push(new Netmask(entry))
+// if (whitelist) {
+//   whitelist.forEach((entry) => {
+//     if ((entry.indexOf('/') !== -1) || (entry.split('.').length !== 4)) return authorizedBlocks.push(new Netmask(entry))
 
-    authorizedAddrs.push(entry)
-  })
-}
+//     authorizedAddrs.push(entry)
+//   })
+// }
 
 const internals = {
   implementation: (server, options) => { return { authenticate: exports.authenticate } }
@@ -70,8 +72,8 @@ exports.authenticate = (request, h) => {
 exports.plugin = {
   pkg: require(path.join(__dirname, '..', 'package.json')),
   register: (server, options) => {
-    server.auth.scheme('whitelist', internals.implementation)
-    server.auth.strategy('whitelist', 'whitelist', {})
+    // server.auth.scheme('whitelist', internals.implementation)
+    // server.auth.strategy('whitelist', 'whitelist', {})
   }
 }
 

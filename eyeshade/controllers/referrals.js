@@ -172,6 +172,8 @@ v1.getReferralsStatement = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
-  braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement)
+  // braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
+  // braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement)
+  braveHapi.routes.async().path('/v1/referrals/groups').config(v1.getReferralGroups),
+  braveHapi.routes.async().path('/v1/referrals/statement/{owner}').config(v1.getReferralsStatement)
 ]

@@ -1,14 +1,16 @@
 
-const hapiAuthWhitelist = require('./lib/hapi-auth-whitelist')
+// const hapiAuthWhitelist = require('./lib/hapi-auth-whitelist')
 const hapiControllersIndex = require('./lib/hapi-controllers-index')
 const hapiServer = require('./lib/hapi-server')
 
 const controllers = {
   index: hapiControllersIndex
 }
-const auth = {
-  whitelist: hapiAuthWhitelist
-}
+// const auth = {
+  // whitelist: hapiAuthWhitelist
+// }
+
+const auth = {}
 
 module.exports = {
   server: hapiServer,

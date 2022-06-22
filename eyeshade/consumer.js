@@ -30,8 +30,8 @@ const runtime = new Runtime(config)
 extras.utils.setupKafkaCert()
 
 suggestionsConsumer(runtime)
-voteConsumer(runtime)
-referralsConsumer(runtime)
-settlementsConsumer(runtime)
+// voteConsumer(runtime) TODO reenable these as we need 
+// referralsConsumer(runtime)
+// settlementsConsumer(runtime)
 runtime.kafka.consume().catch(console.error)
 module.exports = runtime

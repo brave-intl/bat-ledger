@@ -10,7 +10,7 @@ const {
 
 dotenv.config()
 
-Runtime.newrelic.setupNewrelic(config, __filename)
+// Runtime.newrelic.setupNewrelic(config, __filename)
 
 config.cache = false
 config.database = false

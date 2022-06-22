@@ -2,16 +2,6 @@ const { Kafka, logLevel } = require('kafkajs')
 const net = require('net')
 const tls = require('tls')
 
-// const batchOptions = {
-//   batchSize: +(process.env.KAFKA_BATCH_SIZE || 10), // decides on the max size of our "batchOfMessages"
-//   commitEveryNBatch: 1, // will be ignored
-//   concurrency: 1, // will be ignored
-//   commitSync: false, // will be ignored
-//   noBatchCommits: true, // important, because we want to commit manually
-//   manualBatching: true, // important, because we want to control the concurrency of batches ourselves
-//   sortedManualBatch: true // important, because we want to receive the batch in a per-partition format for easier processing
-// }
-
 class RuntimeKafka {
   constructor (config, runtime) {
     const { kafka } = config;
@@ -23,7 +13,15 @@ class RuntimeKafka {
     this.config = kafka;
     this.topicHandlers = {};
     this.topicConsumers = {};
-    this.kafka = new Kafka({ ...kafka });
+    this.kafka = new Kafka({
+      'brokers': ['kafka1:19092'],
+      'clientId': process.env.ENV + '.' + process.env.SERVICE,
+      // 'acks': +process.env.KAFKA_REQUIRED_ACKS,
+      // 'enforceRequestTimeout': false,
+      'logLevel': logLevel.DEBUG,
+      // 'ssl': { rejectUnauthorized: false },
+      // 'sasl': {}
+    });
   }
 
   async connect () {
@@ -132,7 +130,6 @@ class RuntimeKafka {
   }
 
   async send (topicName, message, _partition = null, _key = null) {
-    // return await producer.send("my-topic", "my-message", 0, "my-key")
     const producer = await this.producer()
     return producer.send({topic: topicName, 
                           messages: [{key: _key, value: message, partition: _partition}],
@@ -154,11 +151,11 @@ class RuntimeKafka {
       
       await consumer.run({
         partitionsConsumedConcurrently: 1,
-        eachBatch: (async ({batch, resolveOffset, heartbeat, commitOffsetsIfNecessary, uncommittedOffsets, isRunning, isStale}) => {
+        eachMessage: (async ({ topic, partition, message, heartbeat }) => {
           const { runtime } = this;
           try {
             await runtime.postgres.transact(async (client) => {
-              await handler(batch.messages, client);
+              await handler([message], client);
               await heartbeat();
             })
           } catch (e) {
