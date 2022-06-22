@@ -17,8 +17,6 @@ const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } 
 test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
 test('unauthed requests cannot post settlement', async t => {
-  console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-  console.log(agents.eyeshade.publishers)
   t.plan(0)
   await agents.eyeshade.global
     .post('/v2/publishers/settlement')

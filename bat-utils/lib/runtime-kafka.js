@@ -23,27 +23,21 @@ class RuntimeKafka {
     this.config = kafka;
     this.topicHandlers = {};
     this.topicConsumers = {};
-    this.kafka = new Kafka({
-      ...kafka,
-      // 'logLevel': logLevel.DEBUG,
-      // socketFactory: myCustomSocketFactory,
-      // ssl: true,
-    });
+    this.kafka = new Kafka({ ...kafka });
   }
 
   async connect () {
     const producer = this.kafka.producer();    
     this._producer = producer
-    
-    producer.on('error', error => {
+
+    try {
+      await producer.connect()
+    } catch (error) {
       console.error(error)
       if (this.runtime.captureException) {
         this.runtime.captureException(error)
       }
-    });
-    console.log("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-    await producer.connect()
-    console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    }
   }
 
   async producer () {
@@ -153,8 +147,6 @@ class RuntimeKafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-
       const consumer = this.kafka.consumer({ groupId: this.config.clientId });
       await consumer.connect();
       await consumer.subscribe({ topics: [topic] });
@@ -163,8 +155,6 @@ class RuntimeKafka {
       await consumer.run({
         partitionsConsumedConcurrently: 1,
         eachBatch: (async ({batch, resolveOffset, heartbeat, commitOffsetsIfNecessary, uncommittedOffsets, isRunning, isStale}) => {
-          console.log("* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ")
-          console.log(batch)
           const { runtime } = this;
           try {
             await runtime.postgres.transact(async (client) => {
