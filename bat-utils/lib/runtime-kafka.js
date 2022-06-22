@@ -16,9 +16,9 @@ class RuntimeKafka {
     this.kafka = new Kafka({
       'brokers': ['kafka1:19092'],
       'clientId': process.env.ENV + '.' + process.env.SERVICE,
-      // 'acks': +process.env.KAFKA_REQUIRED_ACKS,
+      'acks': +process.env.KAFKA_REQUIRED_ACKS,
       // 'enforceRequestTimeout': false,
-      'logLevel': logLevel.DEBUG,
+      // 'logLevel': logLevel.DEBUG,
       // 'ssl': { rejectUnauthorized: false },
       // 'sasl': {}
     });
@@ -144,13 +144,12 @@ class RuntimeKafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = this.kafka.consumer({ groupId: this.config.clientId });
+      const consumer = this.kafka.consumer({ groupId: `${this.config.clientId}-${topic}` });
       await consumer.connect();
       await consumer.subscribe({ topics: [topic] });
       this.addTopicConsumer(topic, consumer)
       
       await consumer.run({
-        partitionsConsumedConcurrently: 1,
         eachMessage: (async ({ topic, partition, message, heartbeat }) => {
           const { runtime } = this;
           try {

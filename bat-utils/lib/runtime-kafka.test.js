@@ -83,7 +83,7 @@ test('one topic failing does not cause others to fail', async (t) => {
   t.deepEqual(expectedStateTopic2, state[topic2], 'topic2 should the first ordered subset of topic 1')
 
   // service gets restarted
-  consumers.forEach((consumer) => consumer.close())
+  consumers.forEach((consumer) => consumer.disconnect())
   const consumer2 = new Kafka(runtime.config, runtime)
   consumer2.on(topic2, pseudoDBTX(topic2))
   await consumer2.consume()
