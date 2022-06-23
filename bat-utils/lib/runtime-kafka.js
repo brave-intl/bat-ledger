@@ -1,6 +1,8 @@
-const { Kafka, logLevel } = require('kafkajs')
-const net = require('net')
-const tls = require('tls')
+const { Kafka, logLevel } = require('kafkajs');
+const net = require('net');
+const tls = require('tls');
+const SDebug = require('sdebug');
+const debug = new SDebug('kafka');
 
 class RuntimeKafka {
   constructor (config, runtime) {
@@ -13,15 +15,7 @@ class RuntimeKafka {
     this.config = kafka;
     this.topicHandlers = {};
     this.topicConsumers = {};
-    this.kafka = new Kafka({
-      'brokers': ['kafka1:19092'],
-      'clientId': process.env.ENV + '.' + process.env.SERVICE,
-      'acks': +process.env.KAFKA_REQUIRED_ACKS,
-      // 'enforceRequestTimeout': false,
-      // 'logLevel': logLevel.DEBUG,
-      // 'ssl': { rejectUnauthorized: false },
-      // 'sasl': {}
-    });
+    this.kafka = new Kafka({ ...kafka });
   }
 
   async connect () {
