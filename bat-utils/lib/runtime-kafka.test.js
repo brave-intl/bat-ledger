@@ -39,7 +39,7 @@ test('one topic failing does not cause others to fail', async (t) => {
   const producer = new Kafka(runtime.config, runtime)
   await producer.connect()
   const topic1 = 'test-topic-1-' + uuidV4()
-  const topic2 = 'test-topic-2-' + uuidV4()
+  const topic2 = 'test-topic-2-' + uuidV4()$$$
   const state = {
     [topic1]: [],
     [topic2]: []
@@ -62,32 +62,40 @@ test('one topic failing does not cause others to fail', async (t) => {
     }
     state[topic2] = state[topic2].concat(toAppend)
   })
-
   const consumers = await consumer.consume()
+  
   const messages = []
   for (let i = 0; i < 10; i += 1) {
     messages.push(sendMsgs())
   }
   const expectingTopic1 = [].concat.apply([], await Promise.all(messages))
   await waitForParity(topic1)
-
   // check state
   t.true(state[topic1].length === 100, 'topic 1 should have processed 100 msgs')
+
   t.deepEqual(expectingTopic1, state[topic1], 'topic 1 state should be as expected')
+
   const expectedLength = consumptionPattern.reduce((memo, value) => {
     return (memo + value) > errAt ? memo : (memo + value)
   }, 0)
+
   console.log('consumption pattern', expectedLength, consumptionPattern)
   t.is(expectedLength, state[topic2].length, `topic 2 should be less than or equal to ${expectedLength} in length`)
   const expectedStateTopic2 = expectingTopic1.slice(0, state[topic2].length)
+
   t.deepEqual(expectedStateTopic2, state[topic2], 'topic2 should the first ordered subset of topic 1')
 
   // service gets restarted
-  consumers.forEach((consumer) => consumer.disconnect())
+  t.timeout(600000, 'make sure consumer can disconnect and reconnect');
+  await disconnect(consumers);
   const consumer2 = new Kafka(runtime.config, runtime)
   consumer2.on(topic2, pseudoDBTX(topic2))
   await consumer2.consume()
   await waitForParity(topic2)
+
+  async function disconnect (consumers) {
+    consumers.forEach(async consumer => await consumer.disconnect());
+  }
 
   async function waitForParity (topic) {
     do {

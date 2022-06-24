@@ -3,6 +3,7 @@ const net = require('net');
 const tls = require('tls');
 const SDebug = require('sdebug');
 const debug = new SDebug('kafka');
+const { v4: uuidV4 } = require('uuid')
 
 class RuntimeKafka {
   constructor (config, runtime) {
@@ -15,7 +16,7 @@ class RuntimeKafka {
     this.config = kafka;
     this.topicHandlers = {};
     this.topicConsumers = {};
-    this.kafka = new Kafka({ ...kafka });
+    this.kafka = new Kafka({ ...kafka, logLevel: logLevel.DEBUG });
   }
 
   async connect () {
@@ -138,13 +139,15 @@ class RuntimeKafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = this.kafka.consumer({ groupId: `${this.config.clientId}-${topic}` });
+      const consumer = this.kafka.consumer({ groupId: `${this.config.clientId}-${topic}-${uuidV4()}`, rebalanceTimeout: 20000 });
       await consumer.connect();
       await consumer.subscribe({ topics: [topic] });
       this.addTopicConsumer(topic, consumer)
-      
+
       await consumer.run({
         eachMessage: (async ({ topic, partition, message, heartbeat }) => {
+          console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+          console.log(topic)
           const { runtime } = this;
           try {
             await runtime.postgres.transact(async (client) => {
