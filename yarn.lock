@@ -1624,10 +1624,10 @@ core-util-is@~1.0.0:
   resolved "https://registry.yarnpkg.com/core-util-is/-/core-util-is-1.0.3.tgz#a6042d3634c2b27e9328f837b965fac83808db85"
   integrity sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==
 
-country-list@1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/country-list/-/country-list-1.1.0.tgz#3ea3608857e17458657d129e1d737e4c2f79775b"
-  integrity sha512-etGmD1ZS264uwZ63hdqf1/GoR9/z4OznE4dFF6t+jXXey//DB6SOfeBoz1mAGiUIH90jXy3ZjqT4ALPMpQY1gg==
+country-list@2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/country-list/-/country-list-2.2.0.tgz#e248338cafb97b2d86cf0784a25dceb4d52054d1"
+  integrity sha512-AS21pllCp72LmUztqXPVKXK3TRyap1XlohGLqN04cXH2rFB9vo7SnH5sMnqltZPnu9ie/x1se3UuCZJbGXErfw==
 
 coveralls@^3.0.6:
   version "3.1.1"

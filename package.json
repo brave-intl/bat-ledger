@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "ava": "ava",
-    "eyeshade-server": "node eyeshade/server.js",
-    "eyeshade-consumer": "node eyeshade/consumer.js",
+    "eyeshade-server": "nodemon eyeshade/server.js",
+    "eyeshade-consumer": "nodemon eyeshade/consumer.js",
     "eyeshade-cronjob": "node eyeshade/cronjob.js",
     "eyeshade-producer": "node bin/migrate-mongo-to-kafka.js",
     "start": "echo use 'npm run eyeshade-web' or 'npm run eyeshade-consumer' or 'npm run eyeshade-cronjob'",
-    "start-eyeshade": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=eyeshade node eyeshade/server.js",
-    "start-eyeshade-consumer": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=eyeshade node eyeshade/consumer.js",
+    "start-eyeshade": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=eyeshade nodemon eyeshade/server.js",
+    "start-eyeshade-consumer": "NODE_PATH=. DEBUG=*,-mongo:*,mongo:queries SERVICE=eyeshade nodemon eyeshade/consumer.js",
     "test": "nyc --reporter=html --reporter=text npm run test-all",
     "coverage": "nyc report --reporter=text-lcov | coveralls",
     "test-all": "npm run test-isup && npm run test-unit && npm run test-integration",
@@ -67,7 +67,7 @@
     "bluebird": "^3.7.2",
     "bs58check": "^2.0.2",
     "bson": "^1.1.6",
-    "country-list": "1.1.0",
+    "country-list": "2.2.0",
     "cron-parser": "2.4.1",
     "currency-codes": "1.1.2",
     "dotenv": "^8.2.0",
@@ -105,7 +105,8 @@
     "coveralls": "^3.0.6",
     "parse-prometheus-text-format": "^1.1.1",
     "standard": "~14.0.1",
-    "supertest": "^6.2.3"
+    "supertest": "^6.2.3",
+    "nodemon": "^2.0.18"
   },
   "standard": {
     "ignore": [

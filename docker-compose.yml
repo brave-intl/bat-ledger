@@ -72,6 +72,7 @@ services:
       - kafka
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
+      - ./bat-utils:/usr/src/app/bat-utils
 
   eyeshade-web:
     container_name: eyeshade-web
@@ -92,4 +93,4 @@ services:
       - eyeshade-postgres
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
-      - ./test:/usr/src/app/test
+      - ./bat-utils:/usr/src/app/bat-utils

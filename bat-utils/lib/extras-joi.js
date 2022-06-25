@@ -1,7 +1,7 @@
 const base58check = require('bs58check')
 const batPublisher = require('./extras-publisher')
 const bitcoin = require('bitcoinjs-lib')
-const countryCodes = require('country-list')()
+const { getName } = require('country-list')
 const Joi = require('joi')
 const ethereumAddress = require('ethereum-address')
 
@@ -83,7 +83,7 @@ module.exports = Joi.extend((joi) => {
       countryCode: {
         validate (value, helpers, args, options) {
           const { state } = helpers
-          const entry = countryCodes.getName(value)
+          const entry = getName(value)
           if (!entry) {
             return helpers.error('string.badCountryCode', { value }, state, options)
           }

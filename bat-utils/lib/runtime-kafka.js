@@ -144,12 +144,11 @@ class RuntimeKafka {
       this.addTopicConsumer(topic, consumer)
       
       await consumer.run({
-        eachMessage: (async ({ topic, partition, message, heartbeat }) => {
+        eachMessage: (async ({ topic, partition, message }) => {
           const { runtime } = this;
           try {
             await runtime.postgres.transact(async (client) => {
               await handler([message], client);
-              await heartbeat();
             })
           } catch (e) {
             runtime.captureException(e, { extra: { topic } })
@@ -159,6 +158,8 @@ class RuntimeKafka {
               message: e.message,
               stack: e.stack
             })
+            // The new library expects us to throw in order to not update the autocommit log, apparently
+            throw e;
           }
         })
       });
