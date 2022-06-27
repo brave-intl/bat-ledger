@@ -3,7 +3,6 @@ const net = require('net');
 const tls = require('tls');
 const SDebug = require('sdebug');
 const debug = new SDebug('kafka');
-const { v4: uuidV4 } = require('uuid')
 
 class RuntimeKafka {
   constructor (config, runtime) {
@@ -16,7 +15,7 @@ class RuntimeKafka {
     this.config = kafka;
     this.topicHandlers = {};
     this.topicConsumers = {};
-    this.kafka = new Kafka({ ...kafka, logLevel: logLevel.DEBUG });
+    this.kafka = new Kafka({ ...kafka });
   }
 
   async connect () {
@@ -139,30 +138,17 @@ class RuntimeKafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = this.kafka.consumer({ groupId: `${this.config.clientId}-${topic}-${uuidV4()}`, rebalanceTimeout: 20000 });
+      const consumer = this.kafka.consumer({ groupId: `${this.config.clientId}-${topic}` });
       await consumer.connect();
       await consumer.subscribe({ topics: [topic] });
       this.addTopicConsumer(topic, consumer)
-
+      
       await consumer.run({
-        eachMessage: (async ({ topic, partition, message, heartbeat }) => {
-          console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-          console.log(topic)
+        eachMessage: (async ({ topic, partition, message }) => {
           const { runtime } = this;
-          try {
-            await runtime.postgres.transact(async (client) => {
-              await handler([message], client);
-              await heartbeat();
-            })
-          } catch (e) {
-            runtime.captureException(e, { extra: { topic } })
-            debug('discontinuing topic processing', {
-              topic,
-              e,
-              message: e.message,
-              stack: e.stack
-            })
-          }
+          await runtime.postgres.transact(async (client) => {
+            await handler([message], client);
+          })
         })
       });
       
