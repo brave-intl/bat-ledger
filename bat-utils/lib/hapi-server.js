@@ -156,8 +156,7 @@ async function Server (options, runtime) {
     const query = underscore.omit(request.url.query, (value, key, object) => {
       return (['publisher'].indexOf(key) !== -1)
     })
-    console.log("##################################################################")
-    console.log(request)
+
     const remote = options.remoteP && { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
 
     if (request.headers['x-request-id']) request.id = request.headers['x-request-id']

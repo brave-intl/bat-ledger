@@ -10,8 +10,6 @@ const auth = {
   whitelist: hapiAuthWhitelist
 }
 
-// const auth = {}
-
 module.exports = {
   server: hapiServer,
   controllers,

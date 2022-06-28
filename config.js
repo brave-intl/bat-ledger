@@ -85,7 +85,7 @@ if (process.env.BAT_ADS_PAYOUT_ADDRESS) {
 }
 
 if (process.env.KAFKA_BROKERS) {
-  const isDev = process.env.ENV !== "development";
+  const isDev = process.env.ENV === "local";
 
   let kafkaOptions = {
     'brokers': [process.env.KAFKA_BROKERS],

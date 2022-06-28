@@ -6,14 +6,10 @@ const underscore = require('underscore')
 const braveHapi = require('./extras-hapi')
 
 const whitelist = process.env.IP_WHITELIST && process.env.IP_WHITELIST.split(',')
-console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-console.log(whitelist)
-// const authorizedAddrs = ['127.0.0.1']
+
 const authorizedAddrs = whitelist && ['127.0.0.1']
 const authorizedBlocks = whitelist && []
-// const authorizedBlocks = []
-console.log(authorizedAddrs)
-console.log(authorizedBlocks)
+
 if (whitelist) {
   whitelist.forEach((entry) => {
     if ((entry.indexOf('/') !== -1) || (entry.split('.').length !== 4)) return authorizedBlocks.push(new Netmask(entry))
@@ -65,7 +61,7 @@ exports.authenticate = (request, h) => {
 
   validateHops(request)
 
-  if (h.authenticated) {
+  if (process.env.ENV !== "local" && h.authenticated) {
     return h.authenticated({ credentials: { ipaddr } })
   }
   return h.continue

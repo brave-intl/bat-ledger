@@ -56,8 +56,6 @@ const fieldValidator = Joi.string().description('whether the field should be inc
 
 v1.getReferralGroups = {
   handler: (runtime) => async (request, h) => {
-    console.log("*****************************************************************************")
-    console.log(request)
     let { fields, resolve, activeAt } = request.query
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
     const allFields = ['id'].concat(fields)
