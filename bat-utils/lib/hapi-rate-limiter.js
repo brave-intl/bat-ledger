@@ -6,7 +6,7 @@ const {
 const _ = require('underscore')
 const underscore = _
 
-// const whitelist = require('./hapi-auth-whitelist')
+const whitelist = require('./hapi-auth-whitelist')
 
 const pluginName = 'rateLimitRedisPlugin'
 
@@ -41,12 +41,12 @@ module.exports = (runtime) => {
     duration: 60 // seconds by IP
   })
 
-  // const rateLimiterWhitelisted = new RateLimiterRedis({
-  //   redis: redisClient,
-  //   keyPrefix: 'rate-limiter-whitelist',
-  //   points: 60000, // requests per
-  //   duration: 60 // seconds by IP
-  // })
+  const rateLimiterWhitelisted = new RateLimiterRedis({
+    redis: redisClient,
+    keyPrefix: 'rate-limiter-whitelist',
+    points: 60000, // requests per
+    duration: 60 // seconds by IP
+  })
 
   const rateLimiter = new RateLimiterRedis({
     redis: redisClient,
@@ -74,7 +74,7 @@ module.exports = (runtime) => {
     redisClient,
     rateLimiter,
     rateLimiterAuthed,
-    // rateLimiterWhitelisted,
+    rateLimiterWhitelisted,
     noRateLimiter
   }
 
@@ -114,8 +114,8 @@ module.exports = (runtime) => {
       if (process.env.NODE_ENV !== 'production') {
         return internals.noRateLimiter
       }
-      const ipaddr = '127.0.0.1'
-      // const ipaddr = whitelist.ipaddr(request)
+      // const ipaddr = '127.0.0.1'
+      const ipaddr = whitelist.ipaddr(request)
       if (ipaddr === '127.0.0.1') {
         return internals.noRateLimiter
       }
@@ -126,13 +126,13 @@ module.exports = (runtime) => {
         return internals.noRateLimiter
       }
 
-      // if (whitelist.authorizedP(ipaddr)) {
-      //   if (request.auth && request.auth.credentials && request.auth.credentials.token && request.auth.credentials.scope) {
-      //     return internals.rateLimiterWhitelisted
-      //   }
+      if (whitelist.authorizedP(ipaddr)) {
+        if (request.auth && request.auth.credentials && request.auth.credentials.token && request.auth.credentials.scope) {
+          return internals.rateLimiterWhitelisted
+        }
 
-      //   return internals.rateLimiterAuthed
-      // }
+        return internals.rateLimiterAuthed
+      }
     } catch (e) {}
 
     return internals.rateLimiter
@@ -141,7 +141,7 @@ module.exports = (runtime) => {
   function rateLimitKey (request) {
     try {
       return runtime.config.server.host
-      // return whitelist.ipaddr(request) + ':' + runtime.config.server.host
+      return whitelist.ipaddr(request) + ':' + runtime.config.server.host
     } catch (e) {
       return 'default'
     }

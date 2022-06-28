@@ -56,6 +56,8 @@ const fieldValidator = Joi.string().description('whether the field should be inc
 
 v1.getReferralGroups = {
   handler: (runtime) => async (request, h) => {
+    console.log("*****************************************************************************")
+    console.log(request)
     let { fields, resolve, activeAt } = request.query
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
     const allFields = ['id'].concat(fields)
@@ -172,8 +174,8 @@ v1.getReferralsStatement = {
 }
 
 module.exports.routes = [
-  // braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
-  // braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement)
-  braveHapi.routes.async().path('/v1/referrals/groups').config(v1.getReferralGroups),
-  braveHapi.routes.async().path('/v1/referrals/statement/{owner}').config(v1.getReferralsStatement)
+  braveHapi.routes.async().path('/v1/referrals/groups').whitelist().config(v1.getReferralGroups),
+  braveHapi.routes.async().path('/v1/referrals/statement/{owner}').whitelist().config(v1.getReferralsStatement)
+  // braveHapi.routes.async().path('/v1/referrals/groups').config(v1.getReferralGroups),
+  // braveHapi.routes.async().path('/v1/referrals/statement/{owner}').config(v1.getReferralsStatement)
 ]

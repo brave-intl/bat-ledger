@@ -102,10 +102,10 @@ v1.settlementsStats = {
 }
 
 module.exports.routes = [
-  // braveHapi.routes.async().path('/v1/stats/grants/{type}/{start}/{until?}').whitelist().config(v1.grantsStats),
-  // braveHapi.routes.async().path('/v1/stats/settlements/{type}/{start}/{until?}').whitelist().config(v1.settlementsStats)
-  braveHapi.routes.async().path('/v1/stats/grants/{type}/{start}/{until?}').config(v1.grantsStats),
-  braveHapi.routes.async().path('/v1/stats/settlements/{type}/{start}/{until?}').config(v1.settlementsStats)
+  braveHapi.routes.async().path('/v1/stats/grants/{type}/{start}/{until?}').whitelist().config(v1.grantsStats),
+  braveHapi.routes.async().path('/v1/stats/settlements/{type}/{start}/{until?}').whitelist().config(v1.settlementsStats)
+  // braveHapi.routes.async().path('/v1/stats/grants/{type}/{start}/{until?}').config(v1.grantsStats),
+  // braveHapi.routes.async().path('/v1/stats/settlements/{type}/{start}/{until?}').config(v1.settlementsStats)
 ]
 
 function sanitize (data) {

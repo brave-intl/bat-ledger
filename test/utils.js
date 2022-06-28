@@ -28,6 +28,10 @@ const {
   ALLOWED_PUBLISHERS_TOKENS
 } = process.env
 
+console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+console.log(BAT_EYESHADE_SERVER)
+console.log(ALLOWED_REFERRALS_TOKENS)
+
 const braveYoutubeOwner = 'publishers#uuid:' + uuidV4().toLowerCase()
 const braveYoutubePublisher = 'youtube#channel:UCFNTTISby1c_H-rm5Ww5rZg'
 

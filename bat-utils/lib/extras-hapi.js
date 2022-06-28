@@ -5,7 +5,7 @@ const underscore = require('underscore')
 const wreck = require('@hapi/wreck')
 
 const npminfo = require('../npminfo')
-// const whitelist = require('./hapi-auth-whitelist')
+const whitelist = require('./hapi-auth-whitelist')
 
 exports.debug = (info, request) => {
   const debug = new SDebug(info.id)
@@ -101,17 +101,17 @@ AsyncRoute.prototype.path = function (path) {
   return this
 }
 
-// AsyncRoute.prototype.whitelist = function () {
-//   this.internal.extras = {
-//     ext: {
-//       onPreAuth: {
-//         method: whitelist.authenticate
-//       }
-//     }
-//   }
+AsyncRoute.prototype.whitelist = function () {
+  this.internal.extras = {
+    ext: {
+      onPreAuth: {
+        method: whitelist.authenticate
+      }
+    }
+  }
 
-//   return this
-// }
+  return this
+}
 
 AsyncRoute.prototype.config = function (config) {
   if (typeof config === 'function') { config = { handler: config } }
