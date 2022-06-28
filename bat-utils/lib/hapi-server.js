@@ -157,7 +157,8 @@ async function Server (options, runtime) {
       return (['publisher'].indexOf(key) !== -1)
     })
 
-    const remote = options.remoteP && { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
+    const remote = options.remoteP &&
+          { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
 
     if (request.headers['x-request-id']) request.id = request.headers['x-request-id']
     debug('begin', {
@@ -256,7 +257,6 @@ async function Server (options, runtime) {
       })
       flattened.url = flattened['request.pathname']
       delete flattened['request.pathname']
-      console.log(flattened)
       runtime.newrelic.noticeError(request.response._error, flattened)
     }
 

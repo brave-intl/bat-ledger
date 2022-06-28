@@ -1,6 +1,4 @@
 const { Kafka, logLevel } = require('kafkajs');
-const net = require('net');
-const tls = require('tls');
 const SDebug = require('sdebug');
 const debug = new SDebug('kafka');
 

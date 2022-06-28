@@ -30,7 +30,7 @@ const runtime = new Runtime(config)
 extras.utils.setupKafkaCert()
 
 suggestionsConsumer(runtime)
-voteConsumer(runtime) 
+voteConsumer(runtime)
 referralsConsumer(runtime)
 settlementsConsumer(runtime)
 runtime.kafka.consume().catch(console.error)

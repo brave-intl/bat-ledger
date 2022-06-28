@@ -114,7 +114,6 @@ module.exports = (runtime) => {
       if (process.env.NODE_ENV !== 'production') {
         return internals.noRateLimiter
       }
-      // const ipaddr = '127.0.0.1'
       const ipaddr = whitelist.ipaddr(request)
       if (ipaddr === '127.0.0.1') {
         return internals.noRateLimiter
@@ -140,7 +139,6 @@ module.exports = (runtime) => {
 
   function rateLimitKey (request) {
     try {
-      return runtime.config.server.host
       return whitelist.ipaddr(request) + ':' + runtime.config.server.host
     } catch (e) {
       return 'default'

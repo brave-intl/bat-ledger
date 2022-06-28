@@ -175,7 +175,6 @@ async function cleanEyeshadePgDb (pg) {
       url: process.env.BAT_POSTGRES_URL
     }
   })
-
   const cleaner = cleanPgDb(postgres)
   return cleaner()
 }
