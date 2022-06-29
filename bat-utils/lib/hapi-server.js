@@ -11,7 +11,6 @@ const SDebug = require('sdebug')
 
 const rateLimiter = require('./hapi-rate-limiter')
 const braveHapi = require('./extras-hapi')
-const whitelist = require('./hapi-auth-whitelist')
 const npminfo = require('../npminfo')
 
 module.exports = async (options, runtime) => {
@@ -106,9 +105,6 @@ async function Server (options, runtime) {
       : [],
     [
       authBearerToken,
-      {
-        plugin: whitelist.plugin
-      },
       inert,
       rateLimiter(runtime)
     ], process.env.NODE_ENV === 'production'
@@ -158,7 +154,7 @@ async function Server (options, runtime) {
     })
 
     const remote = options.remoteP &&
-          { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
+          { address: braveHapi.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
 
     if (request.headers['x-request-id']) request.id = request.headers['x-request-id']
     debug('begin', {
@@ -239,7 +235,7 @@ async function Server (options, runtime) {
     if ((request.response.statusCode === 401) || (request.response.statusCode === 406)) {
       runtime.captureException(request.response._error || request.response.statusCode, {
         req: request,
-        extra: { address: whitelist.ipaddr(request) }
+        extra: { address: braveHapi.ipaddr(request) }
       })
     }
 
