@@ -60,7 +60,10 @@ exports.authenticate = (request, h) => {
         (!underscore.find(authorizedBlocks, (block) => { return block.contains(ipaddr) }))) return boom.notAcceptable()
 
   validateHops(request)
-
+  console.log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+  console.log("whitelist: ", process.env.IP_WHITELIST)
+  console.log("is authenticated defined? ", h.authenticated)
+  console.log("toolkit: ", h)
   if (process.env.ENV !== "local" && h.authenticated) {
     return h.authenticated({ credentials: { ipaddr } })
   }
