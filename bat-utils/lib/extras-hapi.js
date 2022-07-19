@@ -5,7 +5,6 @@ const underscore = require('underscore')
 const wreck = require('@hapi/wreck')
 
 const npminfo = require('../npminfo')
-const whitelist = require('./hapi-auth-whitelist')
 
 exports.debug = (info, request) => {
   const debug = new SDebug(info.id)
@@ -101,18 +100,6 @@ AsyncRoute.prototype.path = function (path) {
   return this
 }
 
-AsyncRoute.prototype.whitelist = function () {
-  this.internal.extras = {
-    ext: {
-      onPreAuth: {
-        method: whitelist.authenticate
-      }
-    }
-  }
-
-  return this
-}
-
 AsyncRoute.prototype.config = function (config) {
   if (typeof config === 'function') { config = { handler: config } }
   if (typeof config.handler === 'undefined') throw new Error('undefined handler for ' + JSON.stringify(this.internal))
@@ -204,3 +191,23 @@ const WreckDelete = async (server, opts) => {
 }
 
 exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
+
+// NOTE This function trusts the final IP address in X-Forwarded-For
+//      This is reasonable only when running behind a load balancer that correctly sets this header
+//      and there is no way to directly access the web nodes
+exports.ipaddr = (request) => {
+  // https://en.wikipedia.org/wiki/X-Forwarded-For    X-Forwarded-For: client, proxy1, proxy2
+  // Since it is easy to forge an X-Forwarded-For field the given information should be used with care.
+  // The last IP address is always the IP address that connects to the last proxy, which means it is the most reliable source of information.
+
+  const { headers } = request
+  const forwardedFor = headers['x-forwarded-for']
+  if (forwardedFor) {
+    const forwardedIps = forwardedFor.split(',')
+    const shift = forwardedIPShift()
+    const target = forwardedIps[forwardedIps.length - shift]
+    return target.trim() || request.info.remoteAddress
+  } else {
+    return request.info.remoteAddress
+  }
+}

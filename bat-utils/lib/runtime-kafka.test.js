@@ -1,13 +1,13 @@
 'use strict'
 
-const Kafka = require('./runtime-kafka')
+const Kafka = require('../../bat-utils/lib/runtime-kafka')
 const test = require('ava')
 const { v4: uuidV4 } = require('uuid')
 const _ = require('underscore')
 const { timeout } = require('./extras-utils')
 
 process.env.KAFKA_CONSUMER_GROUP = 'test-consumer'
-const Postgres = require('bat-utils/lib/runtime-postgres')
+const Postgres = require('../../bat-utils/lib/runtime-postgres')
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 const runtime = {
   config: require('../../config'),
@@ -35,9 +35,10 @@ test('can create kafka consumer', async (t) => {
 
   t.is(message, 'hello world')
 })
+
 test('one topic failing does not cause others to fail', async (t) => {
-  const producer = new Kafka(runtime.config, runtime)
-  await producer.connect()
+  const producer = await new Kafka(runtime.config, runtime).producer();
+
   const topic1 = 'test-topic-1-' + uuidV4()
   const topic2 = 'test-topic-2-' + uuidV4()
   const state = {
@@ -57,7 +58,7 @@ test('one topic failing does not cause others to fail', async (t) => {
       const msg = Buffer.from(message.value, 'binary').toString()
       toAppend.push(msg)
       if ((state[topic2].length + toAppend.length) > errAt) {
-        throw new Error('erred')
+        throw new Error('erred!!')
       }
     }
     state[topic2] = state[topic2].concat(toAppend)
@@ -68,25 +69,33 @@ test('one topic failing does not cause others to fail', async (t) => {
   for (let i = 0; i < 10; i += 1) {
     messages.push(sendMsgs())
   }
+  
   const expectingTopic1 = [].concat.apply([], await Promise.all(messages))
   await waitForParity(topic1)
 
   // check state
   t.true(state[topic1].length === 100, 'topic 1 should have processed 100 msgs')
   t.deepEqual(expectingTopic1, state[topic1], 'topic 1 state should be as expected')
+
   const expectedLength = consumptionPattern.reduce((memo, value) => {
     return (memo + value) > errAt ? memo : (memo + value)
   }, 0)
-  console.log('consumption pattern', expectedLength, consumptionPattern)
+
   t.is(expectedLength, state[topic2].length, `topic 2 should be less than or equal to ${expectedLength} in length`)
   const expectedStateTopic2 = expectingTopic1.slice(0, state[topic2].length)
   t.deepEqual(expectedStateTopic2, state[topic2], 'topic2 should the first ordered subset of topic 1')
 
-  // service gets restarted
-  consumers.forEach((consumer) => consumer.close())
+  // // service gets restarted
+  for (const consu of consumers) {
+    await consu.disconnect();
+  }
+
   const consumer2 = new Kafka(runtime.config, runtime)
+
   consumer2.on(topic2, pseudoDBTX(topic2))
-  await consumer2.consume()
+
+  const newC = await consumer2.consume();
+
   await waitForParity(topic2)
 
   async function waitForParity (topic) {
@@ -115,8 +124,8 @@ test('one topic failing does not cause others to fail', async (t) => {
       const now = (new Date()).toISOString()
       msgs.push(now)
       promises = promises.concat([
-        producer.send(topic1, now),
-        producer.send(topic2, now)
+        producer.send({topic: topic1, messages: [{value: now}]}),
+        producer.send({topic: topic2, messages: [{value: now}]}),
       ])
     }
     await Promise.all(promises)

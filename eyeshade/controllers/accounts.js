@@ -523,12 +523,12 @@ v1.adTransactions = {
 }
 
 module.exports.routes = [
-  braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').whitelist().config(v1.getEarningsTotals),
-  braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').whitelist().config(v1.getPaidTotals),
-  braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').whitelist().config(v1.getTopBalances),
-  braveHapi.routes.async().post().path('/v1/accounts/balances').whitelist().config(v1.getBalances(request => request.payload)),
-  braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').whitelist().config(v1.adTransactions),
-  braveHapi.routes.async().path('/v1/accounts/{account}/transactions').whitelist().config(v1.getTransactions)
+  braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').config(v1.getEarningsTotals),
+  braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').config(v1.getPaidTotals),
+  braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').config(v1.getTopBalances),
+  braveHapi.routes.async().post().path('/v1/accounts/balances').config(v1.getBalances(request => request.payload)),
+  braveHapi.routes.async().put().path('/v1/accounts/{payment_id}/transactions/ads/{token_id}').config(v1.adTransactions),
+  braveHapi.routes.async().path('/v1/accounts/{account}/transactions').config(v1.getTransactions)
 ]
 
 module.exports.v1 = v1
