@@ -79,7 +79,7 @@
     "http-request-signature": "0.0.3",
     "joi": "^17.3.0",
     "kafkajs": "^2.0.2",
-    "moment": "^2.29.2",
+    "moment": "^2.29.4",
     "mongodb": "^3.5.4",
     "monk": "^7.1.2",
     "netmask": "^2.0.1",
