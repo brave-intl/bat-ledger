@@ -190,6 +190,15 @@ const WreckDelete = async (server, opts) => {
   return payload
 }
 
+function forwardedIPShift () {
+  const shiftEnv = process.env.FORWARDED_IP_SHIFT
+  const shift = shiftEnv ? (+shiftEnv) : 1
+  if (underscore.isNaN(shift)) {
+    throw new Error(`${JSON.stringify(shiftEnv)} is not a valid number`)
+  }
+  return shift >= 0 ? shift : 1
+}
+
 exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
 
 // NOTE This function trusts the final IP address in X-Forwarded-For
