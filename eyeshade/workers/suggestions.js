@@ -45,7 +45,7 @@ module.exports = (runtime) => {
         `
 
         // This is due to a payout event which occurred early Apr 2022
-        const regex = new RegExp('.*08277a30-78fd-48a7-a41a-a64b094a2f40.*', 'g');
+        const regex = new RegExp('.*08277a30-78fd-48a7-a41a-a64b094a2f40.*', 'g')
         const tally = regex.test(surveyorId) ? '1' : new BigNumber(source.amount).dividedBy(voteValue).toString()
 
         await runtime.postgres.query(voteUpdate, [

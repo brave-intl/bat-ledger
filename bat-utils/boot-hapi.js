@@ -7,5 +7,5 @@ const controllers = {
 
 module.exports = {
   server: hapiServer,
-  controllers,
+  controllers
 }

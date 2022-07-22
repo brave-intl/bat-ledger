@@ -1,23 +1,21 @@
-const { Kafka, logLevel } = require('kafkajs');
-const SDebug = require('sdebug');
-const debug = new SDebug('kafka');
+const { Kafka } = require('kafkajs')
 
 class RuntimeKafka {
   constructor (config, runtime) {
-    const { kafka } = config;
+    const { kafka } = config
     if (!kafka) {
-      return;
+      return
     }
-    
-    this.runtime = runtime;
-    this.config = kafka;
-    this.topicHandlers = {};
-    this.topicConsumers = {};
-    this.kafka = new Kafka({ ...kafka });
+
+    this.runtime = runtime
+    this.config = kafka
+    this.topicHandlers = {}
+    this.topicConsumers = {}
+    this.kafka = new Kafka({ ...kafka })
   }
 
   async connect () {
-    const producer = this.kafka.producer();    
+    const producer = this.kafka.producer()
     this._producer = producer
 
     try {
@@ -123,10 +121,11 @@ class RuntimeKafka {
 
   async send (topicName, message, _partition = null, _key = null) {
     const producer = await this.producer()
-    return producer.send({topic: topicName, 
-                          messages: [{key: _key, value: message, partition: _partition}],
-                          acks: this.config['acks']
-                        });
+    return producer.send({
+      topic: topicName,
+      messages: [{ key: _key, value: message, partition: _partition }],
+      acks: this.config.acks
+    })
   }
 
   on (topic, handler) {
@@ -136,21 +135,21 @@ class RuntimeKafka {
   consume () {
     return Promise.all(Object.keys(this.topicHandlers).map(async (topic) => {
       const handler = this.topicHandlers[topic]
-      const consumer = this.kafka.consumer({ groupId: `${this.config.clientId}-${topic}` });
-      await consumer.connect();
-      await consumer.subscribe({ topics: [topic] });
+      const consumer = this.kafka.consumer({ groupId: `${this.config.clientId}-${topic}` })
+      await consumer.connect()
+      await consumer.subscribe({ topics: [topic] })
       this.addTopicConsumer(topic, consumer)
-      
+
       await consumer.run({
-        eachMessage: (async ({ topic, partition, message }) => {
-          const { runtime } = this;
+        eachMessage: async ({ topic, partition, message }) => {
+          const { runtime } = this
           await runtime.postgres.transact(async (client) => {
-            await handler([message], client);
+            await handler([message], client)
           })
-        })
-      });
-      
-      return consumer;
+        }
+      })
+
+      return consumer
     }))
   }
 }

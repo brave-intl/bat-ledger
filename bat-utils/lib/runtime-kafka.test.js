@@ -37,7 +37,7 @@ test('can create kafka consumer', async (t) => {
 })
 
 test('one topic failing does not cause others to fail', async (t) => {
-  const producer = await new Kafka(runtime.config, runtime).producer();
+  const producer = await new Kafka(runtime.config, runtime).producer()
 
   const topic1 = 'test-topic-1-' + uuidV4()
   const topic2 = 'test-topic-2-' + uuidV4()
@@ -69,7 +69,7 @@ test('one topic failing does not cause others to fail', async (t) => {
   for (let i = 0; i < 10; i += 1) {
     messages.push(sendMsgs())
   }
-  
+
   const expectingTopic1 = [].concat.apply([], await Promise.all(messages))
   await waitForParity(topic1)
 
@@ -87,14 +87,14 @@ test('one topic failing does not cause others to fail', async (t) => {
 
   // // service gets restarted
   for (const consu of consumers) {
-    await consu.disconnect();
+    await consu.disconnect()
   }
 
   const consumer2 = new Kafka(runtime.config, runtime)
 
   consumer2.on(topic2, pseudoDBTX(topic2))
 
-  const newC = await consumer2.consume();
+  await consumer2.consume()
 
   await waitForParity(topic2)
 
@@ -124,8 +124,8 @@ test('one topic failing does not cause others to fail', async (t) => {
       const now = (new Date()).toISOString()
       msgs.push(now)
       promises = promises.concat([
-        producer.send({topic: topic1, messages: [{value: now}]}),
-        producer.send({topic: topic2, messages: [{value: now}]}),
+        producer.send({ topic: topic1, messages: [{ value: now }] }),
+        producer.send({ topic: topic2, messages: [{ value: now }] })
       ])
     }
     await Promise.all(promises)

@@ -55,14 +55,14 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     .send({
       pending: true,
       account: channel
-    }).expect(ok));
-  
+    }).expect(ok))
+
   t.is(body.length, 0)
 
-  await producer.send({topic: process.env.ENV + '.grant.suggestion', messages: [{value: suggestions.typeV1.toBuffer(example)}]})
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(example) }] })
 
   while (!body.length) {
-    await timeout(5000); 
+    await timeout(5000);
     ({
       body
     } = await agents.eyeshade.publishers.post(balanceURL)
@@ -95,7 +95,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       }
     ]
   };
-  
+
   ({ body } = await agents.eyeshade.publishers.post(balanceURL)
     .send({
       pending: true,
@@ -103,7 +103,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     }).expect(ok))
   t.is(body.length, 1)
 
-  await producer.send({topic: process.env.ENV + '.grant.suggestion', messages: [{value: suggestions.typeV1.toBuffer(exampleWithOrderId)}]})
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(exampleWithOrderId) }] })
 
   body = [{}]
   while (+body[0].balance !== 20) {
@@ -145,8 +145,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     }).expect(ok))
   t.is(body.length, 1)
 
-  await producer.send({topic: process.env.ENV + '.grant.suggestion', messages: [{value: suggestions.typeV1.toBuffer(exampleWithoutOrderId)}]})
-
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(exampleWithoutOrderId) }] })
 
   body = [{}]
   while (+body[0].balance !== 30) {
@@ -181,8 +180,8 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       }
     ]
   }
-  
-  await producer.send({topic: process.env.ENV + '.grant.suggestion', messages: [{value: suggestions.typeV1.toBuffer(examplePayoutError)}]})
+
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(examplePayoutError) }] })
 
   while (+body[0].balance < 30.25) {
     await timeout(2000)
