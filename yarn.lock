@@ -820,12 +820,12 @@
   "resolved" "https://registry.npmjs.org/acorn-jsx/-/acorn-jsx-5.3.2.tgz"
   "version" "5.3.2"
 
-"acorn-walk@^8.0.0":
+"acorn-walk@^8.0.0", "acorn-walk@^8.2.0":
   "integrity" "sha512-k+iyHEuPgSw6SbuDpGQM+06HQUa04DZ3o+F6CSzXMvvI5KMvnaEqXe+YVe555R9nn6GPt404fos4wcgpw12SDA=="
   "resolved" "https://registry.npmjs.org/acorn-walk/-/acorn-walk-8.2.0.tgz"
   "version" "8.2.0"
 
-"acorn@^6.0.0 || ^7.0.0 || ^8.0.0", "acorn@^8.0.4":
+"acorn@^6.0.0 || ^7.0.0 || ^8.0.0", "acorn@^8.0.4", "acorn@^8.7.0":
   "integrity" "sha512-Xx54uLJQZ19lKygFXOWsscKUbsBZW0CPykPhVQdhIeIwrbPmJzqeASDInc8nKBnp/JT6igTs82qPXz069H8I/A=="
   "resolved" "https://registry.npmjs.org/acorn/-/acorn-8.7.1.tgz"
   "version" "8.7.1"
@@ -1884,14 +1884,15 @@
     "has-property-descriptors" "^1.0.0"
     "object-keys" "^1.1.1"
 
-"degenerator@^2.2.0":
-  "integrity" "sha512-aiQcQowF01RxFI4ZLFMpzyotbQonhNpBao6dkI8JPk5a+hmSjR5ErHp2CQySmQe8os3VBqLCIh87nDBgZXvsmg=="
-  "resolved" "https://registry.npmjs.org/degenerator/-/degenerator-2.2.0.tgz"
-  "version" "2.2.0"
+"degenerator@^3.0.2":
+  "integrity" "sha512-c0mef3SNQo56t6urUU6tdQAs+ThoD0o9B9MJ8HEt7NQcGEILCRFqQb7ZbP9JAv+QF1Ky5plydhMR/IrqWDm+TQ=="
+  "resolved" "https://registry.npmjs.org/degenerator/-/degenerator-3.0.2.tgz"
+  "version" "3.0.2"
   dependencies:
     "ast-types" "^0.13.2"
     "escodegen" "^1.8.1"
     "esprima" "^4.0.0"
+    "vm2" "^3.9.8"
 
 "deglob@^4.0.1":
   "integrity" "sha512-/g+RDZ7yf2HvoW+E5Cy+K94YhgcFgr6C8LuHZD1O5HoNPkf3KY6RfXJ0DBGlB/NkLi5gml+G9zqRzk9S0mHZCg=="
@@ -3064,6 +3065,11 @@
   "resolved" "https://registry.npmjs.org/ip/-/ip-1.1.8.tgz"
   "version" "1.1.8"
 
+"ip@^2.0.0":
+  "integrity" "sha512-WKa+XuLG1A1R0UWhl2+1XQSi+fZWMsYKffMZTTYsiZaUD8k2yDAj5atimTUD2TZkyCkNEeYE5NhFZmupOGtjYQ=="
+  "resolved" "https://registry.npmjs.org/ip/-/ip-2.0.0.tgz"
+  "version" "2.0.0"
+
 "irregular-plurals@^3.2.0":
   "integrity" "sha512-MVBLKUTangM3EfRPFROhmWQQKRDsrgI83J8GS3jXy+OwYqiR2/aoWndYQ5416jLE3uaGgLH7ncme3X9y09gZ3g=="
   "resolved" "https://registry.npmjs.org/irregular-plurals/-/irregular-plurals-3.3.0.tgz"
@@ -3890,7 +3896,7 @@
   "resolved" "https://registry.npmjs.org/ncp/-/ncp-2.0.0.tgz"
   "version" "2.0.0"
 
-"netmask@^2.0.1":
+"netmask@^2.0.1", "netmask@^2.0.2":
   "integrity" "sha512-dBpDMdxv9Irdq66304OLfEmQ9tbNRFnFTuZiLo+bD+r332bBmMJ8GBLXklIXXgxd3+v9+KUnZaUR5PJMa75Gsg=="
   "resolved" "https://registry.npmjs.org/netmask/-/netmask-2.0.2.tgz"
   "version" "2.0.2"
@@ -4226,10 +4232,10 @@
   "resolved" "https://registry.npmjs.org/p-try/-/p-try-2.2.0.tgz"
   "version" "2.2.0"
 
-"pac-proxy-agent@^4.1.0":
-  "integrity" "sha512-ejNgYm2HTXSIYX9eFlkvqFp8hyJ374uDf0Zq5YUAifiSh1D6fo+iBivQZirGvVv8dCYUsLhmLBRhlAYvBKI5+Q=="
-  "resolved" "https://registry.npmjs.org/pac-proxy-agent/-/pac-proxy-agent-4.1.0.tgz"
-  "version" "4.1.0"
+"pac-proxy-agent@^5.0.0":
+  "integrity" "sha512-CcFG3ZtnxO8McDigozwE3AqAw15zDvGH+OjXO4kzf7IkEKkQ4gxQ+3sdF50WmhQ4P/bVusXcqNE2S3XrNURwzQ=="
+  "resolved" "https://registry.npmjs.org/pac-proxy-agent/-/pac-proxy-agent-5.0.0.tgz"
+  "version" "5.0.0"
   dependencies:
     "@tootallnate/once" "1"
     "agent-base" "6"
@@ -4237,18 +4243,18 @@
     "get-uri" "3"
     "http-proxy-agent" "^4.0.1"
     "https-proxy-agent" "5"
-    "pac-resolver" "^4.1.0"
+    "pac-resolver" "^5.0.0"
     "raw-body" "^2.2.0"
     "socks-proxy-agent" "5"
 
-"pac-resolver@^4.1.0":
-  "integrity" "sha512-rPACZdUyuxT5Io/gFKUeeZFfE5T7ve7cAkE5TUZRRfuKP0u5Hocwe48X7ZEm6mYB+bTB0Qf+xlVlA/RM/i6RCQ=="
-  "resolved" "https://registry.npmjs.org/pac-resolver/-/pac-resolver-4.2.0.tgz"
-  "version" "4.2.0"
+"pac-resolver@^5.0.0":
+  "integrity" "sha512-cy7u00ko2KVgBAjuhevqpPeHIkCIqPe1v24cydhWjmeuzaBfmUWFCZJ1iAh5TuVzVZoUzXIW7K8sMYOZ84uZ9Q=="
+  "resolved" "https://registry.npmjs.org/pac-resolver/-/pac-resolver-5.0.1.tgz"
+  "version" "5.0.1"
   dependencies:
-    "degenerator" "^2.2.0"
+    "degenerator" "^3.0.2"
     "ip" "^1.1.5"
-    "netmask" "^2.0.1"
+    "netmask" "^2.0.2"
 
 "package-hash@^4.0.0":
   "integrity" "sha512-whdkPIooSu/bASggZ96BWVvZTRMOFxnyUG5PnTSGKoJE2gd5mbVNmR2Nj20QFzxYYgAXpoqC+AiXzl+UMRh7zQ=="
@@ -4588,17 +4594,17 @@
     "@types/node" ">=13.7.0"
     "long" "^5.0.0"
 
-"proxy-agent@^4.0.1":
-  "integrity" "sha512-ODnQnW2jc/FUVwHHuaZEfN5otg/fMbvMxz9nMSUQfJ9JU7q2SZvSULSsjLloVgJOiv9yhc8GlNMKc4GkFmcVEA=="
-  "resolved" "https://registry.npmjs.org/proxy-agent/-/proxy-agent-4.0.1.tgz"
-  "version" "4.0.1"
+"proxy-agent@^5.0.0":
+  "integrity" "sha512-gkH7BkvLVkSfX9Dk27W6TyNOWWZWRilRfk1XxGNWOYJ2TuedAv1yFpCaU9QSBmBe716XOTNpYNOzhysyw8xn7g=="
+  "resolved" "https://registry.npmjs.org/proxy-agent/-/proxy-agent-5.0.0.tgz"
+  "version" "5.0.0"
   dependencies:
     "agent-base" "^6.0.0"
     "debug" "4"
     "http-proxy-agent" "^4.0.0"
     "https-proxy-agent" "^5.0.0"
     "lru-cache" "^5.1.1"
-    "pac-proxy-agent" "^4.1.0"
+    "pac-proxy-agent" "^5.0.0"
     "proxy-from-env" "^1.0.0"
     "socks-proxy-agent" "^5.0.0"
 
@@ -5258,11 +5264,11 @@
     "socks" "^2.3.3"
 
 "socks@^2.3.3":
-  "integrity" "sha512-zDZhHhZRY9PxRruRMR7kMhnf3I8hDs4S3f9RecfnGxvcBHQcKcIH/oUcEWffsfl1XxdYlA7nnlGbbTvPz9D8gA=="
-  "resolved" "https://registry.npmjs.org/socks/-/socks-2.6.2.tgz"
-  "version" "2.6.2"
+  "integrity" "sha512-scnOe9y4VuiNUULJN72GrM26BNOjVsfPXI+j+98PkyEfsIXroa5ofyjT+FzGvn/xHs73U2JtoBYAVx9Hl4quSA=="
+  "resolved" "https://registry.npmjs.org/socks/-/socks-2.7.0.tgz"
+  "version" "2.7.0"
   dependencies:
-    "ip" "^1.1.5"
+    "ip" "^2.0.0"
     "smart-buffer" "^4.2.0"
 
 "source-map-support@^0.5.19":
@@ -5411,7 +5417,7 @@
     "safe-buffer" "~5.2.0"
 
 "string_decoder@~0.10.x":
-  "integrity" "sha1-YuIDvEF2bGwoyfyEMB2rHFMQ+pQ="
+  "integrity" "sha512-ev2QzSzWPYmy9GuqfIVildA4OdcGLeFZQrq5ys6RtiuF+RQQiZWr8TZNyAcuVXyQRYfEO+MsoB/1BuQVhOJuoQ=="
   "resolved" "https://registry.npmjs.org/string_decoder/-/string_decoder-0.10.31.tgz"
   "version" "0.10.31"
 
@@ -5847,7 +5853,7 @@
   "version" "0.1.2"
 
 "unpipe@1.0.0":
-  "integrity" "sha1-sr9O6FFKrmFltIF4KdIbLvSZBOw="
+  "integrity" "sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ=="
   "resolved" "https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz"
   "version" "1.0.0"
 
@@ -5941,6 +5947,14 @@
     "assert-plus" "^1.0.0"
     "core-util-is" "1.0.2"
     "extsprintf" "^1.2.0"
+
+"vm2@^3.9.8":
+  "integrity" "sha512-AuECTSvwu2OHLAZYhG716YzwodKCIJxB6u1zG7PgSQwIgAlEaoXH52bxdcvT8GkGjnYK7r7yWDW0m0sOsPuBjQ=="
+  "resolved" "https://registry.npmjs.org/vm2/-/vm2-3.9.10.tgz"
+  "version" "3.9.10"
+  dependencies:
+    "acorn" "^8.7.0"
+    "acorn-walk" "^8.2.0"
 
 "wcwidth@^1.0.1":
   "integrity" "sha1-8LDc+RW8X/FSivrbLA4XtTLaL+g="
@@ -6065,7 +6079,7 @@
   "version" "4.0.0"
 
 "xregexp@2.0.0":
-  "integrity" "sha1-UqY+VsoLhKfzpfPWGHLxJq16WUM="
+  "integrity" "sha512-xl/50/Cf32VsGq/1R8jJE5ajH1yMCQkpmoS10QbFZWl2Oor4H0Me64Pu2yxvsRWK3m6soJbmGfzSR7BYmDcWAA=="
   "resolved" "https://registry.npmjs.org/xregexp/-/xregexp-2.0.0.tgz"
   "version" "2.0.0"
 

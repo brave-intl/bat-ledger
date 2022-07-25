@@ -88,7 +88,7 @@
     "pg": "^8.7.3",
     "pg-format": "^1.0.4",
     "prom-client": "11.5.3",
-    "proxy-agent": "^4.0.1",
+    "proxy-agent": "^5.0.0",
     "queue-microtask": "github:brave-intl/queue-microtask#master",
     "rate-limiter-flexible": "^1.3.2",
     "redis": "^3.1.2",
@@ -103,10 +103,10 @@
   },
   "devDependencies": {
     "coveralls": "^3.0.6",
+    "nodemon": "^2.0.18",
     "parse-prometheus-text-format": "^1.1.1",
     "standard": "~14.0.1",
-    "supertest": "^6.2.3",
-    "nodemon": "^2.0.18"
+    "supertest": "^6.2.3"
   },
   "standard": {
     "ignore": [
