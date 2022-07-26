@@ -27,7 +27,7 @@ const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 const example = {
   id: 'e2874d25-14a9-4859-9729-78459af02a6f',
   type: 'a_vote',
-  channel: channel,
+  channel,
   createdAt: (new Date()).toISOString(),
   baseVoteValue: '0.25',
   voteTally: 10,

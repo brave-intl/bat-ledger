@@ -49,7 +49,7 @@ const referralSettlement = {
   type: 'referral',
   publisher: 'foo.com',
   owner: ownerId,
-  settlementId: settlementId,
+  settlementId,
   address: uuidV4().toLowerCase(),
   amount: '10',
   currency: 'BAT'
@@ -97,7 +97,7 @@ const manualTransactionSettlement = (ownerId) => ({
   _id: docId,
   type: 'manual',
   owner: ownerId,
-  settlementId: settlementId,
+  settlementId,
   address: uuidV4().toLowerCase(),
   amount: '10',
   currency: 'BAT'

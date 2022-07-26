@@ -36,7 +36,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const example = {
     id: uuidV4(),
     type: 'oneoff-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '10',
     funding: [
@@ -82,7 +82,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const exampleWithOrderId = {
     id: uuidV4(),
     type: 'oneoff-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '10',
     orderId: uuidV4(),
@@ -126,7 +126,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const exampleWithoutOrderId = {
     id: uuidV4(),
     type: 'oneoff-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '10',
     funding: [
@@ -168,7 +168,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const examplePayoutError = {
     id: uuidV4(),
     type: 'errored-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '1000',
     funding: [
