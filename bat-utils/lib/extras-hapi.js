@@ -150,13 +150,13 @@ const WreckProxy = (server, opts) => {
     if (typeof opts.headers[header] !== 'string') delete opts.headers[header]
   })
 
-  if (typeof opts.useProxyP === 'undefined') return { server: server, opts: opts }
+  if (typeof opts.useProxyP === 'undefined') return { server, opts }
 
   const useProxyP = opts.useProxyP
   opts = underscore.omit(opts, ['useProxyP'])
-  if ((!useProxyP) || (!process.env.FIXIE_URL)) return { server: server, opts: opts }
+  if ((!useProxyP) || (!process.env.FIXIE_URL)) return { server, opts }
 
-  return { server: server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }
+  return { server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }
 }
 exports.WreckProxy = WreckProxy
 
@@ -188,6 +188,15 @@ const WreckDelete = async (server, opts) => {
   const params = WreckProxy(server, opts)
   const { res, payload } = await wreck.delete(params.server, params.opts) // eslint-disable-line no-unused-vars
   return payload
+}
+
+function forwardedIPShift () {
+  const shiftEnv = process.env.FORWARDED_IP_SHIFT
+  const shift = shiftEnv ? (+shiftEnv) : 1
+  if (underscore.isNaN(shift)) {
+    throw new Error(`${JSON.stringify(shiftEnv)} is not a valid number`)
+  }
+  return shift >= 0 ? shift : 1
 }
 
 exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }

@@ -212,7 +212,7 @@ function setupCreatePayload ({
       digest: 'SHA-256=' + crypto.createHash('sha256').update(octets).digest('base64')
     }
     headers.signature = sign({
-      headers: headers,
+      headers,
       keyId: 'primary',
       secretKey: uint8tohex(keypair.secretKey)
     }, {
@@ -221,11 +221,11 @@ function setupCreatePayload ({
     return {
       requestType: 'httpSignature',
       signedTx: {
-        headers: headers,
-        octets: octets
+        headers,
+        octets
       },
-      surveyorId: surveyorId,
-      viewingId: viewingId
+      surveyorId,
+      viewingId
     }
   }
 }
@@ -345,7 +345,7 @@ function signTxn (keypair, body, _octets) {
   }
 
   headers.signature = sign({
-    headers: headers,
+    headers,
     keyId: 'primary',
     secretKey: uint8tohex(keypair.secretKey)
   }, {

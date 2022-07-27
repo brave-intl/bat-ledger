@@ -82,7 +82,7 @@ async function Server (options, runtime) {
 
   goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
 
-  underscore.defaults(options, { id: server.info.id, module: module, headersP: true, remoteP: true })
+  underscore.defaults(options, { id: server.info.id, module, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
   debug.initialize({ web: { id: options.id } })
@@ -100,8 +100,8 @@ async function Server (options, runtime) {
   const plugins = [].concat(
     prometheus
       ? [
-        prometheus.plugin()
-      ]
+          prometheus.plugin()
+        ]
       : [],
     [
       authBearerToken,
@@ -109,11 +109,11 @@ async function Server (options, runtime) {
       rateLimiter(runtime)
     ], process.env.NODE_ENV === 'production'
       ? [
-        {
-          plugin: hapiRequireHTTPS,
-          options: { proxy: true }
-        }
-      ]
+          {
+            plugin: hapiRequireHTTPS,
+            options: { proxy: true }
+          }
+        ]
       : []
   )
   await server.register(plugins)
@@ -164,10 +164,10 @@ async function Server (options, runtime) {
           method: request.method.toUpperCase(),
           pathname: request.url.pathname
         },
-        query: query,
+        query,
         params: request.url.params,
-        headers: headers,
-        remote: remote
+        headers,
+        remote
       }
     })
 
@@ -201,9 +201,9 @@ async function Server (options, runtime) {
   })
 
   server.events.on('log', (event, tags) => {
-    debug(event.data, { tags: tags })
+    debug(event.data, { tags })
   }).on('request', (request, event, tags) => {
-    debug(event.data, { tags: tags }, { sdebug: { request: { id: event.request, internal: event.internal } } })
+    debug(event.data, { tags }, { sdebug: { request: { id: event.request, internal: event.internal } } })
   }).on({ name: 'request', channels: 'internal' }, (request, event, tags) => {
     if ((!tags) || (!tags.received)) return
 
@@ -295,7 +295,7 @@ async function Server (options, runtime) {
   dns.setServers(resolvers)
   debug('webserver started',
     underscore.extend(
-      { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
+      { server: runtime.config.server.href, version: server.version, resolvers },
       server.info,
       {
         env: underscore.pick(process.env, ['DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES']),

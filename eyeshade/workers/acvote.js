@@ -15,7 +15,7 @@ module.exports = (runtime) => {
         vote = voteType.fromBuffer(buf)
       } catch (e) {
         // If the event is not well formed, capture the error and continue
-        runtime.captureException(e, { extra: { topic: voteTopic, message: message } })
+        runtime.captureException(e, { extra: { topic: voteTopic, message } })
         continue
       }
       await insertVote(runtime, date, vote, client)

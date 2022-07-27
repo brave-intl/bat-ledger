@@ -25,8 +25,8 @@ const options = {
   port: process.env.PORT,
   parentModules,
   routes: controllers.index,
-  controllers: controllers,
-  module: module,
+  controllers,
+  module,
   headersP: false,
   remoteP: true
 }

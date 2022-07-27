@@ -42,7 +42,7 @@ Runtime.prototype = {
   setup: function (config) {
     const debug = new SDebug('boot')
     _.assign(this, {
-      config: config,
+      config,
       login: config.login,
       notify: (dbg, payload) => {
         const debougie = dbg || debug

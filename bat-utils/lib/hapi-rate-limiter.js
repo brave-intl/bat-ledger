@@ -1,13 +1,10 @@
 const boom = require('@hapi/boom')
-const Netmask = require('netmask').Netmask
 const {
   RateLimiterRedis
 } = require('rate-limiter-flexible')
-const _ = require('underscore')
-const underscore = _
 
 const pluginName = 'rateLimitRedisPlugin'
-const braveHapi = require('./extras-hapi');
+const braveHapi = require('./extras-hapi')
 
 module.exports = (runtime) => {
   const redisClient = (runtime.cache && runtime.cache.cache)
