@@ -54,7 +54,6 @@ jobs:
 
       - run: npm i --global npm@8.11.0
       - run: npm --version
-      - run: npm list
 
       - name: Docker Compose Install
         uses: KengoTODA/actions-setup-docker-compose@92cbaf8ac8c113c35e1cedd1182f217043fbdd00
@@ -81,6 +80,7 @@ jobs:
         run: npm run docker-build
 
       # Runs a single command using the runners shell
+      - run: npm list
       - name: Run security checks (audit + lint)
         run: npm run security
 
