@@ -51,9 +51,10 @@ jobs:
           node-version: 16.15.1
           # Set this option if you want the action to check for the latest available version that satisfies the version spec
           check-latest: true
-      - run: npm list
+
       - run: npm i --global npm@8.11.0
       - run: npm --version
+      - run: npm list
 
       - name: Docker Compose Install
         uses: KengoTODA/actions-setup-docker-compose@92cbaf8ac8c113c35e1cedd1182f217043fbdd00
