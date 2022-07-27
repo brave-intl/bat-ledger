@@ -267,8 +267,8 @@ v1.getBalances = (getInputs) => ({
     const votesPromise = checkVotes
       ? runtime.postgres.query(selectPendingAccountVotes, args, true)
       : {
-          rows: []
-        }
+        rows: []
+      }
     const balancePromise = runtime.postgres.query(selectAccountBalances, args, true)
     const promises = [votesPromise, balancePromise]
     const results = await Promise.all(promises)

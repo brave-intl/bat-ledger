@@ -80,7 +80,6 @@ jobs:
         run: npm run docker-build
 
       # Runs a single command using the runners shell
-      - run: npm list
       - name: Run security checks (audit + lint)
         run: npm run security
 
