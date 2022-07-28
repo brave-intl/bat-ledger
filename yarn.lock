@@ -999,7 +999,7 @@
   "resolved" "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz"
   "version" "0.4.0"
 
-"ava@^4.0.0-alpha.2":
+"ava@^4.3.1":
   "integrity" "sha512-zdSp9QxRTmN5hJeGmg+ZjUKL5yHFLMcP/0KBla8GH25XD8Xm7Uc34CDFlwqGL6JXtjNbVkJ0Zw+DqcTf4ggCCA=="
   "resolved" "https://registry.npmjs.org/ava/-/ava-4.3.1.tgz"
   "version" "4.3.1"
@@ -5006,7 +5006,7 @@
   dependencies:
     "standard-error" ">= 1.1.0 < 2"
 
-"standard@14.0.1":
+"standard@~14.0.1":
   "integrity" "sha512-5wcQv1FEk0AB5qw09qj4IoHxy62pTkI3JICczReXsqhU3s3oBz01O053K+Tz8z9Tp15+KoevsdRV06T9D08ijw=="
   "resolved" "https://registry.npmjs.org/standard/-/standard-14.0.1.tgz"
   "version" "14.0.1"

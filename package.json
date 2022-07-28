@@ -103,16 +103,16 @@
     "npm": "8.11.0"
   },
   "devDependencies": {
-    "ava": "^4.0.0-alpha.2",
+    "ava": "^4.3.1",
     "coveralls": "^3.0.6",
     "nodemon": "^2.0.18",
     "parse-prometheus-text-format": "^1.1.1",
-    "standard": "14.0.1",
+    "standard": "~14.0.1",
     "supertest": "^6.2.3"
   },
   "standard": {
     "ignore": [
-      "config.js",
+      // "config.js",
       "bat-utils/config/config.*"
     ]
   },
