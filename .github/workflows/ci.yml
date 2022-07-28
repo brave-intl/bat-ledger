@@ -97,10 +97,7 @@ jobs:
         run: |
           sleep 20
           docker ps
-      - name: check Versions
-        run: |
-          node -v
-          standard --version
+
       - name: Test
         run: npm run docker-test
       - name: Check Migrating Down
