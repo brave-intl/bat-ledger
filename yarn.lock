@@ -1985,10 +1985,10 @@
   "resolved" "https://registry.npmjs.org/eslint-config-standard-jsx/-/eslint-config-standard-jsx-8.0.1.tgz"
   "version" "8.0.1"
 
-"eslint-config-standard@14.0.0":
-  "integrity" "sha512-bV6e2LFvJEetrLjVAy4KWPOUsIhPWr040c649MigTPR6yUtaGuOt6CEAyNeez2lRiC+2+vjGWa02byjs25EB3A=="
-  "resolved" "https://registry.npmjs.org/eslint-config-standard/-/eslint-config-standard-14.0.0.tgz"
-  "version" "14.0.0"
+"eslint-config-standard@14.0.1":
+  "integrity" "sha512-1RWsAKTDTZgA8bIM6PSC9aTGDAUlKqNkYNJlTZ5xYD/HYkIM6GlcefFvgcJ8xi0SWG5203rttKYX28zW+rKNOg=="
+  "resolved" "https://registry.npmjs.org/eslint-config-standard/-/eslint-config-standard-14.0.1.tgz"
+  "version" "14.0.1"
 
 "eslint-import-resolver-node@^0.3.2":
   "integrity" "sha512-0En0w03NRVMn9Uiyn8YRPDKvWjxCWkslUEhGNTdGx15RvPJYQ+lbOlqrlNI2vEAs4pDYK4f/HN2TbDmk5TP0iw=="
@@ -5007,12 +5007,12 @@
     "standard-error" ">= 1.1.0 < 2"
 
 "standard@~14.0.1":
-  "integrity" "sha512-5wcQv1FEk0AB5qw09qj4IoHxy62pTkI3JICczReXsqhU3s3oBz01O053K+Tz8z9Tp15+KoevsdRV06T9D08ijw=="
-  "resolved" "https://registry.npmjs.org/standard/-/standard-14.0.1.tgz"
-  "version" "14.0.1"
+  "integrity" "sha512-2Rjsc+B1zaXiQVfUlH7n+ZIrCpxxAaVEItps2lBQUQLuyCH/Vc788w6q16PMK4ezPA61jm8A1vzBnBwcokGOgQ=="
+  "resolved" "https://registry.npmjs.org/standard/-/standard-14.0.2.tgz"
+  "version" "14.0.2"
   dependencies:
     "eslint" "~6.1.0"
-    "eslint-config-standard" "14.0.0"
+    "eslint-config-standard" "14.0.1"
     "eslint-config-standard-jsx" "8.0.1"
     "eslint-plugin-import" "~2.18.0"
     "eslint-plugin-node" "~9.1.0"

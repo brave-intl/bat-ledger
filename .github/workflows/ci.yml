@@ -79,7 +79,7 @@ jobs:
       - name: Build Docker Containers
         run: npm run docker-build
 
-      # Runs a single command using the runners shell
+      # Runs the security checks within the docker container
       - name: Run security checks (audit + lint)
         run: docker-compose run eyeshade-web npm run security
 
