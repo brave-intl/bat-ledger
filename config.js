@@ -1,4 +1,5 @@
 /* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
+const fs = require('fs');
 
 const services = {
   eyeshade: {

@@ -999,7 +999,7 @@
   "resolved" "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz"
   "version" "0.4.0"
 
-"ava@^4.0.0-alpha.2":
+"ava@^4.3.1":
   "integrity" "sha512-zdSp9QxRTmN5hJeGmg+ZjUKL5yHFLMcP/0KBla8GH25XD8Xm7Uc34CDFlwqGL6JXtjNbVkJ0Zw+DqcTf4ggCCA=="
   "resolved" "https://registry.npmjs.org/ava/-/ava-4.3.1.tgz"
   "version" "4.3.1"
