@@ -81,7 +81,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run security checks (audit + lint)
-        run: npm run security
+        run: docker-compose run eyeshade-web npm run security
 
       # Runs a set of commands using the runners shell
       - name: Stand up Postgres

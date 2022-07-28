@@ -112,7 +112,7 @@
   },
   "standard": {
     "ignore": [
-      // "config.js",
+      "config.js",
       "bat-utils/config/config.*"
     ]
   },
