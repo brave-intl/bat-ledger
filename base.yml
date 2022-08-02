@@ -30,6 +30,10 @@ services:
       - IP_GRAYLIST
       - "KAFKA_BROKERS=kafka1:19092"
       - "KAFKA_REQUIRED_ACKS=1"
+      - "KAFKA_SSL_CA_LOCATION=/etc/kafka/secrets/snakeoil-ca-1.crt"
+      - "KAFKA_SSL_CERTIFICATE_LOCATION=/etc/kafka/secrets/consumer-ca1-signed.pem"
+      - "KAFKA_SSL_KEY_LOCATION=/etc/kafka/secrets/consumer.client.key"
+      - "KAFKA_SSL_KEY_PASSWORD=confluent"
       - "NODE_ENV=${NODE_ENV-development}"
       - PORT
       - "RATIOS_TOKEN=${BAT_RATIOS_TOKEN}"

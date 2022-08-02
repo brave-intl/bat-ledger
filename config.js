@@ -92,9 +92,10 @@ if (process.env.KAFKA_BROKERS) {
     'brokers': [process.env.KAFKA_BROKERS],
     'clientId': process.env.ENV + '.' + process.env.SERVICE,
     'acks': +process.env.KAFKA_REQUIRED_ACKS,
+    'rejectUnauthorized': false,
   };
 
-  if (!isDev) {
+  // if (!isDev) {
     kafkaOptions['ssl'] = {
       key: fs.readFileSync(process.env.KAFKA_SSL_KEY_LOCATION, 'utf-8'),
       cert: fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8')
@@ -103,7 +104,7 @@ if (process.env.KAFKA_BROKERS) {
     if (process.env.KAFKA_SSL_CA_LOCATION) {
       kafkaOptions['ssl']['ca'] =  [fs.readFileSync(process.env.KAFKA_SSL_CA_LOCATION, 'utf-8')]
     }
-  }
+  // }
 
   module.exports.kafka = { ...kafkaOptions };
 }
