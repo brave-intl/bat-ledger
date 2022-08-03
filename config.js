@@ -95,16 +95,18 @@ if (process.env.KAFKA_BROKERS) {
     'rejectUnauthorized': false,
   };
 
-  // if (!isDev) {
-    kafkaOptions['ssl'] = {
-      key: fs.readFileSync(process.env.KAFKA_SSL_KEY_LOCATION, 'utf-8'),
-      cert: fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8')
-    }
+  kafkaOptions['ssl'] = {
+    key: fs.readFileSync(process.env.KAFKA_SSL_KEY_LOCATION, 'utf-8'),
+    cert: fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8')
+  }
 
-    if (process.env.KAFKA_SSL_CA_LOCATION) {
-      kafkaOptions['ssl']['ca'] =  [fs.readFileSync(process.env.KAFKA_SSL_CA_LOCATION, 'utf-8')]
-    }
-  // }
+  if (process.env.KAFKA_SSL_CA_LOCATION) {
+    kafkaOptions['ssl']['ca'] = [fs.readFileSync(process.env.KAFKA_SSL_CA_LOCATION, 'utf-8')]
+  }
+
+  if (process.env.KAFKA_SSL_KEY_PASSWORD) {
+    kafkaOptions['ssl']['passphrase'] = process.env.KAFKA_SSL_KEY_PASSWORD
+  }
 
   module.exports.kafka = { ...kafkaOptions };
 }
