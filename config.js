@@ -86,13 +86,10 @@ if (process.env.BAT_ADS_PAYOUT_ADDRESS) {
 }
 
 if (process.env.KAFKA_BROKERS) {
-  const isDev = process.env.ENV === "local";
-
   let kafkaOptions = {
     'brokers': [process.env.KAFKA_BROKERS],
     'clientId': process.env.ENV + '.' + process.env.SERVICE,
     'acks': +process.env.KAFKA_REQUIRED_ACKS,
-    'rejectUnauthorized': false,
   };
 
   kafkaOptions['ssl'] = {
