@@ -6,10 +6,12 @@ const {
   timeout
 } = require('bat-utils/lib/extras-utils')
 const { Runtime } = require('bat-utils')
-const { kafka } = require('../../config')
+const config = require('../../config')
 const transaction = require('../lib/transaction')
 const referrals = require('../lib/referrals')
 const utils = require('../../test/utils')
+const { consumer: referralsConsumer } = require('./referrals')
+
 
 const {
   ok,
@@ -24,21 +26,10 @@ const {
 
 test.before(async (t) => {
   Object.assign(t.context, {
-    runtime: new Runtime({
-      prometheus: {
-        label: 'eyeshade.worker.1'
-      },
-      cache: {
-        redis: {
-          url: BAT_REDIS_URL
-        }
-      },
-      postgres: {
-        url: BAT_POSTGRES_URL
-      },
-      kafka
-    })
+    runtime: new Runtime(config)
   })
+  referralsConsumer(t.context.runtime)
+  await t.context.runtime.kafka.consume().catch(console.error)
 })
 test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
 
@@ -147,7 +138,6 @@ test('messages are deduplicated', async t => {
   const endingReferral = utils.referral.create()
   messages.push([endingReferral])
 
-  await t.context.runtime.kafka.producer()
   for (let i = 0; i < messages.length; i += 1) {
     // send in blocks
     await Promise.all(messages[i].map((msg) => (

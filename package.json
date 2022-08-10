@@ -23,7 +23,7 @@
     "security": "npx standard --version && npm run lint && npm run moderate-audit",
     "moderate-audit": "npm audit --audit-level=moderate; echo $?",
     "test-integration": "ava -v -s test/*/*.integration.test.js",
-    "test-suggestions": "ava -v -s test/eyeshade/suggestions.integration.test.js",
+    "test-settlements": "ava -v -s eyeshade/**/settlements.test.js",
     "test-unit": "ava -v -s bat-utils/**/*.test.js eyeshade/**/*.test.js",
     "docker-reset": "docker-compose down && docker rmi $(docker images -a -q) --force",
     "docker-build": "docker-compose build",

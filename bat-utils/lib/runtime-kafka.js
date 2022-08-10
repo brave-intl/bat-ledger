@@ -119,13 +119,14 @@ class RuntimeKafka {
     return results
   }
 
-  async send (topicName, message, _partition = null, _key = null) {
+  async send (topicName, message, _key = null) {
     const producer = await this.producer()
     return producer.send({
       topic: topicName,
-      messages: [{ key: _key, value: message, partition: _partition }],
+      messages: [{ key: _key, value: message }],
       acks: this.config.acks
     })
+    .catch(e => console.error(`[${topicName}/producer] ${e.message}`, e))
   }
 
   on (topic, handler) {
@@ -148,6 +149,7 @@ class RuntimeKafka {
           })
         }
       })
+      .catch(e => console.error(`[${topic}/consumer] ${e.message}`, e))
 
       return consumer
     }))
