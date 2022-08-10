@@ -8,7 +8,6 @@ const utils = require('../../test/utils')
 const { cleanEyeshadePgDb } = require('../../test/utils')
 const { consumer: settlementsConsumer } = require('./settlements')
 
-
 test.before(async (t) => {
   Object.assign(t.context, {
     runtime: new Runtime(config)
@@ -17,7 +16,6 @@ test.before(async (t) => {
   await t.context.runtime.kafka.consume().catch(console.error)
 })
 test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
-
 
 test('settlements should be insertable from the kafka queue', async (t) => {
   const msgs = 10

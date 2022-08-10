@@ -126,7 +126,7 @@ class RuntimeKafka {
       messages: [{ key: _key, value: message }],
       acks: this.config.acks
     })
-    .catch(e => console.error(`[${topicName}/producer] ${e.message}`, e))
+      .catch(e => console.error(`[${topicName}/producer] ${e.message}`, e))
   }
 
   on (topic, handler) {
@@ -149,7 +149,7 @@ class RuntimeKafka {
           })
         }
       })
-      .catch(e => console.error(`[${topic}/consumer] ${e.message}`, e))
+        .catch(e => console.error(`[${topic}/consumer] ${e.message}`, e))
 
       return consumer
     }))

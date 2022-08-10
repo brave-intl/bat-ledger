@@ -12,17 +12,12 @@ const referrals = require('../lib/referrals')
 const utils = require('../../test/utils')
 const { consumer: referralsConsumer } = require('./referrals')
 
-
 const {
   ok,
   cleanEyeshadePgDb,
   agents,
   readJSONFile
 } = utils
-const {
-  BAT_REDIS_URL,
-  BAT_POSTGRES_URL
-} = process.env
 
 test.before(async (t) => {
   Object.assign(t.context, {
