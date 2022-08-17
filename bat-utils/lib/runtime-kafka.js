@@ -28,6 +28,16 @@ class RuntimeKafka {
     }
   }
 
+  async admin () {
+    if (!this._admin) {
+      const admin = this.kafka.admin()
+      this._admin = admin
+      await admin.connect()
+    }
+
+    return this._admin
+  }
+
   async producer () {
     if (!this._producer) {
       await this.connect()

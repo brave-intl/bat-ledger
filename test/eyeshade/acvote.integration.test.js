@@ -1,6 +1,8 @@
 'use strict'
 
 const Kafka = require('bat-utils/lib/runtime-kafka')
+const { Runtime } = require('bat-utils')
+const config = require('../../config')
 const test = require('ava')
 const _ = require('underscore')
 const fs = require('fs')
@@ -137,15 +139,22 @@ function countMessage (memo, msg) {
 }
 
 async function sendVotes (producer, message) {
+  const admin = await producer.admin()
+
+  await admin.createTopics({
+    waitForLeaders: true,
+    topics: [
+      { topic: process.env.ENV + '.payment.vote', numPartitions: 1, replicationFactor: 1 }
+    ]
+  })
+
   await producer.send(process.env.ENV + '.payment.vote', voteType.toBuffer(message))
 }
 
 async function createProducer () {
   process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
-  const runtime = {
-    config: require('../../config')
-  }
-  const producer = new Kafka(runtime.config, runtime)
+  const runtime = new Runtime(config)
+  const producer = new Kafka(config, runtime)
   await producer.connect()
   return producer
 }
