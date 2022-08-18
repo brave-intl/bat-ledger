@@ -15,7 +15,10 @@ test.before(async (t) => {
   settlementsConsumer(t.context.runtime)
   await t.context.runtime.kafka.consume().catch(console.error)
 })
+
+// const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
+// test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
 test('settlements should be insertable from the kafka queue', async (t) => {
   const msgs = 10

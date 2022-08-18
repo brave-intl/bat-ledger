@@ -14,6 +14,7 @@ const {
 } = require('../utils')
 const Postgres = require('bat-utils/lib/runtime-postgres')
 const suggestions = require('../../eyeshade/lib/suggestions')
+const suggestionsConsumer = require('../../eyeshade/workers/suggestions')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
@@ -23,7 +24,7 @@ const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 const balanceURL = '/v1/accounts/balances'
 
 test('suggestions kafka consumer enters into votes', async (t) => {
-  process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
+  // process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
   let body
   const runtime = new Runtime(Object.assign({}, require('../../config'), {
     testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
@@ -31,6 +32,8 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       url: process.env.BAT_POSTGRES_URL
     }
   }))
+  suggestionsConsumer(runtime)
+  await runtime.kafka.consume().catch(console.error)
 
   const producer = await new Kafka(runtime.config, runtime).producer()
   const example = {

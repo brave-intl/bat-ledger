@@ -19,10 +19,17 @@ const Postgres = require('bat-utils/lib/runtime-postgres')
 const { voteType } = require('../../eyeshade/lib/vote')
 const { votesId } = require('../../eyeshade/lib/queries.js')
 const moment = require('moment')
+const voteConsumer = require('../../eyeshade/workers/acvote')
 
 const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
 test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
+
+test.before(async (t) => {
+  const runtime = new Runtime(config)
+  voteConsumer(runtime)
+  await runtime.kafka.consume().catch(console.error)
+})
 
 const date = moment().format('YYYY-MM-DD')
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
@@ -152,7 +159,7 @@ async function sendVotes (producer, message) {
 }
 
 async function createProducer () {
-  process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
+  // process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
   const runtime = new Runtime(config)
   const producer = new Kafka(config, runtime)
   await producer.connect()
