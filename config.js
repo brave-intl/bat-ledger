@@ -86,23 +86,23 @@ if (process.env.BAT_ADS_PAYOUT_ADDRESS) {
 }
 
 if (process.env.KAFKA_BROKERS) {
-  const isDev = process.env.ENV === "local";
-
   let kafkaOptions = {
     'brokers': [process.env.KAFKA_BROKERS],
     'clientId': process.env.ENV + '.' + process.env.SERVICE,
     'acks': +process.env.KAFKA_REQUIRED_ACKS,
   };
 
-  if (!isDev) {
-    kafkaOptions['ssl'] = {
-      key: fs.readFileSync(process.env.KAFKA_SSL_KEY_LOCATION, 'utf-8'),
-      cert: fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8')
-    }
+  kafkaOptions['ssl'] = {
+    key: fs.readFileSync(process.env.KAFKA_SSL_KEY_LOCATION, 'utf-8'),
+    cert: fs.readFileSync(process.env.KAFKA_SSL_CERTIFICATE_LOCATION, 'utf-8')
+  }
 
-    if (process.env.KAFKA_SSL_CA_LOCATION) {
-      kafkaOptions['ssl']['ca'] =  [fs.readFileSync(process.env.KAFKA_SSL_CA_LOCATION, 'utf-8')]
-    }
+  if (process.env.KAFKA_SSL_CA_LOCATION) {
+    kafkaOptions['ssl']['ca'] = [fs.readFileSync(process.env.KAFKA_SSL_CA_LOCATION, 'utf-8')]
+  }
+
+  if (process.env.KAFKA_SSL_KEY_PASSWORD) {
+    kafkaOptions['ssl']['passphrase'] = process.env.KAFKA_SSL_KEY_PASSWORD
   }
 
   module.exports.kafka = { ...kafkaOptions };

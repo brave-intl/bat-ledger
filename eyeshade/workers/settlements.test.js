@@ -1,21 +1,24 @@
 const { serial: test } = require('ava')
-const { kafka } = require('../../config')
+const config = require('../../config')
 const { timeout, normalizeChannel } = require('bat-utils/lib/extras-utils')
 const { Runtime } = require('bat-utils')
 const transaction = require('../lib/transaction')
 const settlements = require('../lib/settlements')
 const utils = require('../../test/utils')
 const { cleanEyeshadePgDb } = require('../../test/utils')
+const { consumer: settlementsConsumer } = require('./settlements')
 
-test.before((t) => {
+test.before(async (t) => {
   Object.assign(t.context, {
-    runtime: new Runtime({
-      postgres: { url: process.env.BAT_POSTGRES_URL },
-      kafka
-    })
+    runtime: new Runtime(config)
   })
+  settlementsConsumer(t.context.runtime)
+  await t.context.runtime.kafka.consume().catch(console.error)
 })
+
+// const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
+// test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
 test('settlements should be insertable from the kafka queue', async (t) => {
   const msgs = 10

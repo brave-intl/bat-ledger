@@ -1,24 +1,18 @@
 'use strict'
 
 const Kafka = require('../../bat-utils/lib/runtime-kafka')
+const { Runtime } = require('bat-utils')
+const config = require('../../config')
 const test = require('ava')
 const { v4: uuidV4 } = require('uuid')
 const _ = require('underscore')
 const { timeout } = require('./extras-utils')
 
 process.env.KAFKA_CONSUMER_GROUP = 'test-consumer'
-const Postgres = require('../../bat-utils/lib/runtime-postgres')
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
-const runtime = {
-  config: require('../../config'),
-  postgres,
-  captureException: function () {
-    console.log('captured', arguments)
-  }
-}
+const runtime = new Runtime(config)
 
 test('can create kafka consumer', async (t) => {
-  const producer = new Kafka(runtime.config, runtime)
+  const producer = new Kafka(config, runtime)
   await producer.connect()
 
   const consumer = new Kafka(runtime.config, runtime)
@@ -29,6 +23,14 @@ test('can create kafka consumer', async (t) => {
   })
   await consumer.consume()
 
+  const admin = await producer.admin()
+  await admin.createTopics({
+    waitForLeaders: true,
+    topics: [
+      { topic: 'test-topic', numPartitions: 1, replicationFactor: 1 }
+    ]
+  })
+
   await producer.send('test-topic', 'hello world')
 
   const message = await messagePromise
@@ -37,7 +39,7 @@ test('can create kafka consumer', async (t) => {
 })
 
 test('one topic failing does not cause others to fail', async (t) => {
-  const producer = await new Kafka(runtime.config, runtime).producer()
+  const producer = await new Kafka(config, runtime).producer()
 
   const topic1 = 'test-topic-1-' + uuidV4()
   const topic2 = 'test-topic-2-' + uuidV4()
@@ -45,7 +47,18 @@ test('one topic failing does not cause others to fail', async (t) => {
     [topic1]: [],
     [topic2]: []
   }
+
   const consumer = new Kafka(runtime.config, runtime)
+
+  const admin = await consumer.admin()
+  await admin.createTopics({
+    waitForLeaders: true,
+    topics: [
+      { topic: topic1, numPartitions: 1, replicationFactor: 1 },
+      { topic: topic2, numPartitions: 1, replicationFactor: 1 }
+    ]
+  })
+
   consumer.on(topic1, pseudoDBTX(topic1))
   const errAt = 25
   const consumptionPattern = []
