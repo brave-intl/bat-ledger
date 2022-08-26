@@ -1,5 +1,5 @@
 /* jshint asi: true, node: true, laxbreak: true, laxcomma: true, undef: true, unused: true, esversion: 6 */
-const fs = require('fs')
+const fs = require('fs');
 
 const services = {
   eyeshade: {
@@ -7,22 +7,28 @@ const services = {
 
     f: () => {
       module.exports.referrals =
-        {
-          currency: process.env.REFERRALS_CURRENCY || 'USD',
-          amount: process.env.REFERRALS_AMOUNT || 5
-        }
+      {
+        currency: process.env.REFERRALS_CURRENCY || 'USD',
+        amount: process.env.REFERRALS_AMOUNT || 5
+      }
       module.exports.postgres =
-        {
-          url: process.env.DATABASE_URL || 'postgres://localhost/test',
-          roURL: process.env.DATABASE_RO_URL || false,
-          schemaVersion: require('./eyeshade/migrations/current'),
-          schemaVersionCheck: true
-        }
+      {
+        connectionString: process.env.DATABASE_URL || 'postgres://localhost/test',
+        schemaVersion: require('./eyeshade/migrations/current'),
+        schemaVersionCheck: true,
+        ssl: process.env.NODE_ENV === 'production' ? { ca: fs.readFileSync(process.env.RDS_CA_CERT_LOCATION).toString(), rejectUnauthorized: true } : false
+      }
+      module.exports.postgresRO =
+      {
+        connectionString: process.env.DATABASE_RO_URL || 'postgres://localhost/test',
+        ssl: process.env.NODE_ENV === 'production' ? { ca: fs.readFileSync(process.env.RDS_CA_CERT_LOCATION).toString(), rejectUnauthorized: true } : false
+      }
 
       uphold()
     }
   }
 }
+
 
 const uphold = () => {
   if ((!process.env.UPHOLD_ACCESS_TOKEN) && (!process.env.UPHOLD_CLIENT_ID)) return
@@ -50,7 +56,7 @@ module.exports =
   cache:
   {
     redis:
-    { url: redisURL || 'redis://localhost:6379' }
+      { url: redisURL || 'redis://localhost:6379' }
   },
   currency:
   {
@@ -66,9 +72,9 @@ module.exports =
   },
   newrelic: {
     key: process.env.NEW_RELIC_LICENSE_KEY ||
-                                                                false
+      false
   },
-  wallet: { },
+  wallet: {},
   testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
   currency:
   {
@@ -86,12 +92,12 @@ if (process.env.NODE_ENV === 'production') {
 
 if (process.env.BAT_SETTLEMENT_ADDRESS) {
   module.exports.wallet.settlementAddress =
-  { BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
+    { BAT: process.env.BAT_SETTLEMENT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
 }
 
 if (process.env.BAT_ADS_PAYOUT_ADDRESS) {
   module.exports.wallet.adsPayoutAddress =
-  { BAT: process.env.BAT_ADS_PAYOUT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
+    { BAT: process.env.BAT_ADS_PAYOUT_ADDRESS || '0x7c31560552170ce96c4a7b018e93cddc19dc61b6' }
 }
 
 if (process.env.KAFKA_BROKERS) {
@@ -118,7 +124,7 @@ if (process.env.KAFKA_BROKERS) {
 }
 
 module.exports.prometheus =
-  {
-    label: process.env.SERVICE + '.' + (process.env.DYNO || 1),
-    redis: redisURL || false
-  }
+{
+  label: process.env.SERVICE + '.' + (process.env.DYNO || 1),
+  redis: redisURL || false
+}

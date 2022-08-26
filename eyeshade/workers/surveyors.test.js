@@ -14,7 +14,7 @@ test.before((t) => {
   Object.assign(t.context, {
     debug: new SDebug('test'),
     runtime: new Runtime({
-      postgres: { url: process.env.BAT_POSTGRES_URL },
+      postgres: { connectionString: process.env.BAT_POSTGRES_URL },
       testingCohorts: [],
       wallet: {
         settlementAddress: { BAT: uuid.v4() }

@@ -30,7 +30,7 @@ const settlementId = uuidV4().toLowerCase()
 const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
 const toOwnerId = 'publishers#uuid:' + uuidV4().toLowerCase()
 const runtime = new Runtime({
-  postgres: { url: process.env.BAT_POSTGRES_URL },
+  postgres: { connectionString: process.env.BAT_POSTGRES_URL },
   currency: {
     url: process.env.BAT_RATIOS_URL,
     access_token: process.env.BAT_RATIOS_TOKEN

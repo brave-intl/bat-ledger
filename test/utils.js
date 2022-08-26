@@ -172,7 +172,7 @@ module.exports = {
 async function cleanEyeshadePgDb (pg) {
   const postgres = pg || new Postgres({
     postgres: {
-      url: process.env.BAT_POSTGRES_URL
+      connectionString: process.env.BAT_POSTGRES_URL
     }
   })
   const cleaner = cleanPgDb(postgres)

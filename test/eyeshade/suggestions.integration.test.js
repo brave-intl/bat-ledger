@@ -16,7 +16,7 @@ const Postgres = require('bat-utils/lib/runtime-postgres')
 const suggestions = require('../../eyeshade/lib/suggestions')
 const suggestionsConsumer = require('../../eyeshade/workers/suggestions')
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
 test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
@@ -29,7 +29,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const runtime = new Runtime(Object.assign({}, require('../../config'), {
     testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
     postgres: {
-      url: process.env.BAT_POSTGRES_URL
+      connectionString: process.env.BAT_POSTGRES_URL
     }
   }))
   suggestionsConsumer(runtime)

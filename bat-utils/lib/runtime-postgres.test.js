@@ -7,7 +7,7 @@ dotenv.config()
 
 const postgres = new Postgres({
   postgres: {
-    url: process.env.DATABASE_URL
+    connectionString: process.env.DATABASE_URL
   }
 })
 

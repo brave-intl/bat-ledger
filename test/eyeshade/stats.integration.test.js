@@ -37,7 +37,7 @@ const runtime = new Runtime({
     }
   },
   postgres: {
-    url: BAT_POSTGRES_URL
+    connectionString: BAT_POSTGRES_URL
   }
 })
 

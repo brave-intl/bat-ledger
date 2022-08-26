@@ -15,7 +15,7 @@ const { consumer: settlementsConsumer } = require('../../eyeshade/workers/settle
 const { Runtime } = require('bat-utils')
 const config = require('../../config')
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 
 test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 

@@ -8,21 +8,15 @@ const Postgres = function (config, runtime) {
   if (!(this instanceof Postgres)) return new Postgres(config, runtime)
 
   if (!config.postgres) return
-  this.rwPool = new Pool({
-    connectionString: config.postgres.url,
-    ssl: process.env.NODE_ENV === 'production'
-  })
+  this.rwPool = new Pool(config.postgres)
 
   this.pool().on('error', (err) => {
     debug('postgres', { message: err })
     throw err
   })
 
-  if (config.postgres.roURL) {
-    this.roPool = new Pool({
-      connectionString: config.postgres.roURL,
-      ssl: process.env.NODE_ENV === 'production'
-    })
+  if (config.postgresRO) {
+    this.roPool = new Pool(config.postgresRO)
 
     this.pool(true).on('error', (err) => {
       debug('postgres', { message: err })

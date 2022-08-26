@@ -4,7 +4,7 @@ const { serial: test } = require('ava')
 const Postgres = require('bat-utils/lib/runtime-postgres')
 const { v4: uuidV4 } = require('uuid')
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 
 test('migrations table is up-to-date', async t => {
   const latestInMigrationsTable = (await postgres.query('select id from migrations order by id desc limit 1;', [])).rows[0].id
