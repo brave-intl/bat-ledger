@@ -79,7 +79,7 @@ Postgres.prototype = {
   }
 }
 
-async function runQuery(query, args, client, logs = {}) {
+async function runQuery (query, args, client, logs = {}) {
   let ret = null
   try {
     const start = Date.now()
