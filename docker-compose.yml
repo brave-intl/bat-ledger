@@ -72,6 +72,7 @@ services:
       service: ledger
     environment:
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
+      - "DATABASE_RO_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "SERVICE=eyeshade"
       - "DYNO=worker.1"
     depends_on:
@@ -93,6 +94,7 @@ services:
       - "ALLOWED_PUBLISHERS_TOKENS=00000000-0000-4000-0000-000000000000"
       - "PORT=3002"
       - "DATABASE_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
+      - "DATABASE_RO_URL=postgres://eyeshade:password@eyeshade-postgres/eyeshade"
       - "SERVICE=eyeshade"
       - "DYNO=web.1"
     depends_on:

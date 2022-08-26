@@ -16,7 +16,6 @@ test.before(async (t) => {
   await t.context.runtime.kafka.consume().catch(console.error)
 })
 
-// const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
 test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
 // test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 

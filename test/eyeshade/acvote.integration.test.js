@@ -21,7 +21,7 @@ const { votesId } = require('../../eyeshade/lib/queries.js')
 const moment = require('moment')
 const voteConsumer = require('../../eyeshade/workers/acvote')
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
 test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
