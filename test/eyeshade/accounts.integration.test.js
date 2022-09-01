@@ -30,7 +30,7 @@ const settlementId = uuidV4().toLowerCase()
 const ownerId = 'publishers#uuid:' + uuidV4().toLowerCase()
 const toOwnerId = 'publishers#uuid:' + uuidV4().toLowerCase()
 const runtime = new Runtime({
-  postgres: { url: process.env.BAT_POSTGRES_URL },
+  postgres: { connectionString: process.env.BAT_POSTGRES_URL },
   currency: {
     url: process.env.BAT_RATIOS_URL,
     access_token: process.env.BAT_RATIOS_TOKEN
@@ -49,7 +49,7 @@ const referralSettlement = {
   type: 'referral',
   publisher: 'foo.com',
   owner: ownerId,
-  settlementId: settlementId,
+  settlementId,
   address: uuidV4().toLowerCase(),
   amount: '10',
   currency: 'BAT'
@@ -97,7 +97,7 @@ const manualTransactionSettlement = (ownerId) => ({
   _id: docId,
   type: 'manual',
   owner: ownerId,
-  settlementId: settlementId,
+  settlementId,
   address: uuidV4().toLowerCase(),
   amount: '10',
   currency: 'BAT'

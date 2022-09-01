@@ -11,7 +11,6 @@ const SDebug = require('sdebug')
 
 const rateLimiter = require('./hapi-rate-limiter')
 const braveHapi = require('./extras-hapi')
-const whitelist = require('./hapi-auth-whitelist')
 const npminfo = require('../npminfo')
 
 module.exports = async (options, runtime) => {
@@ -83,7 +82,7 @@ async function Server (options, runtime) {
 
   goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
 
-  underscore.defaults(options, { id: server.info.id, module: module, headersP: true, remoteP: true })
+  underscore.defaults(options, { id: server.info.id, module, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
   debug.initialize({ web: { id: options.id } })
@@ -106,9 +105,6 @@ async function Server (options, runtime) {
       : [],
     [
       authBearerToken,
-      {
-        plugin: whitelist.plugin
-      },
       inert,
       rateLimiter(runtime)
     ], process.env.NODE_ENV === 'production'
@@ -156,8 +152,9 @@ async function Server (options, runtime) {
     const query = underscore.omit(request.url.query, (value, key, object) => {
       return (['publisher'].indexOf(key) !== -1)
     })
+
     const remote = options.remoteP &&
-          { address: whitelist.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
+          { address: braveHapi.ipaddr(request), port: request.headers['x-forwarded-port'] || request.info.remotePort }
 
     if (request.headers['x-request-id']) request.id = request.headers['x-request-id']
     debug('begin', {
@@ -167,10 +164,10 @@ async function Server (options, runtime) {
           method: request.method.toUpperCase(),
           pathname: request.url.pathname
         },
-        query: query,
+        query,
         params: request.url.params,
-        headers: headers,
-        remote: remote
+        headers,
+        remote
       }
     })
 
@@ -204,9 +201,9 @@ async function Server (options, runtime) {
   })
 
   server.events.on('log', (event, tags) => {
-    debug(event.data, { tags: tags })
+    debug(event.data, { tags })
   }).on('request', (request, event, tags) => {
-    debug(event.data, { tags: tags }, { sdebug: { request: { id: event.request, internal: event.internal } } })
+    debug(event.data, { tags }, { sdebug: { request: { id: event.request, internal: event.internal } } })
   }).on({ name: 'request', channels: 'internal' }, (request, event, tags) => {
     if ((!tags) || (!tags.received)) return
 
@@ -238,7 +235,7 @@ async function Server (options, runtime) {
     if ((request.response.statusCode === 401) || (request.response.statusCode === 406)) {
       runtime.captureException(request.response._error || request.response.statusCode, {
         req: request,
-        extra: { address: whitelist.ipaddr(request) }
+        extra: { address: braveHapi.ipaddr(request) }
       })
     }
 
@@ -298,7 +295,7 @@ async function Server (options, runtime) {
   dns.setServers(resolvers)
   debug('webserver started',
     underscore.extend(
-      { server: runtime.config.server.href, version: server.version, resolvers: resolvers },
+      { server: runtime.config.server.href, version: server.version, resolvers },
       server.info,
       {
         env: underscore.pick(process.env, ['DEBUG', 'DYNO', 'NEW_RELIC_APP_NAME', 'NODE_ENV', 'BATUTIL_SPACES']),

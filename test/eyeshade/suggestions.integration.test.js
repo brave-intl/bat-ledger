@@ -14,8 +14,9 @@ const {
 } = require('../utils')
 const Postgres = require('bat-utils/lib/runtime-postgres')
 const suggestions = require('../../eyeshade/lib/suggestions')
+const suggestionsConsumer = require('../../eyeshade/workers/suggestions')
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
 test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
 
@@ -23,21 +24,22 @@ const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 const balanceURL = '/v1/accounts/balances'
 
 test('suggestions kafka consumer enters into votes', async (t) => {
-  process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
+  // process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
   let body
   const runtime = new Runtime(Object.assign({}, require('../../config'), {
     testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
     postgres: {
-      url: process.env.BAT_POSTGRES_URL
+      connectionString: process.env.BAT_POSTGRES_URL
     }
   }))
-  const producer = new Kafka(runtime.config, runtime)
-  await producer.connect()
+  suggestionsConsumer(runtime)
+  await runtime.kafka.consume().catch(console.error)
 
+  const producer = await new Kafka(runtime.config, runtime).producer()
   const example = {
     id: uuidV4(),
     type: 'oneoff-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '10',
     funding: [
@@ -48,19 +50,23 @@ test('suggestions kafka consumer enters into votes', async (t) => {
         promotion: '6820f6a4-c6ef-481d-879c-d2c30c8928c3'
       }
     ]
-  }
-    ; ({ body } = await agents.eyeshade.publishers.post(balanceURL)
+  };
+
+  ({
+    body
+  } = await agents.eyeshade.publishers.post(balanceURL)
     .send({
       pending: true,
       account: channel
     }).expect(ok))
+
   t.is(body.length, 0)
 
-  await producer.send(process.env.ENV + '.grant.suggestion', suggestions.typeV1.toBuffer(example))
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(example) }] })
 
   while (!body.length) {
-    await timeout(2000)
-    ; ({
+    await timeout(5000);
+    ({
       body
     } = await agents.eyeshade.publishers.post(balanceURL)
       .send({
@@ -69,6 +75,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       })
       .expect(ok))
   }
+
   t.deepEqual(body, [{
     account_id: channel,
     account_type: 'channel',
@@ -78,7 +85,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const exampleWithOrderId = {
     id: uuidV4(),
     type: 'oneoff-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '10',
     orderId: uuidV4(),
@@ -90,15 +97,16 @@ test('suggestions kafka consumer enters into votes', async (t) => {
         promotion: '6820f6a4-c6ef-481d-879c-d2c30c8928c3'
       }
     ]
-  }
-    ; ({ body } = await agents.eyeshade.publishers.post(balanceURL)
+  };
+
+  ({ body } = await agents.eyeshade.publishers.post(balanceURL)
     .send({
       pending: true,
       account: channel
     }).expect(ok))
   t.is(body.length, 1)
 
-  await producer.send(process.env.ENV + '.grant.suggestion', suggestions.typeV2.toBuffer(exampleWithOrderId))
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(exampleWithOrderId) }] })
 
   body = [{}]
   while (+body[0].balance !== 20) {
@@ -121,7 +129,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const exampleWithoutOrderId = {
     id: uuidV4(),
     type: 'oneoff-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '10',
     funding: [
@@ -140,7 +148,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     }).expect(ok))
   t.is(body.length, 1)
 
-  await producer.send(process.env.ENV + '.grant.suggestion', suggestions.typeV2.toBuffer(exampleWithoutOrderId))
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(exampleWithoutOrderId) }] })
 
   body = [{}]
   while (+body[0].balance !== 30) {
@@ -163,7 +171,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
   const examplePayoutError = {
     id: uuidV4(),
     type: 'errored-tip',
-    channel: channel,
+    channel,
     createdAt: (new Date()).toISOString(),
     totalAmount: '1000',
     funding: [
@@ -176,7 +184,7 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     ]
   }
 
-  await producer.send(process.env.ENV + '.grant.suggestion', suggestions.typeV2.toBuffer(examplePayoutError))
+  await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(examplePayoutError) }] })
 
   while (+body[0].balance < 30.25) {
     await timeout(2000)
@@ -194,5 +202,4 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     account_type: 'channel',
     balance: '30.250000000000000000'
   }], 'suggestion votes show up after small delay')
-
 })

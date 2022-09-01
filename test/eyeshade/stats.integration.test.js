@@ -37,7 +37,7 @@ const runtime = new Runtime({
     }
   },
   postgres: {
-    url: BAT_POSTGRES_URL
+    connectionString: BAT_POSTGRES_URL
   }
 })
 
@@ -56,7 +56,7 @@ const contributionSettlement = {
   type: 'contribution',
   publisher: 'foo.com',
   owner: ownerId,
-  settlementId: settlementId,
+  settlementId,
   address: uuidV4().toLowerCase(),
   amount: '9.5',
   currency: 'BAT'
@@ -70,7 +70,7 @@ const referralSettlement = {
   type: 'referral',
   publisher: 'foo.com',
   owner: ownerId,
-  settlementId: settlementId,
+  settlementId,
   address: uuidV4().toLowerCase(),
   amount: '10',
   currency: 'BAT'

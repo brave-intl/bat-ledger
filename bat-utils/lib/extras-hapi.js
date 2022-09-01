@@ -5,7 +5,6 @@ const underscore = require('underscore')
 const wreck = require('@hapi/wreck')
 
 const npminfo = require('../npminfo')
-const whitelist = require('./hapi-auth-whitelist')
 
 exports.debug = (info, request) => {
   const debug = new SDebug(info.id)
@@ -101,18 +100,6 @@ AsyncRoute.prototype.path = function (path) {
   return this
 }
 
-AsyncRoute.prototype.whitelist = function () {
-  this.internal.extras = {
-    ext: {
-      onPreAuth: {
-        method: whitelist.authenticate
-      }
-    }
-  }
-
-  return this
-}
-
 AsyncRoute.prototype.config = function (config) {
   if (typeof config === 'function') { config = { handler: config } }
   if (typeof config.handler === 'undefined') throw new Error('undefined handler for ' + JSON.stringify(this.internal))
@@ -163,13 +150,13 @@ const WreckProxy = (server, opts) => {
     if (typeof opts.headers[header] !== 'string') delete opts.headers[header]
   })
 
-  if (typeof opts.useProxyP === 'undefined') return { server: server, opts: opts }
+  if (typeof opts.useProxyP === 'undefined') return { server, opts }
 
   const useProxyP = opts.useProxyP
   opts = underscore.omit(opts, ['useProxyP'])
-  if ((!useProxyP) || (!process.env.FIXIE_URL)) return { server: server, opts: opts }
+  if ((!useProxyP) || (!process.env.FIXIE_URL)) return { server, opts }
 
-  return { server: server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }
+  return { server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }
 }
 exports.WreckProxy = WreckProxy
 
@@ -203,4 +190,33 @@ const WreckDelete = async (server, opts) => {
   return payload
 }
 
+function forwardedIPShift () {
+  const shiftEnv = process.env.FORWARDED_IP_SHIFT
+  const shift = shiftEnv ? (+shiftEnv) : 1
+  if (underscore.isNaN(shift)) {
+    throw new Error(`${JSON.stringify(shiftEnv)} is not a valid number`)
+  }
+  return shift >= 0 ? shift : 1
+}
+
 exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
+
+// NOTE This function trusts the final IP address in X-Forwarded-For
+//      This is reasonable only when running behind a load balancer that correctly sets this header
+//      and there is no way to directly access the web nodes
+exports.ipaddr = (request) => {
+  // https://en.wikipedia.org/wiki/X-Forwarded-For    X-Forwarded-For: client, proxy1, proxy2
+  // Since it is easy to forge an X-Forwarded-For field the given information should be used with care.
+  // The last IP address is always the IP address that connects to the last proxy, which means it is the most reliable source of information.
+
+  const { headers } = request
+  const forwardedFor = headers['x-forwarded-for']
+  if (forwardedFor) {
+    const forwardedIps = forwardedFor.split(',')
+    const shift = forwardedIPShift()
+    const target = forwardedIps[forwardedIps.length - shift]
+    return target.trim() || request.info.remoteAddress
+  } else {
+    return request.info.remoteAddress
+  }
+}

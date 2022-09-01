@@ -28,7 +28,7 @@ env:
   REDEEMER_WALLET_PRIVATE_KEY: ${{ secrets.REDEEMER_WALLET_PRIVATE_KEY }}
   REDEEMER_WALLET_PUBLIC_KEY: ${{ secrets.REDEEMER_WALLET_PUBLIC_KEY }}
   UPHOLD_ACCESS_TOKEN: ${{ secrets.UPHOLD_ACCESS_TOKEN }}
-  DEBUG: "*,-babel*,-eslint*,mongo,ava,-kafka*,-sinek*,-postgres*"
+  DEBUG: "*,-babel*,-eslint*,mongo,ava,-kafka*,-postgres*"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -48,11 +48,11 @@ jobs:
           # Set always-auth in npmrc
           always-auth: true
           # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
-          node-version: 8.9.2
+          node-version: 16.16.0
           # Set this option if you want the action to check for the latest available version that satisfies the version spec
           check-latest: true
 
-      - run: npm i --global npm@5.10.0
+      - run: npm i --global npm@8.15.1
       - run: npm --version
 
       - name: Docker Compose Install
@@ -79,9 +79,9 @@ jobs:
       - name: Build Docker Containers
         run: npm run docker-build
 
-      # Runs a single command using the runners shell
+      # Runs the security checks within the docker container
       - name: Run security checks (audit + lint)
-        run: npm run security
+        run: docker-compose run eyeshade-web npm run security
 
       # Runs a set of commands using the runners shell
       - name: Stand up Postgres

@@ -11,10 +11,20 @@ const {
   timeout
 } = require('bat-utils/lib/extras-utils')
 const Postgres = require('bat-utils/lib/runtime-postgres')
+const { consumer: settlementsConsumer } = require('../../eyeshade/workers/settlements')
+const { Runtime } = require('bat-utils')
+const config = require('../../config')
 
-const postgres = new Postgres({ postgres: { url: process.env.BAT_POSTGRES_URL } })
+const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 
 test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
+
+test.before(async (t) => {
+  const runtime = new Runtime(config)
+  await runtime.kafka.connect()
+  settlementsConsumer(runtime)
+  runtime.kafka.consume()
+})
 
 test('unauthed requests cannot post settlement', async t => {
   t.plan(0)
@@ -66,24 +76,23 @@ test('can post a manual settlement from publisher app using token auth', async t
     documentId: uuidV4().toLowerCase(),
     hash: uuidV4().toLowerCase()
   }
-
   await agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(200)
 
   // ensure both transactions were entered into transactions table
   const manualTxsQuery = 'select * from transactions where transaction_type = \'manual\';'
   const manualSettlementTxQuery = 'select * from transactions where transaction_type = \'manual_settlement\';'
-
   let rows
   do { // wait until settlement-report is processed and transactions are entered into postgres
+    console.log(rows)
     await timeout(500).then(async () => {
       rows = (await client.query(manualTxsQuery)).rows
     })
   } while (rows.length === 0)
-
   const manualTx = rows[0]
   t.true(rows.length === 1)
 
   rows = (await client.query(manualSettlementTxQuery)).rows
+
   t.true(rows.length === 1)
   const manualSettlementTx = rows[0]
 
@@ -117,7 +126,6 @@ test('can post a manual settlement from publisher app using token auth', async t
   } = await agents.eyeshade.publishers
     .get(`/v1/accounts/${encodeURIComponent(owner)}/transactions`)
     .expect(ok)
-
   const subset = _.map(body, (item) => _.omit(item, ['created_at']))
   const manualSettlementResponse = _.findWhere(subset, { transaction_type: 'manual_settlement' })
 
