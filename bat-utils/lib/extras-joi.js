@@ -1,6 +1,7 @@
 const base58check = require('bs58check')
 const batPublisher = require('./extras-publisher')
-const bitcoin = require('bitcoinjs-lib')
+const ecc = require('tiny-secp256k1')
+const { BIP32Factory } = require('bip32')
 const { getName } = require('country-list')
 const Joi = require('joi')
 const ethereumAddress = require('ethereum-address')
@@ -137,7 +138,8 @@ module.exports = Joi.extend((joi) => {
             return helpers.error('string.badFormat', { value }, state, options)
           }
           try {
-            bitcoin.HDNode.fromBase58(value)
+            const bip32 = BIP32Factory(ecc)
+            bip32.fromBase58(value)
           } catch (err) {
             return helpers.error('string.badBase58', { value }, state, options)
           }

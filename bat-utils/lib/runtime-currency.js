@@ -213,7 +213,7 @@ Currency.prototype = {
       probi = probi.times(scale)
     }
 
-    return probi.floor().toString()
+    return probi.integerValue(BigNumber.ROUND_FLOOR).toString()
   }
 }
 
