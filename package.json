@@ -6,8 +6,10 @@
   "type": "main",
   "scripts": {
     "ava": "ava",
-    "eyeshade-server": "nodemon eyeshade/server.js",
-    "eyeshade-consumer": "nodemon eyeshade/consumer.js",
+    "eyeshade-server": "node eyeshade/server.js",
+    "eyeshade-server-dev": "nodemon eyeshade/server.js",
+    "eyeshade-consumer": "node eyeshade/consumer.js",
+    "eyeshade-consumer-dev": "nodemon eyeshade/consumer.js",
     "eyeshade-cronjob": "node eyeshade/cronjob.js",
     "eyeshade-producer": "node bin/migrate-mongo-to-kafka.js",
     "start": "echo use 'npm run eyeshade-web' or 'npm run eyeshade-consumer' or 'npm run eyeshade-cronjob'",
