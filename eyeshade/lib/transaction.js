@@ -66,7 +66,7 @@ async function insertTransaction (runtime, client, options = {}) {
   }
 
   amount = new BigNumber(amount)
-  if (amount.lessThanOrEqualTo(0)) {
+  if (amount.isLessThanOrEqualTo(0)) {
     return [] // skip because we don't track tx's that don't have an accounting purpose
   }
   amount = amount.toString()
@@ -146,7 +146,7 @@ async function insertFromSettlement (runtime, client, settlement) {
   if (settlement.probi && settlement.owner) {
     const probi = new BigNumber(settlement.probi.toString())
     const fees = new BigNumber(settlement.fees.toString())
-    if (probi.greaterThan(new BigNumber(0))) {
+    if (probi.isGreaterThan(new BigNumber(0))) {
       const normalizedChannel = normalizeChannel(settlement.publisher)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
@@ -179,7 +179,7 @@ async function insertFromSettlement (runtime, client, settlement) {
 
         // owner -> brave for fees, only applies to contributions
         const feesBAT = fees.dividedBy(BATtoProbi)
-        if (feesBAT.greaterThan(new BigNumber(0))) {
+        if (feesBAT.isGreaterThan(new BigNumber(0))) {
           const query2 = `
           insert into transactions ( id, created_at, description, transaction_type, document_id, from_account, from_account_type, to_account, to_account_type, amount, channel )
           VALUES ( $1, to_timestamp($2), $3, $4, $5, $6, $7, $8, $9, $10, $11 )
@@ -266,7 +266,7 @@ function insertFromVotingArguments (settlementAddress, voteDoc, surveyorCreatedA
     const amount = new BigNumber(voteDoc.amount.toString())
     const fees = new BigNumber(voteDoc.fees.toString())
 
-    if (amount.greaterThan(new BigNumber(0))) {
+    if (amount.isGreaterThan(new BigNumber(0))) {
       const normalizedChannel = normalizeChannel(voteDoc.channel)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
@@ -336,7 +336,7 @@ async function insertFromReferrals (runtime, client, referrals) {
     const created = createdTimestamp(referrals.firstId)
     const month = new Date(created).toDateString().split(' ')[1]
 
-    if (probi.greaterThan(new BigNumber(0))) {
+    if (probi.isGreaterThan(new BigNumber(0))) {
       const normalizedChannel = normalizeChannel(referrals._id.publisher)
       const props = getPublisherProps(normalizedChannel)
       if (props.providerName && props.providerName === 'youtube' && props.providerSuffix === 'user') {
