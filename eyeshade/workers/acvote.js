@@ -1,6 +1,7 @@
 const { votesId } = require('../lib/queries.js')
 const { voteType } = require('../lib/vote.js')
 const moment = require('moment')
+const { hasValidCountry } = require('../lib/publishers.js')
 
 const voteTopic = process.env.ENV + '.payment.vote'
 
@@ -18,7 +19,11 @@ module.exports = (runtime) => {
         runtime.captureException(e, { extra: { topic: voteTopic, message } })
         continue
       }
-      await insertVote(runtime, date, vote, client)
+
+      // Check if votes are for valid country
+      if (await hasValidCountry(runtime, vote.channel)) {
+        await insertVote(runtime, date, vote, client)
+      }
     }
   })
 }
