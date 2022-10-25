@@ -53,8 +53,8 @@ module.exports =
 {
   altcurrency: process.env.ALTCURRENCY || 'BAT',
   publishers: {
-    url                 : process.env.PUBLISHERS_URL    || 'http://127.0.0.1:3000',
-    access_token        : process.env.PUBLISHERS_TOKEN  || '00000000-0000-4000-0000-000000000000'
+    url                 : process.env.PUBLISHERS_URL,
+    access_token        : process.env.PUBLISHERS_TOKEN
   },
   cache:
   {
