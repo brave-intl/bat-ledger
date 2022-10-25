@@ -1,6 +1,6 @@
 const test = require('ava')
 const { insertVote } = require('./acvote.js')
-const sinon = require("sinon");
+const sinon = require('sinon')
 const { Runtime } = require('bat-utils')
 const config = require('../../config')
 const { v4: uuidV4 } = require('uuid')
@@ -21,11 +21,11 @@ test('should insert vote if it is valid', async (t) => {
   }
 
   const tRuntime = new Runtime(config)
-  const stubHasValidCountry = sinon.stub().returns(true);
+  const stubHasValidCountry = sinon.stub().returns(true)
 
-  const preVoteCount = await utils.votes.voteCount(tRuntime);
+  const preVoteCount = await utils.votes.voteCount(tRuntime)
   await insertVote(tRuntime, date, example, tRuntime.postgres, stubHasValidCountry)
-  t.deepEqual((await utils.votes.voteCount(tRuntime)), preVoteCount + 1, 'Votes inserted');
+  t.deepEqual((await utils.votes.voteCount(tRuntime)), preVoteCount + 1, 'Votes inserted')
 })
 
 test('should not insert vote if it is invalid', async (t) => {
@@ -42,9 +42,9 @@ test('should not insert vote if it is invalid', async (t) => {
   }
 
   const tRuntime = new Runtime(config)
-  const stubHasValidCountry = sinon.stub().returns(false);
+  const stubHasValidCountry = sinon.stub().returns(false)
 
-  const preVoteCount = await utils.votes.voteCount(tRuntime);
+  const preVoteCount = await utils.votes.voteCount(tRuntime)
   await insertVote(tRuntime, date, example, tRuntime.postgres, stubHasValidCountry)
-  t.deepEqual((await utils.votes.voteCount(tRuntime)), preVoteCount, 'Votes not inserted');
+  t.deepEqual((await utils.votes.voteCount(tRuntime)), preVoteCount, 'Votes not inserted')
 })

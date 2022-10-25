@@ -1,13 +1,13 @@
-const braveHapi = require('../../bat-utils/lib/extras-hapi.js');
+const braveHapi = require('../../bat-utils/lib/extras-hapi.js')
 
 module.exports = {
   hasValidCountry
 }
 
-async function hasValidCountry (runtime, channel, post=braveHapi.wreck.post ) {
+async function hasValidCountry (runtime, channel, post = braveHapi.wreck.post) {
   const publishers = runtime.config.publishers
   const channelsToCheck = { channel_ids: [channel] }
-  let result;
+  let result
   try {
     const response = await post(publishers.url + '/api/v3/public/channels/allowed_countries', {
       headers: {

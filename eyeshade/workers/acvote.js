@@ -21,15 +21,14 @@ module.exports = (runtime) => {
         continue
       }
 
-
-        await insertVote(runtime, date, vote, client)
+      await insertVote(runtime, date, vote, client)
     }
   })
 }
 
 module.exports.insertVote = insertVote
 
-async function insertVote (runtime, date, vote, client, hasValidCountryFunc=hasValidCountry) {
+async function insertVote (runtime, date, vote, client, hasValidCountryFunc = hasValidCountry) {
   // Check if votes are for valid country
   if (await hasValidCountryFunc(runtime, vote.channel)) {
     const surveyorId = date + '_' + vote.fundingSource

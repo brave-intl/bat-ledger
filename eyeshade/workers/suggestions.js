@@ -3,10 +3,6 @@ const suggestions = require('../lib/suggestions.js')
 const moment = require('moment')
 const { BigNumber } = require('bat-utils/lib/extras-utils')
 const { hasValidCountry } = require('../lib/publishers.js')
-const braveHapi = require('bat-utils/lib/extras-hapi')
-const joi = require('bat-utils/lib/extras-joi')
-const hapi = require('bat-utils/lib/extras-hapi')
-const utils = require('bat-utils/lib/extras-utils')
 
 const suggestionTopic = process.env.ENV + '.grant.suggestion'
 
@@ -24,12 +20,12 @@ module.exports = (runtime) => {
         continue
       }
 
-      return await handleMessage(runtime, suggestion, client)
+      await handleMessage(runtime, suggestion, client)
     }
   })
 }
 
-async function handleMessage (runtime, suggestion, client, hasValidCountryFunc=hasValidCountry ) {
+async function handleMessage (runtime, suggestion, client, hasValidCountryFunc = hasValidCountry) {
   const publisher = suggestion.channel
   const date = moment().format('YYYY-MM-DD')
 
@@ -61,7 +57,7 @@ async function handleMessage (runtime, suggestion, client, hasValidCountryFunc=h
       const regex = /.*08277a30-78fd-48a7-a41a-a64b094a2f40.*/g
       const tally = regex.test(surveyorId) ? '1' : new BigNumber(source.amount).dividedBy(voteValue).toString()
 
-      return await runtime.postgres.query(voteUpdate, [
+      await runtime.postgres.query(voteUpdate, [
         votesId(publisher, cohort, surveyorId),
         cohort,
         tally,
