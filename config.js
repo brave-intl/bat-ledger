@@ -49,12 +49,15 @@ if (!service) {
 process.env.PORT = process.env.PORT || service.portno
 const redisURL = process.env.REDIS_URL
 
+if (!process.env.PUBLISHERS_URL) throw new Error("Need PUBLISHERS_URL");
+if (!process.env.PUBLISHERS_TOKEN) throw new Error("Need PUBLISHERS_TOKEN");
+
 module.exports =
 {
   altcurrency: process.env.ALTCURRENCY || 'BAT',
   publishers: {
-    url                 : process.env.PUBLISHERS_URL    || throw new Error('Need PUBLISHERS_URL'),
-    access_token        : process.env.PUBLISHERS_TOKEN  || throw new Error('Need PUBLISHERS_TOKEN'),
+    url                 : process.env.PUBLISHERS_URL,
+    access_token        : process.env.PUBLISHERS_TOKEN
   },
   cache:
   {
