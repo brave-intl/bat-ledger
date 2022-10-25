@@ -9,7 +9,7 @@ async function hasValidCountry (runtime, channel, post = braveHapi.wreck.post) {
   const channelsToCheck = { channel_ids: [channel] }
   let result
   try {
-    const response = await post(publishers.url + '/api/v3/public/channels/allowed_countries', {
+    const response = await post(publishers.url + '/api/v3/channels/allowed_countries', {
       headers: {
         Authorization: 'Bearer ' + (publishers.access_token),
         'Content-Type': 'application/json'
