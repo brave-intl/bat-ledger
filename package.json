@@ -110,6 +110,7 @@
     "coveralls": "^3.1.1",
     "nodemon": "^2.0.19",
     "parse-prometheus-text-format": "^1.1.1",
+    "sinon": "^14.0.1",
     "standard": "~14.0.1",
     "supertest": "^6.2.4"
   },
