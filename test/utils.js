@@ -139,6 +139,9 @@ module.exports = {
     ensureCount: ensureTransactionCount,
     ensureArrived: ensureTransactionArrived
   },
+  votes: {
+    voteCount: voteCount
+  },
   referral: {
     create: createReferral,
     createLegacy: createLegacyReferral
@@ -396,6 +399,10 @@ async function ensureTransactionCount (t, expect) {
     ;({ rows } = await t.context.runtime.postgres.query('select * from transactions'))
   } while (rows.length !== expect && (await timeout(1000) || true))
   return rows
+}
+
+async function voteCount (runtime) {
+  return parseInt((await runtime.postgres.query('select count(*) from votes')).rows[0].count, 10)
 }
 
 async function ensureTransactionArrived (t, id) {
