@@ -18,7 +18,6 @@ async function hasValidCountry (runtime, channel, post=braveHapi.wreck.post ) {
     })
     result = JSON.parse(response.toString())
   } catch (e) {
-    runtime.captureException(e)
     return true
   }
   if (Object.hasOwn(result, channel)) {
