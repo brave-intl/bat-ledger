@@ -11,9 +11,8 @@ const newrelic = require('./lib/runtime-newrelic')
 const postgres = require('./lib/runtime-postgres')
 const prometheus = require('./lib/runtime-prometheus')
 const sentry = require('./lib/runtime-sentry')
-const wallet = require('./lib/runtime-wallet')
-const wreck = require('./lib/runtime-wreck')
 const database = require('./lib/runtime-database')
+const wreck = require('./lib/runtime-wreck')
 
 const hash = {
   cache,
@@ -24,7 +23,6 @@ const hash = {
   postgres,
   prometheus,
   sentry,
-  wallet,
   wreck
 }
 

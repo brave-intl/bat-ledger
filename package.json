@@ -57,11 +57,10 @@
   "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
     "@hapi/boom": "^10.0.0",
-    "@hapi/hapi": "^20.2.2",
+    "@hapi/hapi": "^21.0.0",
     "@hapi/inert": "^7.0.0",
     "@hapi/wreck": "^18.0.0",
     "@sentry/node": "^7.12.1",
-    "@uphold/uphold-sdk-javascript": "^2.4.0",
     "avro-js": "1.11.1",
     "bat-utils": "file:./bat-utils",
     "bignumber.js": "^9.1.0",
@@ -112,7 +111,7 @@
     "parse-prometheus-text-format": "^1.1.1",
     "sinon": "^14.0.1",
     "standard": "~14.0.1",
-    "supertest": "^6.2.4"
+    "supertest": "^6.3.2"
   },
   "standard": {
     "ignore": [

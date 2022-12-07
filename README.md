@@ -45,8 +45,6 @@ networks:
 ### Configuration
 Configuration variables are stored as environment preferences. See `config.js` for a list of these variables for ledger, eyeshade, and balance respectively.
 
-If you intend to run eyeshade in communication with the [publisher's website](https://github.com/brave-intl/publishers), you will need to set the `UPHOLD_CLIENT_ID` and `UPHOLD_CLIENT_SECRET` environment variables to the same as those used on your copy of the publishers site.
-
 ### StandardJS
 For linting we use StandardJS. It's recommended that you install the necessary IDE plugin. Since this repo uses ES7 features, you'll need a global install of both the standard and babel-eslint packages.
 

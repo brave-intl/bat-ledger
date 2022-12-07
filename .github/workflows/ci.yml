@@ -27,7 +27,6 @@ env:
   GRANT_WALLET_PUBLIC_KEY: ${{ secrets.GRANT_WALLET_PUBLIC_KEY }}
   REDEEMER_WALLET_PRIVATE_KEY: ${{ secrets.REDEEMER_WALLET_PRIVATE_KEY }}
   REDEEMER_WALLET_PUBLIC_KEY: ${{ secrets.REDEEMER_WALLET_PUBLIC_KEY }}
-  UPHOLD_ACCESS_TOKEN: ${{ secrets.UPHOLD_ACCESS_TOKEN }}
   DEBUG: "*,-babel*,-eslint*,mongo,ava,-kafka*,-postgres*"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
