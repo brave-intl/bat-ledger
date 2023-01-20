@@ -18,6 +18,10 @@ test('can create kafka consumer', async (t) => {
   const consumer = new Kafka(runtime.config, runtime)
   const messagePromise = new Promise(resolve => {
     consumer.on('test-topic', async (messages) => {
+      await consumer.mapMessages({ topic: 'test-topic', decode: (_) => { return { message: 'hi!' } } }, messages, async (item, timestamp) => {
+        t.true(timestamp instanceof Date && !isNaN(timestamp))
+        return true
+      })
       resolve(Buffer.from(messages[0].value, 'binary').toString())
     })
   })
