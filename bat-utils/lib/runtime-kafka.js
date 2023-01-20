@@ -108,7 +108,8 @@ class RuntimeKafka {
   async mapMessages ({ decode, topic }, messages, fn) {
     const results = []
     const msgs = messages.map((msg) => {
-      const { value, timestamp } = msg
+      let { value, timestamp } = msg
+      timestamp = parseInt(timestamp, 10)
       const buf = Buffer.from(value, 'binary')
       try {
         const { message } = decode(buf)
