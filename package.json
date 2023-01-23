@@ -57,19 +57,19 @@
   "homepage": "https://github.com/brave-intl/bat-ledger",
   "dependencies": {
     "@hapi/boom": "^10.0.0",
-    "@hapi/hapi": "^21.0.0",
+    "@hapi/hapi": "^21.2.0",
     "@hapi/inert": "^7.0.0",
     "@hapi/wreck": "^18.0.0",
-    "@sentry/node": "^7.12.1",
+    "@sentry/node": "^7.32.1",
     "avro-js": "1.11.1",
     "bat-utils": "file:./bat-utils",
-    "bignumber.js": "^9.1.0",
-    "bip32": "^3.0.1",
+    "bignumber.js": "^9.1.1",
+    "bip32": "^3.1.0",
     "bluebird": "^3.7.2",
     "bs58check": "^2.1.2",
-    "bson": "^4.7.0",
-    "country-list": "2.2.0",
-    "cron-parser": "4.6.0",
+    "bson": "^4.7.2",
+    "country-list": "2.3.0",
+    "cron-parser": "4.7.1",
     "currency-codes": "1.1.2",
     "dotenv": "^8.2.0",
     "ethereum-address": "0.0.4",
@@ -105,13 +105,13 @@
     "npm": "8.15.1"
   },
   "devDependencies": {
-    "ava": "^4.3.3",
+    "ava": "^5.1.1",
     "coveralls": "^3.1.1",
-    "nodemon": "^2.0.19",
+    "nodemon": "^2.0.20",
     "parse-prometheus-text-format": "^1.1.1",
-    "sinon": "^14.0.1",
+    "sinon": "^15.0.1",
     "standard": "~14.0.1",
-    "supertest": "^6.3.2"
+    "supertest": "^6.3.3"
   },
   "standard": {
     "ignore": [
