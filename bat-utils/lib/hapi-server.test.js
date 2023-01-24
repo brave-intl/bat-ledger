@@ -1,7 +1,6 @@
 'use strict'
 
 const Server = require('./hapi-server')
-const Cache = require('./runtime-cache')
 const test = require('ava')
 const dotenv = require('dotenv')
 const supertest = require('supertest')
@@ -15,14 +14,7 @@ test('hapi throws', async (t) => {
     notify: () => {},
     captureException: (err, extra) => {
       t.is(err.message, message)
-    },
-    cache: new Cache({
-      cache: {
-        redis: {
-          url: process.env.BAT_REDIS_URL || 'redis://localhost:6379'
-        }
-      }
-    })
+    }
   }
 
   const server = await Server({

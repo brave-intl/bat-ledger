@@ -9,7 +9,6 @@ const underscore = require('underscore')
 const hapiRequireHTTPS = require('hapi-require-https')
 const SDebug = require('sdebug')
 
-const rateLimiter = require('./hapi-rate-limiter')
 const braveHapi = require('./extras-hapi')
 const npminfo = require('../npminfo')
 
@@ -96,24 +95,17 @@ async function Server (options, runtime) {
     })
   }
 
-  const { prometheus } = runtime
   const plugins = [].concat(
-    prometheus
-      ? [
-        prometheus.plugin()
-      ]
-      : [],
     [
       authBearerToken,
-      inert,
-      rateLimiter(runtime)
+      inert
     ], process.env.NODE_ENV === 'production'
       ? [
-        {
-          plugin: hapiRequireHTTPS,
-          options: { proxy: true }
-        }
-      ]
+          {
+            plugin: hapiRequireHTTPS,
+            options: { proxy: true }
+          }
+        ]
       : []
   )
   await server.register(plugins)
