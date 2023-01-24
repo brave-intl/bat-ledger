@@ -98,7 +98,7 @@ async function Server (options, runtime) {
   const plugins = [].concat(
     [
       authBearerToken,
-      inert,
+      inert
     ], process.env.NODE_ENV === 'production'
       ? [
           {
