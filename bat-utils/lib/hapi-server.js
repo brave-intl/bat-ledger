@@ -95,7 +95,13 @@ async function Server (options, runtime) {
     })
   }
 
+  const { prometheus } = runtime
   const plugins = [].concat(
+    prometheus
+      ? [
+          prometheus.plugin()
+        ]
+      : [],
     [
       authBearerToken,
       inert

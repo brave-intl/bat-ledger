@@ -11,6 +11,7 @@ const postgres = require('./lib/runtime-postgres')
 const sentry = require('./lib/runtime-sentry')
 const database = require('./lib/runtime-database')
 const wreck = require('./lib/runtime-wreck')
+const prometheus = require('./lib/runtime-prometheus')
 
 const hash = {
   currency,
@@ -19,6 +20,7 @@ const hash = {
   database,
   postgres,
   sentry,
+  prometheus,
   wreck
 }
 
