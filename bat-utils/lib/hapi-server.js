@@ -95,7 +95,13 @@ async function Server (options, runtime) {
     })
   }
 
+  const { prometheus } = runtime
   const plugins = [].concat(
+    prometheus
+      ? [
+          prometheus.plugin()
+        ]
+      : [],
     [
       authBearerToken,
       inert
@@ -103,7 +109,7 @@ async function Server (options, runtime) {
       ? [
           {
             plugin: hapiRequireHTTPS,
-            options: { proxy: false }
+            options: { proxy: true }
           }
         ]
       : []
