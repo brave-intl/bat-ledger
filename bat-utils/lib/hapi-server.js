@@ -103,7 +103,7 @@ async function Server (options, runtime) {
       ? [
           {
             plugin: hapiRequireHTTPS,
-            options: { proxy: true }
+            options: { proxy: false }
           }
         ]
       : []
