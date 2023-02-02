@@ -4,24 +4,20 @@ const path = require('path')
 const SDebug = require('sdebug')
 const _ = require('underscore')
 
-const cache = require('./lib/runtime-cache')
 const currency = require('./lib/runtime-currency')
 const kafka = require('./lib/runtime-kafka')
 const newrelic = require('./lib/runtime-newrelic')
 const postgres = require('./lib/runtime-postgres')
-const prometheus = require('./lib/runtime-prometheus')
 const sentry = require('./lib/runtime-sentry')
 const database = require('./lib/runtime-database')
 const wreck = require('./lib/runtime-wreck')
 
 const hash = {
-  cache,
   currency,
   kafka,
   newrelic,
   database,
   postgres,
-  prometheus,
   sentry,
   wreck
 }

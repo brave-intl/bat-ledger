@@ -140,7 +140,7 @@ module.exports = {
     ensureArrived: ensureTransactionArrived
   },
   votes: {
-    voteCount: voteCount
+    voteCount
   },
   referral: {
     create: createReferral,
