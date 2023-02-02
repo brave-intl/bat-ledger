@@ -4,6 +4,7 @@ const path = require('path')
 const SDebug = require('sdebug')
 const _ = require('underscore')
 
+const cache = require('./lib/runtime-cache')
 const currency = require('./lib/runtime-currency')
 const kafka = require('./lib/runtime-kafka')
 const newrelic = require('./lib/runtime-newrelic')
@@ -21,7 +22,8 @@ const hash = {
   postgres,
   sentry,
   prometheus,
-  wreck
+  wreck,
+  cache
 }
 
 module.exports = Object.assign(Runtime, hash)
