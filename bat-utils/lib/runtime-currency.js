@@ -66,7 +66,6 @@ Currency.prototype = {
       } = config
       const authorization = `Bearer ${accessToken}`
       const options = {
-        useProxyP: true,
         headers: {
           authorization,
           'content-type': 'application/json'
