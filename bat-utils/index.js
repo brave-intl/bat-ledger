@@ -1,4 +1,4 @@
-import hapi from './boot-hapi.js'
+import * as hapi from './boot-hapi.js'
 import extras from './boot-extras.js'
 import { Runtime } from './boot-runtime.js'
 

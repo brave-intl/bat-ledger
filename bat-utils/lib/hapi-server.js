@@ -1,7 +1,7 @@
 import dns from 'dns'
 import boom from '@hapi/boom'
 import os from 'os'
-import _ from 'underscore'
+import underscore from 'underscore'
 import authBearerToken from 'hapi-auth-bearer-token'
 import hapi from '@hapi/hapi'
 import inert from '@hapi/inert'
@@ -42,7 +42,7 @@ const pushScopedTokens = pushTokens({
 })
 
 function pushTokens (map) {
-  const keys = _.keys(map)
+  const keys = underscore.keys(map)
   return (token, memo = []) => {
     return keys.reduce((memo, key) => {
       const value = map[key]
@@ -77,7 +77,7 @@ async function Server (options, runtime) {
 
   goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
 
-  underscore.defaults(options, { id: server.info.id, module, headersP: true, remoteP: true })
+  underscore.defaults(options, { id: server.info.id, headersP: true, remoteP: true })
   if (!options.routes) options.routes = require('./controllers/index')
 
   debug.initialize({ web: { id: options.id } })

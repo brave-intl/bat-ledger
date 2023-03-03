@@ -1,6 +1,6 @@
 'use strict'
 
-import { serial as test } from 'ava';
+import test from 'ava';
 import { v4 as uuidV4 } from 'uuid';
 import _ from 'underscore';
 import { insertTransaction, insertFromSettlement, insertFromReferrals } from '../../eyeshade/lib/transaction';

@@ -1,6 +1,6 @@
 'use strict'
 
-import { serial as test } from 'ava';
+import test from 'ava';
 import Postgres from 'bat-utils/lib/runtime-postgres';
 import { v4 as uuidV4 } from 'uuid';
 

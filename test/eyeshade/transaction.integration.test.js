@@ -1,6 +1,6 @@
 'use strict'
 
-import { serial as test } from 'ava'
+import test from 'ava'
 import { v4 as uuidV4 } from 'uuid'
 import { PROBI_FACTOR, BigNumber, createdTimestamp } from 'bat-utils/lib/extras-utils.js'
 import { Runtime } from 'bat-utils/index.js'

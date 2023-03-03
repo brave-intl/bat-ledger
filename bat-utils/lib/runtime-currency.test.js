@@ -1,10 +1,9 @@
 'use strict'
 
-import Currency from './runtime-currency'
-import { BigNumber } from './extras-utils'.js;
+import Currency from './runtime-currency.js'
+import { BigNumber, timeout } from './extras-utils.js'
 import test from 'ava'
 import _ from 'underscore'
-import { timeout } from './extras-utils.js'
 
 import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()

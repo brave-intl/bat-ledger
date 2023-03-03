@@ -1,4 +1,4 @@
-import { serial as test } from 'ava'
+import test from 'ava'
 import countries from './countries.js'
 
 test('countries should not have duplicated values', (t) => {

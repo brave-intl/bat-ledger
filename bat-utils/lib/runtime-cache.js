@@ -7,7 +7,6 @@ const ONE_HOUR = 1000 * 60 * 60
 const MAX_RECONNECT_TIMEOUT = 10000
 const MAX_RECONNECT_ATTEMPTS = 100
 Cache.accessor = accessor
-export default Cache
 
 bluebird.promisifyAll(redis.RedisClient.prototype)
 bluebird.promisifyAll(redis.Multi.prototype)
@@ -107,3 +106,5 @@ function retryStrategy (options) {
   // reconnect after
   return Math.min(attempt * 100, MAX_RECONNECT_TIMEOUT)
 }
+
+export default Cache

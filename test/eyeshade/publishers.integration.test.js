@@ -1,6 +1,6 @@
 'use strict'
 import _ from 'underscore'
-import { serial as test } from 'ava'
+import test from 'ava'
 import { v4 as uuidV4 } from 'uuid'
 import { ok, cleanEyeshadePgDb, agents } from '../utils.js'
 import timeout from 'bat-utils/lib/extras-utils.js'

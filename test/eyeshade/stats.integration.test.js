@@ -1,4 +1,4 @@
-import { serial as test } from 'ava';
+import test from 'ava';
 import { v4 as uuidV4 } from 'uuid';
 import { Runtime } from 'bat-utils';
 import { insertFromSettlement } from '../../eyeshade/lib/transaction';

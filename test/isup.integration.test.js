@@ -1,7 +1,7 @@
-import { serial as test } from 'ava'
+import test from 'ava'
 import { agent } from 'supertest'
 import _ from 'underscore'
-import { ok } from './utils.js'
+import utils from './utils.js'
 import { goneRoutes } from 'bat-utils/lib/hapi-server.js'
 
 const {
@@ -16,7 +16,7 @@ test('check endpoint is up with no authorization', async (t) => {
       text
     } = await agent(origin)
       .get('/')
-      .expect(ok)
+      .expect(utils.ok)
     t.is(expectation, text, 'a fixed string is sent back')
   }
 })

@@ -1,4 +1,4 @@
-import { serial as test } from 'ava'
+import test from 'ava'
 import settlements from './settlements.js'
 import utils from '../../test/utils.js'
 

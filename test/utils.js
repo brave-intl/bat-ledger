@@ -1,19 +1,22 @@
 import fs from 'fs'
 import { sign } from 'http-request-signature'
 import crypto from 'crypto'
-import path from 'path'
-import dotenv from 'dotenv'
+import path, { dirname } from 'path'
 import { agent } from 'supertest'
 import { stringify } from 'querystring'
 import _ from 'underscore'
 import { v4 as uuidV4 } from 'uuid'
-import timeout from 'bat-utils/lib/extras-utils.js'
-import BigNumber from 'bat-utils/lib/extras-utils.js'
-import uint8tohex from 'bat-utils/lib/extras-utils.js'
-import Postgres from 'bat-utils/lib/runtime-postgres'
+import { timeout, BigNumber, uint8tohex } from 'bat-utils/lib/extras-utils.js'
+import Postgres from 'bat-utils/lib/runtime-postgres.js'
 import SDebug from 'sdebug'
-import Server from 'bat-utils/lib/hapi-server'
-import { Runtime } from 'bat-utils'
+import Server from 'bat-utils/lib/hapi-server.js'
+import { Runtime } from 'bat-utils/index.js'
+import { fileURLToPath } from 'url'
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 dotenv.config()
 const debug = new SDebug('test')
 

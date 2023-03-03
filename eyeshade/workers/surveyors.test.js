@@ -1,14 +1,14 @@
-import { serial as test } from 'ava'
+import test from 'ava'
 import BigNumber from 'bignumber.js'
-import { Runtime } from 'bat-utils'
+import { Runtime } from 'bat-utils/index.js'
 import moment from 'moment'
-import uuid from 'uuid'
+import { v5 as uuid } from 'uuid'
 import SDebug from 'sdebug'
 import format from 'pg-format'
 import _ from 'underscore'
 import { insertVote } from './acvote.js'
 import { surveyorFrozenReport } from './surveyors.js'
-import { cleanEyeshadePgDb } from '../../test/utils.js'
+import utils from '../../test/utils.js'
 
 test.before((t) => {
   Object.assign(t.context, {
@@ -22,7 +22,7 @@ test.before((t) => {
     })
   })
 })
-test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
+test.beforeEach((t) => utils.cleanEyeshadePgDb(t.context.runtime.postgres))
 
 test('surveyor-frozen-report inserts votes correctly', async (t) => {
   // insert surveyors

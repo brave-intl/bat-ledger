@@ -1,14 +1,13 @@
 'use strict'
-import { serial as test } from 'ava'
+import test from 'ava'
 import _ from 'underscore'
-import normalizeChannel from 'bat-utils/lib/extras-utils.js'
-import timeout from 'bat-utils/lib/extras-utils.js'
+import { normalizeChannel, timeout } from 'bat-utils/lib/extras-utils.js'
 import { Runtime } from 'bat-utils'
 import config from '../../config.js'
 import transaction from '../lib/transaction.js'
 import referrals from '../lib/referrals.js'
 import utils from '../../test/utils.js'
-import { consumer as referralsConsumer } from './referrals.js'
+import referralsConsumer from './referrals.js'
 
 const {
   ok,
