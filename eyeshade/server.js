@@ -1,12 +1,15 @@
 import { hapi, Runtime } from 'bat-utils/index.js'
 
-import * as config from '../config.js'
+import config from '../config.js'
 import * as accountsController from './controllers/accounts.js'
 import * as publishersController from './controllers/publishers.js'
 import * as referralsController from './controllers/referrals.js'
 import * as statsController from './controllers/stats.js'
-import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+import { fileURLToPath } from 'url'
+import * as dotenv from 'dotenv'
+
 dotenv.config()
+const __filename = fileURLToPath(import.meta.url)
 
 if (!process.env.BATUTIL_SPACES) {
   process.env.BATUTIL_SPACES = '*,-extras.worker'

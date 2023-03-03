@@ -98,4 +98,4 @@ function sanity (config) {
   })
 }
 
-export default Runtime
+export { Runtime }

@@ -135,7 +135,7 @@ const prometheus =
 }
 
 
-export {
+export default {
   kafka,
   prometheus,
   server,
@@ -148,5 +148,8 @@ export {
   sentry,
   login,
   cache,
-  service
+  service,
+  referrals,
+  postgres,
+  postgresRO
 }

@@ -9,7 +9,7 @@ SELECT id
 FROM transactions
 WHERE id = any($1::UUID[])`
 
-export const consumer = (runtime) => {
+export default function consumer (runtime) {
   const { kafka, postgres, config } = runtime
   kafka.on(referrals.topic, async (messages, client) => {
     const inserting = {}

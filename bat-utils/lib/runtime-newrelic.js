@@ -1,7 +1,7 @@
 import tldjs from 'tldjs'
 import os from 'os'
 import path from 'path'
-import * as newrelicImport from 'newrelic'
+
 let singleton
 
 function Newrelic (config, runtime) {
@@ -24,7 +24,7 @@ function Newrelic (config, runtime) {
   process.env.NEW_RELIC_LOG = config.newrelic.log || 'stdout'
   process.env.NEW_RELIC_NO_CONFIG_FILE = true
 
-  return newrelicImport
+  return import('newrelic')
 }
 
 function createNewrelic (config, runtime) {
