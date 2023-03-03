@@ -1,9 +1,8 @@
-const dotenv = require('dotenv')
-const utils = require('bat-utils')
+import dotenv from 'dotenv'
+import utils from 'bat-utils'
+import config from '../config.js'
+import reports from './workers/reports.js'
 
-const config = require('../config.js')
-
-const reports = require('./workers/reports')
 const {
   Runtime
 } = utils

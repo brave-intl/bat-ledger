@@ -1,10 +1,8 @@
-const { serial: test } = require('ava')
-const { agent } = require('supertest')
-const _ = require('underscore')
-const {
-  ok
-} = require('./utils')
-const { goneRoutes } = require('bat-utils/lib/hapi-server')
+import { serial as test } from 'ava'
+import { agent } from 'supertest'
+import _ from 'underscore'
+import { ok } from './utils.js'
+import { goneRoutes } from 'bat-utils/lib/hapi-server.js'
 
 const {
   BAT_EYESHADE_SERVER

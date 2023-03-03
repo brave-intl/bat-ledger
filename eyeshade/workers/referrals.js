@@ -1,22 +1,21 @@
-const { normalizeChannel } = require('bat-utils/lib/extras-utils')
-
-const transaction = require('../lib/transaction')
-const referrals = require('../lib/referrals')
-const queries = require('../lib/queries')
-const countries = require('../lib/countries')
+import * as normalizeChannel from 'bat-utils/lib/extras-utils.js'
+import * as transaction from '../lib/transaction.js'
+import * as referrals from '../lib/referrals.js'
+import { getActiveCountryGroups } from '../lib/queries.js'
+import * as countries from '../lib/countries.js'
 
 const getTransactionsById = `
 SELECT id
 FROM transactions
 WHERE id = any($1::UUID[])`
 
-module.exports.consumer = (runtime) => {
+export const consumer = (runtime) => {
   const { kafka, postgres, config } = runtime
   kafka.on(referrals.topic, async (messages, client) => {
     const inserting = {}
     const {
       rows: referralGroups
-    } = await postgres.query(queries.getActiveCountryGroups(), [], client)
+    } = await postgres.query(getActiveCountryGroups(), [], client)
 
     const docs = await kafka.mapMessages(referrals, messages, async (ref) => {
       const {

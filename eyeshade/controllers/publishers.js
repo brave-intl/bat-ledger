@@ -1,9 +1,8 @@
-const Joi = require('joi')
-const settlement = require('../lib/settlements')
-
-const utils = require('bat-utils')
-const braveHapi = utils.extras.hapi
-const braveJoi = utils.extras.joi
+import Joi from 'joi'
+import * as settlement from '../lib/settlements.js'
+import * as utils from 'bat-utils/index.js'
+import { braveJoi } from 'bat-utils/lib/extras-joi.js'
+import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
 
 const v2 = {}
 
@@ -102,6 +101,6 @@ v2.settlement = {
   }
 }
 
-module.exports.routes = [
+export const routes = [
   braveHapi.routes.async().post().path('/v2/publishers/settlement').config(v2.settlement)
 ]

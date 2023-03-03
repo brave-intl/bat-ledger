@@ -1,13 +1,13 @@
-const bluebird = require('bluebird')
-const redis = require('redis')
-const SDebug = require('sdebug')
+import bluebird from 'bluebird'
+import redis from 'redis'
+import SDebug from 'sdebug'
+import _ from 'underscore'
 const debug = new SDebug('cache')
-const _ = require('underscore')
 const ONE_HOUR = 1000 * 60 * 60
 const MAX_RECONNECT_TIMEOUT = 10000
 const MAX_RECONNECT_ATTEMPTS = 100
 Cache.accessor = accessor
-module.exports = Cache
+export default Cache
 
 bluebird.promisifyAll(redis.RedisClient.prototype)
 bluebird.promisifyAll(redis.Multi.prototype)

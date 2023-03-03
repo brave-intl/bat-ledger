@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-
-const Database = require('bat-utils/lib/runtime-database')
-const Queue = require('bat-utils/lib/runtime-queue')
-const SDebug = require('sdebug')
+import Database from 'bat-utils/lib/runtime-database'
+import Queue from 'bat-utils/lib/runtime-queue'
+import SDebug from 'sdebug'
 const debug = new SDebug('migrate-transaction-table')
 
 async function main () {

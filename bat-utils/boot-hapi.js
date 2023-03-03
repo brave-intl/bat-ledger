@@ -1,11 +1,11 @@
-const hapiControllersIndex = require('./lib/hapi-controllers-index')
-const hapiServer = require('./lib/hapi-server')
+import * as hapiControllersIndex from './lib/hapi-controllers-index.js'
+import * as hapiServer from './lib/hapi-server.js'
 
 const controllers = {
   index: hapiControllersIndex
 }
 
-module.exports = {
+export default {
   server: hapiServer,
   controllers
 }

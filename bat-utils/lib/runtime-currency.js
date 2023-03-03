@@ -1,9 +1,10 @@
-const { URL } = require('url')
-const SDebug = require('sdebug')
-const currencyCodes = require('currency-codes')
-const braveHapi = require('./extras-hapi')
-const { BigNumber } = require('./extras-utils')
-const _ = require('underscore')
+import { URL } from 'url'
+import SDebug from 'sdebug'
+import * as currencyCodes from 'currency-codes'
+import * as braveHapi from './extras-hapi.js'
+import { BigNumber } from './extras-utils.js'
+import _ from 'underscore'
+
 const debug = new SDebug('currency')
 let singleton
 const oneMin = 1000 * 60
@@ -40,7 +41,7 @@ generateGlobal.decimals = decimals
 
 Currency.Cache = Cache
 
-module.exports = generateGlobal
+export default generateGlobal
 generateGlobal.Constructor = Currency
 
 Currency.prototype = {

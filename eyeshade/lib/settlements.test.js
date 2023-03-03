@@ -1,6 +1,6 @@
-const { serial: test } = require('ava')
-const settlements = require('./settlements')
-const utils = require('../../test/utils')
+import { serial as test } from 'ava'
+import settlements from './settlements.js'
+import utils from '../../test/utils.js'
 
 test('settlements should be serializable and decodable without losing information', (t) => {
   const settlement = utils.settlement.create()

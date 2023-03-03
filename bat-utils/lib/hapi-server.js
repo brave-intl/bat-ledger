@@ -1,18 +1,15 @@
-const dns = require('dns')
-const boom = require('@hapi/boom')
-const os = require('os')
-const _ = require('underscore')
-const authBearerToken = require('hapi-auth-bearer-token')
-const hapi = require('@hapi/hapi')
-const inert = require('@hapi/inert')
-const underscore = require('underscore')
-const hapiRequireHTTPS = require('hapi-require-https')
-const SDebug = require('sdebug')
+import dns from 'dns'
+import boom from '@hapi/boom'
+import os from 'os'
+import _ from 'underscore'
+import authBearerToken from 'hapi-auth-bearer-token'
+import hapi from '@hapi/hapi'
+import inert from '@hapi/inert'
+import hapiRequireHTTPS from 'hapi-require-https'
+import SDebug from 'sdebug'
+import * as braveHapi from './extras-hapi.js'
 
-const braveHapi = require('./extras-hapi')
-const npminfo = require('../npminfo')
-
-module.exports = async (options, runtime) => {
+export default async function (options, runtime) {
   try {
     const srvr = await Server(options, runtime)
     return srvr
@@ -21,7 +18,7 @@ module.exports = async (options, runtime) => {
   }
 }
 
-const goneRoutes = [
+export const goneRoutes = [
   // eyeshade
   { method: 'POST', path: '/v2/publishers/settlement/submit' },
   { method: 'PUT', path: '/v1/referrals/{transactionId}' },
@@ -34,7 +31,6 @@ const goneRoutes = [
   { method: 'GET', path: '/v1/logout' },
   { method: 'GET', path: '/v1/ping' }
 ]
-module.exports.goneRoutes = goneRoutes
 
 const pushScopedTokens = pushTokens({
   TOKEN_LIST: 'global',
@@ -300,7 +296,7 @@ async function Server (options, runtime) {
         options: underscore.pick(options, ['headersP', 'remoteP'])
       }))
   runtime.notify(debug, {
-    text: os.hostname() + ' ' + npminfo.name + '@' + npminfo.version + ' started ' +
+    text: os.hostname() + '@ started ' +
       (process.env.DYNO || 'web') + '/' + options.id
   })
 

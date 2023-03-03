@@ -1,10 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env nodeimport Queue from 'bat-utils/lib/runtime-queue';
+import SDebug from 'sdebug'
 
-const Queue = require('bat-utils/lib/runtime-queue')
-const SDebug = require('sdebug')
+import Postgres from 'bat-utils/lib/runtime-postgres'
 const debug = new SDebug('migrate-transaction-table')
-
-const Postgres = require('bat-utils/lib/runtime-postgres')
 
 async function main () {
   const queue = new Queue({ queue: process.env.REDIS_URL })

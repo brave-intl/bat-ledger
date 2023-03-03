@@ -3,7 +3,7 @@
   "version": "0.9.0",
   "description": "A BAT micropayments system for users and publishers.",
   "main": "index.js",
-  "type": "main",
+  "type": "module",
   "scripts": {
     "ava": "ava",
     "eyeshade-server": "node eyeshade/server.js",
@@ -106,6 +106,7 @@
   "devDependencies": {
     "ava": "^5.1.1",
     "coveralls": "^3.1.1",
+    "eslint": "^8.35.0",
     "nodemon": "^2.0.20",
     "parse-prometheus-text-format": "^1.1.1",
     "sinon": "^15.0.1",

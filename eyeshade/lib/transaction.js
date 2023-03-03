@@ -1,11 +1,7 @@
-const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
-const format = require('pg-format')
-const { v5: uuidv5 } = require('uuid')
-const {
-  createdTimestamp,
-  BigNumber,
-  normalizeChannel
-} = require('bat-utils/lib/extras-utils')
+import { getPublisherProps } from 'bat-utils/lib/extras-publisher.js'
+import format from 'pg-format'
+import { v5 as uuidv5 } from 'uuid'
+import { BigNumber, normalizeChannel, createdTimestamp } from 'bat-utils/lib/extras-utils.js'
 
 const knownChains = {
   ETH: 'ethereum',
@@ -17,7 +13,8 @@ const SETTLEMENT_NAMESPACE = {
   referral: '7fda9071-4f0d-4fe6-b3ac-b1c484d5601a',
   manual: 'a7cb6b9e-b0b4-4c40-85bf-27a0172d4353'
 }
-module.exports = {
+
+export default {
   id: {
     referral: referralId,
     settlement: settlementId

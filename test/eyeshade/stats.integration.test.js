@@ -1,14 +1,8 @@
-const { serial: test } = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const { Runtime } = require('bat-utils')
-const {
-  insertFromSettlement
-} = require('../../eyeshade/lib/transaction')
-const {
-  agents,
-  ok,
-  cleanEyeshadePgDb
-} = require('../utils')
+import { serial as test } from 'ava';
+import { v4 as uuidV4 } from 'uuid';
+import { Runtime } from 'bat-utils';
+import { insertFromSettlement } from '../../eyeshade/lib/transaction';
+import { agents, ok, cleanEyeshadePgDb } from '../utils';
 
 const {
   BAT_REDIS_URL,

@@ -1,7 +1,7 @@
 
-const underscore = require('underscore')
+import underscore from 'underscore'
 
-exports.routes = async (debug, runtime, options) => {
+export const routes = async (debug, runtime, options) => {
   const entries = {}
   const routes = [{
     method: 'GET',

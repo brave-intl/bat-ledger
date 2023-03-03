@@ -1,9 +1,9 @@
-const transaction = require('../lib/transaction')
-const { normalizeChannel, BigNumber } = require('bat-utils/lib/extras-utils')
-const { ObjectID } = require('bson')
-const settlements = require('../lib/settlements')
+import * as transaction from '../lib/transaction.js'
+import { normalizeChannel, BigNumber } from 'bat-utils/lib/extras-utils.js'
+import { ObjectID } from 'bson'
+import settlements from '../lib/settlements.js'
 
-module.exports = {
+export default {
   consumer,
   insertMessage
 }

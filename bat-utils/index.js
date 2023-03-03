@@ -1,12 +1,12 @@
+import * as hapi from './boot-hapi.js'
+import * as extras from './boot-extras.js'
+import * as runtime from './boot-runtime.js'
 
-const hapi = require('./boot-hapi')
-const extras = require('./boot-extras')
-const runtime = require('./boot-runtime')
-module.exports = {
+export {
   hapi,
-  Hapi: hapi,
+  hapi as Hapi,
   extras,
-  Extras: extras,
+  extras as Extras,
   runtime,
-  Runtime: runtime
+  runtime as Runtime
 }

@@ -1,19 +1,17 @@
-const crypto = require('crypto')
-const ProxyAgent = require('proxy-agent')
-const SDebug = require('sdebug')
-const underscore = require('underscore')
-const wreck = require('@hapi/wreck')
+import crypto from 'crypto'
+import ProxyAgent from 'proxy-agent'
+import SDebug from 'sdebug'
+import underscore from 'underscore'
+import wreck from '@hapi/wreck'
 
-const npminfo = require('../npminfo')
-
-exports.debug = (info, request) => {
+export function debug (info, request) {
   const debug = new SDebug(info.id)
 
   debug.initialize({ request: { id: request.id } })
   return debug
 }
 
-exports.domainCompare = (a, b) => {
+export function domainCompare (a, b) {
   let d
 
   if (!a) a = ''
@@ -40,7 +38,7 @@ const constantTimeEquals = (a, b) => {
   return !mismatch
 }
 
-exports.isSimpleTokenValid = (tokenList, token) => {
+export function isSimpleTokenValid (tokenList, token) {
   if (!(Array.isArray(tokenList) && tokenList.every((element) => typeof element === 'string'))) {
     throw new TypeError('tokenList must be an array of strings')
   }
@@ -119,7 +117,7 @@ AsyncRoute.prototype.config = function (config) {
   }
 }
 
-exports.routes = { async: AsyncRoute }
+export const routes = { async: AsyncRoute }
 
 const ErrorInspect = (err) => {
   if (!err) return
@@ -132,12 +130,9 @@ const ErrorInspect = (err) => {
   return i
 }
 
-exports.error = { inspect: ErrorInspect }
+export const error = { inspect: ErrorInspect }
 
 let wreckUA = ''
-if (npminfo) {
-  wreckUA += npminfo.name + '/' + npminfo.version + ' wreck/' + npminfo.dependencies.wreck
-}
 
 underscore.keys(process.versions).forEach((version) => { wreckUA += ' ' + version + '/' + process.versions[version] })
 
@@ -158,7 +153,7 @@ const WreckProxy = (server, opts) => {
 
   return { server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }
 }
-exports.WreckProxy = WreckProxy
+export { WreckProxy }
 
 const WreckGet = async (server, opts) => {
   const params = WreckProxy(server, opts)
@@ -199,12 +194,13 @@ function forwardedIPShift () {
   return shift >= 0 ? shift : 1
 }
 
-exports.wreck = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
+const wreckExport = { get: WreckGet, patch: WreckPatch, post: WreckPost, put: WreckPut, delete: WreckDelete }
+export { wreckExport as wreck }
 
 // NOTE This function trusts the final IP address in X-Forwarded-For
 //      This is reasonable only when running behind a load balancer that correctly sets this header
 //      and there is no way to directly access the web nodes
-exports.ipaddr = (request) => {
+export function ipaddr (request) {
   // https://en.wikipedia.org/wiki/X-Forwarded-For    X-Forwarded-For: client, proxy1, proxy2
   // Since it is easy to forge an X-Forwarded-For field the given information should be used with care.
   // The last IP address is always the IP address that connects to the last proxy, which means it is the most reliable source of information.

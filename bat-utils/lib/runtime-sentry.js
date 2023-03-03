@@ -1,11 +1,11 @@
-const { URL } = require('url')
-const Raven = require('@sentry/node')
-const SDebug = require('sdebug')
-const underscore = require('underscore')
+import { URL } from 'url'
+import Raven from '@sentry/node'
+import SDebug from 'sdebug'
+import underscore from 'underscore'
 
 const debug = new SDebug('sentry')
 
-module.exports = Sentry
+export default Sentry
 
 function Sentry (config, runtime) {
   if (!(this instanceof Sentry)) {

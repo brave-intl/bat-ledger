@@ -6,10 +6,11 @@ docker-compose -f docker-compose.yml run --rm -v $(pwd)/bin:/usr/src/app/bin -w 
 DEBUG=-* DATABASE_URL= MONGODB_URI= ./bin/migrate-wallets-to-grants.js
 */
 
-const bson = require('bson')
-const Postgres = require('bat-utils/lib/runtime-postgres')
-const { MongoClient } = require('mongodb')
-const url = require('url')
+import bson from 'bson'
+
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import { MongoClient } from 'mongodb'
+import url from 'url'
 
 const insertStatement = `
 insert into wallets(id, provider, provider_id, public_key, anonymous_address, provider_linking_id)

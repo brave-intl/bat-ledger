@@ -1,14 +1,14 @@
-const { serial: test } = require('ava')
-const BigNumber = require('bignumber.js')
-const { Runtime } = require('bat-utils')
-const moment = require('moment')
-const uuid = require('uuid')
-const SDebug = require('sdebug')
-const format = require('pg-format')
-const _ = require('underscore')
-const { insertVote } = require('./acvote')
-const { surveyorFrozenReport } = require('./surveyors')
-const { cleanEyeshadePgDb } = require('../../test/utils')
+import { serial as test } from 'ava'
+import BigNumber from 'bignumber.js'
+import { Runtime } from 'bat-utils'
+import moment from 'moment'
+import uuid from 'uuid'
+import SDebug from 'sdebug'
+import format from 'pg-format'
+import _ from 'underscore'
+import { insertVote } from './acvote.js'
+import { surveyorFrozenReport } from './surveyors.js'
+import { cleanEyeshadePgDb } from '../../test/utils.js'
 
 test.before((t) => {
   Object.assign(t.context, {

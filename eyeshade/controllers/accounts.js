@@ -1,14 +1,13 @@
-const Joi = require('joi')
-const { getPublisherProps } = require('bat-utils/lib/extras-publisher')
-const boom = require('@hapi/boom')
-const utils = require('bat-utils')
-const _ = require('underscore')
-const extrasUtils = require('bat-utils/lib/extras-utils')
-const queries = require('../lib/queries')
-const transactions = require('../lib/transaction')
-const braveHapi = utils.extras.hapi
-const braveJoi = utils.extras.joi
-const { BigNumber } = utils.extras.utils
+import Joi from 'joi'
+import { getPublisherProps } from 'bat-utils/lib/extras-publisher.js'
+import boom from '@hapi/boom'
+import _ from 'underscore'
+import * as extrasUtils from 'bat-utils/lib/extras-utils.js'
+import { earnings, allSettlements, timeConstraintSettlements } from '../lib/queries.js'
+import * as transactions from '../lib/transaction.js'
+import { BigNumber } from 'bat-utils/lib/extras-utils.js'
+import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
+import { braveJoi } from 'bat-utils/lib/extras-joi.js'
 
 const v1 = {}
 
@@ -358,7 +357,7 @@ v1.getEarningsTotals =
         throw boom.badData('type must be contributions or referrals')
       }
 
-      const query1 = queries.earnings({
+      const query1 = earnings({
         asc: order === 'asc'
       })
 
@@ -432,10 +431,10 @@ v1.getPaidTotals =
         })
         const startDate = dates.start.toISOString()
         const untilDate = dates.until.toISOString()
-        const query = queries.timeConstraintSettlements(options)
+        const query = timeConstraintSettlements(options)
           ; ({ rows } = await postgres.query(query, [type, limit, startDate, untilDate], true))
       } else {
-        const query = queries.allSettlements(options)
+        const query = allSettlements(options)
           ; ({ rows } = await postgres.query(query, [type, limit], true))
       }
       return rows
@@ -522,7 +521,7 @@ v1.adTransactions = {
   response: { schema: Joi.object().length(0) }
 }
 
-module.exports.routes = [
+export const routes = [
   braveHapi.routes.async().path('/v1/accounts/earnings/{type}/total').config(v1.getEarningsTotals),
   braveHapi.routes.async().path('/v1/accounts/settlements/{type}/total').config(v1.getPaidTotals),
   braveHapi.routes.async().path('/v1/accounts/balances/{type}/top').config(v1.getTopBalances),
@@ -531,4 +530,4 @@ module.exports.routes = [
   braveHapi.routes.async().path('/v1/accounts/{account}/transactions').config(v1.getTransactions)
 ]
 
-module.exports.v1 = v1
+export default v1

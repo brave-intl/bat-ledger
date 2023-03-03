@@ -1,10 +1,6 @@
-const braveHapi = require('../../bat-utils/lib/extras-hapi.js')
+import * as braveHapi from '../../bat-utils/lib/extras-hapi.js'
 
-module.exports = {
-  hasValidCountry
-}
-
-async function hasValidCountry (runtime, channel, post = braveHapi.wreck.post) {
+export async function hasValidCountry (runtime, channel, post = braveHapi.wreck.post) {
   const publishers = runtime.config.publishers
   const channelsToCheck = { channel_ids: [channel] }
   let result

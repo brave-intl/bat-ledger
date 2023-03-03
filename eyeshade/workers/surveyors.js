@@ -1,8 +1,8 @@
-const { insertMany } = require('../lib/transaction.js')
+import { insertMany } from '../lib/transaction.js'
 
 const feePercent = 0.05
 
-exports.surveyorFrozenReport = async (debug, runtime, payload) => {
+export const surveyorFrozenReport = async (debug, runtime, payload) => {
   // FIXME should rework this
   const { postgres } = runtime
   const { mix, surveyorId } = payload

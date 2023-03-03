@@ -1,16 +1,17 @@
-require('dotenv').config()
+import { hapi, Runtime } from 'bat-utils/index.js'
+
+import * as config from '../config.js'
+import * as accountsController from './controllers/accounts.js'
+import * as publishersController from './controllers/publishers.js'
+import * as referralsController from './controllers/referrals.js'
+import * as statsController from './controllers/stats.js'
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+dotenv.config()
+
 if (!process.env.BATUTIL_SPACES) {
   process.env.BATUTIL_SPACES = '*,-extras.worker'
 }
-const { Runtime, hapi } = require('bat-utils')
 const { controllers, server } = hapi
-
-const config = require('../config.js')
-
-const accountsController = require('./controllers/accounts')
-const publishersController = require('./controllers/publishers')
-const referralsController = require('./controllers/referrals')
-const statsController = require('./controllers/stats')
 
 Runtime.newrelic.setupNewrelic(config, __filename)
 
@@ -33,4 +34,4 @@ const options = {
 
 config.postgres.schemaVersion = require('./migrations/current')
 
-module.exports = server(options, new Runtime(config))
+export default server(options, new Runtime(config))

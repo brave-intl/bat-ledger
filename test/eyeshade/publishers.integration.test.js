@@ -1,19 +1,13 @@
 'use strict'
-const _ = require('underscore')
-const { serial: test } = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const {
-  ok,
-  cleanEyeshadePgDb,
-  agents
-} = require('../utils')
-const {
-  timeout
-} = require('bat-utils/lib/extras-utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
-const { consumer: settlementsConsumer } = require('../../eyeshade/workers/settlements')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
+import _ from 'underscore'
+import { serial as test } from 'ava'
+import { v4 as uuidV4 } from 'uuid'
+import { ok, cleanEyeshadePgDb, agents } from '../utils.js'
+import timeout from 'bat-utils/lib/extras-utils.js'
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import { consumer as settlementsConsumer } from '../../eyeshade/workers/settlements.js'
+import { Runtime } from 'bat-utils'
+import config from '../../config.js'
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 

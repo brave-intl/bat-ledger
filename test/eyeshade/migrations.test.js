@@ -1,8 +1,8 @@
 'use strict'
 
-const { serial: test } = require('ava')
-const Postgres = require('bat-utils/lib/runtime-postgres')
-const { v4: uuidV4 } = require('uuid')
+import { serial as test } from 'ava';
+import Postgres from 'bat-utils/lib/runtime-postgres';
+import { v4 as uuidV4 } from 'uuid';
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 

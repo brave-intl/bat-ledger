@@ -1,12 +1,12 @@
-const { serial: test } = require('ava')
-const config = require('../../config')
-const { timeout, normalizeChannel } = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
-const transaction = require('../lib/transaction')
-const settlements = require('../lib/settlements')
-const utils = require('../../test/utils')
-const { cleanEyeshadePgDb } = require('../../test/utils')
-const { consumer: settlementsConsumer } = require('./settlements')
+import { serial as test } from 'ava'
+import config from '../../config.js'
+import normalizeChannel from 'bat-utils/lib/extras-utils.js'
+import timeout from 'bat-utils/lib/extras-utils.js'
+import { Runtime } from 'bat-utils'
+import transaction from '../lib/transaction.js'
+import settlements from '../lib/settlements.js'
+import utils, { cleanEyeshadePgDb } from '../../test/utils.js'
+import { consumer as settlementsConsumer } from './settlements.js'
 
 test.before(async (t) => {
   Object.assign(t.context, {

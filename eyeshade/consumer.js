@@ -1,18 +1,15 @@
-const dotenv = require('dotenv')
-const utils = require('bat-utils')
+import * as utils from 'bat-utils/index.js'
+import * as config from '../config.js'
+import * as suggestionsConsumer from './workers/suggestions.js'
+import * as voteConsumer from './workers/acvote.js'
+import * as referralsConsumer from './workers/referrals.js'
+import * as settlementsConsumer from './workers/settlements.js'
 
-const config = require('../config.js')
-
-const suggestionsConsumer = require('./workers/suggestions')
-const voteConsumer = require('./workers/acvote')
-const { consumer: referralsConsumer } = require('./workers/referrals')
-const { consumer: settlementsConsumer } = require('./workers/settlements')
-const {
-  extras,
-  Runtime
-} = utils
-
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
+
+const extras = utils.extras
+const Runtime = utils.Runtime
 
 if (!process.env.BATUTIL_SPACES) {
   process.env.BATUTIL_SPACES = '*,-hapi'
@@ -34,4 +31,4 @@ voteConsumer(runtime)
 referralsConsumer(runtime)
 settlementsConsumer(runtime)
 runtime.kafka.consume().catch(console.error)
-module.exports = runtime
+export default runtime

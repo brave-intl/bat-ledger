@@ -1,14 +1,11 @@
 'use strict'
 
-const { serial: test } = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const {
-  PROBI_FACTOR,
-  BigNumber,
-  createdTimestamp
-} = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
-const {
+import { serial as test } from 'ava'
+import { v4 as uuidV4 } from 'uuid'
+import { PROBI_FACTOR, BigNumber, createdTimestamp } from 'bat-utils/lib/extras-utils.js'
+import { Runtime } from 'bat-utils/index.js'
+
+import {
   allSettlementStats,
   settlementStatsByCurrency,
   knownChains,
@@ -18,12 +15,10 @@ const {
   insertFromReferrals,
   insertFromVoting,
   insertMany
-} = require('../../eyeshade/lib/transaction')
-const _ = require('underscore')
+} from '../../eyeshade/lib/transaction'
 
-const {
-  cleanEyeshadePgDb
-} = require('../utils')
+import _ from 'underscore'
+import { cleanEyeshadePgDb } from '../utils'
 
 const runtime = new Runtime({
   wallet: {

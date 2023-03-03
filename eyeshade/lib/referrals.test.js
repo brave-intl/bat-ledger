@@ -1,6 +1,6 @@
-const { serial: test } = require('ava')
-const referrals = require('./referrals')
-const utils = require('../../test/utils')
+import { serial as test } from 'ava'
+import referrals from './referrals.js'
+import utils from '../../test/utils.js'
 
 test('referrals should be serializable and decodable without losing information', (t) => {
   const referral = utils.referral.create()

@@ -1,5 +1,5 @@
-const { serial: test } = require('ava')
-const countries = require('./countries')
+import { serial as test } from 'ava'
+import countries from './countries.js'
 
 test('countries should not have duplicated values', (t) => {
   const now = +(new Date())

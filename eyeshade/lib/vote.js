@@ -1,6 +1,6 @@
-const avro = require('avro-js')
+import avro from 'avro-js'
 
-module.exports.voteType = avro.parse({
+export const voteType = avro.parse({
   namespace: 'brave.payments',
   type: 'record',
   name: 'vote',

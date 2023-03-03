@@ -1,20 +1,14 @@
 'use strict'
 
-const Kafka = require('bat-utils/lib/runtime-kafka')
-const Runtime = require('bat-utils/boot-runtime')
-const test = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const {
-  timeout
-} = require('bat-utils/lib/extras-utils')
-const {
-  agents,
-  cleanEyeshadePgDb,
-  ok
-} = require('../utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
-const suggestions = require('../../eyeshade/lib/suggestions')
-const suggestionsConsumer = require('../../eyeshade/workers/suggestions')
+import Kafka from 'bat-utils/lib/runtime-kafka'
+import Runtime from 'bat-utils/boot-runtime'
+import test from 'ava'
+import { v4 as uuidV4 } from 'uuid'
+import { timeout } from 'bat-utils/lib/extras-utils.js'
+import { agents, cleanEyeshadePgDb, ok } from '../utils'
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import suggestions from '../../eyeshade/lib/suggestions'
+import suggestionsConsumer from '../../eyeshade/workers/suggestions'
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))

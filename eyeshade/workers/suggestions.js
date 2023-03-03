@@ -1,12 +1,12 @@
-const { votesId } = require('../lib/queries.js')
-const suggestions = require('../lib/suggestions.js')
-const moment = require('moment')
-const { BigNumber } = require('bat-utils/lib/extras-utils')
-const { hasValidCountry } = require('../lib/publishers.js')
+import { votesId } from '../lib/queries.js'
+import * as suggestions from '../lib/suggestions.js'
+import moment from 'moment'
+import { BigNumber } from 'bat-utils/lib/extras-utils.js'
+import { hasValidCountry } from '../lib/publishers.js'
 
 const suggestionTopic = process.env.ENV + '.grant.suggestion'
 
-module.exports = (runtime) => {
+export default function setupSuggestions (runtime) {
   runtime.kafka.on(suggestionTopic, async (messages, client) => {
     for (let i = 0; i < messages.length; i += 1) {
       const message = messages[i]
@@ -25,7 +25,7 @@ module.exports = (runtime) => {
   })
 }
 
-async function handleMessage (runtime, suggestion, client, hasValidCountryFunc = hasValidCountry) {
+export async function handleMessage (runtime, suggestion, client, hasValidCountryFunc = hasValidCountry) {
   const publisher = suggestion.channel
   const date = moment().format('YYYY-MM-DD')
 
@@ -68,5 +68,3 @@ async function handleMessage (runtime, suggestion, client, hasValidCountryFunc =
     }
   }
 }
-
-module.exports.handleMessage = handleMessage

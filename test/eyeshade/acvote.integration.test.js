@@ -1,25 +1,19 @@
 'use strict'
 
-const Kafka = require('bat-utils/lib/runtime-kafka')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
-const test = require('ava')
-const _ = require('underscore')
-const fs = require('fs')
-const path = require('path')
-const {
-  timeout
-} = require('bat-utils/lib/extras-utils')
-const {
-  agents,
-  cleanEyeshadePgDb,
-  ok
-} = require('../utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
-const { voteType } = require('../../eyeshade/lib/vote')
-const { votesId } = require('../../eyeshade/lib/queries.js')
-const moment = require('moment')
-const voteConsumer = require('../../eyeshade/workers/acvote')
+import Kafka from 'bat-utils/lib/runtime-kafka'
+import { Runtime } from 'bat-utils'
+import config from '../../config'
+import test from 'ava'
+import _ from 'underscore'
+import fs from 'fs'
+import path from 'path'
+import { timeout } from 'bat-utils/lib/extras-utils.js'
+import { agents, cleanEyeshadePgDb, ok } from '../utils'
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import { voteType } from '../../eyeshade/lib/vote'
+import { votesId } from '../../eyeshade/lib/queries.js'
+import moment from 'moment'
+import voteConsumer from '../../eyeshade/workers/acvote'
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))

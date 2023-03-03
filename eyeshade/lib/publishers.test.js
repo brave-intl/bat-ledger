@@ -1,8 +1,8 @@
-const test = require('ava')
-const { hasValidCountry } = require('./publishers.js')
-const sinon = require('sinon')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
+import test from 'ava'
+import { hasValidCountry } from './publishers.js'
+import sinon from 'sinon'
+import { Runtime } from 'bat-utils'
+import config from '../../config.js'
 const tRuntime = new Runtime(config)
 
 test('should return true if Exception', async (t) => {

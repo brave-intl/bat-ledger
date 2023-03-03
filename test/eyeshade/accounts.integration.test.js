@@ -1,25 +1,11 @@
 'use strict'
 
-const {
-  serial: test
-} = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const _ = require('underscore')
-const {
-  insertTransaction,
-  insertFromSettlement,
-  insertFromReferrals
-} = require('../../eyeshade/lib/transaction')
-
-const {
-  Runtime,
-  extras
-} = require('bat-utils')
-const {
-  cleanEyeshadePgDb,
-  agents,
-  ok
-} = require('../utils')
+import { serial as test } from 'ava';
+import { v4 as uuidV4 } from 'uuid';
+import _ from 'underscore';
+import { insertTransaction, insertFromSettlement, insertFromReferrals } from '../../eyeshade/lib/transaction';
+import { Runtime, extras } from 'bat-utils';
+import { cleanEyeshadePgDb, agents, ok } from '../utils';
 
 const { utils: braveUtils } = extras
 const docId = {

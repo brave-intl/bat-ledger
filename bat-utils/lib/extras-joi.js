@@ -1,12 +1,12 @@
-const base58check = require('bs58check')
-const batPublisher = require('./extras-publisher')
-const ecc = require('tiny-secp256k1')
-const { BIP32Factory } = require('bip32')
-const { getName } = require('country-list')
-const Joi = require('joi')
-const ethereumAddress = require('ethereum-address')
+import base58check from 'bs58check'
+import * as batPublisher from './extras-publisher.js'
+import * as ecc from 'tiny-secp256k1'
+import { BIP32Factory } from 'bip32'
+import { getName } from 'country-list'
+import Joi from 'joi'
+import ethereumAddress from 'ethereum-address'
 
-module.exports = Joi.extend((joi) => {
+const braveJoi = Joi.extend((joi) => {
   return {
     base: joi.string(),
     type: 'string',
@@ -149,3 +149,5 @@ module.exports = Joi.extend((joi) => {
     }
   }
 })
+
+export { braveJoi }

@@ -1,16 +1,14 @@
 'use strict'
-const { serial: test } = require('ava')
-const _ = require('underscore')
-const {
-  normalizeChannel,
-  timeout
-} = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
-const transaction = require('../lib/transaction')
-const referrals = require('../lib/referrals')
-const utils = require('../../test/utils')
-const { consumer: referralsConsumer } = require('./referrals')
+import { serial as test } from 'ava'
+import _ from 'underscore'
+import normalizeChannel from 'bat-utils/lib/extras-utils.js'
+import timeout from 'bat-utils/lib/extras-utils.js'
+import { Runtime } from 'bat-utils'
+import config from '../../config.js'
+import transaction from '../lib/transaction.js'
+import referrals from '../lib/referrals.js'
+import utils from '../../test/utils.js'
+import { consumer as referralsConsumer } from './referrals.js'
 
 const {
   ok,
