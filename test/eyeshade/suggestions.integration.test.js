@@ -1,18 +1,19 @@
 'use strict'
 
-import Kafka from 'bat-utils/lib/runtime-kafka'
-import Runtime from 'bat-utils/boot-runtime'
+import Kafka from 'bat-utils/lib/runtime-kafka.js'
+import { Runtime } from 'bat-utils/boot-runtime.js'
 import test from 'ava'
 import { v4 as uuidV4 } from 'uuid'
 import { timeout } from 'bat-utils/lib/extras-utils.js'
-import { agents, cleanEyeshadePgDb, ok } from '../utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import suggestions from '../../eyeshade/lib/suggestions'
-import suggestionsConsumer from '../../eyeshade/workers/suggestions'
+import util from '../utils.js'
+import Postgres from 'bat-utils/lib/runtime-postgres.js'
+import suggestions from '../../eyeshade/lib/suggestions.js'
+import suggestionsConsumer from '../../eyeshade/workers/suggestions.js'
+import config from '../../config.js'
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
-test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
-test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
+test.beforeEach(util.cleanEyeshadePgDb.bind(null, postgres))
+test.afterEach.always(util.cleanEyeshadePgDb.bind(null, postgres))
 
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 const balanceURL = '/v1/accounts/balances'
@@ -20,7 +21,7 @@ const balanceURL = '/v1/accounts/balances'
 test('suggestions kafka consumer enters into votes', async (t) => {
   // process.env.KAFKA_CONSUMER_GROUP = 'test-producer'
   let body
-  const runtime = new Runtime(Object.assign({}, require('../../config'), {
+  const runtime = new Runtime(Object.assign({}, config, {
     testingCohorts: process.env.TESTING_COHORTS ? process.env.TESTING_COHORTS.split(',') : [],
     postgres: {
       connectionString: process.env.BAT_POSTGRES_URL
@@ -48,11 +49,11 @@ test('suggestions kafka consumer enters into votes', async (t) => {
 
   ({
     body
-  } = await agents.eyeshade.publishers.post(balanceURL)
+  } = await util.agents.eyeshade.publishers.post(balanceURL)
     .send({
       pending: true,
       account: channel
-    }).expect(ok))
+    }).expect(util.ok))
 
   t.is(body.length, 0)
 
@@ -62,12 +63,12 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     await timeout(5000);
     ({
       body
-    } = await agents.eyeshade.publishers.post(balanceURL)
+    } = await util.agents.eyeshade.publishers.post(balanceURL)
       .send({
         pending: true,
         account: channel
       })
-      .expect(ok))
+      .expect(util.ok))
   }
 
   t.deepEqual(body, [{
@@ -93,11 +94,11 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     ]
   };
 
-  ({ body } = await agents.eyeshade.publishers.post(balanceURL)
+  ({ body } = await util.agents.eyeshade.publishers.post(balanceURL)
     .send({
       pending: true,
       account: channel
-    }).expect(ok))
+    }).expect(util.ok))
   t.is(body.length, 1)
 
   await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(exampleWithOrderId) }] })
@@ -107,12 +108,12 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     await timeout(2000)
     ; ({
       body
-    } = await agents.eyeshade.publishers.post(balanceURL)
+    } = await util.agents.eyeshade.publishers.post(balanceURL)
       .send({
         pending: true,
         account: channel
       })
-      .expect(ok))
+      .expect(util.ok))
   }
   t.deepEqual(body, [{
     account_id: channel,
@@ -135,11 +136,11 @@ test('suggestions kafka consumer enters into votes', async (t) => {
       }
     ]
   }
-    ; ({ body } = await agents.eyeshade.publishers.post(balanceURL)
+    ; ({ body } = await util.agents.eyeshade.publishers.post(balanceURL)
     .send({
       pending: true,
       account: channel
-    }).expect(ok))
+    }).expect(util.ok))
   t.is(body.length, 1)
 
   await producer.send({ topic: process.env.ENV + '.grant.suggestion', messages: [{ value: suggestions.typeV1.toBuffer(exampleWithoutOrderId) }] })
@@ -149,12 +150,12 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     await timeout(2000)
     ; ({
       body
-    } = await agents.eyeshade.publishers.post(balanceURL)
+    } = await util.agents.eyeshade.publishers.post(balanceURL)
       .send({
         pending: true,
         account: channel
       })
-      .expect(ok))
+      .expect(util.ok))
   }
   t.deepEqual(body, [{
     account_id: channel,
@@ -184,12 +185,12 @@ test('suggestions kafka consumer enters into votes', async (t) => {
     await timeout(2000)
     ; ({
       body
-    } = await agents.eyeshade.publishers.post(balanceURL)
+    } = await util.agents.eyeshade.publishers.post(balanceURL)
       .send({
         pending: true,
         account: channel
       })
-      .expect(ok))
+      .expect(util.ok))
   }
   t.deepEqual(body, [{
     account_id: channel,

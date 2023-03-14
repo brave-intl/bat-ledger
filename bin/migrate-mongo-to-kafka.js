@@ -1,5 +1,4 @@
-import normalizeChannel from 'bat-utils/lib/extras-utils.js'
-import dateToISO from 'bat-utils/lib/extras-utils.js'
+import { normalizeChannel, dateToISO } from 'bat-utils/lib/extras-utils.js'
 import _ from 'underscore'
 import { Runtime } from 'bat-utils'
 import transaction from '../eyeshade/lib/transaction.js'

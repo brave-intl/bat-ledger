@@ -1,4 +1,4 @@
-import * as transaction from '../lib/transaction.js'
+import transaction from '../lib/transaction.js'
 
 const feePercent = 0.05
 

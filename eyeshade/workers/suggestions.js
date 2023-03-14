@@ -1,5 +1,5 @@
 import { votesId } from '../lib/queries.js'
-import * as suggestions from '../lib/suggestions.js'
+import suggestions from '../lib/suggestions.js'
 import moment from 'moment'
 import { BigNumber } from 'bat-utils/lib/extras-utils.js'
 import { hasValidCountry } from '../lib/publishers.js'

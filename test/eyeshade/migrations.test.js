@@ -1,14 +1,15 @@
 'use strict'
 
-import test from 'ava';
-import Postgres from 'bat-utils/lib/runtime-postgres';
-import { v4 as uuidV4 } from 'uuid';
+import test from 'ava'
+import Postgres from 'bat-utils/lib/runtime-postgres.js'
+import { v4 as uuidV4 } from 'uuid'
+import { getCurrent } from '../../eyeshade/migrations/current.js'
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 
 test('migrations table is up-to-date', async t => {
   const latestInMigrationsTable = (await postgres.query('select id from migrations order by id desc limit 1;', [])).rows[0].id
-  const latestInMigrationsFolder = require('../../eyeshade/migrations/current')
+  const latestInMigrationsFolder = getCurrent()
 
   t.true(latestInMigrationsTable === latestInMigrationsFolder)
 })

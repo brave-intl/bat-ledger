@@ -1,5 +1,5 @@
 import Joi from 'joi'
-import * as settlement from '../lib/settlements.js'
+import settlement from '../lib/settlements.js'
 import { braveJoi } from 'bat-utils/lib/extras-joi.js'
 import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
 

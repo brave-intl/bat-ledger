@@ -1,8 +1,8 @@
-import * as normalizeChannel from 'bat-utils/lib/extras-utils.js'
-import * as transaction from '../lib/transaction.js'
-import * as referrals from '../lib/referrals.js'
+import { normalizeChannel } from 'bat-utils/lib/extras-utils.js'
+import transaction from '../lib/transaction.js'
+import referrals from '../lib/referrals.js'
 import { getActiveCountryGroups } from '../lib/queries.js'
-import * as countries from '../lib/countries.js'
+import countries from '../lib/countries.js'
 
 const getTransactionsById = `
 SELECT id

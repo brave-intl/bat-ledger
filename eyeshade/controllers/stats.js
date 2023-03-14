@@ -4,8 +4,8 @@ import { braveJoi } from 'bat-utils/lib/extras-joi.js'
 import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
 import boom from '@hapi/boom'
 import * as extrasUtils from 'bat-utils/lib/extras-utils.js'
-import * as transactionsLib from '../lib/transaction.js'
-import * as grantsLib from '../lib/grants.js'
+import transactionsLib from '../lib/transaction.js'
+import grantsLib from '../lib/grants.js'
 
 const grantTypeValidator = Joi.string().valid('ads')
 const settlementTypeValidator = Joi.string().valid('contribution', 'referral')

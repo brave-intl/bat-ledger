@@ -2,7 +2,7 @@ import test from 'ava'
 import BigNumber from 'bignumber.js'
 import { Runtime } from 'bat-utils/index.js'
 import moment from 'moment'
-import { v5 as uuid } from 'uuid'
+import { v5 as uuidV5, v4 as uuidV4 } from 'uuid'
 import SDebug from 'sdebug'
 import format from 'pg-format'
 import _ from 'underscore'
@@ -17,7 +17,7 @@ test.before((t) => {
       postgres: { connectionString: process.env.BAT_POSTGRES_URL },
       testingCohorts: [],
       wallet: {
-        settlementAddress: { BAT: uuid.v4() }
+        settlementAddress: { BAT: uuidV4() }
       }
     })
   })
@@ -30,7 +30,7 @@ test('surveyor-frozen-report inserts votes correctly', async (t) => {
   const settlementAddress = runtime.config.wallet.settlementAddress.BAT
   const voteCount = 51
   const baseValue = '0.25'
-  const ids = _.sortBy([...new Array(4)].map(() => uuid.v4()))
+  const ids = _.sortBy([...new Array(4)].map(() => uuidV4()))
   const yesterday = moment().subtract(1, 'days')
   const date = yesterday.format('YYYY-MM-DD')
   await runtime.postgres.query(format('insert into surveyor_groups (id, price, frozen, virtual, created_at) values %L',
@@ -82,7 +82,7 @@ test('surveyor-frozen-report inserts votes correctly', async (t) => {
   const recreated = _.sortBy(ids.reduce((memo, surveyorId) => {
     const fullSurveyorId = `${date}_${surveyorId}`
     return memo.concat([...new Array(voteCount)].map((_, index) => ({
-      id: uuid.v5(fullSurveyorId + channelFromIndex(index), 'be90c1a8-20a3-4f32-be29-ed3329ca8630'),
+      id: uuidV5(fullSurveyorId + channelFromIndex(index), 'be90c1a8-20a3-4f32-be29-ed3329ca8630'),
       created_at: createdAtById[fullSurveyorId].created_at,
       description: `votes from ${fullSurveyorId}`,
       transaction_type: 'contribution',
@@ -104,5 +104,5 @@ test('surveyor-frozen-report inserts votes correctly', async (t) => {
 })
 
 function channelFromIndex (index) {
-  return `${uuid.v5(index.toString(), 'dbe26373-c2f6-4c00-b3f3-fe4b423cf7bd').split('-')[0]}.com`
+  return `${uuidV5(index.toString(), 'dbe26373-c2f6-4c00-b3f3-fe4b423cf7bd').split('-')[0]}.com`
 }

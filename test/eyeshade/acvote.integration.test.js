@@ -1,23 +1,27 @@
 'use strict'
 
-import Kafka from 'bat-utils/lib/runtime-kafka'
-import { Runtime } from 'bat-utils'
-import config from '../../config'
+import Kafka from 'bat-utils/lib/runtime-kafka.js'
+import { Runtime } from 'bat-utils/index.js'
+import config from '../../config.js'
 import test from 'ava'
 import _ from 'underscore'
 import fs from 'fs'
-import path from 'path'
+import path, { dirname } from 'path'
 import { timeout } from 'bat-utils/lib/extras-utils.js'
-import { agents, cleanEyeshadePgDb, ok } from '../utils'
-import Postgres from 'bat-utils/lib/runtime-postgres'
-import { voteType } from '../../eyeshade/lib/vote'
+import utils from '../utils.js'
+import Postgres from 'bat-utils/lib/runtime-postgres.js'
+import { voteType } from '../../eyeshade/lib/vote.js'
 import { votesId } from '../../eyeshade/lib/queries.js'
 import moment from 'moment'
-import voteConsumer from '../../eyeshade/workers/acvote'
+import voteConsumer from '../../eyeshade/workers/acvote.js'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
-test.beforeEach(cleanEyeshadePgDb.bind(null, postgres))
-test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
+test.beforeEach(utils.cleanEyeshadePgDb.bind(null, postgres))
+test.afterEach.always(utils.cleanEyeshadePgDb.bind(null, postgres))
 
 test.before(async (t) => {
   const runtime = new Runtime(config)
@@ -40,11 +44,11 @@ const balanceURL = '/v1/accounts/balances'
 
 test('votes kafka consumer enters into votes', async (t) => {
   const producer = await createProducer()
-  let { body } = await agents.eyeshade.publishers.post(balanceURL)
+  let { body } = await utils.agents.eyeshade.publishers.post(balanceURL)
     .send({
       pending: true,
       account: channel
-    }).expect(ok)
+    }).expect(utils.ok)
   t.is(body.length, 0)
 
   await sendVotes(producer, example)
@@ -54,12 +58,12 @@ test('votes kafka consumer enters into votes', async (t) => {
     await timeout(2000)
     ; ({
       body
-    } = await agents.eyeshade.publishers.post(balanceURL)
+    } = await utils.agents.eyeshade.publishers.post(balanceURL)
       .send({
         pending: true,
         account: channel
       })
-      .expect(ok))
+      .expect(utils.ok))
   }
 
   const surveyorId = date + '_' + example.fundingSource

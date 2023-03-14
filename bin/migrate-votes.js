@@ -4,9 +4,7 @@ import Database from 'bat-utils/lib/runtime-database'
 import SDebug from 'sdebug'
 import { v5 as uuidv5 } from 'uuid'
 import Postgres from 'bat-utils/lib/runtime-postgres'
-import createdTimestamp from 'bat-utils/lib/extras-utils.js'
-import BigNumber from 'bat-utils/lib/extras-utils.js'
-import normalizeChannel from 'bat-utils/lib/extras-utils.js'
+import { createdTimestamp, BigNumber, normalizeChannel } from 'bat-utils/lib/extras-utils.js'
 const debug = new SDebug('migrate-transaction-table')
 
 async function consume (pg, votings) {

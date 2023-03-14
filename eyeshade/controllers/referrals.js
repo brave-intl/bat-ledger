@@ -2,7 +2,7 @@ import Joi from 'joi'
 import underscore from 'underscore'
 
 import { referralGroups } from '../lib/queries.js'
-import * as countries from '../lib/countries.js'
+import countries from '../lib/countries.js'
 import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
 import { braveJoi } from 'bat-utils/lib/extras-joi.js'
 import * as extrasUtils from 'bat-utils/lib/extras-utils.js'

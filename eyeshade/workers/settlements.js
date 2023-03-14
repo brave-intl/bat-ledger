@@ -1,4 +1,4 @@
-import * as transaction from '../lib/transaction.js'
+import transaction from '../lib/transaction.js'
 import { normalizeChannel, BigNumber } from 'bat-utils/lib/extras-utils.js'
 import { ObjectID } from 'bson'
 import settlements from '../lib/settlements.js'

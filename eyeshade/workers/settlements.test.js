@@ -16,7 +16,7 @@ test.before(async (t) => {
 })
 
 test.beforeEach((t) => utils.cleanEyeshadePgDb(t.context.runtime.postgres))
-// test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
+// test.afterEach.always(utils.cleanEyeshadePgDb.bind(null, postgres))
 
 test('settlements should be insertable from the kafka queue', async (t) => {
   const msgs = 10
