@@ -9,7 +9,7 @@ AND created_at >= to_timestamp($2)
 AND created_at < to_timestamp($3);
 `
 
-module.exports = {
+export default {
   stats
 }
 

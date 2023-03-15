@@ -1,8 +1,9 @@
-const test = require('ava')
-const _ = require('underscore')
-const Postgres = require('./runtime-postgres')
-const { v4: uuidV4 } = require('uuid')
-const dotenv = require('dotenv')
+import test from 'ava'
+import _ from 'underscore'
+import Postgres from './runtime-postgres.js'
+import { v4 as uuidV4 } from 'uuid'
+
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 
 const postgres = new Postgres({

@@ -1,23 +1,17 @@
 'use strict'
-const _ = require('underscore')
-const { serial: test } = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const {
-  ok,
-  cleanEyeshadePgDb,
-  agents
-} = require('../utils')
-const {
-  timeout
-} = require('bat-utils/lib/extras-utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
-const { consumer: settlementsConsumer } = require('../../eyeshade/workers/settlements')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
+import _ from 'underscore'
+import test from 'ava'
+import { v4 as uuidV4 } from 'uuid'
+import utils from '../utils.js'
+import { timeout } from 'bat-utils/lib/extras-utils.js'
+import Postgres from 'bat-utils/lib/runtime-postgres.js'
+import settlementsConsumer from '../../eyeshade/workers/settlements.js'
+import { Runtime } from 'bat-utils/index.js'
+import config from '../../config.js'
 
 const postgres = new Postgres({ postgres: { connectionString: process.env.BAT_POSTGRES_URL } })
 
-test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
+test.afterEach.always(utils.cleanEyeshadePgDb.bind(null, postgres))
 
 test.before(async (t) => {
   const runtime = new Runtime(config)
@@ -28,7 +22,7 @@ test.before(async (t) => {
 
 test('unauthed requests cannot post settlement', async t => {
   t.plan(0)
-  await agents.eyeshade.global
+  await utils.agents.eyeshade.global
     .post('/v2/publishers/settlement')
     .send({})
     .expect(403)
@@ -53,7 +47,7 @@ test('cannot post payouts if the publisher field is blank and type is not manual
     hash: uuidV4().toLowerCase()
   }
 
-  await agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(400)
+  await utils.agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(400)
 })
 
 test('can post a manual settlement from publisher app using token auth', async t => {
@@ -76,14 +70,14 @@ test('can post a manual settlement from publisher app using token auth', async t
     documentId: uuidV4().toLowerCase(),
     hash: uuidV4().toLowerCase()
   }
-  await agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(200)
+  await utils.agents.eyeshade.publishers.post(url).send([manualSettlement]).expect(200)
 
   // ensure both transactions were entered into transactions table
   const manualTxsQuery = 'select * from transactions where transaction_type = \'manual\';'
   const manualSettlementTxQuery = 'select * from transactions where transaction_type = \'manual_settlement\';'
   let rows
   do { // wait until settlement-report is processed and transactions are entered into postgres
-    console.log(rows)
+    console.log(rows) // the console.log need to be here for this test to pass
     await timeout(500).then(async () => {
       rows = (await client.query(manualTxsQuery)).rows
     })
@@ -123,9 +117,9 @@ test('can post a manual settlement from publisher app using token auth', async t
 
   const {
     body
-  } = await agents.eyeshade.publishers
+  } = await utils.agents.eyeshade.publishers
     .get(`/v1/accounts/${encodeURIComponent(owner)}/transactions`)
-    .expect(ok)
+    .expect(utils.ok)
   const subset = _.map(body, (item) => _.omit(item, ['created_at']))
   const manualSettlementResponse = _.findWhere(subset, { transaction_type: 'manual_settlement' })
 
@@ -177,10 +171,10 @@ test('only can post settlement files under to 20mbs', async t => {
   }
 
   // ensure settlement files > 20mb fail
-  const response = await agents.eyeshade.publishers.post(url).send([bigSettlement])
+  const response = await utils.agents.eyeshade.publishers.post(url).send([bigSettlement])
   t.is(413, response.statusCode)
   t.true(response.body.message === 'Payload content length greater than maximum allowed: 20971520')
 
   // ensure small settlement files succeed
-  await agents.eyeshade.publishers.post(url).send([smallSettlement]).expect(200)
+  await utils.agents.eyeshade.publishers.post(url).send([smallSettlement]).expect(200)
 })

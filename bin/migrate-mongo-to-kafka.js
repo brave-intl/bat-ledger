@@ -1,10 +1,10 @@
-const { normalizeChannel, dateToISO } = require('bat-utils/lib/extras-utils')
-const _ = require('underscore')
-const { Runtime } = require('bat-utils')
-const transaction = require('../eyeshade/lib/transaction')
-const referrals = require('../eyeshade/lib/referrals')
-const settlements = require('../eyeshade/lib/settlements')
-const config = require('../config')
+import { normalizeChannel, dateToISO } from 'bat-utils/lib/extras-utils.js'
+import _ from 'underscore'
+import { Runtime } from 'bat-utils'
+import transaction from '../eyeshade/lib/transaction.js'
+import referrals from '../eyeshade/lib/referrals.js'
+import settlements from '../eyeshade/lib/settlements.js'
+import config from '../config.js'
 
 const originalRateId = '71341fc9-aeab-4766-acf0-d91d3ffb0bfa'
 config.postgres.url = process.env.MIGRATE_DATABASE_URL

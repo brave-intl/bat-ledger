@@ -1,8 +1,8 @@
-const { insertMany } = require('../lib/transaction.js')
+import transaction from '../lib/transaction.js'
 
 const feePercent = 0.05
 
-exports.surveyorFrozenReport = async (debug, runtime, payload) => {
+export const surveyorFrozenReport = async (debug, runtime, payload) => {
   // FIXME should rework this
   const { postgres } = runtime
   const { mix, surveyorId } = payload
@@ -37,7 +37,7 @@ exports.surveyorFrozenReport = async (debug, runtime, payload) => {
     }
     try {
       const rows = votingQ.rows.map((row) => Object.assign(row, { surveyorId }))
-      await insertMany.fromVoting(25, runtime, client, rows, surveyorCreatedAt)
+      await transaction.insertMany.fromVoting(25, runtime, client, rows, surveyorCreatedAt)
 
       const markVotesTransactedStatement = `
       update votes

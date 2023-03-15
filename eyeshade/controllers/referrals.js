@@ -1,15 +1,13 @@
-const Joi = require('joi')
-const underscore = require('underscore')
+import Joi from 'joi'
+import underscore from 'underscore'
+
+import { referralGroups } from '../lib/queries.js'
+import countries from '../lib/countries.js'
+import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
+import { braveJoi } from 'bat-utils/lib/extras-joi.js'
+import * as extrasUtils from 'bat-utils/lib/extras-utils.js'
+import { BigNumber } from 'bat-utils/lib/extras-utils.js'
 const _ = underscore
-
-const utils = require('bat-utils')
-const braveHapi = utils.extras.hapi
-const braveJoi = utils.extras.joi
-const extrasUtils = utils.extras.utils
-const { BigNumber } = extrasUtils
-
-const queries = require('../lib/queries')
-const countries = require('../lib/countries')
 
 const v1 = {}
 
@@ -60,7 +58,7 @@ v1.getReferralGroups = {
     fields = _.isString(fields) ? fields.split(',').map((str) => str.trim()) : (fields || [])
     const allFields = ['id'].concat(fields)
 
-    const statement = queries.referralGroups()
+    const statement = referralGroups()
     let { rows } = await runtime.postgres.query(statement, [activeAt || new Date()], true)
 
     if (resolve && fields.includes('codes')) {
@@ -171,7 +169,7 @@ v1.getReferralsStatement = {
   }
 }
 
-module.exports.routes = [
+export const routes = [
   braveHapi.routes.async().path('/v1/referrals/groups').config(v1.getReferralGroups),
   braveHapi.routes.async().path('/v1/referrals/statement/{owner}').config(v1.getReferralsStatement)
 ]

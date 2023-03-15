@@ -1,8 +1,6 @@
-const {
-  timeout
-} = require('bat-utils/lib/extras-utils')
-const { surveyorFrozenReport } = require('./surveyors')
-const SDebug = require('sdebug')
+import timeout from 'bat-utils/lib/extras-utils.js'
+import { surveyorFrozenReport } from './surveyors.js'
+import SDebug from 'sdebug'
 const defaultDebug = new SDebug('worker')
 const options = { id: 1 }
 defaultDebug.initialize({ worker: { id: options.id } })

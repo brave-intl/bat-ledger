@@ -1,8 +1,8 @@
-const underscore = require('underscore')
-const boom = require('@hapi/boom')
-const { BigNumber } = require('bat-utils/lib/extras-utils')
+import underscore from 'underscore'
+import boom from '@hapi/boom'
+import { BigNumber } from 'bat-utils/lib/extras-utils.js'
 
-module.exports = {
+export default {
   computeValue,
   resolve
 }

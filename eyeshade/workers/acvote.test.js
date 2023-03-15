@@ -1,11 +1,11 @@
-const test = require('ava')
-const { insertVote } = require('./acvote.js')
-const sinon = require('sinon')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
-const { v4: uuidV4 } = require('uuid')
-const utils = require('../../test/utils')
-const moment = require('moment')
+import test from 'ava'
+import { insertVote } from './acvote.js'
+import sinon from 'sinon'
+import { Runtime } from 'bat-utils'
+import config from '../../config.js'
+import { v4 as uuidV4 } from 'uuid'
+import utils from '../../test/utils.js'
+import moment from 'moment'
 
 test('should insert vote if it is valid', async (t) => {
   const channel = `youtube#channel:${uuidV4()}`

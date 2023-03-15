@@ -1,11 +1,8 @@
+import tldjs from 'tldjs'
+import os from 'os'
+import path from 'path'
+
 let singleton
-const tldjs = require('tldjs')
-const os = require('os')
-const path = require('path')
-
-module.exports = createNewrelic
-
-createNewrelic.setupNewrelic = setup
 
 function Newrelic (config, runtime) {
   const newrelic = {
@@ -27,7 +24,7 @@ function Newrelic (config, runtime) {
   process.env.NEW_RELIC_LOG = config.newrelic.log || 'stdout'
   process.env.NEW_RELIC_NO_CONFIG_FILE = true
 
-  return require('newrelic')
+  return import('newrelic')
 }
 
 function createNewrelic (config, runtime) {
@@ -52,3 +49,6 @@ function setup (config, fName) {
     createNewrelic(config)
   }
 }
+
+createNewrelic.setupNewrelic = setup
+export default createNewrelic

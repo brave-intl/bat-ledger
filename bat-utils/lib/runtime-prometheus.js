@@ -1,14 +1,12 @@
-const client = require('prom-client')
-const { BigNumber } = require('./extras-utils')
-const _ = require('underscore')
+import client from 'prom-client'
+import { BigNumber } from './extras-utils.js'
+import _ from 'underscore'
 const listenerPrefix = 'listeners:prometheus:'
 const listenerChannel = `${listenerPrefix}${process.env.SERVICE}`
 
-module.exports = Prometheus
-
 const settlementBalanceKey = 'settlement:balance'
 
-module.exports = Prometheus
+export default Prometheus
 
 function Prometheus (config, runtime) {
   if (!(this instanceof Prometheus)) {

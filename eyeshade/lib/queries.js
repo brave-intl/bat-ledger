@@ -1,13 +1,4 @@
-const { v5: uuidv5 } = require('uuid')
-
-module.exports = {
-  allSettlements,
-  timeConstraintSettlements,
-  earnings,
-  referralGroups,
-  getActiveCountryGroups,
-  votesId
-}
+import { v5 as uuidv5 } from 'uuid'
 
 function votesId (channel, cohort, surveyorId) {
   return uuidv5(channel + cohort + surveyorId, 'f0ca8ff9-8399-493a-b2c2-6d4a49e5223a')
@@ -100,4 +91,13 @@ function getActiveCountryGroups () {
   WHERE
     active_at <= CURRENT_TIMESTAMP
   ORDER BY active_at DESC;`
+}
+
+export {
+  allSettlements,
+  timeConstraintSettlements,
+  earnings,
+  referralGroups,
+  getActiveCountryGroups,
+  votesId
 }

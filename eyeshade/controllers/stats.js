@@ -1,11 +1,11 @@
-const Joi = require('joi')
-const _ = require('underscore')
-const braveJoi = require('bat-utils/lib/extras-joi')
-const braveHapi = require('bat-utils/lib/extras-hapi')
-const boom = require('@hapi/boom')
-const extrasUtils = require('bat-utils/lib/extras-utils')
-const transactionsLib = require('../lib/transaction')
-const grantsLib = require('../lib/grants')
+import Joi from 'joi'
+import _ from 'underscore'
+import { braveJoi } from 'bat-utils/lib/extras-joi.js'
+import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
+import boom from '@hapi/boom'
+import * as extrasUtils from 'bat-utils/lib/extras-utils.js'
+import transactionsLib from '../lib/transaction.js'
+import grantsLib from '../lib/grants.js'
 
 const grantTypeValidator = Joi.string().valid('ads')
 const settlementTypeValidator = Joi.string().valid('contribution', 'referral')
@@ -101,7 +101,7 @@ v1.settlementsStats = {
   }
 }
 
-module.exports.routes = [
+export const routes = [
   braveHapi.routes.async().path('/v1/stats/grants/{type}/{start}/{until?}').config(v1.grantsStats),
   braveHapi.routes.async().path('/v1/stats/settlements/{type}/{start}/{until?}').config(v1.settlementsStats)
 ]

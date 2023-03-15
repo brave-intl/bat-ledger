@@ -1,10 +1,9 @@
-const querystring = require('querystring')
-const _ = require('underscore')
-const wreck = require('@hapi/wreck')
+import querystring from 'querystring'
+import _ from 'underscore'
+import wreck from '@hapi/wreck'
+import { WreckProxy } from './extras-hapi.js'
 
-const { WreckProxy } = require('./extras-hapi')
-
-module.exports = Wreck
+export default Wreck
 
 function Wreck (config, runtime) {
   if (!(this instanceof Wreck)) {

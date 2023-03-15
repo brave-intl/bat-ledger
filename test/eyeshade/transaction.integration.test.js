@@ -1,29 +1,14 @@
 'use strict'
 
-const { serial: test } = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const {
-  PROBI_FACTOR,
-  BigNumber,
-  createdTimestamp
-} = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
-const {
-  allSettlementStats,
-  settlementStatsByCurrency,
-  knownChains,
-  insertTransaction,
-  insertUserDepositFromChain,
-  insertFromSettlement,
-  insertFromReferrals,
-  insertFromVoting,
-  insertMany
-} = require('../../eyeshade/lib/transaction')
-const _ = require('underscore')
+import test from 'ava'
+import { v4 as uuidV4 } from 'uuid'
+import { PROBI_FACTOR, BigNumber, createdTimestamp } from 'bat-utils/lib/extras-utils.js'
+import { Runtime } from 'bat-utils/index.js'
 
-const {
-  cleanEyeshadePgDb
-} = require('../utils')
+import transaction from '../../eyeshade/lib/transaction.js'
+
+import _ from 'underscore'
+import util from '../utils.js'
 
 const runtime = new Runtime({
   wallet: {
@@ -48,7 +33,7 @@ const runtime = new Runtime({
   }
 })
 
-test.beforeEach(cleanEyeshadePgDb.bind(null, runtime.postgres))
+test.beforeEach(util.cleanEyeshadePgDb.bind(null, runtime.postgres))
 
 const docId = {
   toString: () => '5b5e55000000000000000000' // 2018-07-30T00:00:00.000Z
@@ -91,7 +76,7 @@ test('contribution settlement transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromSettlement(runtime, null, contributionSettlement)
+    await transaction.insertFromSettlement(runtime, null, contributionSettlement)
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -130,7 +115,7 @@ test('referral settlement transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromSettlement(runtime, client, referralSettlement)
+    await transaction.insertFromSettlement(runtime, client, referralSettlement)
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -157,7 +142,7 @@ test('settlement transaction throws on invalid altcurrency', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.altcurrency = 'ETH'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
+    await t.throwsAsync(transaction.insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -169,7 +154,7 @@ test('settlement transaction throws on missing probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.probi
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
+    await t.throwsAsync(transaction.insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -181,7 +166,7 @@ test('settlement transaction throws on 0 probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '0'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
+    await t.throwsAsync(transaction.insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -193,7 +178,7 @@ test('settlement transaction throws on negative probi', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     settlement.probi = '-1'
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
+    await t.throwsAsync(transaction.insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -205,7 +190,7 @@ test('settlement transaction throws on missing owner', async t => {
   try {
     const settlement = _.clone(contributionSettlement)
     delete settlement.owner
-    await t.throwsAsync(insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
+    await t.throwsAsync(transaction.insertFromSettlement(runtime, client, settlement), { instanceOf: Error })
   } finally {
     client.release()
   }
@@ -224,7 +209,7 @@ test('voting transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromVoting(runtime, client, voting(), new Date(createdTimestamp(docId)).toISOString())
+    await transaction.insertFromVoting(runtime, client, voting(), new Date(createdTimestamp(docId)).toISOString())
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -251,8 +236,8 @@ test('voting and contribution settlement transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromVoting(runtime, client, voting(), new Date(createdTimestamp(docId)).toISOString())
-    await insertFromSettlement(runtime, client, contributionSettlement)
+    await transaction.insertFromVoting(runtime, client, voting(), new Date(createdTimestamp(docId)).toISOString())
+    await transaction.insertFromSettlement(runtime, client, contributionSettlement)
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -287,7 +272,7 @@ test('referral transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromReferrals(runtime, client, referrals)
+    await transaction.insertFromReferrals(runtime, client, referrals)
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -310,8 +295,8 @@ test('referral and referral settlement transaction', async t => {
   const client = await runtime.postgres.connect()
   try {
     await client.query('BEGIN')
-    await insertFromReferrals(runtime, client, referrals)
-    await insertFromSettlement(runtime, client, referralSettlement)
+    await transaction.insertFromReferrals(runtime, client, referrals)
+    await transaction.insertFromSettlement(runtime, client, referralSettlement)
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')
@@ -329,20 +314,20 @@ test('can add transactions for different account types', async (t) => {
   t.plan(6)
 
   const client = await runtime.postgres.connect()
-  await t.throwsAsync(insertUserDepositFromChain(runtime, client), { instanceOf: Error }, 'amount is required')
-  await t.throwsAsync(insertUserDepositFromChain(runtime, client, {
+  await t.throwsAsync(transaction.insertUserDepositFromChain(runtime, client), { instanceOf: Error }, 'amount is required')
+  await t.throwsAsync(transaction.insertUserDepositFromChain(runtime, client, {
     amount: {}
   }), { instanceOf: Error }, 'amount goes through bignumber')
   const fakeAddress = '0xbloop'
-  await insertUserDepositFromChain(runtime, client, {
+  await transaction.insertUserDepositFromChain(runtime, client, {
     amount: '0'
   })
   const { rows: noValueTransferred } = await runtime.postgres.query('select * from transactions')
   t.deepEqual([], noValueTransferred, 'when no value is transferred, we skip inserting the tx')
-  const knownChainKeys = _.keys(knownChains)
+  const knownChainKeys = _.keys(transaction.knownChains)
   for (let i = 0; i < knownChainKeys.length; i += 1) {
     const ticker = knownChainKeys[i]
-    const chain = knownChains[ticker]
+    const chain = transaction.knownChains[ticker]
     const createdAt = new Date()
     const id = uuidV4().toLowerCase()
     const cardId = uuidV4()
@@ -357,7 +342,7 @@ test('can add transactions for different account types', async (t) => {
       createdAt,
       address: fakeAddress
     }
-    await insertUserDepositFromChain(runtime, client, inputs)
+    await transaction.insertUserDepositFromChain(runtime, client, inputs)
     const { rows: txs } = await runtime.postgres.query(`select * from transactions where transaction_type = 'user_deposit' and description = 'deposits from ${chain} chain'`)
     const expectedResults = [{
       created_at: createdAt,
@@ -403,14 +388,14 @@ test('common insertion fn', async (t) => {
     toAccountType,
     amount
   }
-  await insertTransaction(runtime, null, inputs)
+  await transaction.insertTransaction(runtime, null, inputs)
   const { rows: txs } = await runtime.postgres.query('select * from transactions')
   const zeroAmount = Object.assign({}, inputs, { amount: '0' })
-  await insertTransaction(runtime, null, zeroAmount)
+  await transaction.insertTransaction(runtime, null, zeroAmount)
   const negativeAmount = Object.assign({}, inputs, { amount: '-1' })
-  await insertTransaction(runtime, null, negativeAmount)
+  await transaction.insertTransaction(runtime, null, negativeAmount)
   const noAmount = Object.assign({}, inputs, { amount: null })
-  await t.throwsAsync(() => insertTransaction(runtime, null, noAmount), { instanceOf: Error })
+  await t.throwsAsync(() => transaction.insertTransaction(runtime, null, noAmount), { instanceOf: Error })
   const expectedResults = [{
     id,
     amount,
@@ -435,11 +420,11 @@ test('transaction stats', async (t) => {
   const today = new Date('2018-07-30')
   const tomorrow = new Date('2018-07-31')
   try {
-    await insertFromSettlement(runtime, client, contributionSettlement)
-    await insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
+    await transaction.insertFromSettlement(runtime, client, contributionSettlement)
+    await transaction.insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
       settlementId: uuidV4()
     }))
-    const contributionStats = await settlementStatsByCurrency(runtime, {
+    const contributionStats = await transaction.settlementStatsByCurrency(runtime, {
       type: 'contribution_settlement',
       settlementCurrency: 'BAT',
       start: today,
@@ -448,12 +433,12 @@ test('transaction stats', async (t) => {
     t.is(19, +contributionStats.amount, 'contributions are summed')
 
     const referralAmount = (new BigNumber(referralSettlement.probi)).dividedBy(PROBI_FACTOR)
-    await insertFromSettlement(runtime, client, referralSettlement)
-    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+    await transaction.insertFromSettlement(runtime, client, referralSettlement)
+    await transaction.insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
       settlementId: uuidV4()
     }))
     let referralStats = null
-    referralStats = await settlementStatsByCurrency(runtime, {
+    referralStats = await transaction.settlementStatsByCurrency(runtime, {
       type: 'referral_settlement',
       settlementCurrency: 'BAT',
       start: today,
@@ -463,12 +448,12 @@ test('transaction stats', async (t) => {
     t.is(twoReferrals, +referralStats.amount, 'referrals are summed')
 
     // await insertFromSettlement(runtime, client, referralSettlement)
-    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+    await transaction.insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
       settlementId: uuidV4(),
       currency: 'BTC',
       amount: '0.000125'
     }))
-    referralStats = await allSettlementStats(runtime, {
+    referralStats = await transaction.allSettlementStats(runtime, {
       type: 'referral_settlement',
       start: today,
       until: tomorrow
@@ -476,7 +461,7 @@ test('transaction stats', async (t) => {
     const threeReferrals = referralAmount.times(3).toNumber() // 30
     t.is(threeReferrals, +referralStats.amount, 'referrals are summed')
 
-    referralStats = await settlementStatsByCurrency(runtime, {
+    referralStats = await transaction.settlementStatsByCurrency(runtime, {
       type: 'referral_settlement',
       settlementCurrency: 'BTC',
       start: today,
@@ -495,7 +480,7 @@ test('insert from many voting transaction', async t => {
   const txs = 51
   try {
     await client.query('BEGIN')
-    await insertMany.fromVoting(25, runtime, client, [...new Array(txs)].map(voting), new Date(createdTimestamp(docId)).toISOString())
+    await transaction.insertMany.fromVoting(25, runtime, client, [...new Array(txs)].map(voting), new Date(createdTimestamp(docId)).toISOString())
     await client.query('COMMIT')
 
     const txns = await client.query('select * from transactions order by created_at;')

@@ -103,3 +103,4 @@ services:
     volumes:
       - ./eyeshade:/usr/src/app/eyeshade
       - ./bat-utils:/usr/src/app/bat-utils
+      - ./test:/usr/src/app/test

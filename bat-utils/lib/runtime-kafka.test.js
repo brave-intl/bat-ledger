@@ -1,12 +1,12 @@
 'use strict'
 
-const Kafka = require('../../bat-utils/lib/runtime-kafka')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
-const test = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const _ = require('underscore')
-const { timeout } = require('./extras-utils')
+import Kafka from '../../bat-utils/lib/runtime-kafka.js'
+import { Runtime } from 'bat-utils'
+import config from '../../config.js'
+import test from 'ava'
+import { v4 as uuidV4 } from 'uuid'
+import _ from 'underscore'
+import { timeout } from './extras-utils.js'
 
 process.env.KAFKA_CONSUMER_GROUP = 'test-consumer'
 const runtime = new Runtime(config)
