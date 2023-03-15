@@ -1,18 +1,17 @@
 'use strict'
-const test = require('ava')
-const {
-  ObjectID
-} = require('mongodb')
-const {
+import test from 'ava'
+import { ObjectID } from 'mongodb'
+
+import {
   surveyorChoices,
   createdTimestamp,
   timeout,
   documentOlderThan,
   isYoutubeChannelId,
   normalizeChannel
-} = require('./extras-utils')
+} from './extras-utils.js'
 
-const dotenv = require('dotenv')
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 
 const objectId = ObjectID('5b11685dd28b11258d50c1f4')

@@ -1,5 +1,5 @@
-const avro = require('avro-js')
-const { dateToISO } = require('bat-utils/lib/extras-utils')
+import avro from 'avro-js'
+import { dateToISO } from 'bat-utils/lib/extras-utils.js'
 
 const topic = process.env.ENV + '.promo.referral'
 const v1 = avro.parse({
@@ -21,7 +21,7 @@ const v1 = avro.parse({
   ]
 })
 
-module.exports = {
+export default {
   topic,
   decode,
   encode,

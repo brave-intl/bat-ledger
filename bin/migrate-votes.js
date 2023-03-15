@@ -1,17 +1,11 @@
 #!/usr/bin/env node
 
-const Database = require('bat-utils/lib/runtime-database')
-const SDebug = require('sdebug')
+import Database from 'bat-utils/lib/runtime-database'
+import SDebug from 'sdebug'
+import { v5 as uuidv5 } from 'uuid'
+import Postgres from 'bat-utils/lib/runtime-postgres'
+import { createdTimestamp, BigNumber, normalizeChannel } from 'bat-utils/lib/extras-utils.js'
 const debug = new SDebug('migrate-transaction-table')
-const { v5: uuidv5 } = require('uuid')
-
-const Postgres = require('bat-utils/lib/runtime-postgres')
-
-const {
-  createdTimestamp,
-  BigNumber,
-  normalizeChannel
-} = require('bat-utils/lib/extras-utils')
 
 async function consume (pg, votings) {
   return Promise.all(votings.map(async (voting) => {

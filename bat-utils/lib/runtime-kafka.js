@@ -1,4 +1,4 @@
-const { Kafka } = require('kafkajs')
+import { Kafka } from 'kafkajs'
 
 class RuntimeKafka {
   constructor (config, runtime) {
@@ -49,7 +49,7 @@ class RuntimeKafka {
   async quit () {
     let producerClose
     try {
-      producerClose = await this._producer && this._producer.disconnect()
+      producerClose = (await this._producer) && this._producer.disconnect()
     } catch (e) {}
     return Promise.all(
       [
@@ -167,6 +167,6 @@ class RuntimeKafka {
   }
 }
 
-module.exports = function (config, runtime) {
+export default function (config, runtime) {
   if (!(this instanceof RuntimeKafka)) return new RuntimeKafka(config, runtime)
-}
+};

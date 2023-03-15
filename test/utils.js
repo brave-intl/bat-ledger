@@ -1,23 +1,24 @@
-const fs = require('fs')
-const { sign } = require('http-request-signature')
-const crypto = require('crypto')
-const path = require('path')
-const dotenv = require('dotenv')
+import fs from 'fs'
+import { sign } from 'http-request-signature'
+import crypto from 'crypto'
+import path, { dirname } from 'path'
+import { agent } from 'supertest'
+import { stringify } from 'querystring'
+import _ from 'underscore'
+import { v4 as uuidV4 } from 'uuid'
+import { timeout, BigNumber, uint8tohex } from 'bat-utils/lib/extras-utils.js'
+import Postgres from 'bat-utils/lib/runtime-postgres.js'
+import SDebug from 'sdebug'
+import Server from 'bat-utils/lib/hapi-server.js'
+import { Runtime } from 'bat-utils/index.js'
+import { fileURLToPath } from 'url'
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 dotenv.config()
-const agent = require('supertest').agent
-const stringify = require('querystring').stringify
-const _ = require('underscore')
-const { v4: uuidV4 } = require('uuid')
-const {
-  timeout,
-  BigNumber,
-  uint8tohex
-} = require('bat-utils/lib/extras-utils')
-const Postgres = require('bat-utils/lib/runtime-postgres')
-const SDebug = require('sdebug')
 const debug = new SDebug('test')
-const Server = require('bat-utils/lib/hapi-server')
-const { Runtime } = require('bat-utils')
 
 const {
   TOKEN_LIST,
@@ -134,7 +135,7 @@ const agents = {
   }
 }
 
-module.exports = {
+export default {
   transaction: {
     ensureCount: ensureTransactionCount,
     ensureArrived: ensureTransactionArrived
@@ -397,7 +398,7 @@ async function ensureTransactionCount (t, expect) {
   let rows = []
   do {
     ;({ rows } = await t.context.runtime.postgres.query('select * from transactions'))
-  } while (rows.length !== expect && (await timeout(1000) || true))
+  } while (rows.length !== expect && ((await timeout(1000)) || true))
   return rows
 }
 
@@ -412,7 +413,7 @@ async function ensureTransactionArrived (t, id) {
     select * from transactions where id = $1
     `, [id]))
     console.log('checking for', id)
-  } while (seen.length === 0 && (await timeout(1000) || true))
+  } while (seen.length === 0 && ((await timeout(1000)) || true))
   return seen
 }
 

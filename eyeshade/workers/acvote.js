@@ -1,11 +1,11 @@
-const { votesId } = require('../lib/queries.js')
-const { voteType } = require('../lib/vote.js')
-const moment = require('moment')
-const { hasValidCountry } = require('../lib/publishers.js')
+import { votesId } from '../lib/queries.js'
+import { voteType } from '../lib/vote.js'
+import moment from 'moment'
+import { hasValidCountry } from '../lib/publishers.js'
 
 const voteTopic = process.env.ENV + '.payment.vote'
 
-module.exports = (runtime) => {
+function setupWorker (runtime) {
   runtime.kafka.on(voteTopic, async (messages, client) => {
     const date = moment().format('YYYY-MM-DD')
 
@@ -25,10 +25,9 @@ module.exports = (runtime) => {
     }
   })
 }
+export default setupWorker
 
-module.exports.insertVote = insertVote
-
-async function insertVote (runtime, date, vote, client, hasValidCountryFunc = hasValidCountry) {
+export async function insertVote (runtime, date, vote, client, hasValidCountryFunc = hasValidCountry) {
   // Check if votes are for valid country
   if (await hasValidCountryFunc(runtime, vote.channel)) {
     const surveyorId = date + '_' + vote.fundingSource

@@ -1,6 +1,6 @@
-const SDebug = require('sdebug')
-const pg = require('pg')
-const _ = require('underscore')
+import SDebug from 'sdebug'
+import pg from 'pg'
+import _ from 'underscore'
 const Pool = pg.Pool
 const debug = new SDebug('postgres')
 
@@ -93,4 +93,4 @@ async function runQuery (query, args, client, logs = {}) {
   return ret
 }
 
-module.exports = Postgres
+export default Postgres

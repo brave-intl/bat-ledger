@@ -1,8 +1,7 @@
-const querystring = require('querystring')
-const { URL } = require('url')
-
-const tldjs = require('tldjs')
-const underscore = require('underscore')
+import querystring from 'querystring'
+import { URL } from 'url'
+import tldjs from 'tldjs'
+import underscore from 'underscore'
 
 const providerRE = /^([A-Za-z0-9][A-Za-z0-9-]{0,62})#([A-Za-z0-9][A-Za-z0-9-]{0,62}):(([A-Za-z0-9-._~]|%[0-9A-F]{2})+)$/
 
@@ -16,7 +15,7 @@ const publisherURLs = {
   }
 }
 
-module.exports = {
+export {
   isPublisher,
   getPublisherProps
 }

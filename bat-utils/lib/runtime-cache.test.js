@@ -1,10 +1,10 @@
 'use strict'
 
-const { serial: test } = require('ava')
-const dotenv = require('dotenv')
-const Cache = require('./runtime-cache')
-const { v4: uuidV4 } = require('uuid')
+import test from 'ava'
+import Cache from './runtime-cache.js'
+import { v4 as uuidV4 } from 'uuid'
 
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 
 const cache = new Cache({

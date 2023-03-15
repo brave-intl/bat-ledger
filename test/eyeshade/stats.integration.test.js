@@ -1,14 +1,8 @@
-const { serial: test } = require('ava')
-const { v4: uuidV4 } = require('uuid')
-const { Runtime } = require('bat-utils')
-const {
-  insertFromSettlement
-} = require('../../eyeshade/lib/transaction')
-const {
-  agents,
-  ok,
-  cleanEyeshadePgDb
-} = require('../utils')
+import test from 'ava'
+import { v4 as uuidV4 } from 'uuid'
+import { Runtime } from 'bat-utils/index.js'
+import transaction from '../../eyeshade/lib/transaction.js'
+import util from '../utils.js'
 
 const {
   BAT_REDIS_URL,
@@ -76,18 +70,18 @@ const referralSettlement = {
   currency: 'BAT'
 }
 
-test.afterEach.always(cleanEyeshadePgDb.bind(null, runtime.postgres))
+test.afterEach.always(util.cleanEyeshadePgDb.bind(null, runtime.postgres))
 
 test('check auth', async (t) => {
   const votingStatsEmpty = await getStatsFor('grants', 'ads', {
     start: new Date(),
-    agent: agents.eyeshade.global
+    agent: util.agents.eyeshade.global
   })
   t.deepEqual({ amount: '0', count: '0' }, votingStatsEmpty, 'an empty set of stats should return')
 
   const goldEmpty = await getStatsFor('settlements', 'referral', {
     settlementCurrency: 'XAG',
-    agent: agents.eyeshade.global
+    agent: util.agents.eyeshade.global
   })
   t.deepEqual({ amount: '0' }, goldEmpty, 'an empty set of stats should return')
 })
@@ -100,15 +94,15 @@ test('stats for settlements', async (t) => {
 
   const client = await runtime.postgres.connect()
   try {
-    await insertFromSettlement(runtime, client, contributionSettlement)
-    await insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
+    await transaction.insertFromSettlement(runtime, client, contributionSettlement)
+    await transaction.insertFromSettlement(runtime, client, Object.assign({}, contributionSettlement, {
       settlementId: uuidV4()
     }))
     const contributionStats = await getStatsFor('settlements', 'contribution')
     t.is(19, +contributionStats.amount, 'contributions are summed')
 
-    await insertFromSettlement(runtime, client, referralSettlement)
-    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+    await transaction.insertFromSettlement(runtime, client, referralSettlement)
+    await transaction.insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
       settlementId: uuidV4()
     }))
 
@@ -124,7 +118,7 @@ test('stats for settlements', async (t) => {
     })
     t.deepEqual({ amount: '0' }, goldEmpty, 'should only show the results paid out in XAU')
 
-    await insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
+    await transaction.insertFromSettlement(runtime, client, Object.assign({}, referralSettlement, {
       settlementId: uuidV4(),
       currency: 'XAG',
       amount: '0.000125'
@@ -145,8 +139,8 @@ async function getStatsFor (prefix, type, options = {}) {
   const {
     start = today,
     settlementCurrency,
-    expect = ok,
-    agent = agents.eyeshade.stats
+    expect = util.ok,
+    agent = util.agents.eyeshade.stats
   } = options
   const begin = start.toISOString()
   const qs = settlementCurrency ? `?settlement_currency=${settlementCurrency}` : ''

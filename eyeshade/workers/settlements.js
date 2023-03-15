@@ -1,14 +1,9 @@
-const transaction = require('../lib/transaction')
-const { normalizeChannel, BigNumber } = require('bat-utils/lib/extras-utils')
-const { ObjectID } = require('bson')
-const settlements = require('../lib/settlements')
+import transaction from '../lib/transaction.js'
+import { normalizeChannel, BigNumber } from 'bat-utils/lib/extras-utils.js'
+import { ObjectID } from 'bson'
+import settlements from '../lib/settlements.js'
 
-module.exports = {
-  consumer,
-  insertMessage
-}
-
-function consumer (runtime) {
+export default function consumer (runtime) {
   const { kafka } = runtime
   kafka.on(settlements.topic, async (messages, client) => {
     const inserting = {}
@@ -18,7 +13,7 @@ function consumer (runtime) {
   })
 }
 
-async function insertMessage (inserting, runtime, settlement, timestamp, client) {
+export async function insertMessage (inserting, runtime, settlement, timestamp, client) {
   const { postgres } = runtime
   const {
     publisher,

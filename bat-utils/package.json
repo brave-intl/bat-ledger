@@ -3,6 +3,7 @@
   "version": "0.9.12",
   "description": "Utilities for BAT servers.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "lint": "standard"
   },

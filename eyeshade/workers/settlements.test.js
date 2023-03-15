@@ -1,12 +1,11 @@
-const { serial: test } = require('ava')
-const config = require('../../config')
-const { timeout, normalizeChannel } = require('bat-utils/lib/extras-utils')
-const { Runtime } = require('bat-utils')
-const transaction = require('../lib/transaction')
-const settlements = require('../lib/settlements')
-const utils = require('../../test/utils')
-const { cleanEyeshadePgDb } = require('../../test/utils')
-const { consumer: settlementsConsumer } = require('./settlements')
+import test from 'ava'
+import config from '../../config.js'
+import { normalizeChannel, timeout } from 'bat-utils/lib/extras-utils.js'
+import { Runtime } from 'bat-utils'
+import transaction from '../lib/transaction.js'
+import settlements from '../lib/settlements.js'
+import utils from '../../test/utils.js'
+import settlementsConsumer from './settlements.js'
 
 test.before(async (t) => {
   Object.assign(t.context, {
@@ -16,8 +15,8 @@ test.before(async (t) => {
   await t.context.runtime.kafka.consume().catch(console.error)
 })
 
-test.beforeEach((t) => cleanEyeshadePgDb(t.context.runtime.postgres))
-// test.afterEach.always(cleanEyeshadePgDb.bind(null, postgres))
+test.beforeEach((t) => utils.cleanEyeshadePgDb(t.context.runtime.postgres))
+// test.afterEach.always(utils.cleanEyeshadePgDb.bind(null, postgres))
 
 test('settlements should be insertable from the kafka queue', async (t) => {
   const msgs = 10

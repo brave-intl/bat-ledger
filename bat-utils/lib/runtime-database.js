@@ -1,13 +1,13 @@
-const bson = require('bson')
-const mongodb = require('mongodb')
+import bson from 'bson'
+import mongodb from 'mongodb'
+import GridStream from 'gridfs-stream'
+import monk from 'monk'
+import SDebug from 'sdebug'
+import stringify from 'json-stringify-safe'
+import underscore from 'underscore'
 const GridStore = mongodb.GridStore
-const GridStream = require('gridfs-stream')
 const Logger = mongodb.Logger
-const monk = require('monk')
-const SDebug = require('sdebug')
 const debug = new SDebug('database')
-const stringify = require('json-stringify-safe')
-const underscore = require('underscore')
 
 const Database = function (config, runtime) {
   if (!(this instanceof Database)) return new Database(config, runtime)
@@ -161,7 +161,7 @@ Database.prototype.checkIndices = async function (debug, entries) {
     const category = entry.category
     let doneP, indices, status
 
-    try { indices = underscore.keys(await category.indexes() || {}) } catch (ex) { indices = [] }
+    try { indices = underscore.keys((await category.indexes()) || {}) } catch (ex) { indices = [] }
     if (indices.indexOf(entry.property + '_1') === -1) status = 'being created'
     else {
       doneP = true
@@ -197,4 +197,4 @@ Database.prototype.checkIndices = async function (debug, entries) {
   }))
 }
 
-module.exports = Database
+export default Database

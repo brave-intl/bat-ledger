@@ -1,10 +1,10 @@
-const test = require('ava')
-const { handleMessage } = require('./suggestions.js')
-const sinon = require('sinon')
-const { Runtime } = require('bat-utils')
-const config = require('../../config')
-const { v4: uuidV4 } = require('uuid')
-const utils = require('../../test/utils')
+import test from 'ava'
+import { handleMessage } from './suggestions.js'
+import sinon from 'sinon'
+import { Runtime } from 'bat-utils'
+import config from '../../config.js'
+import { v4 as uuidV4 } from 'uuid'
+import utils from '../../test/utils.js'
 const channel = 'youtube#channel:UC2WPgbTIs9CDEV7NpX0-ccw'
 
 test('should insert vote if it is valid', async (t) => {

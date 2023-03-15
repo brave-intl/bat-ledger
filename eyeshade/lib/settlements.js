@@ -1,4 +1,4 @@
-const avro = require('avro-js')
+import avro from 'avro-js'
 
 const topic = process.env.ENV + '.settlement.payout'
 const v1 = avro.parse({
@@ -59,7 +59,7 @@ const hashOnly = avro.parse({
 
 const resolverV2 = hashOnly.createResolver(v2)
 
-module.exports = {
+export default {
   topic,
   encode,
   decode,

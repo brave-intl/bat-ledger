@@ -1,18 +1,17 @@
-const dotenv = require('dotenv')
-const utils = require('bat-utils')
+import extras from 'bat-utils/boot-extras.js'
+import { Runtime } from 'bat-utils/boot-runtime.js'
+import config from '../config.js'
+import suggestionsConsumer from './workers/suggestions.js'
+import voteConsumer from './workers/acvote.js'
+import referralsConsumer from './workers/referrals.js'
+import settlementsConsumer from './workers/settlements.js'
+import { getCurrent } from './migrations/current.js'
 
-const config = require('../config.js')
+import { fileURLToPath } from 'url'
+import * as dotenv from 'dotenv'
 
-const suggestionsConsumer = require('./workers/suggestions')
-const voteConsumer = require('./workers/acvote')
-const { consumer: referralsConsumer } = require('./workers/referrals')
-const { consumer: settlementsConsumer } = require('./workers/settlements')
-const {
-  extras,
-  Runtime
-} = utils
-
-dotenv.config()
+const __filename = fileURLToPath(import.meta.url)
+dotenv.config() // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 
 if (!process.env.BATUTIL_SPACES) {
   process.env.BATUTIL_SPACES = '*,-hapi'
@@ -23,15 +22,14 @@ Runtime.newrelic.setupNewrelic(config, __filename)
 config.cache = false
 config.database = false
 config.prometheus = false
-config.postgres.schemaVersion = require('./migrations/current')
+config.postgres.schemaVersion = getCurrent()
 
 const runtime = new Runtime(config)
 
 extras.utils.setupKafkaCert()
-
 suggestionsConsumer(runtime)
 voteConsumer(runtime)
 referralsConsumer(runtime)
 settlementsConsumer(runtime)
 runtime.kafka.consume().catch(console.error)
-module.exports = runtime
+export default runtime

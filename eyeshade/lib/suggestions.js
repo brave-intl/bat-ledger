@@ -1,5 +1,5 @@
-const avro = require('avro-js')
-const { isUUID } = require('bat-utils/lib/extras-utils')
+import avro from 'avro-js'
+import { isUUID } from 'bat-utils/lib/extras-utils.js'
 
 const typeV1 = avro.parse({
   namespace: 'brave.grants',
@@ -74,7 +74,7 @@ const orderIdOnly = avro.parse({
 
 const resolverV2 = orderIdOnly.createResolver(typeV2)
 
-module.exports = {
+export default {
   typeV1,
   typeV2,
   decode

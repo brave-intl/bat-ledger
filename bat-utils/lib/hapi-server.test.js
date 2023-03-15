@@ -1,10 +1,11 @@
 'use strict'
 
-const Server = require('./hapi-server')
-const test = require('ava')
-const Cache = require('./runtime-cache')
-const dotenv = require('dotenv')
-const supertest = require('supertest')
+import Server from './hapi-server.js'
+import test from 'ava'
+import Cache from './runtime-cache.js'
+import supertest from 'supertest'
+
+import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 
 test('hapi throws', async (t) => {
