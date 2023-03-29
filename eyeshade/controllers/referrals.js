@@ -6,7 +6,6 @@ import countries from '../lib/countries.js'
 import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
 import { braveJoi } from 'bat-utils/lib/extras-joi.js'
 import * as extrasUtils from 'bat-utils/lib/extras-utils.js'
-import { BigNumber } from 'bat-utils/lib/extras-utils.js'
 const _ = underscore
 
 const v1 = {}
@@ -137,7 +136,7 @@ v1.getReferralsStatement = {
       payoutRate,
       probi
     }) => {
-      const bat = (new BigNumber(probi)).dividedBy(scale)
+      const bat = (new extrasUtils.BigNumber(probi)).dividedBy(scale)
       return {
         publisher,
         referralCode: referralCode || '',
