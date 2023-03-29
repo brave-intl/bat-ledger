@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
-import utils from 'bat-utils'
+import * as utils from 'bat-utils'
 import config from '../config.js'
-import reports from './workers/reports.js'
+import * as reports from './workers/reports.js'
 
 const {
   Runtime
