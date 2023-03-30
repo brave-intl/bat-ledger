@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import * as utils from 'bat-utils'
 import config from '../config.js'
 import * as reports from './workers/reports.js'
+import { fileURLToPath } from 'url'
 
 const {
   Runtime
@@ -9,6 +10,7 @@ const {
 
 dotenv.config()
 
+const __filename = fileURLToPath(import.meta.url)
 Runtime.newrelic.setupNewrelic(config, __filename)
 
 config.cache = false
