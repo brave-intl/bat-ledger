@@ -60,7 +60,7 @@ function Runtime (config) {
     config = process.env.NODE_ENV || 'development'
   }
   if (typeof config === 'string') {
-    config = require(path.join(process.cwd(), 'config', 'config.' + config + '.js'))
+    config = import(path.join(process.cwd(), 'config', 'config.' + config + '.js'))
   }
 
   sanity(config)

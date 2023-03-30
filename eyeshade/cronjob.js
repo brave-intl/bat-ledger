@@ -17,7 +17,7 @@ config.cache = false
 config.database = false
 config.prometheus = false
 config.kafka = false
-config.postgres.schemaVersion = require('./migrations/current')
+config.postgres.schemaVersion = import('./migrations/current')
 
 const runtime = new Runtime(config)
 

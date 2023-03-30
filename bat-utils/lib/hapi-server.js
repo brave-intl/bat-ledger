@@ -78,7 +78,7 @@ async function Server (options, runtime) {
   goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
 
   underscore.defaults(options, { id: server.info.id, headersP: true, remoteP: true })
-  if (!options.routes) options.routes = require('./controllers/index')
+  if (!options.routes) options.routes = import('./controllers/index')
 
   debug.initialize({ web: { id: options.id } })
   debug('server opts', serverOpts)
