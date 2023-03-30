@@ -105,7 +105,7 @@
   },
   "devDependencies": {
     "ava": "^5.1.1",
-    "coveralls": "^3.1.1",
+    "coveralls-next": "^4.2.0",
     "eslint": "^8.35.0",
     "nodemon": "^2.0.20",
     "parse-prometheus-text-format": "^1.1.1",
