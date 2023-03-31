@@ -5,7 +5,6 @@ import _ from 'underscore'
 import * as extrasUtils from 'bat-utils/lib/extras-utils.js'
 import { earnings, allSettlements, timeConstraintSettlements } from '../lib/queries.js'
 import transactions from '../lib/transaction.js'
-import { BigNumber } from 'bat-utils/lib/extras-utils.js'
 import * as braveHapi from 'bat-utils/lib/extras-hapi.js'
 import { braveJoi } from 'bat-utils/lib/extras-joi.js'
 
@@ -99,7 +98,7 @@ ORDER BY created_at
         settlement_amount: settlementAmount,
         transaction_type: transactionType
       }) => {
-        let amount = new BigNumber(_amount)
+        let amount = new extrasUtils.BigNumber(_amount)
         if (fromAccount === account) {
           amount = amount.negated()
         }
@@ -320,7 +319,7 @@ function mergeVotes (_memo, {
     account_id: accountId
   })
   if (found) {
-    const amount = new BigNumber(found.balance)
+    const amount = new extrasUtils.BigNumber(found.balance)
     const balance = amount.plus(voteBalance).toString()
     Object.assign(found, {
       balance

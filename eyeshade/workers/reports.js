@@ -1,11 +1,13 @@
 import { timeout } from 'bat-utils/lib/extras-utils.js'
 import { surveyorFrozenReport } from './surveyors.js'
 import SDebug from 'sdebug'
+
 const defaultDebug = new SDebug('worker')
 const options = { id: 1 }
 defaultDebug.initialize({ worker: { id: options.id } })
 
-exports.debug = defaultDebug
+const debug = defaultDebug
+const name = 'reports'
 
 const freezeInterval = process.env.FREEZE_SURVEYORS_AGE_DAYS
 
@@ -21,11 +23,6 @@ async function runFreezeOldSurveyors (debug, runtime) {
     debug('frozen %o', frozen)
   }
 }
-
-exports.runFreezeOldSurveyors = runFreezeOldSurveyors
-
-exports.name = 'reports'
-exports.freezeOldSurveyors = freezeOldSurveyors
 
 /*
   olderThanDays: int
@@ -95,4 +92,11 @@ async function waitForTransacted (runtime, surveyorId) {
       return
     }
   } while (row) // when no row is returned, all votes have been transacted
+}
+
+export {
+  debug,
+  runFreezeOldSurveyors,
+  freezeOldSurveyors,
+  name
 }

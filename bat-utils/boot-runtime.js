@@ -1,5 +1,3 @@
-
-import path from 'path'
 import SDebug from 'sdebug'
 import _ from 'underscore'
 import cache from './lib/runtime-cache.js'
@@ -56,15 +54,7 @@ function Runtime (config) {
     return new Runtime(config)
   }
 
-  if (!config) {
-    config = process.env.NODE_ENV || 'development'
-  }
-  if (typeof config === 'string') {
-    config = require(path.join(process.cwd(), 'config', 'config.' + config + '.js'))
-  }
-
   sanity(config)
-
   this.setup(config)
 }
 

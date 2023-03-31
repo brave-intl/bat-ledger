@@ -53,7 +53,7 @@ const monthly = async (debug, runtime) => {
   }
 }
 
-exports.initialize = async (debug, runtime) => {
+const initialize = async (debug, runtime) => {
   // Limit the dynos that can run this worker to 1
   if ((typeof process.env.DYNO !== 'undefined') && (process.env.DYNO !== 'worker.1')) return
 
@@ -62,4 +62,7 @@ exports.initialize = async (debug, runtime) => {
   setTimeout(() => { monthly(debug, runtime) }, next - underscore.now())
 }
 
-exports.monthly = monthly
+export {
+  monthly,
+  initialize
+}
