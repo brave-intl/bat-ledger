@@ -3,6 +3,7 @@ import * as utils from 'bat-utils'
 import config from '../config.js'
 import * as reports from './workers/reports.js'
 import { fileURLToPath } from 'url'
+import { getCurrent } from './migrations/current.js'
 
 const {
   Runtime
@@ -17,7 +18,7 @@ config.cache = false
 config.database = false
 config.prometheus = false
 config.kafka = false
-config.postgres.schemaVersion = import('./migrations/current')
+config.postgres.schemaVersion = getCurrent
 
 const runtime = new Runtime(config)
 
