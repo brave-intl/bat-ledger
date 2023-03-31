@@ -8,6 +8,7 @@ import inert from '@hapi/inert'
 import hapiRequireHTTPS from 'hapi-require-https'
 import SDebug from 'sdebug'
 import * as braveHapi from './extras-hapi.js'
+import routes from './hapi-controllers-index.js'
 
 export default async function (options, runtime) {
   try {
@@ -78,7 +79,7 @@ async function Server (options, runtime) {
   goneRoutes.forEach(({ method, path }) => server.route({ method, path, handler: () => { throw boom.resourceGone() } }))
 
   underscore.defaults(options, { id: server.info.id, headersP: true, remoteP: true })
-  if (!options.routes) options.routes = import('./controllers/index')
+  if (!options.routes) options.routes = routes
 
   debug.initialize({ web: { id: options.id } })
   debug('server opts', serverOpts)
