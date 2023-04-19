@@ -1,5 +1,4 @@
 import crypto from 'crypto'
-import ProxyAgent from 'proxy-agent'
 import SDebug from 'sdebug'
 import underscore from 'underscore'
 import wreck from '@hapi/wreck'
@@ -146,12 +145,8 @@ const WreckProxy = (server, opts) => {
   })
 
   if (typeof opts.useProxyP === 'undefined') return { server, opts }
-
-  const useProxyP = opts.useProxyP
   opts = underscore.omit(opts, ['useProxyP'])
-  if ((!useProxyP) || (!process.env.FIXIE_URL)) return { server, opts }
-
-  return { server, opts: underscore.extend(opts, { agent: new ProxyAgent(process.env.FIXIE_URL) }) }
+  return { server, opts }
 }
 export { WreckProxy }
 
