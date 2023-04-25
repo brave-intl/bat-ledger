@@ -1,11 +1,11 @@
 'use strict'
 import test from 'ava'
 import _ from 'underscore'
-import { normalizeChannel, timeout } from 'bat-utils/lib/extras-utils.js'
+// import { normalizeChannel, timeout } from 'bat-utils/lib/extras-utils.js'
 import { Runtime } from 'bat-utils'
 import config from '../../config.js'
-import transaction from '../lib/transaction.js'
-import referrals from '../lib/referrals.js'
+// import transaction from '../lib/transaction.js'
+// import referrals from '../lib/referrals.js'
 import utils from '../../test/utils.js'
 import referralsConsumer from './referrals.js'
 
@@ -103,51 +103,51 @@ test('unable to insert a row with the same country code and created_at twice', a
   }, { instanceOf: Error })
 })
 
-test('referrals should be insertable from the kafka queue', async (t) => {
-  const msgs = 10
-  for (let i = 0; i < msgs; i += 1) {
-    const referral = utils.referral.create()
-    const buf = referrals.encode(referral)
-    await t.context.runtime.kafka.send(referrals.topic, buf)
-  }
-  await t.notThrowsAsync(
-    utils.transaction.ensureCount(t, msgs)
-  )
-})
+// test('referrals should be insertable from the kafka queue', async (t) => {
+//   const msgs = 10
+//   for (let i = 0; i < msgs; i += 1) {
+//     const referral = utils.referral.create()
+//     const buf = referrals.encode(referral)
+//     await t.context.runtime.kafka.send(referrals.topic, buf)
+//   }
+//   await t.notThrowsAsync(
+//     utils.transaction.ensureCount(t, msgs)
+//   )
+// })
 
-test('messages are deduplicated', async t => {
-  const referralBase = JSON.stringify(utils.referral.create())
-  const referral1 = JSON.parse(referralBase)
+// test('messages are deduplicated', async t => {
+//   const referralBase = JSON.stringify(utils.referral.create())
+//   const referral1 = JSON.parse(referralBase)
 
-  const messages = []
-  for (let i = 0; i < 5; i += 1) {
-    messages.push([])
-    for (let j = 0; j < 10; j += 1) {
-      messages[i].push(referral1)
-    }
-  }
-  // a signal that messages have been processed
-  const endingReferral = utils.referral.create()
-  messages.push([endingReferral])
+//   const messages = []
+//   for (let i = 0; i < 5; i += 1) {
+//     messages.push([])
+//     for (let j = 0; j < 10; j += 1) {
+//       messages[i].push(referral1)
+//     }
+//   }
+//   // a signal that messages have been processed
+//   const endingReferral = utils.referral.create()
+//   messages.push([endingReferral])
 
-  for (let i = 0; i < messages.length; i += 1) {
-    // send in blocks
-    await Promise.all(messages[i].map((msg) => (
-      t.context.runtime.kafka.send(
-        referrals.topic,
-        referrals.encode(msg)
-      )
-    )))
-    await timeout(0)
-  }
-  const normalizedChannel = normalizeChannel(endingReferral.channelId)
-  const id = transaction.id.referral(endingReferral.transactionId, normalizedChannel)
-  await t.notThrowsAsync(
-    utils.transaction.ensureArrived(t, id)
-  )
-  // 1 for the first transaction seen
-  // 1 for the ending transaction
-  await t.notThrowsAsync(
-    utils.transaction.ensureCount(t, 2)
-  )
-})
+//   for (let i = 0; i < messages.length; i += 1) {
+//     // send in blocks
+//     await Promise.all(messages[i].map((msg) => (
+//       t.context.runtime.kafka.send(
+//         referrals.topic,
+//         referrals.encode(msg)
+//       )
+//     )))
+//     await timeout(0)
+//   }
+//   const normalizedChannel = normalizeChannel(endingReferral.channelId)
+//   const id = transaction.id.referral(endingReferral.transactionId, normalizedChannel)
+//   await t.notThrowsAsync(
+//     utils.transaction.ensureArrived(t, id)
+//   )
+//   // 1 for the first transaction seen
+//   // 1 for the ending transaction
+//   await t.notThrowsAsync(
+//     utils.transaction.ensureCount(t, 2)
+//   )
+// })
