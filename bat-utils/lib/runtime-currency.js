@@ -89,7 +89,7 @@ Currency.prototype = {
       updateTime,
       failureDebounceTime
     } = config
-    const baseUrl = new URL('/v1/', currencyUrl)
+    const baseUrl = new URL('/v2/', currencyUrl)
     const endpoint = new URL(path, baseUrl)
     const cacheKey = `currency:${endpoint}`
     let data = cache.get(cacheKey)
@@ -121,28 +121,8 @@ Currency.prototype = {
     return data.payload
   },
 
-  all: function () {
-    return this.access('./')
-  },
-
-  rates: async function (against, currencies) {
-    const context = this
-    const rateCurrencies = currencies || context.knownRateKeys
-    const rates = await context.all()
-    const number = rates[against]
-    const base = new BigNumber(number.toString())
-    return _.reduce(rateCurrencies, (memo, key) => {
-      const value = rates[key]
-      if (value) {
-        const price = new BigNumber(value.toString())
-        memo[key] = price.dividedBy(base).toString()
-      }
-      return memo
-    }, {})
-  },
-
   ratio: function (a, b) {
-    return this.access(`${a}/${b}`)
+    return this.access(`relative/provider/coingecko/${a}/${b}/live`)
   },
 
   // satoshis, wei, etc.
@@ -159,7 +139,8 @@ Currency.prototype = {
   },
 
   alt2fiat: async function (altcurrency, probi, currency, floatP) {
-    const rate = await singleton.ratio(altcurrency, currency)
+    const payload = await singleton.ratio(altcurrency, currency)
+    const rate = payload[altcurrency.toLowerCase()][currency.toLowerCase()]
     if (!rate) {
       return
     }
@@ -196,7 +177,8 @@ Currency.prototype = {
       return
     }
 
-    const rate = await singleton.ratio(altcurrency, currency)
+    const payload = await singleton.ratio(altcurrency, currency)
+    const rate = payload[altcurrency.toLowerCase()][currency.toLowerCase()]
     if (!rate) {
       return
     }

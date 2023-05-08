@@ -18,8 +18,8 @@ test('instantiates correctly', (t) => {
 test('get the ratio', async (t) => {
   t.plan(2)
   const result = await currency.ratio('BAT', 'USD')
-  t.true(_.isString(result))
-  t.true(_.isNumber(+result))
+  t.true(_.isObject(result))
+  t.true(_.isNumber(+result.bat.usd))
 })
 
 test('get decimal scale', async (t) => {
@@ -65,25 +65,15 @@ test('capture exception is passed up to runtime', async (t) => {
   delete currency.runtime.captureException
 })
 
-test('rates are provided for basic tokens', async (t) => {
-  const knownRateKeys = currency.knownRateKeys
-  t.plan(2 + knownRateKeys.length)
-  const result = await currency.rates('BAT')
-  t.true(_.isObject(result))
-  t.true(knownRateKeys.length > 1)
-  knownRateKeys.forEach((key) => {
-    t.true(_.isNumber(+result[key]))
-  })
-})
 test('make sure cache is caching', async (t) => {
   t.plan(1)
   const oldCache = currency.cache
-  const trueResult = await currency.rates('BAT')
+  const trueResult = await currency.ratio('BAT', 'USD')
   const ones = _.mapObject(trueResult, () => '1')
   const oneResult = {
     lastUpdated: (new Date()).toISOString(),
     payload: Object.assign({}, ones, {
-      BAT: '1'
+      bat: '1'
     })
   }
   const createCache = (context) => ({
@@ -91,7 +81,7 @@ test('make sure cache is caching', async (t) => {
     get: (key) => oneResult
   })
   currency.cache = createCache({})
-  const result = await currency.rates('BAT')
+  const result = await currency.ratio('BAT', 'USD')
   t.deepEqual(ones, result)
   currency.cache = oldCache
 })
@@ -103,16 +93,16 @@ test('a faulty request does not result in an error', async (t) => {
   currency.parser = () => { throw new Error('missed') }
   // throwing with no cache
   try {
-    await currency.rates('BAT')
+    await currency.ratio('BAT', 'USD')
   } catch (e) {
     t.true(_.isObject(e))
   }
   // caching
   delete currency.parser
-  const res1 = await currency.rates('BAT')
+  const res1 = await currency.ratio('BAT', 'USD')
   let res2 = null
   try {
-    res2 = await currency.rates('BAT')
+    res2 = await currency.ratio('BAT', 'USD')
   } catch (e) {
     t.true(false)
   }
@@ -124,17 +114,17 @@ test('a faulty request delays subsequent requests', async (t) => {
   const currency = make(Currency.Constructor, {
     lastFailure: 5000
   })
-  const first = await currency.rates('BAT')
+  const first = await currency.ratio('BAT', 'USD')
   currency.parser = () => { throw new Error('missed') }
   currency.request = _.wrap(currency.request, (request, endpoint) => {
     return request.call(currency, endpoint)
   })
-  t.deepEqual(first, await currency.rates('BAT'))
+  t.deepEqual(first, await currency.ratio('BAT', 'USD'))
   await timeout(6000)
-  t.deepEqual(first, await currency.rates('BAT'))
+  t.deepEqual(first, await currency.ratio('BAT', 'USD'))
   currency.cache = currency.Cache()
   try {
-    await currency.rates('BAT')
+    await currency.ratio('BAT', 'USD')
   } catch (e) {
     t.true(_.isObject(e))
   }
