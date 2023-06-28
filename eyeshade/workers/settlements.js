@@ -1,6 +1,6 @@
 import transaction from '../lib/transaction.js'
 import { normalizeChannel, BigNumber } from 'bat-utils/lib/extras-utils.js'
-import { ObjectID } from 'bson'
+import { ObjectId } from 'bson'
 import settlements from '../lib/settlements.js'
 
 export default function consumer (runtime) {
@@ -41,7 +41,7 @@ export async function insertMessage (inserting, runtime, settlement, timestamp, 
     return
   }
   await transaction.insertFromSettlement(runtime, client, {
-    _id: ObjectID.createFromTime(+(new Date(timestamp)) / 1000),
+    _id: ObjectId.createFromTime(+(new Date(timestamp)) / 1000),
     publisher,
     address,
     settlementId,

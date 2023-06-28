@@ -6,7 +6,6 @@ import kafka from './lib/runtime-kafka.js'
 import newrelic from './lib/runtime-newrelic.js'
 import postgres from './lib/runtime-postgres.js'
 import sentry from './lib/runtime-sentry.js'
-import database from './lib/runtime-database.js'
 import wreck from './lib/runtime-wreck.js'
 import prometheus from './lib/runtime-prometheus.js'
 
@@ -14,7 +13,6 @@ const hash = {
   currency,
   kafka,
   newrelic,
-  database,
   postgres,
   sentry,
   prometheus,
