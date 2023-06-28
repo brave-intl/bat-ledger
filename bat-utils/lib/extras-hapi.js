@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 import underscore from 'underscore'
 import wreck from '@hapi/wreck'
 

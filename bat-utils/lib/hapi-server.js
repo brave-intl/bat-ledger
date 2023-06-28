@@ -6,7 +6,7 @@ import authBearerToken from 'hapi-auth-bearer-token'
 import hapi from '@hapi/hapi'
 import inert from '@hapi/inert'
 import hapiRequireHTTPS from 'hapi-require-https'
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 import * as braveHapi from './extras-hapi.js'
 import routes from './hapi-controllers-index.js'
 

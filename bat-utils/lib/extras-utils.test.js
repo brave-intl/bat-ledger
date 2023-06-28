@@ -1,6 +1,6 @@
 'use strict'
 import test from 'ava'
-import { ObjectID } from 'mongodb'
+import { ObjectId } from 'bson'
 
 import {
   surveyorChoices,
@@ -14,7 +14,7 @@ import {
 import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 
-const objectId = ObjectID('5b11685dd28b11258d50c1f4')
+const objectId = new ObjectId('5b11685dd28b11258d50c1f4')
 const objectDate = (new Date('2018-06-01T15:38:05.000Z')).getTime()
 test('createdTimestamp', (t) => {
   t.plan(1)

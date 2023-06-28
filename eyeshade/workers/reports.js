@@ -1,6 +1,6 @@
 import { timeout } from 'bat-utils/lib/extras-utils.js'
 import { surveyorFrozenReport } from './surveyors.js'
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 
 const defaultDebug = new SDebug('worker')
 const options = { id: 1 }

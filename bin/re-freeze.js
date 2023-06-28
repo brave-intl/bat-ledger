@@ -1,5 +1,5 @@
 #!/usr/bin/env nodeimport Queue from 'bat-utils/lib/runtime-queue';
-// import SDebug from 'sdebug'
+// import SDebug from 'bat-utils/lib/sdebug.js'
 //
 // import Postgres from 'bat-utils/lib/runtime-postgres'
 // const debug = new SDebug('migrate-transaction-table')
