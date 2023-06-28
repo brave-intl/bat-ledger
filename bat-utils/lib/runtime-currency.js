@@ -1,5 +1,5 @@
 import { URL } from 'url'
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 import * as currencyCodes from 'currency-codes'
 import * as braveHapi from './extras-hapi.js'
 import { BigNumber } from './extras-utils.js'

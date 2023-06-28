@@ -1,6 +1,6 @@
 import { URL } from 'url'
 import Raven from '@sentry/node'
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 import underscore from 'underscore'
 
 const debug = new SDebug('sentry')

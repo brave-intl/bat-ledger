@@ -1,6 +1,6 @@
 import bluebird from 'bluebird'
 import redis from 'redis'
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 import _ from 'underscore'
 const debug = new SDebug('cache')
 const ONE_HOUR = 1000 * 60 * 60

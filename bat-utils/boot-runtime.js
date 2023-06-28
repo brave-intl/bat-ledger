@@ -1,4 +1,4 @@
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 import _ from 'underscore'
 import cache from './lib/runtime-cache.js'
 import currency from './lib/runtime-currency.js'
