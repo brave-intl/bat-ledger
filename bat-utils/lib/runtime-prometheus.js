@@ -1,10 +1,12 @@
 import client from 'prom-client'
 import { BigNumber } from './extras-utils.js'
 import _ from 'underscore'
+import SDebug from 'bat-utils/lib/sdebug.js'
 const listenerPrefix = 'listeners:prometheus:'
 const listenerChannel = `${listenerPrefix}${process.env.SERVICE}`
 
 const settlementBalanceKey = 'settlement:balance'
+const Debug = new SDebug('boot')
 
 export default Prometheus
 
@@ -71,6 +73,8 @@ Prometheus.prototype.allMetrics = async function () {
   const keys = await cache.keysAsync(`${listenerChannel}.*`)
   const all = await cache.mgetAsync(keys)
   const metrics = all.map(JSON.parse)
+  Debug('metrics')
+  Debug(metrics)
   return client.AggregatorRegistry.aggregate(metrics)
 }
 
