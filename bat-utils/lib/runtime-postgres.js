@@ -1,4 +1,4 @@
-import SDebug from 'sdebug'
+import SDebug from 'bat-utils/lib/sdebug.js'
 import pg from 'pg'
 import _ from 'underscore'
 const Pool = pg.Pool
