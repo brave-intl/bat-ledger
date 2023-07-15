@@ -1,4 +1,4 @@
-FROM node:16.16.0
+FROM node:16.20.1
 
 RUN apt-get update && apt-get install -y postgresql-client
 
