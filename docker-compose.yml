@@ -19,7 +19,7 @@ services:
   kafka:
     hostname: kafka1
     container_name: kafka1
-    image: confluentinc/cp-kafka:5.2.2 # kafka version 2.2.1
+    image: confluentinc/cp-kafka:5.5.12 # kafka version 2.2.1
     depends_on:
       - zookeeper
     ports:
