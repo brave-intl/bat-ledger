@@ -39,10 +39,10 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - uses: actions/checkout@96f53100ba2a5449eb71d2e6604bbcd94b9449b5
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@c6fd00ceb9747fb23ffdf72987450a2664414867
+        uses: actions/setup-node@ca2d4e0cdd8c63d9ebfedc3d16d450a870caf31c
         with:
           # Set always-auth in npmrc
           always-auth: true
@@ -55,19 +55,19 @@ jobs:
       - run: npm --version
 
       - name: Docker Compose Install
-        uses: KengoTODA/actions-setup-docker-compose@92cbaf8ac8c113c35e1cedd1182f217043fbdd00
+        uses: KengoTODA/actions-setup-docker-compose@7028cae87b80499a61bb6d794199a6d0e2eead7b
         with:
           version: '1.25.4'
 
       - name: Cache node modules
-        uses: actions/cache@0781355a23dac32fd3bac414512f4b903437991a
+        uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
         with:
           path: ~/.npm
           key: v1-npm-deps-${{ hashFiles('**/package-lock.json') }}
           restore-keys: v1-npm-deps-
 
       - run: docker-compose pull
-      - uses: satackey/action-docker-layer-caching@46d2c640b1d8ef50d185452ad6fb324e6bd1d052
+      - uses: satackey/action-docker-layer-caching@cc3f3828e75cbb45f0cf5139b95329c88480aa97
         # Ignore the failure of a step and avoid terminating the job.
         continue-on-error: true
         with:
