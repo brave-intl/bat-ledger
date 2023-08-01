@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@c6fd00ceb9747fb23ffdf72987450a2664414867
+        uses: actions/setup-node@ca2d4e0cdd8c63d9ebfedc3d16d450a870caf31c
         with:
           # Set always-auth in npmrc
           always-auth: true
