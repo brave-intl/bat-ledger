@@ -99,7 +99,7 @@
   },
   "engines": {
     "node": "20.5.0",
-    "npm": "9.8.0"
+    "npm": "9.8.1"
   },
   "devDependencies": {
     "ava": "^5.3.1",
