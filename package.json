@@ -98,8 +98,8 @@
     "uuid": "^9.0.0"
   },
   "engines": {
-    "node": "16.20.1",
-    "npm": "8.15.1"
+    "node": "20.5.0",
+    "npm": "9.8.1"
   },
   "devDependencies": {
     "ava": "^5.3.1",

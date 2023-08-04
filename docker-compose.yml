@@ -9,7 +9,7 @@ services:
   zookeeper:
     container_name: zook1
     hostname: zook1
-    image: confluentinc/cp-zookeeper:5.5.12
+    image: confluentinc/cp-zookeeper:7.4.1
     ports:
       - "2181:2181"
     environment:
@@ -19,7 +19,7 @@ services:
   kafka:
     hostname: kafka1
     container_name: kafka1
-    image: confluentinc/cp-kafka:5.5.12 # kafka version 2.2.1
+    image: confluentinc/cp-kafka:7.4.1 # kafka version 2.2.1
     depends_on:
       - zookeeper
     ports:
@@ -58,7 +58,7 @@ services:
 
   eyeshade-postgres:
     container_name: eyeshade-postgres
-    image: postgres:11.9
+    image: postgres:15.3
     ports:
       - "3012:5432"
     environment:

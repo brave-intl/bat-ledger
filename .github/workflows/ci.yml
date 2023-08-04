@@ -42,20 +42,20 @@ jobs:
       - uses: actions/checkout@96f53100ba2a5449eb71d2e6604bbcd94b9449b5
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@ca2d4e0cdd8c63d9ebfedc3d16d450a870caf31c
+        uses: actions/setup-node@d82f92a0eb28e5699f87460c19fc2c674da76d01
         with:
           # Set always-auth in npmrc
           always-auth: true
           # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
-          node-version: 16.16.0
+          node-version: 20.5.0
           # Set this option if you want the action to check for the latest available version that satisfies the version spec
           check-latest: true
 
-      - run: npm i --global npm@8.15.1
+      - run: npm i --global npm@9.8.1
       - run: npm --version
 
       - name: Docker Compose Install
-        uses: KengoTODA/actions-setup-docker-compose@7028cae87b80499a61bb6d794199a6d0e2eead7b
+        uses: KengoTODA/actions-setup-docker-compose@cb7bd0f6c0c0ec9b2263d222e9adb72e35c6766b
         with:
           version: '1.25.4'
 
