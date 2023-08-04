@@ -86,7 +86,7 @@
     "nyc": "^15.1.0",
     "pg": "^8.11.1",
     "pg-format": "^1.0.4",
-    "prom-client": "11.5.3",
+    "prom-client": "14.2.0",
     "queue-microtask": "github:brave-intl/queue-microtask#master",
     "redis": "^3.1.2",
     "debug": "^4.3.4",
