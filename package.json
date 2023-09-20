@@ -98,7 +98,7 @@
     "uuid": "^9.0.0"
   },
   "engines": {
-    "node": "20.5.0",
+    "node": "20.7.0",
     "npm": "9.8.1"
   },
   "devDependencies": {
