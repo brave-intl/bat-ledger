@@ -39,10 +39,10 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@96f53100ba2a5449eb71d2e6604bbcd94b9449b5
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@d82f92a0eb28e5699f87460c19fc2c674da76d01
+        uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3.8.1
         with:
           # Set always-auth in npmrc
           always-auth: true
@@ -55,7 +55,7 @@ jobs:
       - run: npm --version
 
       - name: Docker Compose Install
-        uses: KengoTODA/actions-setup-docker-compose@cb7bd0f6c0c0ec9b2263d222e9adb72e35c6766b
+        uses: KengoTODA/actions-setup-docker-compose@818311a3c413a3a072378e424c020fafcbab9a49 # v1.1.0
         with:
           version: '1.25.4'
 
@@ -67,7 +67,7 @@ jobs:
           restore-keys: v1-npm-deps-
 
       - run: docker-compose pull
-      - uses: satackey/action-docker-layer-caching@cc3f3828e75cbb45f0cf5139b95329c88480aa97
+      - uses: satackey/action-docker-layer-caching@46d2c640b1d8ef50d185452ad6fb324e6bd1d052 # v0.0.11
         # Ignore the failure of a step and avoid terminating the job.
         continue-on-error: true
         with:
