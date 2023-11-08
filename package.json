@@ -111,6 +111,9 @@
     "standard": "~17.1.0",
     "supertest": "^6.3.3"
   },
+  "overrides": {
+    "crypto-js": "4.2.0"
+  },
   "standard": {
     "ignore": [
       "config.js",
