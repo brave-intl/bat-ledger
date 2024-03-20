@@ -3,7 +3,6 @@ import { Runtime } from 'bat-utils/boot-runtime.js'
 import config from '../config.js'
 import suggestionsConsumer from './workers/suggestions.js'
 import voteConsumer from './workers/acvote.js'
-import referralsConsumer from './workers/referrals.js'
 import settlementsConsumer from './workers/settlements.js'
 import { getCurrent } from './migrations/current.js'
 
@@ -29,7 +28,6 @@ const runtime = new Runtime(config)
 extras.utils.setupKafkaCert()
 suggestionsConsumer(runtime)
 voteConsumer(runtime)
-referralsConsumer(runtime)
 settlementsConsumer(runtime)
 runtime.kafka.consume().catch(console.error)
 export default runtime
