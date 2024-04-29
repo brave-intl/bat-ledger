@@ -71,6 +71,7 @@
     "country-list": "2.3.0",
     "cron-parser": "4.9.0",
     "currency-codes": "2.1.0",
+    "debug": "^4.3.4",
     "dotenv": "^16.4.5",
     "ethereum-address": "0.0.4",
     "exposition": "^1.2.0",
@@ -89,11 +90,10 @@
     "prom-client": "11.5.3",
     "queue-microtask": "github:brave-intl/queue-microtask#master",
     "redis": "^3.1.2",
-    "debug": "^4.3.4",
-    "transliteration": "^2.3.5",
     "strip-ansi": "^7.1.0",
     "tiny-secp256k1": "^2.2.3",
     "tldjs": "2.3.1",
+    "transliteration": "^2.3.5",
     "underscore": "^1.13.6",
     "uuid": "^9.0.1"
   },
@@ -109,7 +109,7 @@
     "parse-prometheus-text-format": "^1.1.1",
     "sinon": "^15.2.0",
     "standard": "~17.1.0",
-    "supertest": "^6.3.4"
+    "supertest": "^7.0.0"
   },
   "overrides": {
     "crypto-js": "4.2.0"
