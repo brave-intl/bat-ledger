@@ -67,3 +67,12 @@ dist
 
 *.DS_Store
 .vscode/
+
+# IntelliJ
+.idea/
+
+# hitory
+.history
+
+# editorconfig
+.editorconfig
