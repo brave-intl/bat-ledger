@@ -1,4 +1,4 @@
-select execute($$
+select execute($outer$
 
 insert into migrations (id, description) values ('0021', 'reset_transactions_no_vbat');
 
@@ -102,12 +102,89 @@ ORDER BY difference DESC;
 -- SELECT * FROM temp_balances_past_last_payout_or_just_balance;
 
 
--- Set up the new TRANACTIONS table
--- Rename the existing table
-ALTER TABLE transactions RENAME TO old_transactions;
 
--- Create a new table with the same structure
-CREATE TABLE transactions (LIKE old_transactions INCLUDING ALL);
+
+
+
+
+
+DO $inner$
+DECLARE
+    fk_record RECORD;
+    old_table_name TEXT := 'transactions';
+    new_table_name TEXT := 'transactions_old';
+BEGIN
+    -- Step 1: Drop foreign keys referencing the transactions table
+    FOR fk_record IN
+        SELECT
+            tc.table_name AS referencing_table,
+            kcu.column_name AS referencing_column,
+            ccu.table_name AS foreign_table,
+            ccu.column_name AS foreign_column,
+            tc.constraint_name AS constraint_name
+        FROM
+            information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+        WHERE
+            tc.constraint_type = 'FOREIGN KEY'
+            AND ccu.table_name = old_table_name
+    LOOP
+        -- Drop the foreign key constraint
+        EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I;', fk_record.referencing_table, fk_record.constraint_name);
+    END LOOP;
+    -- Step 2: Rename the original transactions table
+    EXECUTE format('ALTER TABLE %I RENAME TO %I;', old_table_name, new_table_name);
+    -- Step 3: Recreate the transactions table with the original name
+    EXECUTE format('CREATE TABLE %I (LIKE %I INCLUDING ALL);', old_table_name, new_table_name);
+    -- Step 4: Recreate the foreign keys
+    FOR fk_record IN
+        SELECT
+            tc.table_name AS referencing_table,
+            kcu.column_name AS referencing_column,
+            ccu.table_name AS foreign_table,
+            ccu.column_name AS foreign_column,
+            tc.constraint_name AS constraint_name
+        FROM
+            information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+        WHERE
+            tc.constraint_type = 'FOREIGN KEY'
+            AND ccu.table_name = new_table_name
+    LOOP
+        -- Recreate the foreign key constraint to point to the new table
+        EXECUTE format('
+            ALTER TABLE %I
+            ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES %I(%I);',
+            fk_record.referencing_table,
+            fk_record.constraint_name,
+            fk_record.referencing_column,
+            old_table_name,
+            fk_record.foreign_column
+        );
+    END LOOP;
+END $inner$;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 -- POPULATE THE NEW TRANSACTIONS TABLE
@@ -123,4 +200,4 @@ SELECT
 FROM temp_balances_past_last_payout_or_just_balance;
 
 
-$$) where not exists (select * from migrations where id = '0021');
+$outer$) where not exists (select * from migrations where id = '0021');
