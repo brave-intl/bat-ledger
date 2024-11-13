@@ -102,14 +102,14 @@
     "npm": "9.8.1"
   },
   "devDependencies": {
-    "ava": "^5.3.1",
-    "coveralls-next": "^4.2.0",
-    "eslint": "^8.57.0",
-    "nodemon": "^3.1.0",
-    "parse-prometheus-text-format": "^1.1.1",
-    "sinon": "^15.2.0",
-    "standard": "~17.1.0",
-    "supertest": "^7.0.0"
+    "ava": "5.3.1",
+    "coveralls-next": "4.2.0",
+    "eslint": "8.57.0",
+    "nodemon": "3.1.0",
+    "parse-prometheus-text-format": "1.1.1",
+    "sinon": "15.2.0",
+    "standard": "17.1.0",
+    "supertest": "7.0.0"
   },
   "overrides": {
     "crypto-js": "4.2.0"
