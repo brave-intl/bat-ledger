@@ -60,7 +60,7 @@ jobs:
           version: '1.25.4'
 
       - name: Cache node modules
-        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84
+        uses: actions/cache@53aa38c736a561b9c17b62df3fe885a17b78ee6d
         with:
           path: ~/.npm
           key: v1-npm-deps-${{ hashFiles('**/package-lock.json') }}
