@@ -15,11 +15,11 @@ jobs:
       contents: read
     steps:
     - name: Checkout
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
       with:
         role-to-assume: ${{ secrets.GDBP_AWS_IAM_ROLE_ARN }}
         aws-region: us-west-2
     - name: Generalized Deployments
-      uses: brave-intl/general-docker-build-pipeline-action@a5abec689bc65b6a985ed8527d741a130c1483af # v1.0.11
+      uses: brave-intl/general-docker-build-pipeline-action@7eb4e5063b3051fb0eb49da64c5c623ef7813ef2 # v1.0.17

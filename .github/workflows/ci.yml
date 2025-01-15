@@ -39,10 +39,10 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3.8.1
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           # Set always-auth in npmrc
           always-auth: true
@@ -60,7 +60,7 @@ jobs:
           version: '1.25.4'
 
       - name: Cache node modules
-        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84
+        uses: actions/cache@36f1e144e1c8edb0a652766b484448563d8baf46
         with:
           path: ~/.npm
           key: v1-npm-deps-${{ hashFiles('**/package-lock.json') }}
