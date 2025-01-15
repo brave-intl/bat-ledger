@@ -105,7 +105,7 @@
     "ava": "5.3.1",
     "coveralls-next": "4.2.1",
     "eslint": "8.57.1",
-    "nodemon": "3.1.0",
+    "nodemon": "3.1.9",
     "parse-prometheus-text-format": "1.1.1",
     "sinon": "15.2.0",
     "standard": "17.1.0",
