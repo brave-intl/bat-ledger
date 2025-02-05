@@ -9,7 +9,7 @@ services:
   zookeeper:
     container_name: zook1
     hostname: zook1
-    image: confluentinc/cp-zookeeper:7.4.1
+    image: confluentinc/cp-zookeeper:7.8.0
     ports:
       - "2181:2181"
     environment:
