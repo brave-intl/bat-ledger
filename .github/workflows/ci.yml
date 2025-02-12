@@ -55,7 +55,7 @@ jobs:
       - run: npm --version
 
       - name: Docker Compose Install
-        uses: KengoTODA/actions-setup-docker-compose@818311a3c413a3a072378e424c020fafcbab9a49 # v1.1.0
+        uses: KengoTODA/actions-setup-docker-compose@aa468051c6851848da9bfe114e7eac913c0bf59c # v1.2.3
         with:
           version: '1.25.4'
 
