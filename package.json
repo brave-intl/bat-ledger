@@ -70,7 +70,7 @@
     "bson": "^5.4.0",
     "country-list": "2.3.0",
     "cron-parser": "4.9.0",
-    "currency-codes": "2.1.0",
+    "currency-codes": "2.2.0",
     "debug": "^4.3.4",
     "dotenv": "^16.4.5",
     "ethereum-address": "0.0.4",
