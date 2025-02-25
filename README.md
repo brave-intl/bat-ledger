@@ -59,7 +59,7 @@ For linting we use StandardJS. It's recommended that you install the necessary I
 2. Confirm .env vars match the contents of `.github/workflows/ci.yaml` section `env`.
 3. Fill in the remaining `{CHANGE_ME}` .env vars appropriately; please consult your local BAT dev to find the answers.
 
-### Running Individial tests
+### Running Individual tests
 
 `bat-ledgers` is executing tests using `ava` which can be executed via `npm run ava` and the requires args for any individual test can be passed to the command using `npm` scripts args syntax.  See below:
 
@@ -107,7 +107,7 @@ npm run docker-test
 ## Testing contribution
 
 If you are testing contributions locally (not with e2e automated tests) you need to add surveyors manually.
-You can do this by running bellow command when ledger service is running.
+You can do this by running below command when ledger service is running.
 ```
 curl -X POST --header 'Authorization: Bearer foobarfoobar' --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"adFree":{"fee":{"USD":5},"votes":50,"altcurrency":"BAT","probi":"27116311373482831368"}}' 'http://127.0.0.1:3001/v2/surveyor/contribution'
 ```
