@@ -61,7 +61,7 @@
     "@hapi/inert": "^7.1.0",
     "@hapi/wreck": "^18.0.1",
     "@sentry/node": "^7.107.0",
-    "avro-js": "1.11.3",
+    "avro-js": "1.12.0",
     "bat-utils": "file:./bat-utils",
     "bignumber.js": "^9.1.2",
     "bip32": "^4.0.0",
@@ -70,7 +70,7 @@
     "bson": "^5.4.0",
     "country-list": "2.3.0",
     "cron-parser": "4.9.0",
-    "currency-codes": "2.1.0",
+    "currency-codes": "2.2.0",
     "debug": "^4.3.4",
     "dotenv": "^16.4.5",
     "ethereum-address": "0.0.4",
@@ -98,7 +98,7 @@
     "uuid": "^9.0.1"
   },
   "engines": {
-    "node": "20.18.2",
+    "node": "20.19.0",
     "npm": "9.9.4"
   },
   "devDependencies": {
@@ -109,7 +109,7 @@
     "parse-prometheus-text-format": "1.1.1",
     "sinon": "15.2.0",
     "standard": "17.1.2",
-    "supertest": "7.0.0"
+    "supertest": "7.1.0"
   },
   "overrides": {
     "crypto-js": "4.2.0"
