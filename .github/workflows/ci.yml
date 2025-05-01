@@ -47,7 +47,7 @@ jobs:
           # Set always-auth in npmrc
           always-auth: true
           # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
-          node-version: 22.14.0
+          node-version: 22.15.0
           # Set this option if you want the action to check for the latest available version that satisfies the version spec
           check-latest: true
 
