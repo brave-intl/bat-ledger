@@ -1,4 +1,4 @@
-FROM node:20.19.0
+FROM node:20.19.1
 
 RUN apt-get update && apt-get install -y postgresql-client
 
