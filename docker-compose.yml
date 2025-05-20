@@ -58,7 +58,7 @@ services:
 
   eyeshade-postgres:
     container_name: eyeshade-postgres
-    image: postgres:16.8
+    image: postgres:16.9
     ports:
       - "3012:5432"
     environment:
