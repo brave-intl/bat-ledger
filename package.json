@@ -98,18 +98,18 @@
     "uuid": "^9.0.1"
   },
   "engines": {
-    "node": "20.19.0",
+    "node": "20.19.2",
     "npm": "9.9.4"
   },
   "devDependencies": {
     "ava": "5.3.1",
     "coveralls-next": "4.2.1",
     "eslint": "8.57.1",
-    "nodemon": "3.1.9",
+    "nodemon": "3.1.10",
     "parse-prometheus-text-format": "1.1.1",
     "sinon": "15.2.0",
     "standard": "17.1.2",
-    "supertest": "7.1.0"
+    "supertest": "7.1.1"
   },
   "overrides": {
     "crypto-js": "4.2.0"
